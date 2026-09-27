@@ -352,8 +352,13 @@ public final class TitleService {
             int rgb = title.color() & 0xFFFFFF;
             var dust = new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(
                     (rgb >> 16 & 0xFF) / 255f, (rgb >> 8 & 0xFF) / 255f, (rgb & 0xFF) / 255f), 0.8f);
-            player.serverLevel().sendParticles(dust, player.getX(), player.getY() + 1.0, player.getZ(),
-                    4, 0.35, 0.6, 0.35, 0);
+            // Three motes orbiting at waist height, a third of a turn apart, stepping round once every few seconds.
+            double turn = (player.serverLevel().getGameTime() % 100) / 100.0 * Math.PI * 2;
+            for (int i = 0; i < 3; i++) {
+                double angle = turn + i * Math.PI * 2 / 3;
+                player.serverLevel().sendParticles(dust, player.getX() + Math.cos(angle) * 0.7,
+                        player.getY() + 0.9 + 0.25 * Math.sin(turn * 2 + i), player.getZ() + Math.sin(angle) * 0.7, 1, 0, 0, 0, 0);
+            }
         }
     }
 
@@ -401,6 +406,9 @@ public final class TitleService {
             player.sendSystemMessage(ThaiText.c("rotasutils.msg.title.reward", gold, xp, collectionPoints(data, progress))
                     .withStyle(net.minecraft.ChatFormatting.GRAY));
             RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.title.earned", title.name()));
+            // A spiral in the title's own colour; rarer titles climb higher and denser.
+            Fx.spiral(player, Fx.dust(title.color() & 0xFFFFFF, 1.1f), 16 + rarity * 6, 1.0, 1.6 + rarity * 0.35);
+            if (rarity >= 3) Fx.fountain(player, net.minecraft.core.particles.ParticleTypes.TOTEM_OF_UNDYING, 20 + rarity * 8);
             player.level().playSound(null, player.blockPosition(), rarity >= 3
                     ? net.minecraft.sounds.SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,
                     net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.1f);

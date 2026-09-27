@@ -575,6 +575,7 @@ public final class NpcHub {
         String result = run(player, data, npc, service == null ? "" : service);
         boolean ok = result == null || result.startsWith("+");
         RotasNetwork.feedback(player, ok, result == null ? "เรียบร้อย" : ok ? result.substring(1) : result);
+        if (ok && service != null) Fx.service(player, service.contains(":") ? service.substring(0, service.indexOf(':')) : service);
         RotasNetwork.syncProgress(player);
         open(player, data, npc);
     }

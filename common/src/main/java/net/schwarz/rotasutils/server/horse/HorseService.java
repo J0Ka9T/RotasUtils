@@ -589,6 +589,7 @@ public final class HorseService {
         stables.setDirty();
         data.setDirty();
         player.level().playSound(null, player.blockPosition(), SoundEvents.HORSE_BREATHE, SoundSource.NEUTRAL, 1f, 0.8f);
+        net.schwarz.rotasutils.server.Fx.fountain(player, net.minecraft.core.particles.ParticleTypes.HEART, 7);
         data.audit(player.getGameProfile().getName() + " bred " + dam.id + " x " + sire.id + " -> " + foal.id + " cost=" + cost);
         net.schwarz.rotasutils.server.TitleService.count(player.server, data, player.getUUID(),
                 net.schwarz.rotasutils.title.TitleCounters.BRED, 1);
@@ -654,6 +655,9 @@ public final class HorseService {
             stables.setDirty();
             owner.sendSystemMessage(ThaiText.c("rotasutils.msg.horse.born", displayName(horse)).withStyle(ChatFormatting.GREEN));
             owner.level().playSound(null, owner.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f);
+            net.schwarz.rotasutils.server.Fx.spiral(owner, horse.traits.contains(HorseTrait.STARBORN)
+                    ? net.minecraft.core.particles.ParticleTypes.END_ROD : net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER,
+                    22, 0.9, 2.0);
             if (horse.traits.contains(HorseTrait.STARBORN)) {
                 server.getPlayerList().broadcastSystemMessage(ThaiText.c("rotasutils.msg.horse.starborn_broadcast",
                         owner.getGameProfile().getName(), displayName(horse)).withStyle(ChatFormatting.LIGHT_PURPLE), false);

@@ -69,6 +69,13 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
     }
 
+    /** The trail reaches blocks behind a half-block carrier: frustum-culling the carrier cut the trail off at screen edges. */
+    @Override
+    public boolean shouldRender(ZenithBladeEntity blade, net.minecraft.client.renderer.culling.Frustum frustum,
+                                double camX, double camY, double camZ) {
+        return true;
+    }
+
     @Override
     public void render(ZenithBladeEntity blade, float yaw, float partialTick, PoseStack pose, MultiBufferSource buffers,
                        int light) {
