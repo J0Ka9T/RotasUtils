@@ -91,6 +91,7 @@ public final class RotasEvents {
         EntityEvent.LIVING_DEATH.register((entity, source) ->
                 net.schwarz.rotasutils.server.horse.HorseService.onDeath(entity));
         EntityEvent.ADD.register(net.schwarz.rotasutils.server.horse.HorseService::onAdd);
+        EntityEvent.ADD.register(net.schwarz.rotasutils.sky.IncursionService::onAdd);
         EntityEvent.LIVING_HURT.register(net.schwarz.rotasutils.server.horse.HorseTraitEffects::onHurt);
         PlayerEvent.PLAYER_ADVANCEMENT.register(net.schwarz.rotasutils.server.ExplorationService::onAdvancement);
         // Deaths are a title too: some players earn their name by never staying down.
@@ -192,6 +193,7 @@ public final class RotasEvents {
     private static void onServerStopping(MinecraftServer server) {
         net.schwarz.rotasutils.sky.SkyClash.clear();
         net.schwarz.rotasutils.sky.SkySunder.clear();
+        net.schwarz.rotasutils.sky.IncursionService.clear();
         RotasData data = RotasData.instance();
         if (data != null) {
             if (data.kernel() != null) {
@@ -346,6 +348,7 @@ public final class RotasEvents {
             net.schwarz.rotasutils.server.FarmingService.onKill(killer, data);
         }
         net.schwarz.rotasutils.server.BountyService.onKill(killer, data, entity);
+        net.schwarz.rotasutils.sky.IncursionService.onKill(killer, entity);
         QuestEvent event = new QuestEvent(EventKind.KILL_ENTITY)
                 .entityType(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()))
                 .entityName(entity.hasCustomName() ? entity.getCustomName().getString() : "")
@@ -700,6 +703,11 @@ public final class RotasEvents {
         net.schwarz.rotasutils.server.horse.HorseService.tick(server);
         net.schwarz.rotasutils.server.TitleService.tickAura(server, data);
         net.schwarz.rotasutils.server.ExplorationService.tick(server, data);
+        try {
+            net.schwarz.rotasutils.sky.IncursionService.tick(server);
+        } catch (RuntimeException failure) {
+            Rotasutils.LOG.error("Incursion tick failed: {}", failure.getMessage(), failure);
+        }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerProgress progress = data.peek(player.getUUID());
             if (progress == null) {

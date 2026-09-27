@@ -50,6 +50,7 @@ public final class SunderingSigilItem extends Item {
             default -> {
             }
         }
+        net.schwarz.rotasutils.sky.IncursionService.stop(serverLevel, true);
         serverPlayer.getCooldowns().addCooldown(this, SkySunder.END);
         return InteractionResultHolder.consume(held);
     }
