@@ -467,6 +467,12 @@ public final class ServerActions {
                     net.schwarz.rotasutils.server.horse.HorseService.unlist(player, payload.getString("id")), "MARKET");
             case "horse_buy" -> atStable(player, data, payload, () -> horseResult(player, data, payload,
                     net.schwarz.rotasutils.server.horse.HorseService.buy(player, payload.getString("id"), payload.getLong("price")), "MARKET"));
+            // Breeding happens at a stable NPC, like any other trade with the stable.
+            case "horse_breed" -> atStable(player, data, payload, () -> horseResult(player, data, payload,
+                    net.schwarz.rotasutils.server.horse.HorseService.breed(player, payload.getString("id"),
+                            payload.getString("sire"), payload.getLong("cost")), "BREED"));
+            case "horse_stud" -> atStable(player, data, payload, () -> horseResult(player, data, payload,
+                    net.schwarz.rotasutils.server.horse.HorseService.setStud(player, payload.getString("id"), payload.getLong("fee")), "STABLE"));
             case "shop_buy" -> withNpc(player, data, payload, npc -> {
                 var result = net.schwarz.rotasutils.server.ShopService.buy(player, data, npc, payload.getString("source"),
                         payload.getString("key"), Math.max(1, Math.min(64, payload.getInt("count"))));

@@ -89,7 +89,8 @@ public final class ProgressService {
                 net.schwarz.rotasutils.event.EventType.of(source), antiFarmKey);
         double combo = source == XpSource.MOB_KILL || source == XpSource.BOSS_KILL
                 ? FarmingService.comboXp(player, data) : 1.0;
-        long amount = Math.max(0L, Math.round(baseAmount * sourceConfig.multiplier() * eventMultiplier * combo));
+        double mount = net.schwarz.rotasutils.server.horse.HorseTraitEffects.xpMultiplier(player, source);
+        long amount = Math.max(0L, Math.round(baseAmount * sourceConfig.multiplier() * eventMultiplier * combo * mount));
         if (amount <= 0) {
             return;
         }
@@ -182,7 +183,8 @@ public final class ProgressService {
                     rules.overLevelGrace, rules.overLevelPenaltyPerLevel, rules.overLevelMaxPenalty)
                     * share * sourceConfig.multiplier() * eventMultiplier
                     // A combo is the killer's own streak; party members share the kill, not the streak.
-                    * (recipient == killer ? FarmingService.comboXp(killer, data) : 1.0);
+                    * (recipient == killer ? FarmingService.comboXp(killer, data) : 1.0)
+                    * net.schwarz.rotasutils.server.horse.HorseTraitEffects.xpMultiplier(recipient, source);
             long amount = !Double.isFinite(xp) ? 0 : Math.max(0, Math.round(Math.min(xp, 1_000_000_000d)));
             if (amount <= 0) continue;
             if (monsterId != null) {

@@ -1026,6 +1026,41 @@ public final class SeasonRules {
         /** Percent kept by the market; 0 means sellers receive the full price. */
         public double marketFee = 0;
         public long marketMaxPrice = 10_000_000;
+
+        // Breeding (see HorseBreeding) ---------------------------------------------------------------
+        public boolean breedEnabled = true;
+        public long breedBaseCost = 800;
+        public long breedCostPerLineage = 150;
+        public int gestationMinutes = 30;
+        public int breedCooldownMinutes = 120;
+        public int breedsPerHorse = 3;
+        public int fertileBonusBreeds = 2;
+        /** Share of the parents' trained levels a foal is born with (0 = always level I). */
+        public double breedLevelInheritance = 0.5;
+        public double breedTraitInheritChance = 0.5;
+        public double breedMutationChance = 0.08;
+        public double prizedLineMutationBonus = 0.10;
+        public double starbornChance = 0.03;
+        public double breedRareCoatChance = 0.35;
+        public double breedSecretCoatChance = 0.12;
+        public long studMaxFee = 1_000_000;
+        /** Extra NPC price per generation of lineage (capped at 10 generations). */
+        public long sellPerLineage = 60;
+        /** Expected traits per draw rarity: whole part guaranteed, fraction is a chance of one more. */
+        public double[] gachaTraits = {0.05, 0.25, 0.6, 1.0, 1.5};
+
+        // Trait strength -----------------------------------------------------------------------------
+        public double warhorseDamage = 0.12;
+        public double ironhideArmor = 6;
+        public double valiantArmor = 3;
+        public double windrunnerSpeed = 0.10;
+        public double goldenBloodPrice = 0.30;
+        public double peddlerPrice = 0.10;
+        public double starbornPrice = 0.50;
+        public double foragerXp = 0.15;
+        public double trailblazerXp = 0.25;
+        public double peddlerXp = 0.15;
+        public double starbornXp = 0.05;
     }
 
     private static Map<String, Integer> defaultRankExp() {
@@ -1330,6 +1365,34 @@ public final class SeasonRules {
         if (h.sellRarityBonus == null || h.sellRarityBonus.length != 5) h.sellRarityBonus = new long[]{0, 20, 60, 150, 400};
         h.marketFee = clamp(h.marketFee, 0, 0.9, 0);
         h.marketMaxPrice = Math.max(1, h.marketMaxPrice);
+        h.breedBaseCost = Math.max(0, h.breedBaseCost);
+        h.breedCostPerLineage = Math.max(0, h.breedCostPerLineage);
+        h.gestationMinutes = clamp(h.gestationMinutes, 0, 10080);
+        h.breedCooldownMinutes = clamp(h.breedCooldownMinutes, 0, 10080);
+        h.breedsPerHorse = clamp(h.breedsPerHorse, 0, 100);
+        h.fertileBonusBreeds = clamp(h.fertileBonusBreeds, 0, 100);
+        h.breedLevelInheritance = clamp(h.breedLevelInheritance, 0, 1, 0.5);
+        h.breedTraitInheritChance = clamp(h.breedTraitInheritChance, 0, 1, 0.5);
+        h.breedMutationChance = clamp(h.breedMutationChance, 0, 1, 0.08);
+        h.prizedLineMutationBonus = clamp(h.prizedLineMutationBonus, 0, 1, 0.10);
+        h.starbornChance = clamp(h.starbornChance, 0, 1, 0.03);
+        h.breedRareCoatChance = clamp(h.breedRareCoatChance, 0, 1, 0.35);
+        h.breedSecretCoatChance = clamp(h.breedSecretCoatChance, 0, 1, 0.12);
+        h.studMaxFee = Math.max(0, h.studMaxFee);
+        h.sellPerLineage = Math.max(0, h.sellPerLineage);
+        if (h.gachaTraits == null || h.gachaTraits.length != 5) h.gachaTraits = new double[]{0.05, 0.25, 0.6, 1.0, 1.5};
+        for (int i = 0; i < 5; i++) h.gachaTraits[i] = clamp(h.gachaTraits[i], 0, 3, 0);
+        h.warhorseDamage = clamp(h.warhorseDamage, 0, 5, 0.12);
+        h.ironhideArmor = clamp(h.ironhideArmor, 0, 30, 6);
+        h.valiantArmor = clamp(h.valiantArmor, 0, 30, 3);
+        h.windrunnerSpeed = clamp(h.windrunnerSpeed, 0, 2, 0.10);
+        h.goldenBloodPrice = clamp(h.goldenBloodPrice, 0, 10, 0.30);
+        h.peddlerPrice = clamp(h.peddlerPrice, 0, 10, 0.10);
+        h.starbornPrice = clamp(h.starbornPrice, 0, 10, 0.50);
+        h.foragerXp = clamp(h.foragerXp, 0, 10, 0.15);
+        h.trailblazerXp = clamp(h.trailblazerXp, 0, 10, 0.25);
+        h.peddlerXp = clamp(h.peddlerXp, 0, 10, 0.15);
+        h.starbornXp = clamp(h.starbornXp, 0, 10, 0.05);
         if (currency == null || currency.isBlank()) currency = "rotas:gold";
         if (overflowCurrency == null || overflowCurrency.isBlank()) overflowCurrency = "rotas:season_token";
         return this;

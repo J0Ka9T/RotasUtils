@@ -91,6 +91,7 @@ public final class RotasEvents {
         EntityEvent.LIVING_DEATH.register((entity, source) ->
                 net.schwarz.rotasutils.server.horse.HorseService.onDeath(entity));
         EntityEvent.ADD.register(net.schwarz.rotasutils.server.horse.HorseService::onAdd);
+        EntityEvent.LIVING_HURT.register(net.schwarz.rotasutils.server.horse.HorseTraitEffects::onHurt);
         EntityEvent.LIVING_DEATH.register(RotasEvents::onLivingDeath);
         // A volatile elite bursts where it falls.
         EntityEvent.LIVING_DEATH.register((entity, source) -> {

@@ -2,11 +2,14 @@ package net.schwarz.rotasutils.server.horse;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.schwarz.rotasutils.Rotasutils;
+import net.schwarz.rotasutils.core.HorseBreeding;
 import net.schwarz.rotasutils.core.HorseGacha;
+import net.schwarz.rotasutils.core.HorseTrait;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,6 +53,28 @@ public final class StableData extends SavedData {
         public long created;
         public long potionDay;
         public int potionUses;
+        /** Pedigree: parent record ids and names (names survive a parent's release or sale). */
+        public String sire = "", dam = "", sireName = "", damName = "";
+        /** 0 for founders (draw, wild, admin); a foal is one more than its older parent. */
+        public int lineage;
+        public List<HorseTrait> traits = new ArrayList<>();
+        /** Breedings left; -1 until the rules first assign it. */
+        public int breedsLeft = -1;
+        public long breedReadyAt;
+        /** Epoch seconds a foal is born; until then it waits in its slot, unknown. 0 = born. */
+        public long bornAt;
+        /** Fee other players pay to breed with this horse; 0 = not offered at stud. */
+        public long studFee;
+        /** Legacy draw horses get their traits rolled once, on first sight. */
+        public boolean traitsRolled;
+
+        public boolean unborn(long nowSeconds) {
+            return bornAt > nowSeconds;
+        }
+
+        public HorseBreeding.Parent parent() {
+            return new HorseBreeding.Parent(id, levels(), lineage, traits, sire, dam, secretCoat, rareCoat);
+        }
 
         public int[] levels() {
             return SwemCompat.levels(snapshot);
@@ -88,6 +113,19 @@ public final class StableData extends SavedData {
             tag.putLong("created", created);
             tag.putLong("potion_day", potionDay);
             tag.putInt("potion_uses", potionUses);
+            tag.putString("sire", sire);
+            tag.putString("dam", dam);
+            tag.putString("sire_name", sireName);
+            tag.putString("dam_name", damName);
+            tag.putInt("lineage", lineage);
+            ListTag traitTag = new ListTag();
+            traits.forEach(trait -> traitTag.add(StringTag.valueOf(trait.name())));
+            tag.put("traits", traitTag);
+            tag.putInt("breeds_left", breedsLeft);
+            tag.putLong("breed_ready", breedReadyAt);
+            tag.putLong("born", bornAt);
+            tag.putLong("stud_fee", studFee);
+            tag.putBoolean("traits_rolled", traitsRolled);
             return tag;
         }
 
@@ -113,6 +151,20 @@ public final class StableData extends SavedData {
             horse.created = tag.getLong("created");
             horse.potionDay = tag.getLong("potion_day");
             horse.potionUses = tag.getInt("potion_uses");
+            horse.sire = tag.getString("sire");
+            horse.dam = tag.getString("dam");
+            horse.sireName = tag.getString("sire_name");
+            horse.damName = tag.getString("dam_name");
+            horse.lineage = Math.max(0, tag.getInt("lineage"));
+            ListTag traitTag = tag.getList("traits", Tag.TAG_STRING);
+            List<String> names = new ArrayList<>();
+            for (int i = 0; i < traitTag.size(); i++) names.add(traitTag.getString(i));
+            horse.traits = new ArrayList<>(HorseTrait.parse(names));
+            horse.breedsLeft = tag.contains("breeds_left") ? tag.getInt("breeds_left") : -1;
+            horse.breedReadyAt = tag.getLong("breed_ready");
+            horse.bornAt = tag.getLong("born");
+            horse.studFee = Math.max(0, tag.getLong("stud_fee"));
+            horse.traitsRolled = tag.getBoolean("traits_rolled");
             return horse;
         }
     }
@@ -180,6 +232,14 @@ public final class StableData extends SavedData {
         List<Horse> result = new ArrayList<>();
         for (Horse horse : horses.values()) {
             if (horse.owner.equals(owner)) result.add(horse);
+        }
+        return result;
+    }
+
+    public List<Horse> studs() {
+        List<Horse> result = new ArrayList<>();
+        for (Horse horse : horses.values()) {
+            if (horse.studFee > 0) result.add(horse);
         }
         return result;
     }

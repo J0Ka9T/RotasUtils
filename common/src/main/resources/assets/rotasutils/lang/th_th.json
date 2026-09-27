@@ -2010,6 +2010,19 @@
   "rotasutils.msg.horse.pulled": "สุ่มได้ม้า %s ตัว ดีที่สุด: %s",
   "rotasutils.msg.horse.not_yours": "ม้าตัวนี้ไม่ใช่ของคุณ",
   "rotasutils.msg.horse.listed_locked": "ม้าตัวนี้ลงขายในตลาดอยู่",
+  "rotasutils.msg.horse.unborn": "ลูกม้าตัวนี้ยังไม่เกิด",
+  "rotasutils.msg.horse.breed_disabled": "ฤดูกาลนี้ปิดการผสมพันธุ์",
+  "rotasutils.msg.horse.breed_spent": "%s ผสมพันธุ์ไม่ได้อีกแล้ว",
+  "rotasutils.msg.horse.breed_resting": "%s ต้องพักอีก %s นาทีก่อนผสมพันธุ์",
+  "rotasutils.msg.horse.breed_same": "เลือกม้าสองตัวที่ต่างกัน",
+  "rotasutils.msg.horse.breed_kin": "ม้าสองตัวนี้เป็นญาติใกล้ชิด ผสมพันธุ์ไม่ได้",
+  "rotasutils.msg.horse.stud_busy": "พ่อพันธุ์ตัวนี้ออกไปกับเจ้าของอยู่",
+  "rotasutils.msg.horse.stud_paid": "พ่อพันธุ์ %s ของคุณถูกจองโดย %s: +%s",
+  "rotasutils.msg.horse.stud_on": "%s เปิดรับเป็นพ่อพันธุ์ ค่าบริการ %s",
+  "rotasutils.msg.horse.stud_off": "%s เลิกรับเป็นพ่อพันธุ์แล้ว",
+  "rotasutils.msg.horse.bred": "ผสม %s กับ %s แล้ว ลูกม้าจะเกิดในอีก %s นาที",
+  "rotasutils.msg.horse.born": "ลูกม้าเกิดในคอกของคุณแล้ว: %s",
+  "rotasutils.msg.horse.starborn_broadcast": "ลูกม้าบุตรแห่งดาราถือกำเนิดในคอกของ %s: %s!",
   "rotasutils.msg.horse.recovering": "ม้าตัวนี้ยังพักฟื้นอยู่ (%s วินาที)",
   "rotasutils.msg.horse.cooldown": "รออีก %s วินาทีก่อนเรียกม้าอีกครั้ง",
   "rotasutils.msg.horse.summon_failed": "เรียกม้าตรงนี้ไม่ได้",
@@ -3074,5 +3087,7 @@
   "skill.rotasutils.arcane_edge": "คมเวท",
   "skill.rotasutils.arcane_edge.tooltip": "ทุก ๆ %s ครั้งที่ตีระยะประชิด การโจมตีจะสั่นพ้อง: ศัตรูรอบเป้าหมายได้รับดาเมจเวท %s%% ของการตีนั้น ในรัศมี %s บล็อก เพิ่มตามพลังเวทของ Iron's Spells",
   "skill.rotasutils.hunters_patience": "ความอดทนของนักล่า",
-  "skill.rotasutils.hunters_patience.tooltip": "ยืนนิ่ง %s วินาทีเพื่อรวมสมาธิ: กระสุนที่โดนครั้งต่อไปสร้างดาเมจเพิ่ม %s%% กระสุนทุกนัดยังได้ดาเมจเพิ่ม %s%% ต่อบล็อกที่เกิน 10 บล็อก สูงสุด %s%%"
+  "skill.rotasutils.hunters_patience.tooltip": "ยืนนิ่ง %s วินาทีเพื่อรวมสมาธิ: กระสุนที่โดนครั้งต่อไปสร้างดาเมจเพิ่ม %s%% กระสุนทุกนัดยังได้ดาเมจเพิ่ม %s%% ต่อบล็อกที่เกิน 10 บล็อก สูงสุด %s%%",
+  "skill.rotasutils.exo_overdrive": "โอเวอร์ไดรฟ์ทำลายล้าง",
+  "skill.rotasutils.exo_overdrive.tooltip": "ตั้งท่า แบก Disintegrator ขึ้นบ่าแล้วอัดพลังเกินขีด: ครู่หนึ่งต่อมาหอกทำลายล้างจะยิงออกไปโดยไม่สนคูลดาวน์ และแรงระเบิดปากกระบอกจะผลักทุกสิ่งตรงหน้ากระเด็น"
 }

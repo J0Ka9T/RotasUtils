@@ -41,7 +41,7 @@ public class StableScreen extends RotasScreen {
     private static String lastSelected = "";
 
     private enum Tab {
-        STABLE("คอกม้า"), DRAW("สุ่มม้า"), MARKET("ตลาดม้า"), TOP("อันดับ");
+        STABLE("คอกม้า"), DRAW("สุ่มม้า"), MARKET("ตลาดม้า"), BREED("ผสมพันธุ์"), TOP("อันดับ");
 
         final String label;
 
@@ -50,16 +50,47 @@ public class StableScreen extends RotasScreen {
         }
     }
 
-    private enum Edit { NONE, RENAME, PRICE }
+    private enum Edit { NONE, RENAME, PRICE, STUD }
 
     private record Horse(String id, String name, String origin, String rarity, int[] levels, int[] start, String coat,
                          boolean secret, boolean rare, boolean active, long listed, long recover, long npcPrice,
-                         String owner, CompoundTag snapshot) {
+                         String owner, CompoundTag snapshot, int lineage, String sireName, String damName,
+                         String sireId, String damId, int breedsLeft, long breedReady, long studFee, long unborn,
+                         List<String> traits) {
         int trained() {
             int total = 0;
             for (int i = 0; i < 4; i++) total += Math.max(0, levels[i] - start[i]);
             return total;
         }
+
+        boolean born() {
+            return unborn <= 0;
+        }
+    }
+
+    /** Trait names, callings and what they do; mirrors core.HorseTrait. */
+    private record TraitInfo(String name, String effect, int color) {
+    }
+
+    private static final int COMBAT = 0xFFE06A5A, ECONOMY = 0xFFE3A857, LIFE = 0xFF86C05C, MYTHIC = 0xFFC88CFF;
+    private static final Map<String, TraitInfo> TRAITS = Map.ofEntries(
+            Map.entry("WARHORSE", new TraitInfo("ม้าศึก", "ผู้ขี่โจมตีแรงขึ้น", COMBAT)),
+            Map.entry("IRONHIDE", new TraitInfo("หนังเหล็ก", "ม้ามีเกราะเพิ่ม", COMBAT)),
+            Map.entry("VALIANT", new TraitInfo("กล้าหาญ", "ผู้ขี่มีเกราะเพิ่ม", COMBAT)),
+            Map.entry("WINDRUNNER", new TraitInfo("วิ่งลม", "ม้าวิ่งเร็วขึ้น", COMBAT)),
+            Map.entry("STALWART", new TraitInfo("ทรหด", "พักฟื้นหลังสลบเร็วขึ้นครึ่งหนึ่ง", COMBAT)),
+            Map.entry("GOLDEN_BLOOD", new TraitInfo("เลือดทอง", "NPC รับซื้อแพงขึ้น", ECONOMY)),
+            Map.entry("SHOWSTOPPER", new TraitInfo("ดาวเด่น", "ขายในตลาดและค่าพ่อพันธุ์ไม่เสียค่าธรรมเนียม", ECONOMY)),
+            Map.entry("PRIZED_LINE", new TraitInfo("สายเลือดเลิศ", "ลูกมีโอกาสกลายพันธุ์สูงขึ้น", ECONOMY)),
+            Map.entry("FERTILE", new TraitInfo("เจริญพันธุ์", "ผสมพันธุ์ได้หลายครั้งขึ้น", ECONOMY)),
+            Map.entry("FORAGER", new TraitInfo("นักหาของ", "ขี่แล้วได้ EXP ขุด ฟาร์ม ตกปลา คราฟต์เพิ่ม", LIFE)),
+            Map.entry("TRAILBLAZER", new TraitInfo("นักบุกเบิก", "ขี่แล้วได้ EXP สำรวจเพิ่ม", LIFE)),
+            Map.entry("SUREFOOT", new TraitInfo("เท้ามั่น", "ม้าและผู้ขี่ไม่รับดาเมจตกที่สูง", LIFE)),
+            Map.entry("PEDDLER", new TraitInfo("พ่อค้าเร่", "ขี่แล้วได้ EXP ค้าขายเพิ่ม และขายได้แพงขึ้นเล็กน้อย", LIFE)),
+            Map.entry("STARBORN", new TraitInfo("บุตรแห่งดารา", "หายากสุด: EXP ทุกอย่างเพิ่ม ราคาสูง และเปล่งแสง", MYTHIC)));
+
+    private static TraitInfo trait(String id) {
+        return TRAITS.getOrDefault(id, new TraitInfo(id, "", Ui.TEXT_MUTED));
     }
 
     private final CompoundTag payload;
@@ -68,6 +99,9 @@ public class StableScreen extends RotasScreen {
     private final List<Horse> horses = new ArrayList<>();
     private final List<Horse> market = new ArrayList<>();
     private final List<Horse> results = new ArrayList<>();
+    private final List<Horse> studs = new ArrayList<>();
+    private ScrollPanel partnerList;
+    private Horse partner;
     private final List<String> top = new ArrayList<>();
     private final Map<String, LivingEntity> previews = new HashMap<>();
     private final Set<String> brokenPreviews = new HashSet<>();
@@ -88,6 +122,7 @@ public class StableScreen extends RotasScreen {
         read(payload.getList("horses", Tag.TAG_COMPOUND), horses);
         read(payload.getList("market", Tag.TAG_COMPOUND), market);
         read(payload.getList("results", Tag.TAG_COMPOUND), results);
+        read(payload.getList("studs", Tag.TAG_COMPOUND), studs);
         ListTag lines = payload.getList("top", Tag.TAG_STRING);
         for (int i = 0; i < lines.size(); i++) top.add(lines.getString(i));
         Tab requested;
@@ -96,7 +131,7 @@ public class StableScreen extends RotasScreen {
         } catch (IllegalArgumentException unknown) {
             requested = Tab.STABLE;
         }
-        tab = requested == Tab.MARKET && npc.isBlank() ? Tab.STABLE : requested;
+        tab = !available(requested) ? Tab.STABLE : requested;
         if (!results.isEmpty()) {
             resultsShownAt = Util.getMillis();
             Sfx.reward();
@@ -109,16 +144,72 @@ public class StableScreen extends RotasScreen {
             CompoundTag tag = tags.getCompound(i);
             int[] levels = tag.getIntArray("levels");
             int[] start = tag.getIntArray("start");
+            ListTag traitTags = tag.getList("traits", Tag.TAG_STRING);
+            List<String> traits = new ArrayList<>();
+            for (int t = 0; t < traitTags.size(); t++) traits.add(traitTags.getString(t));
             target.add(new Horse(tag.getString("id"), tag.getString("name"), tag.getString("origin"), tag.getString("rarity"),
                     levels.length == 4 ? levels : new int[]{1, 1, 1, 1}, start.length == 4 ? start : new int[]{1, 1, 1, 1},
                     tag.getString("coat"), tag.getBoolean("secret"), tag.getBoolean("rare"), tag.getBoolean("active"),
                     tag.getLong("listed"), tag.getLong("recover"), tag.getLong("npc_price"), tag.getString("owner"),
-                    tag.getCompound("snapshot")));
+                    tag.getCompound("snapshot"), tag.getInt("lineage"), tag.getString("sire_name"), tag.getString("dam_name"),
+                    tag.getString("sire_id"), tag.getString("dam_id"), tag.getInt("breeds_left"), tag.getLong("breed_ready"),
+                    tag.getLong("stud_fee"), tag.getLong("unborn"), List.copyOf(traits)));
         }
     }
 
+    private boolean available(Tab value) {
+        if (value == Tab.MARKET) return !npc.isBlank();
+        if (value == Tab.BREED) return !npc.isBlank() && payload.getBoolean("breed_enabled");
+        return true;
+    }
+
     private List<Horse> rows() {
-        return tab == Tab.MARKET ? market : horses;
+        if (tab == Tab.MARKET) return market;
+        if (tab == Tab.BREED) return horses.stream().filter(Horse::born).toList();
+        return horses;
+    }
+
+    /** Who the selected horse can be bred with: the player's other born horses, then other players' studs. */
+    private List<Horse> partners() {
+        List<Horse> result = new ArrayList<>();
+        for (Horse horse : horses) {
+            if (horse.born() && selected != null && !horse.id().equals(selected.id())) result.add(horse);
+        }
+        result.addAll(studs);
+        return result;
+    }
+
+    private boolean isStud(Horse horse) {
+        return studs.contains(horse);
+    }
+
+    /** Mirrors HorseBreeding.forbidden so the screen can say why before the server does. */
+    private static boolean kin(Horse a, Horse b) {
+        if (a.id().equals(b.sireId()) || a.id().equals(b.damId()) || b.id().equals(a.sireId()) || b.id().equals(a.damId())) {
+            return true;
+        }
+        return shares(a.sireId(), b) || shares(a.damId(), b);
+    }
+
+    private static boolean shares(String parent, Horse other) {
+        return !parent.isEmpty() && (parent.equals(other.sireId()) || parent.equals(other.damId()));
+    }
+
+    private long breedCost(Horse dam, Horse sire) {
+        return payload.getLong("breed_base") + Math.max(dam.lineage(), sire.lineage()) * payload.getLong("breed_per_lineage")
+                + (isStud(sire) ? sire.studFee() : 0);
+    }
+
+    /** Why this pair cannot breed right now, or null. */
+    private String breedBlock(Horse dam, Horse sire) {
+        if (dam.breedsLeft() <= 0) return dam.name() + " ผสมพันธุ์ครบแล้ว";
+        if (sire.breedsLeft() <= 0) return sire.name() + " ผสมพันธุ์ครบแล้ว";
+        if (dam.breedReady() > 0) return dam.name() + " ต้องพักอีก " + (dam.breedReady() / 60 + 1) + " นาที";
+        if (sire.breedReady() > 0) return sire.name() + " ต้องพักอีก " + (sire.breedReady() / 60 + 1) + " นาที";
+        if (dam.listed() > 0 || sire.listed() > 0) return "ม้าที่ลงขายอยู่ผสมพันธุ์ไม่ได้";
+        if (kin(dam, sire)) return "เป็นญาติใกล้ชิด ผสมพันธุ์ไม่ได้";
+        if (horses.size() >= payload.getInt("slots")) return "คอกเต็ม ต้องมีช่องว่างให้ลูกม้า";
+        return null;
     }
 
     // Layout ---------------------------------------------------------------------------------------
@@ -135,7 +226,7 @@ public class StableScreen extends RotasScreen {
         }
         int tabX = guiLeft + Ui.PAD;
         for (Tab value : Tab.values()) {
-            if (value == Tab.MARKET && npc.isBlank()) continue;
+            if (!available(value)) continue;
             int w = font.width(value.label) + 26;
             Button button = addRenderableWidget((value == tab ? Ui.primaryButton(Ui.text(value.label), b -> { })
                     : Ui.button(Ui.text(value.label), b -> switchTab(value))).bounds(tabX, guiTop + 32, w, 20).build());
@@ -153,6 +244,8 @@ public class StableScreen extends RotasScreen {
             list.setRows(rows.size(), this::renderRow, this::clickRow);
             registerPanel(list);
             buildActions();
+        } else if (tab == Tab.BREED) {
+            buildBreed();
         } else if (tab == Tab.DRAW) {
             int buttonW = 150;
             int y = footerY() - 32;
@@ -167,6 +260,135 @@ public class StableScreen extends RotasScreen {
                     b -> confirm("slot", () -> act("horse_buy_slot", new CompoundTag(), false)))
                     .bounds(guiLeft + Ui.PAD + 64, footerY(), 170, 22).build())
                     .setMessage(Ui.text(confirming("slot") ? "กดอีกครั้งเพื่อซื้อ" : "ซื้อช่องคอกเพิ่ม · " + Currencies.amount(payload.getLong("slot_cost"))));
+        }
+    }
+
+    /** Breeding: first parent on the left, partner (own horse or a stud) in the middle, the pairing on the right. */
+    private void buildBreed() {
+        List<Horse> rows = rows();
+        if (selected == null || !rows.contains(selected)) {
+            selected = rows.stream().filter(horse -> horse.id().equals(lastSelected)).findFirst()
+                    .orElse(rows.isEmpty() ? null : rows.get(0));
+        }
+        List<Horse> partners = partners();
+        if (partner != null && !partners.contains(partner)) partner = null;
+        int top = contentTop() + 12;
+        int bottom = footerY() - Ui.GAP;
+        int colW = breedColW();
+        list = new ScrollPanel(guiLeft + Ui.PAD, top, colW, bottom - top, ROW).withoutBackground().rowHitInsets(1, 3);
+        list.setRows(rows.size(), this::renderRow, this::clickRow);
+        registerPanel(list);
+        partnerList = new ScrollPanel(guiLeft + Ui.PAD + colW + Ui.GAP, top, colW, bottom - top, ROW)
+                .withoutBackground().rowHitInsets(1, 3);
+        partnerList.setRows(partners.size(), this::renderPartner, this::clickPartner);
+        registerPanel(partnerList);
+        if (selected == null || partner == null) return;
+        String block = breedBlock(selected, partner);
+        long cost = breedCost(selected, partner);
+        int x = breedPanelX() + 10;
+        int w = guiLeft + guiWidth - Ui.PAD - breedPanelX() - 20;
+        Button button = addRenderableWidget(Ui.primaryButton(Ui.text(confirming("breed") ? "กดอีกครั้งเพื่อผสม"
+                : "ผสมพันธุ์ · " + Currencies.amount(cost)), b -> confirm("breed", () -> {
+            CompoundTag request = horsePayload();
+            request.putString("sire", partner.id());
+            request.putLong("cost", cost);
+            act("horse_breed", request, false);
+        })).bounds(x, bottom - 30, w, 24).build());
+        button.active = block == null && payload.getLong("balance") >= cost;
+    }
+
+    private int breedColW() { return Math.max(150, (guiWidth - Ui.PAD * 2 - Ui.GAP * 4) * 3 / 10); }
+    private int breedPanelX() { return guiLeft + Ui.PAD + (breedColW() + Ui.GAP) * 2 + Ui.GAP; }
+
+    private void renderPartner(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
+        List<Horse> partners = partners();
+        if (index >= partners.size()) return;
+        Horse horse = partners.get(index);
+        Ui.rowCard(graphics, x, y, w - 6, h - 4, hovered, horse == partner);
+        graphics.fill(x + 4, y + 5, x + 7, y + h - 9, isStud(horse) ? 0xFFE3A857 : Currencies.rarityColor(horse.rarity()));
+        graphics.renderFakeItem(new ItemStack(isStud(horse) ? Items.GOLDEN_CARROT : Items.SADDLE), x + 12, y + 10);
+        Ui.label(graphics, Ui.truncate(horse.name(), w - 50), x + 34, y + 6, Ui.TEXT_BRIGHT);
+        String second = isStud(horse) ? "พ่อพันธุ์ของ " + horse.owner() + " · " + Currencies.amount(horse.studFee())
+                : "รุ่น " + horse.lineage() + " · ผสมได้อีก " + horse.breedsLeft();
+        Ui.label(graphics, Ui.truncate(second, w - 50), x + 34, y + 18, Ui.TEXT_MUTED);
+        renderTraitDots(graphics, horse, x + w - 16, y + 8);
+    }
+
+    private void clickPartner(int index, int button) {
+        List<Horse> partners = partners();
+        if (index < 0 || index >= partners.size()) return;
+        partner = partners.get(index);
+        confirmKey = "";
+        Sfx.select();
+        rebuild();
+    }
+
+    /** One small coloured square per trait, right-aligned at {@code right}. */
+    private void renderTraitDots(GuiGraphics graphics, Horse horse, int right, int y) {
+        int dx = right;
+        for (int i = horse.traits().size() - 1; i >= 0; i--) {
+            dx -= 7;
+            graphics.fill(dx, y, dx + 5, y + 5, trait(horse.traits().get(i)).color());
+        }
+    }
+
+    private void renderBreed(GuiGraphics graphics) {
+        int top = contentTop();
+        int colW = breedColW();
+        Ui.label(graphics, "ม้าตัวแรก", guiLeft + Ui.PAD + 4, top, Ui.TEXT_MUTED);
+        Ui.label(graphics, "คู่ผสม (ม้าของคุณ / พ่อพันธุ์)", guiLeft + Ui.PAD + colW + Ui.GAP + 4, top, Ui.TEXT_MUTED);
+        if (rows().isEmpty()) {
+            Ui.label(graphics, "ยังไม่มีม้าที่ผสมพันธุ์ได้", guiLeft + Ui.PAD + 8, top + 24, Ui.TEXT_DIM);
+        }
+        int x = breedPanelX();
+        int w = guiLeft + guiWidth - Ui.PAD - x;
+        int h = footerY() - Ui.GAP - top;
+        Ui.panel(graphics, x, top, w, h);
+        int tx = x + 10;
+        int tw = w - 20;
+        int y = top + 10;
+        if (selected == null || partner == null) {
+            for (String line : Ui.wrap("เลือกม้าสองตัวเพื่อดูลูกที่อาจเกิด ลูกได้เลเวลบางส่วน นิสัยจากพ่อแม่ และอาจกลายพันธุ์ได้นิสัยใหม่", tw)) {
+                Ui.label(graphics, line, tx, y, Ui.TEXT_MUTED);
+                y += 11;
+            }
+            return;
+        }
+        Ui.sectionHeading(graphics, "คู่ผสม", tx, y, tw);
+        y += 16;
+        Ui.label(graphics, Ui.truncate(selected.name() + "  ×  " + partner.name(), tw), tx, y, Ui.TEXT_BRIGHT);
+        y += 14;
+        Ui.label(graphics, "ลูกจะเป็นสายเลือดรุ่นที่ " + (Math.max(selected.lineage(), partner.lineage()) + 1), tx, y, Ui.TEXT);
+        y += 12;
+        Ui.label(graphics, "ตั้งท้อง " + payload.getInt("gestation") + " นาที · ใช้ช่องคอก 1 ช่อง", tx, y, Ui.TEXT_MUTED);
+        y += 16;
+        Ui.sectionHeading(graphics, "นิสัยที่อาจสืบทอด", tx, y, tw);
+        y += 16;
+        Set<String> seen = new HashSet<>();
+        for (Horse parent : List.of(selected, partner)) {
+            for (String id : parent.traits()) {
+                if (!seen.add(id) || id.equals("STARBORN") || y > footerY() - 70) continue;
+                TraitInfo info = trait(id);
+                Ui.label(graphics, Ui.truncate("• " + info.name() + " — " + info.effect(), tw), tx, y, info.color());
+                y += 11;
+            }
+        }
+        if (seen.isEmpty()) {
+            Ui.label(graphics, "พ่อแม่ไม่มีนิสัย ลุ้นกลายพันธุ์เท่านั้น", tx, y, Ui.TEXT_DIM);
+            y += 11;
+        }
+        if (selected.traits().size() >= 2 && partner.traits().size() >= 2) {
+            Ui.label(graphics, Ui.truncate("★ พ่อแม่มีนิสัยครบ ลุ้น 'บุตรแห่งดารา' ได้!", tw), tx, y + 2, MYTHIC);
+            y += 13;
+        }
+        String block = breedBlock(selected, partner);
+        if (block != null) {
+            for (String line : Ui.wrap(block, tw)) {
+                Ui.label(graphics, line, tx, footerY() - Ui.GAP - 50, Ui.BAD);
+            }
+        } else if (isStud(partner)) {
+            Ui.label(graphics, Ui.truncate("รวมค่าพ่อพันธุ์ " + Currencies.amount(partner.studFee()) + " จ่ายให้ " + partner.owner(), tw),
+                    tx, footerY() - Ui.GAP - 50, 0xFFE3A857);
         }
     }
 
@@ -185,8 +407,10 @@ public class StableScreen extends RotasScreen {
             input = new EditBox(font, x, bottom - 48, w, 20, Ui.text(editing == Edit.RENAME ? "ชื่อม้า" : "ราคา"));
             input.setMaxLength(editing == Edit.RENAME ? 24 : 12);
             input.setValue(editing == Edit.RENAME ? selected.name() : "");
-            input.setHint(Ui.text(editing == Edit.RENAME ? "พิมพ์ชื่อใหม่" : "ราคาที่ต้องการขาย"));
-            if (editing == Edit.PRICE) input.setFilter(value -> value.chars().allMatch(Character::isDigit));
+            input.setHint(Ui.text(editing == Edit.RENAME ? "พิมพ์ชื่อใหม่"
+                    : editing == Edit.STUD ? "ค่าพ่อพันธุ์ต่อครั้ง (สูงสุด " + Currencies.amount(payload.getLong("stud_max")) + ")"
+                    : "ราคาที่ต้องการขาย"));
+            if (editing != Edit.RENAME) input.setFilter(value -> value.chars().allMatch(Character::isDigit));
             addRenderableWidget(input);
             setInitialFocus(input);
             int half = (w - Ui.GAP) / 2;
@@ -209,8 +433,24 @@ public class StableScreen extends RotasScreen {
                             act("horse_buy", request, false);
                         })));
             }
+        } else if (!selected.born()) {
+            // An unborn foal can only be given up; everything else waits for the birth.
+            actions.add(new ActionButton(confirming("release") ? "กดอีกครั้งเพื่อสละ" : "สละลูกม้า", true,
+                    () -> confirm("release", () -> act("horse_release", horsePayload(), false))));
         } else {
             boolean listed = selected.listed() > 0;
+            if (!npc.isBlank() && payload.getBoolean("breed_enabled") && !listed) {
+                if (selected.studFee() > 0) {
+                    actions.add(new ActionButton("เลิกเป็นพ่อพันธุ์", true, () -> {
+                        CompoundTag request = horsePayload();
+                        request.putLong("fee", 0);
+                        act("horse_stud", request, false);
+                    }));
+                } else {
+                    actions.add(new ActionButton("รับเป็นพ่อพันธุ์", selected.breedsLeft() > 0,
+                            () -> { editing = Edit.STUD; rebuild(); }));
+                }
+            }
             if (selected.active()) {
                 actions.add(new ActionButton("เก็บเข้าคอก", true, () -> act("horse_store", horsePayload(), false)));
             } else {
@@ -284,8 +524,13 @@ public class StableScreen extends RotasScreen {
             } catch (NumberFormatException empty) {
                 return;
             }
-            request.putLong("price", price);
-            act("horse_list", request, false);
+            if (editing == Edit.STUD) {
+                request.putLong("fee", price);
+                act("horse_stud", request, false);
+            } else {
+                request.putLong("price", price);
+                act("horse_list", request, false);
+            }
         }
         editing = Edit.NONE;
     }
@@ -310,6 +555,7 @@ public class StableScreen extends RotasScreen {
     private void switchTab(Tab value) {
         tab = value;
         selected = null;
+        partner = null;
         editing = Edit.NONE;
         Sfx.page();
         rebuild();
@@ -340,9 +586,17 @@ public class StableScreen extends RotasScreen {
         graphics.renderFakeItem(new ItemStack(horse.secret() ? Items.GOLDEN_CARROT : Items.SADDLE), x + 12, y + 10);
         int textX = x + 34;
         int right = x + w - 16;
+        if (!horse.born()) {
+            Ui.label(graphics, "ลูกม้า ???", textX, y + 6, Ui.TEXT_BRIGHT);
+            Ui.label(graphics, Ui.truncate("ลูกของ " + horse.sireName() + " × " + horse.damName(), w - 50), textX, y + 18, Ui.TEXT_MUTED);
+            Ui.labelRight(graphics, "เกิดใน " + (horse.unborn() / 60 + 1) + " นาที", right, y + 6, 0xFFC88CFF);
+            return;
+        }
         String status = tab == Tab.MARKET ? Currencies.amount(horse.listed())
-                : horse.listed() > 0 ? "ลงขาย" : horse.active() ? "ออกนอกคอก" : horse.recover() > 0 ? "พักฟื้น" : "";
+                : horse.listed() > 0 ? "ลงขาย" : horse.active() ? "ออกนอกคอก" : horse.recover() > 0 ? "พักฟื้น"
+                : horse.studFee() > 0 ? "พ่อพันธุ์" : "";
         int statusColor = tab == Tab.MARKET ? 0xFFE3A857 : horse.active() ? Ui.GOOD : horse.recover() > 0 ? Ui.BAD : Ui.WARN;
+        renderTraitDots(graphics, horse, right, y + 22);
         int statusW = status.isEmpty() ? 0 : font.width(status) + 8;
         Ui.label(graphics, Ui.truncate(horse.name(), w - 50 - statusW), textX, y + 6, Ui.TEXT_BRIGHT);
         String levels = "S" + roman(horse.levels()[0]) + " J" + roman(horse.levels()[1]) + " H" + roman(horse.levels()[2])
@@ -357,6 +611,7 @@ public class StableScreen extends RotasScreen {
         if (index < 0 || index >= rows.size()) return;
         selected = rows.get(index);
         lastSelected = selected.id();
+        if (partner != null && partner.id().equals(selected.id())) partner = null;
         editing = Edit.NONE;
         confirmKey = "";
         Sfx.select();
@@ -384,6 +639,7 @@ public class StableScreen extends RotasScreen {
                 renderDetail(graphics, mouseX, mouseY);
             }
             case DRAW -> renderDraw(graphics);
+            case BREED -> renderBreed(graphics);
             case TOP -> renderTop(graphics);
         }
         if (!results.isEmpty()) {
@@ -412,6 +668,15 @@ public class StableScreen extends RotasScreen {
         Ui.panel(graphics, x, y, w, h);
         if (selected == null) {
             Ui.labelCentered(graphics, "เลือกม้าทางซ้าย", x + w / 2, y + h / 2, Ui.TEXT_MUTED);
+            return;
+        }
+        if (!selected.born()) {
+            Ui.labelCentered(graphics, "ลูกม้ากำลังจะเกิด", x + w / 2, y + 40, 0xFFC88CFF);
+            Ui.labelCentered(graphics, Ui.truncate("พ่อ " + selected.sireName() + " · แม่ " + selected.damName(), w - 20),
+                    x + w / 2, y + 56, Ui.TEXT);
+            Ui.labelCentered(graphics, "เกิดในอีก " + (selected.unborn() / 60 + 1) + " นาที · สายเลือดรุ่นที่ " + selected.lineage(),
+                    x + w / 2, y + 70, Ui.TEXT_MUTED);
+            Ui.labelCentered(graphics, "นิสัย สีขน และเลเวลจะเปิดเผยตอนเกิด", x + w / 2, y + 84, Ui.TEXT_DIM);
             return;
         }
         int modelW = Math.min(150, w / 2 - 10);
@@ -451,7 +716,25 @@ public class StableScreen extends RotasScreen {
             Ui.label(graphics, Ui.truncate(price, infoW), infoX, y + 80, selected.npcPrice() > 0 ? 0xFFE3A857 : Ui.TEXT_MUTED);
         }
 
-        int barsY = y + Math.max(modelH + 16, 96);
+        int lineY = y + 94;
+        String pedigree = selected.lineage() <= 0 ? "ม้าต้นสาย" : "สายเลือดรุ่นที่ " + selected.lineage()
+                + " · พ่อ " + selected.sireName() + " · แม่ " + selected.damName();
+        Ui.label(graphics, Ui.truncate(pedigree, infoW), infoX, lineY, Ui.TEXT_MUTED);
+        lineY += 12;
+        String breeding = "ผสมได้อีก " + selected.breedsLeft() + " ครั้ง"
+                + (selected.breedReady() > 0 ? " · พัก " + (selected.breedReady() / 60 + 1) + " นาที" : "")
+                + (selected.studFee() > 0 ? " · พ่อพันธุ์ " + Currencies.amount(selected.studFee()) : "");
+        Ui.label(graphics, Ui.truncate(breeding, infoW), infoX, lineY, selected.studFee() > 0 ? 0xFFE3A857 : Ui.TEXT_MUTED);
+        lineY += 14;
+        for (String id : selected.traits()) {
+            TraitInfo info = trait(id);
+            int tagW = Ui.tag(graphics, infoX, lineY, info.name(), info.color());
+            Ui.label(graphics, Ui.truncate(info.effect(), infoW - tagW - 6), infoX + tagW + 6, lineY + 2, Ui.TEXT_DIM);
+            lineY += 14;
+        }
+        if (selected.traits().isEmpty()) Ui.label(graphics, "ไม่มีนิสัยพิเศษ", infoX, lineY, Ui.TEXT_DIM);
+
+        int barsY = y + Math.max(modelH + 16, Math.max(96, lineY - y + 18));
         Ui.sectionHeading(graphics, "สกิลม้า · ฝึกเพิ่มแล้ว " + selected.trained() + " เลเวล", x + 8, barsY, w - 16);
         barsY += 14;
         for (int skill = 0; skill < 4; skill++) {
@@ -598,6 +881,7 @@ public class StableScreen extends RotasScreen {
             Ui.labelCentered(graphics, "ผูกพัน " + roman(horse.levels()[3]), cx + cardW / 2, cy + 56, Ui.TEXT_MUTED);
             if (horse.secret()) Ui.labelCentered(graphics, "สีขนลับ!", cx + cardW / 2, cy + 70, 0xFFE3A857);
             else if (horse.rare()) Ui.labelCentered(graphics, "สีขนหายาก", cx + cardW / 2, cy + 70, 0xFFB07CE8);
+            renderTraitDots(graphics, horse, cx + cardW / 2 + horse.traits().size() * 7 / 2, cy + 79);
         }
         Ui.labelCentered(graphics, "คลิกเพื่อปิด", guiLeft + guiWidth / 2, startY + rowsNeeded * (cardH + 8) + 6, Ui.TEXT_MUTED);
         graphics.pose().popPose();
