@@ -40,6 +40,86 @@ public final class TitleService {
             data.markTitlesSeeded();
         }
         seedBatch(data, "nemesis_v1", nemesisTitles());
+        seedBatch(data, "expansion_v2", expansionTitles());
+    }
+
+    private static CharacterStat.Effect percent(String attribute, double amount, String label) {
+        return new CharacterStat.Effect(attribute, amount, CharacterStat.Operation.MULTIPLY_BASE, true, label, 0);
+    }
+
+    private static CharacterStat.Effect flat(String attribute, double amount, String label) {
+        return new CharacterStat.Effect(attribute, amount, CharacterStat.Operation.ADD, false, label, 0);
+    }
+
+    /** Titles for bounties, breeding, the bestiary, travel, trade, stubbornness and collecting titles. */
+    public static List<TitleDef> expansionTitles() {
+        List<TitleDef> titles = new ArrayList<>();
+        TitleDef bountyHunter = title("rotas:bounty_hunter", "นักล่าค่าหัว", "ส่งงานค่าหัว 10 งาน", 0xFFD9A441,
+                TitleDef.Condition.BOUNTY, "", 10, false);
+        bountyHunter.addEffect(percent("minecraft:generic.attack_damage", 0.02, "พลังโจมตี"));
+        titles.add(bountyHunter);
+        TitleDef manhunter = title("rotas:dread_marshal", "นายพรานผู้น่าสะพรึง", "ส่งงานค่าหัว 100 งาน", 0xFFB23A48,
+                TitleDef.Condition.BOUNTY, "", 100, false);
+        manhunter.setRarity(TitleDef.Rarity.EPIC);
+        manhunter.addEffect(percent("minecraft:generic.attack_damage", 0.04, "พลังโจมตี"));
+        manhunter.addEffect(flat(CombatStats.DEFENSE, 2, "พลังป้องกัน"));
+        titles.add(manhunter);
+
+        TitleDef breeder = title("rotas:horse_breeder", "นักเพาะพันธุ์ม้า", "ผสมพันธุ์ม้า 5 ตัว", 0xFF86C05C,
+                TitleDef.Condition.BREED, "", 5, false);
+        breeder.addEffect(percent("minecraft:generic.movement_speed", 0.02, "ความเร็ว"));
+        titles.add(breeder);
+        TitleDef bloodline = title("rotas:bloodline_master", "เจ้าแห่งสายเลือด", "ผสมพันธุ์ม้า 50 ตัว", 0xFFE0AC4C,
+                TitleDef.Condition.BREED, "", 50, false);
+        bloodline.setRarity(TitleDef.Rarity.EPIC);
+        bloodline.addEffect(percent("minecraft:generic.movement_speed", 0.04, "ความเร็ว"));
+        titles.add(bloodline);
+
+        TitleDef scholar = title("rotas:monster_scholar", "นักปราชญ์อสูร", "บันทึกมอนสเตอร์ 30 ชนิดในสมุด", 0xFF5AA9E6,
+                TitleDef.Condition.BESTIARY, "", 30, false);
+        scholar.addEffect(flat(CombatStats.MAGIC_ATTACK, 2, "พลังเวท"));
+        titles.add(scholar);
+        TitleDef encyclopedia = title("rotas:living_bestiary", "สารานุกรมมีชีวิต", "บันทึกมอนสเตอร์ 100 ชนิด", 0xFFB07CE8,
+                TitleDef.Condition.BESTIARY, "", 100, false);
+        encyclopedia.setRarity(TitleDef.Rarity.EPIC);
+        encyclopedia.addEffect(flat(CombatStats.MAGIC_ATTACK, 5, "พลังเวท"));
+        titles.add(encyclopedia);
+
+        TitleDef wayfarer = title("rotas:wayfarer", "นักเดินทางไกล", "ค้นพบหินวาร์ป 10 แห่ง", 0xFF7FD1C7,
+                TitleDef.Condition.WAYSTONE, "", 10, false);
+        wayfarer.addEffect(percent("minecraft:generic.movement_speed", 0.03, "ความเร็ว"));
+        titles.add(wayfarer);
+        titles.add(title("rotas:first_cartographer", "ผู้วาดแผนที่โลก", "คนแรกของเซิร์ฟเวอร์ที่ค้นพบหินวาร์ป 50 แห่ง",
+                0xFFE0AC4C, TitleDef.Condition.WAYSTONE, "", 50, true));
+
+        TitleDef merchant = title("rotas:merchant_prince", "เจ้าชายพ่อค้า", "หาเงินจากนักสะสมและโรงประมูล 100,000", 0xFFE3A857,
+                TitleDef.Condition.TRADE, "", 100_000, false);
+        merchant.setRarity(TitleDef.Rarity.EPIC);
+        merchant.addEffect(flat("minecraft:generic.luck", 1, "โชค"));
+        titles.add(merchant);
+
+        TitleDef undying = title("rotas:undying", "ผู้ไม่ยอมแพ้", "ล้มแล้วลุก 100 ครั้ง", 0xFF9FB4C7,
+                TitleDef.Condition.DEATH, "", 100, false);
+        undying.addEffect(flat("minecraft:generic.max_health", 2, "พลังชีวิต"));
+        titles.add(undying);
+        TitleDef hidden = title("rotas:deaths_old_friend", "สหายเก่าของยมทูต", "ตาย 1000 ครั้ง ยมทูตจำชื่อท่านได้แล้ว", 0xFF3F3F46,
+                TitleDef.Condition.DEATH, "", 1000, false);
+        hidden.setHidden(true);
+        hidden.setRarity(TitleDef.Rarity.EPIC);
+        hidden.addEffect(flat("minecraft:generic.max_health", 4, "พลังชีวิต"));
+        titles.add(hidden);
+
+        TitleDef collector = title("rotas:title_collector", "นักสะสมฉายา", "มีฉายา 10 ฉายา", 0xFFC88CFF,
+                TitleDef.Condition.TITLE_COUNT, "", 10, false);
+        collector.setRarity(TitleDef.Rarity.RARE);
+        titles.add(collector);
+        TitleDef thousandNames = title("rotas:thousand_names", "ผู้มีพันนาม", "มีฉายา 25 ฉายา", 0xFFE0AC4C,
+                TitleDef.Condition.TITLE_COUNT, "", 25, false);
+        thousandNames.setRarity(TitleDef.Rarity.LEGENDARY);
+        thousandNames.addEffect(percent("minecraft:generic.max_health", 0.03, "พลังชีวิต"));
+        thousandNames.addEffect(percent("minecraft:generic.attack_damage", 0.03, "พลังโจมตี"));
+        titles.add(thousandNames);
+        return titles;
     }
 
     /**
@@ -151,20 +231,25 @@ public final class TitleService {
         }
         PlayerProgress progress = data.progress(player.getUUID());
         int earned = 0;
-        for (TitleDef title : sorted(data)) {
-            if (!title.enabled() || progress.hasTitle(title.id())
-                    || title.condition() == TitleDef.Condition.MANUAL) {
-                continue;
+        // Earning a title can itself earn another (a title count, a level from the reward EXP), so settle it.
+        for (int pass = 0; pass < 4; pass++) {
+            int before = earned;
+            for (TitleDef title : sorted(data)) {
+                if (!title.enabled() || progress.hasTitle(title.id())
+                        || title.condition() == TitleDef.Condition.MANUAL) {
+                    continue;
+                }
+                if (!title.met(progressOf(data, progress, title))) {
+                    continue;
+                }
+                if (blocked(progress, title.id()) && SeasonService.rules(data).titles.revokeBlocksReEarn) {
+                    continue;
+                }
+                if (award(player, data, title, true)) {
+                    earned++;
+                }
             }
-            if (!title.met(progressOf(data, progress, title))) {
-                continue;
-            }
-            if (blocked(progress, title.id()) && SeasonService.rules(data).titles.revokeBlocksReEarn) {
-                continue;
-            }
-            if (award(player, data, title, true)) {
-                earned++;
-            }
+            if (earned == before) break;
         }
         return earned;
     }
@@ -223,8 +308,64 @@ public final class TitleService {
             case QUEST -> progress.completedQuests().getOrDefault(title.target(), 0);
             case QUEST_COUNT -> progress.completedQuests().values().stream().mapToLong(Integer::longValue).sum();
             case GOLD -> progress.rpg().currency(SeasonService.rules(data).currency);
+            case BOUNTY, BREED, DEATH, TRADE -> TitleCounters.read(progress.questVariables(), title.counterKey());
+            case BESTIARY -> progress.bestiary().size();
+            case WAYSTONE -> progress.waystones().size();
+            case TITLE_COUNT -> progress.titles().size();
             case MANUAL -> 0;
         };
+    }
+
+    // Collection ---------------------------------------------------------------------------------
+
+    /** Collection points of every title this player holds. */
+    public static int collectionPoints(RotasData data, PlayerProgress progress) {
+        int[] points = SeasonService.rules(data).titles.rarityPoints;
+        int total = 0;
+        for (String id : progress.titles()) {
+            TitleDef title = data.title(id);
+            if (title != null && title.enabled()) total += points[title.rarity().ordinal()];
+        }
+        return total;
+    }
+
+    /** The collection bonuses this player has reached; they apply whichever title is worn. */
+    public static List<CharacterStat.Effect> collectionEffects(RotasData data, PlayerProgress progress) {
+        int points = collectionPoints(data, progress);
+        List<CharacterStat.Effect> effects = new ArrayList<>();
+        for (var tier : SeasonService.rules(data).titles.collection) {
+            if (tier.points > points || tier.attribute.isBlank() || tier.amount == 0) continue;
+            effects.add(new CharacterStat.Effect(tier.attribute, tier.amount,
+                    CharacterStat.Operation.valueOf(tier.operation), tier.percent, tier.label, 0));
+        }
+        return effects;
+    }
+
+    /** Once a second: a faint glow around everyone wearing a legendary title. */
+    public static void tickAura(net.minecraft.server.MinecraftServer server, RotasData data) {
+        if (!SeasonService.rules(data).titles.legendaryAura) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (player.isSpectator() || player.isInvisible()) continue;
+            PlayerProgress progress = data.peek(player.getUUID());
+            TitleDef title = progress == null ? null : worn(data, progress);
+            if (title == null || title.rarity() != TitleDef.Rarity.LEGENDARY) continue;
+            int rgb = title.color() & 0xFFFFFF;
+            var dust = new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(
+                    (rgb >> 16 & 0xFF) / 255f, (rgb >> 8 & 0xFF) / 255f, (rgb & 0xFF) / 255f), 0.8f);
+            player.serverLevel().sendParticles(dust, player.getX(), player.getY() + 1.0, player.getZ(),
+                    4, 0.35, 0.6, 0.35, 0);
+        }
+    }
+
+    /** Counts something a title may watch and checks titles right away when the player is online. */
+    public static void count(net.minecraft.server.MinecraftServer server, RotasData data, java.util.UUID player,
+                             String key, long amount) {
+        PlayerProgress progress = data.progress(player);
+        TitleCounters.add(progress.questVariables(), key, amount);
+        progress.markDirty();
+        data.setDirty();
+        ServerPlayer online = server.getPlayerList().getPlayer(player);
+        if (online != null) check(online, data);
     }
 
     /**
@@ -248,14 +389,31 @@ public final class TitleService {
         }
         data.setDirty();
         data.audit(player.getGameProfile().getName() + " earned title " + title.id());
+        // A title pays once, by rarity, so every one is worth chasing, worn or not.
+        var rules = SeasonService.rules(data).titles;
+        int rarity = title.rarity().ordinal();
+        long gold = rules.rarityGold[rarity];
+        long xp = rules.rarityXp[rarity];
+        if (gold > 0) progress.rpg().currency(GoldCoinService.CURRENCY, gold);
         if (announce) {
-            player.sendSystemMessage(ThaiText.c("rotasutils.msg.title.earned", title.name()));
+            player.sendSystemMessage(ThaiText.c("rotasutils.msg.title.earned", title.name())
+                    .withStyle(style -> style.withColor(title.color() & 0xFFFFFF)));
+            player.sendSystemMessage(ThaiText.c("rotasutils.msg.title.reward", gold, xp, collectionPoints(data, progress))
+                    .withStyle(net.minecraft.ChatFormatting.GRAY));
             RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.title.earned", title.name()));
+            player.level().playSound(null, player.blockPosition(), rarity >= 3
+                    ? net.minecraft.sounds.SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.1f);
             if (title.unique()) {
                 player.server.getPlayerList().broadcastSystemMessage(ThaiText.c("rotasutils.msg.title.unique_claimed",
                         player.getGameProfile().getName(), title.name()), false);
+            } else if (rarity >= rules.announceFromRarity) {
+                player.server.getPlayerList().broadcastSystemMessage(ThaiText.c("rotasutils.msg.title.rare_earned",
+                        player.getGameProfile().getName(), title.name())
+                        .withStyle(style -> style.withColor(title.color() & 0xFFFFFF)), false);
             }
         }
+        if (xp > 0) ProgressService.addExperience(player, data, xp, true);
         if (title.unique()) {
             RotasNetwork.syncContent(player.server);
         }

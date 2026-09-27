@@ -298,6 +298,12 @@ public final class CharacterStatService {
                 bonuses.add(new Bonus(effect, effect.perPoint(), "title/" + worn.id() + "/" + index));
             }
         }
+        // The whole title collection pays a little too, so every title earned counts, not just the worn one.
+        List<CharacterStat.Effect> collection = TitleService.collectionEffects(data, progress);
+        for (int index = 0; index < collection.size(); index++) {
+            CharacterStat.Effect effect = collection.get(index);
+            bonuses.add(new Bonus(effect, effect.perPoint(), "title_collection/" + index));
+        }
         double defense = 0, evasion = 0, magic = 0, magicPower = 0;
         for (Bonus bonus : bonuses) {
             CharacterStat.Effect effect = bonus.effect();

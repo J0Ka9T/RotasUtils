@@ -22,6 +22,11 @@ public final class TitleCounters {
     public static final String REFINE_BEST = "rpg.title.refine_best";
     /** Nemeses this player has slain. Always counted: there are few of them, so the tally stays small. */
     public static final String NEMESIS_SLAIN = "rpg.title.nemesis_slain";
+    public static final String BOUNTIES = "rpg.title.bounties";
+    public static final String BRED = "rpg.title.bred";
+    public static final String DEATHS = "rpg.title.deaths";
+    /** Gold earned selling to the collector and at the auction house. */
+    public static final String TRADE_GOLD = "rpg.title.trade_gold";
 
     private TitleCounters() {
     }

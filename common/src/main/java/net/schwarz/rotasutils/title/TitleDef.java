@@ -45,6 +45,20 @@ public final class TitleDef {
         GOLD,
         /** Slays {@code amount} nemeses. */
         NEMESIS,
+        /** Turns in {@code amount} bounty contracts. */
+        BOUNTY,
+        /** Breeds {@code amount} foals in the stable. */
+        BREED,
+        /** Records {@code amount} kinds of monster in the bestiary. */
+        BESTIARY,
+        /** Discovers {@code amount} waystones. */
+        WAYSTONE,
+        /** Owns {@code amount} other titles. */
+        TITLE_COUNT,
+        /** Dies {@code amount} times, and keeps going. */
+        DEATH,
+        /** Earns {@code amount} gold from the collector and the auction house. */
+        TRADE,
         /** Only an administrator can hand it out. */
         MANUAL;
 
@@ -155,11 +169,11 @@ public final class TitleDef {
 
     public Category category() {
         return switch (condition) {
-            case LEVEL, QUEST, QUEST_COUNT -> Category.PROGRESS;
-            case KILL_ENTITY, KILL_ANY, KILL_BOSS, NEMESIS -> Category.COMBAT;
-            case REFINE -> Category.CRAFTING;
-            case GOLD -> Category.WEALTH;
-            case MANUAL -> Category.SPECIAL;
+            case LEVEL, QUEST, QUEST_COUNT, BESTIARY, WAYSTONE -> Category.PROGRESS;
+            case KILL_ENTITY, KILL_ANY, KILL_BOSS, NEMESIS, BOUNTY -> Category.COMBAT;
+            case REFINE, BREED -> Category.CRAFTING;
+            case GOLD, TRADE -> Category.WEALTH;
+            case MANUAL, TITLE_COUNT, DEATH -> Category.SPECIAL;
         };
     }
 
@@ -182,6 +196,10 @@ public final class TitleDef {
             case KILL_BOSS -> TitleCounters.KILL_BOSS;
             case REFINE -> TitleCounters.REFINE_BEST;
             case NEMESIS -> TitleCounters.NEMESIS_SLAIN;
+            case BOUNTY -> TitleCounters.BOUNTIES;
+            case BREED -> TitleCounters.BRED;
+            case DEATH -> TitleCounters.DEATHS;
+            case TRADE -> TitleCounters.TRADE_GOLD;
             default -> "";
         };
     }

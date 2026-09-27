@@ -92,6 +92,14 @@ public final class RotasEvents {
                 net.schwarz.rotasutils.server.horse.HorseService.onDeath(entity));
         EntityEvent.ADD.register(net.schwarz.rotasutils.server.horse.HorseService::onAdd);
         EntityEvent.LIVING_HURT.register(net.schwarz.rotasutils.server.horse.HorseTraitEffects::onHurt);
+        // Deaths are a title too: some players earn their name by never staying down.
+        EntityEvent.LIVING_DEATH.register((entity, source) -> {
+            if (entity instanceof ServerPlayer victim && !victim.level().isClientSide) {
+                net.schwarz.rotasutils.server.TitleService.count(victim.server, RotasData.get(victim.server),
+                        victim.getUUID(), net.schwarz.rotasutils.title.TitleCounters.DEATHS, 1);
+            }
+            return EventResult.pass();
+        });
         EntityEvent.LIVING_DEATH.register(RotasEvents::onLivingDeath);
         // A volatile elite bursts where it falls.
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
@@ -689,6 +697,7 @@ public final class RotasEvents {
             Rotasutils.LOG.error("Dungeon tick failed: {}", failure.getMessage(), failure);
         }
         net.schwarz.rotasutils.server.horse.HorseService.tick(server);
+        net.schwarz.rotasutils.server.TitleService.tickAura(server, data);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerProgress progress = data.peek(player.getUUID());
             if (progress == null) {

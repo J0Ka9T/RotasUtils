@@ -294,6 +294,49 @@ public final class SeasonRules {
         public boolean creativeEarnTitles = false;
         /** A title an admin revoked is not earned again automatically by that player. */
         public boolean revokeBlocksReEarn = true;
+        /** Collection points per rarity (common, uncommon, rare, epic, legendary); points unlock {@link #collection}. */
+        public int[] rarityPoints = {1, 2, 3, 5, 8};
+        /** Gold paid once when a title of each rarity is earned. */
+        public long[] rarityGold = {50, 150, 400, 1000, 3000};
+        /** EXP paid once when a title of each rarity is earned. */
+        public long[] rarityXp = {100, 300, 800, 2000, 5000};
+        /** Rarity index (0-4) from which an earned title is announced to the whole server. */
+        public int announceFromRarity = 3;
+        /** A worn legendary title glows faintly around its wearer. */
+        public boolean legendaryAura = true;
+        /** Permanent bonuses for the whole collection, every reached tier applies, worn title or not. */
+        public CollectionTier[] collection = {
+                new CollectionTier(5, "minecraft:generic.max_health", 2, "ADD", false, "พลังชีวิต"),
+                new CollectionTier(12, "minecraft:generic.attack_damage", 0.02, "MULTIPLY_BASE", true, "พลังโจมตี"),
+                new CollectionTier(20, "rotas:defense", 2, "ADD", false, "พลังป้องกัน"),
+                new CollectionTier(30, "minecraft:generic.max_health", 0.03, "MULTIPLY_BASE", true, "พลังชีวิต"),
+                new CollectionTier(45, "minecraft:generic.movement_speed", 0.03, "MULTIPLY_BASE", true, "ความเร็ว"),
+                new CollectionTier(60, "minecraft:generic.attack_damage", 0.03, "MULTIPLY_BASE", true, "พลังโจมตี"),
+                new CollectionTier(80, "rotas:defense", 4, "ADD", false, "พลังป้องกัน"),
+                new CollectionTier(100, "minecraft:generic.luck", 1, "ADD", false, "โชค")};
+    }
+
+    /** One step of the title collection: at {@code points}, the bonus applies for good. */
+    public static final class CollectionTier {
+        public int points = 10;
+        public String attribute = "minecraft:generic.max_health";
+        public double amount = 1;
+        /** ADD, MULTIPLY_BASE or MULTIPLY_TOTAL. */
+        public String operation = "ADD";
+        public boolean percent;
+        public String label = "";
+
+        public CollectionTier() {
+        }
+
+        public CollectionTier(int points, String attribute, double amount, String operation, boolean percent, String label) {
+            this.points = points;
+            this.attribute = attribute;
+            this.amount = amount;
+            this.operation = operation;
+            this.percent = percent;
+            this.label = label;
+        }
     }
     /** Timed events that take over a zone or a patch of wilderness and give players somewhere to go. */
     public WorldEventRules worldEvents = new WorldEventRules();
@@ -1585,6 +1628,26 @@ public final class SeasonRules {
         sanitizeNpcServices();
         if (nemesis == null) nemesis = new NemesisRules();
         if (titles == null) titles = new TitleRules();
+        TitleRules t = titles;
+        if (t.rarityPoints == null || t.rarityPoints.length != 5) t.rarityPoints = new int[]{1, 2, 3, 5, 8};
+        if (t.rarityGold == null || t.rarityGold.length != 5) t.rarityGold = new long[]{50, 150, 400, 1000, 3000};
+        if (t.rarityXp == null || t.rarityXp.length != 5) t.rarityXp = new long[]{100, 300, 800, 2000, 5000};
+        for (int i = 0; i < 5; i++) {
+            t.rarityPoints[i] = clamp(t.rarityPoints[i], 0, 1000);
+            t.rarityGold[i] = Math.max(0, t.rarityGold[i]);
+            t.rarityXp[i] = Math.max(0, t.rarityXp[i]);
+        }
+        t.announceFromRarity = clamp(t.announceFromRarity, 0, 5);
+        if (t.collection == null) t.collection = new CollectionTier[0];
+        t.collection = java.util.Arrays.stream(t.collection).filter(java.util.Objects::nonNull).limit(64)
+                .sorted(java.util.Comparator.comparingInt(tier -> tier.points)).toArray(CollectionTier[]::new);
+        for (CollectionTier tier : t.collection) {
+            tier.points = clamp(tier.points, 0, 100000);
+            if (tier.attribute == null) tier.attribute = "";
+            if (!Double.isFinite(tier.amount)) tier.amount = 0;
+            if (!java.util.Set.of("ADD", "MULTIPLY_BASE", "MULTIPLY_TOTAL").contains(tier.operation)) tier.operation = "ADD";
+            if (tier.label == null) tier.label = "";
+        }
         NemesisRules n = nemesis;
         n.riseChance = clamp(n.riseChance, 0, 1, 0.5);
         n.riseCooldownMinutes = clamp(n.riseCooldownMinutes, 0, 10080);

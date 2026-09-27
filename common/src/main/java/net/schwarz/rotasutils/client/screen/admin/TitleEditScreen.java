@@ -241,6 +241,13 @@ public class TitleEditScreen extends SimpleFieldScreen {
             case "NEMESIS" -> "Beat nemeses";
             case "GOLD" -> "Hold gold";
             case "MANUAL" -> "Admin gives it";
+            case "BOUNTY" -> "Turn in bounties";
+            case "BREED" -> "Breed horses";
+            case "BESTIARY" -> "Fill the bestiary";
+            case "WAYSTONE" -> "Discover waystones";
+            case "TITLE_COUNT" -> "Collect titles";
+            case "DEATH" -> "Die and get back up";
+            case "TRADE" -> "Earn gold trading";
             default -> condition.name();
         };
     }

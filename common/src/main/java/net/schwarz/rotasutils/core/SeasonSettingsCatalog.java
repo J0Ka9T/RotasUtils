@@ -75,7 +75,7 @@ public final class SeasonSettingsCatalog {
     public static boolean named(List<String> path) {
         if (isSectionRoot(path)) return true;
         return LABELS.containsKey(String.join(".", path)) || KEY_LABELS.containsKey(lastKey(path))
-                || isIndex(lastKey(path));
+                || isIndex(lastKey(path)) || patterned(LABELS, path) != null;
     }
 
     public static String label(List<String> path) {
@@ -83,6 +83,8 @@ public final class SeasonSettingsCatalog {
         String label = LABELS.get(joined);
         if (label != null) return label;
         if (isSectionRoot(path)) return section(path.get(0)).title();
+        String patterned = patterned(LABELS, path);
+        if (patterned != null) return patterned;
         String key = lastKey(path);
         if (isIndex(key)) return "ขั้นที่ " + (Integer.parseInt(key) + 1);
         label = KEY_LABELS.get(key);
@@ -98,6 +100,7 @@ public final class SeasonSettingsCatalog {
             case "goal" -> List.of("KILL", "MINE", "NONE");
             case "announce" -> List.of("OFF", "PLAYER", "SERVER");
             case "fits" -> List.of("ANY", "WEAPON", "ARMOR");
+            case "operation" -> List.of("ADD", "MULTIPLY_BASE", "MULTIPLY_TOTAL");
             default -> List.of();
         };
     }
@@ -149,6 +152,21 @@ public final class SeasonSettingsCatalog {
         }
         if (best != null) return best;
         return HELP.getOrDefault("*." + lastKey(path), "");
+    }
+
+    /** The most specific wildcard entry ("a.*.b") of {@code map} that fits the path, or null. */
+    private static String patterned(Map<String, String> map, List<String> path) {
+        String best = null;
+        int bestScore = -1;
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            if (!entry.getKey().contains("*")) continue;
+            int score = matchScore(entry.getKey().split("\\."), path);
+            if (score > bestScore) {
+                bestScore = score;
+                best = entry.getValue();
+            }
+        }
+        return best;
     }
 
     /** Literal keys matched, or -1 when the pattern does not fit the path. */
@@ -327,6 +345,18 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRarityBonus", "โบนัสตามระดับกำเนิด");
         map.put("horse.marketFee", "ค่าธรรมเนียมตลาด (0-0.9)");
         map.put("horse.marketMaxPrice", "ราคาขายสูงสุดในตลาด");
+        map.put("titles.rarityPoints", "แต้มสะสมต่อระดับฉายา");
+        map.put("titles.rarityGold", "เงินรางวัลเมื่อได้ฉายา");
+        map.put("titles.rarityXp", "EXP รางวัลเมื่อได้ฉายา");
+        map.put("titles.announceFromRarity", "ประกาศทั้งเซิร์ฟตั้งแต่ระดับ");
+        map.put("titles.legendaryAura", "ออร่าฉายาตำนาน");
+        map.put("titles.collection", "โบนัสสะสมฉายา");
+        map.put("titles.collection.*.points", "แต้มสะสมที่ต้องมี");
+        map.put("titles.collection.*.attribute", "ค่าที่เพิ่ม");
+        map.put("titles.collection.*.amount", "เพิ่มเท่าไร");
+        map.put("titles.collection.*.operation", "วิธีเพิ่ม");
+        map.put("titles.collection.*.percent", "แสดงเป็น %");
+        map.put("titles.collection.*.label", "ชื่อที่แสดง");
         map.put("npcServices.repairPerDurability", "ช่างตีเหล็ก: ค่าซ่อมต่อความทนทาน");
         map.put("npcServices.repairMinCost", "ช่างตีเหล็ก: ค่าซ่อมขั้นต่ำ");
         map.put("npcServices.disenchantBaseCost", "นักเวท: ค่าถอดมนตร์");
@@ -818,6 +848,17 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRareCoat", "โบนัสราคาสีขนหายาก");
         map.put("horse.marketFee", "ตลาดหักกี่ส่วน 0.05 = 5%, 0 = ผู้ขายได้เต็ม");
         map.put("horse.marketMaxPrice", "ตั้งราคาขายในตลาดได้สูงสุด");
+        map.put("titles.rarityPoints", "ทุกฉายาที่ได้ให้แต้มสะสมตามระดับ ธรรมดา/ไม่ธรรมดา/หายาก/มหากาพย์/ตำนาน");
+        map.put("titles.rarityGold", "เงินที่ได้ครั้งเดียวเมื่อได้ฉายาแต่ละระดับ");
+        map.put("titles.rarityXp", "EXP ที่ได้ครั้งเดียวเมื่อได้ฉายาแต่ละระดับ");
+        map.put("titles.announceFromRarity", "0-4: ได้ฉายาระดับนี้ขึ้นไปจะประกาศทั้งเซิร์ฟ (3 = มหากาพย์) 5 = ไม่ประกาศ");
+        map.put("titles.legendaryAura", "ผู้ที่สวมฉายาตำนานมีประกายรอบตัว");
+        map.put("titles.collection.*.points", "เมื่อแต้มสะสมฉายาถึงเท่านี้ โบนัสนี้ติดตัวถาวร ไม่ว่าจะสวมฉายาไหน");
+        map.put("titles.collection.*.attribute", "attribute ที่เพิ่ม เช่น minecraft:generic.max_health หรือ rotas:defense");
+        map.put("titles.collection.*.amount", "ADD = ค่าตรง ๆ, MULTIPLY_BASE 0.02 = 2%");
+        map.put("titles.collection.*.operation", "ADD, MULTIPLY_BASE หรือ MULTIPLY_TOTAL");
+        map.put("titles.collection.*.percent", "แสดงค่าเป็นเปอร์เซ็นต์ในหน้าฉายา");
+        map.put("titles.collection.*.label", "ชื่อโบนัสที่ผู้เล่นเห็น");
         map.put("npcServices.repairPerDurability", "ช่างตีเหล็ก: เงินต่อความทนทาน 1 หน่วยที่ซ่อม");
         map.put("npcServices.repairMinCost", "ช่างตีเหล็ก: ค่าซ่อมขั้นต่ำต่อชิ้น");
         map.put("npcServices.disenchantBaseCost", "นักเวท: ค่าถอดมนตร์ขั้นต่ำ (ได้หนังสือมนตร์คืน)");

@@ -733,6 +733,7 @@ public final class NpcHub {
                 data.progress(player.getUUID()).rpg().currency(GoldCoinService.CURRENCY, gold);
                 long xp = Math.round(gold * rules.collectorXpPerGold);
                 if (xp > 0) ProgressService.awardFromSource(player, data, XpSource.TRADING, "collector", xp);
+                TitleService.count(player.server, data, player.getUUID(), net.schwarz.rotasutils.title.TitleCounters.TRADE_GOLD, gold);
                 data.setDirty();
                 player.level().playSound(null, player.blockPosition(), SoundEvents.VILLAGER_YES, SoundSource.NEUTRAL, 0.8f, 1f);
                 return "+ขาย " + removed + " ชิ้น ได้ " + gold + " ทอง";

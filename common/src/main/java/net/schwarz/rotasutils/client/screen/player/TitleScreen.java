@@ -199,7 +199,8 @@ public class TitleScreen extends RotasScreen {
         Ui.scaledLabel(graphics, L.t("rotasutils.title.screen"), guiLeft + 18, guiTop + 20, 1.3f, Ui.INK);
         long earned = ClientState.titles().stream().filter(t -> visible(t, progress) && progress.hasTitle(t.id())).count();
         long total = ClientState.titles().stream().filter(t -> visible(t, progress)).count();
-        Ui.labelRight(graphics, L.t("rotasutils.cmd.title.summary", earned, total), guiLeft + guiWidth - 18, guiTop + 22, Ui.INK_SOFT);
+        Ui.labelRight(graphics, L.t("rotasutils.cmd.title.summary", earned, total), guiLeft + guiWidth - 18, guiTop + 18, Ui.INK_SOFT);
+        Ui.labelRight(graphics, Ui.truncate(collectionLine(progress), guiWidth - 200), guiLeft + guiWidth - 18, guiTop + 29, 0xFF8A6428);
         Ui.labelRight(graphics, L.t("rotasutils.title.double_click"), listX + listW, listY - 17, Ui.INK_FADE);
         if (shown.isEmpty()) {
             Ui.labelCentered(graphics, L.t("rotasutils.title.none_here"), listX + listW / 2, listY + 20, Ui.INK_FADE);
@@ -279,6 +280,14 @@ public class TitleScreen extends RotasScreen {
                     compact(have) + " / " + compact(title.amount()) + "  (" + (int) Math.floor(fraction(title) * 100) + "%)");
             y += 17;
         }
+        // What earning it pays, once, and what it adds to the collection for good.
+        if (!owned) {
+            var rules = ClientState.levelConfig().season().titles;
+            int rarity = title.rarity().ordinal();
+            Ui.label(graphics, Ui.truncate("รางวัล: +" + rules.rarityGold[rarity] + " ทอง · +" + rules.rarityXp[rarity]
+                    + " EXP · +" + rules.rarityPoints[rarity] + " แต้มสะสม", w), x, y, 0xFF8A6428);
+            y += 13;
+        }
         // The bonus while worn.
         Ui.label(graphics, L.t("rotasutils.title.section.bonus"), x, y, Ui.INK_SOFT);
         y += 11;
@@ -303,6 +312,33 @@ public class TitleScreen extends RotasScreen {
                 y += 10;
             }
         }
+    }
+
+    // Collection ----------------------------------------------------------------------------------
+
+    private static int collectionPoints(PlayerProgress progress) {
+        int[] points = ClientState.levelConfig().season().titles.rarityPoints;
+        int total = 0;
+        for (TitleDef title : ClientState.titles()) {
+            if (title.enabled() && progress.hasTitle(title.id())) total += points[title.rarity().ordinal()];
+        }
+        return total;
+    }
+
+    /** "Collection 23 pts · next at 30: +3% Health" - why every title is worth earning. */
+    private static String collectionLine(PlayerProgress progress) {
+        int points = collectionPoints(progress);
+        var rules = ClientState.levelConfig().season().titles;
+        int reached = 0;
+        for (var tier : rules.collection) {
+            if (tier.points <= points) {
+                reached++;
+                continue;
+            }
+            return "แต้มสะสมฉายา " + points + " · โบนัสถาวร " + reached + " ขั้น · ถัดไปที่ " + tier.points + ": "
+                    + bonus(new CharacterStat.Effect(tier.attribute, tier.amount, CharacterStat.Operation.ADD, tier.percent, tier.label, 0));
+        }
+        return "แต้มสะสมฉายา " + points + " · ปลดล็อกโบนัสถาวรครบทุกขั้นแล้ว!";
     }
 
     // Wording -------------------------------------------------------------------------------------

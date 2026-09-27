@@ -223,6 +223,8 @@ public final class AuctionService {
         buyer.rpg().currency(GoldCoinService.CURRENCY, -listing.price);
         long fee = Math.max(0, Math.min(listing.price, Math.round(listing.price * rules(data).auctionFee)));
         data.progress(listing.seller).rpg().currency(GoldCoinService.CURRENCY, listing.price - fee);
+        TitleService.count(player.server, data, listing.seller, net.schwarz.rotasutils.title.TitleCounters.TRADE_GOLD,
+                listing.price - fee);
         store.listings.remove(id);
         store.setDirty();
         data.setDirty();

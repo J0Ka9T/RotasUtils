@@ -590,6 +590,8 @@ public final class HorseService {
         data.setDirty();
         player.level().playSound(null, player.blockPosition(), SoundEvents.HORSE_BREATHE, SoundSource.NEUTRAL, 1f, 0.8f);
         data.audit(player.getGameProfile().getName() + " bred " + dam.id + " x " + sire.id + " -> " + foal.id + " cost=" + cost);
+        net.schwarz.rotasutils.server.TitleService.count(player.server, data, player.getUUID(),
+                net.schwarz.rotasutils.title.TitleCounters.BRED, 1);
         return Result.ok(ThaiText.t("rotasutils.msg.horse.bred", displayName(dam), displayName(sire), rules.gestationMinutes));
     }
 
