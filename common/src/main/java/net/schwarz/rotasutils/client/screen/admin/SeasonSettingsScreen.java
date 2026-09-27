@@ -146,7 +146,11 @@ public class SeasonSettingsScreen extends RotasScreen {
         sidebar.setScroll(keptScroll);
         registerPanel(sidebar);
 
-        EditBox search = new EditBox(font, mainX(), guiTop + 34, mainW(), 18, Ui.text("ค้นหา"));
+        var onlyChanged = (changedOnly ? Ui.primaryButton(Ui.text("เฉพาะที่แก้ ✔"), b -> toggleChangedOnly())
+                : Ui.button(Ui.text("เฉพาะที่แก้"), b -> toggleChangedOnly())).bounds(mainX() + mainW() - 84, guiTop + 34, 84, 18).build();
+        onlyChanged.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Ui.text("แสดงทุกค่าที่ต่างจากค่าเริ่มต้นของม็อด จากทุกหมวด")));
+        addRenderableWidget(onlyChanged);
+        EditBox search = new EditBox(font, mainX(), guiTop + 34, mainW() - 90, 18, Ui.text("ค้นหา"));
         search.setHint(Ui.text("ค้นหาทุกหมวด เช่น combo, อีลิต, horse").withStyle(style -> style.withColor(Ui.TEXT_FAINT & 0xFFFFFF)));
         search.setValue(query);
         search.setResponder(value -> {
@@ -165,7 +169,7 @@ public class SeasonSettingsScreen extends RotasScreen {
 
     /** Easy / Normal / Hard for sections that have a preset, right of the section title. */
     private void buildPresets() {
-        if (!query.isBlank() || !net.schwarz.rotasutils.core.SeasonPresets.has(section)) return;
+        if (!query.isBlank() || changedOnly || !net.schwarz.rotasutils.core.SeasonPresets.has(section)) return;
         String[] labels = {"ง่าย", "ปกติ", "ยาก"};
         var levels = net.schwarz.rotasutils.core.SeasonPresets.Level.values();
         int x = mainX() + mainW() - 3 * 38;
@@ -377,10 +381,18 @@ public class SeasonSettingsScreen extends RotasScreen {
         return out;
     }
 
+    private boolean changedOnly;
+
+    private void toggleChangedOnly() {
+        changedOnly = !changedOnly;
+        scroll = 0;
+        rebuild();
+    }
+
     private List<Visible> computeVisible() {
         List<Visible> out = new ArrayList<>();
         String needle = query.trim().toLowerCase(Locale.ROOT);
-        boolean searching = !needle.isEmpty();
+        boolean searching = !needle.isEmpty() || changedOnly;
         String closedPrefix = null;
         for (SettingsTree.Row row : SettingsTree.rows(draft)) {
             List<String> path = row.path();
@@ -391,7 +403,11 @@ public class SeasonSettingsScreen extends RotasScreen {
             int indent = path.size() - 1 - (sectionObject ? 1 : 0);
             if (searching) {
                 if (row.kind() == SettingsTree.Kind.GROUP) continue;
-                if (matches(row, needle)) out.add(new Visible(row, 0));
+                if (changedOnly) {
+                    JsonElement fallback = SettingsTree.get(defaults, path);
+                    if (fallback != null && fallback.equals(SettingsTree.get(draft, path))) continue;
+                }
+                if (needle.isEmpty() || matches(row, needle)) out.add(new Visible(row, 0));
                 continue;
             }
             if (!sectionId.equals(section)) continue;
@@ -407,6 +423,7 @@ public class SeasonSettingsScreen extends RotasScreen {
     private boolean matches(SettingsTree.Row row, String needle) {
         if (row.joined().toLowerCase(Locale.ROOT).contains(needle)) return true;
         if (SeasonSettingsCatalog.label(row.path()).toLowerCase(Locale.ROOT).contains(needle)) return true;
+        if (SeasonSettingsCatalog.help(row.path()).toLowerCase(Locale.ROOT).contains(needle)) return true;
         return SeasonSettingsCatalog.section(SeasonSettingsCatalog.sectionOf(row.path())).title()
                 .toLowerCase(Locale.ROOT).contains(needle);
     }
@@ -672,10 +689,11 @@ public class SeasonSettingsScreen extends RotasScreen {
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int x = mainX();
         int w = mainW();
-        boolean searching = !query.isBlank();
+        boolean searching = !query.isBlank() || changedOnly;
         SeasonSettingsCatalog.Section current = SeasonSettingsCatalog.section(section);
-        String title = searching ? "ผลการค้นหา" : current.title();
-        String blurb = searching ? visible.size() + " ค่าที่ตรงกับ \"" + query.trim() + "\"" : current.blurb();
+        String title = changedOnly ? "ค่าที่ต่างจากค่าเริ่มต้น" : searching ? "ผลการค้นหา" : current.title();
+        String blurb = changedOnly ? visible.size() + " ค่า · กด ↺ ที่แถวเพื่อคืนค่าเริ่มต้น"
+                : searching ? visible.size() + " ค่าที่ตรงกับ \"" + query.trim() + "\"" : current.blurb();
         List<String> preview = searching || previewRules == null ? List.of()
                 : net.schwarz.rotasutils.core.SeasonPreview.lines(previewRules, section);
         Ui.label(graphics, title, x, guiTop + 58, Ui.TEXT_BRIGHT);

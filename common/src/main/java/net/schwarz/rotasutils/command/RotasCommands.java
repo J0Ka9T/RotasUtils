@@ -47,6 +47,7 @@ public final class RotasCommands {
             ProgressionCommands.attach(root);
             AdminCommands.attach(root);
             SeasonCommands.attach(root);
+        NpcCommands.attach(root);
             HorseCommands.attach(root);
             RefineCommands.attach(root);
             DropCommands.attach(root);
