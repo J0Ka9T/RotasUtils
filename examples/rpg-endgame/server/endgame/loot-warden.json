@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "rotas:loot/warden",
+  "kind": "loot",
+  "body": {
+    "min_rolls": 1,
+    "max_rolls": 2,
+    "entries": [
+      {"weight": 8, "item": "minecraft:bone", "min_count": 1, "max_count": 3},
+      {"weight": 3, "profile": "rotas:item/warden_helm"},
+      {"weight": 3, "profile": "rotas:item/warden_boots"},
+      {"weight": 1, "profile": "rotas:item/warden_blade"}
+    ]
+  }
+}

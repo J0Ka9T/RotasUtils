@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "rotas:monster/warden",
+  "kind": "monster",
+  "body": {
+    "manual_only": true,
+    "priority": 50,
+    "selector": {"entities": ["minecraft:zombie"]},
+    "level": {"strategy": "NEAREST_PLAYER", "min": 10, "max": 60, "offset": 5},
+    "base_xp": 400,
+    "xp_per_level": 20,
+    "tiers": {"rotas:tier/warden": 1},
+    "boss": "rotas:boss/warden",
+    "loot": "rotas:loot/warden",
+    "name": "The Smoke Warden Lv{level}"
+  }
+}

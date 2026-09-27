@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "rotas:tier/elite",
+  "kind": "tier",
+  "body": {
+    "label": "Elite",
+    "rank": 2,
+    "affix_count": 1,
+    "xp_multiplier": 2.5,
+    "loot_multiplier": 2,
+    "attributes": {
+      "minecraft:generic.max_health": {"multiplier": 2},
+      "minecraft:generic.attack_damage": {"multiplier": 1.4}
+    }
+  }
+}

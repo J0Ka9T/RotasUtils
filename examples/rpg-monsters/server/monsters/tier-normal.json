@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:tier/normal",
+  "kind": "tier",
+  "body": {"label": "Common", "rank": 0, "affix_count": 0, "xp_multiplier": 1, "loot_multiplier": 1}
+}

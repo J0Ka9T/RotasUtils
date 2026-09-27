@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "rotas:boss/warden",
+  "kind": "boss",
+  "body": {
+    "label": "The Smoke Warden",
+    "arena_radius": 48,
+    "leash": true,
+    "reset_seconds": 45,
+    "enrage_seconds": 300,
+    "enrage_attributes": {"minecraft:generic.attack_damage": {"multiplier": 2}},
+    "minimum_share": 0.1,
+    "reward": "rotas:reward/warden",
+    "loot": "rotas:loot/warden",
+    "phases": [
+      {"threshold": 1, "label": "The Smoke Warden wakes"},
+      {"threshold": 0.5, "label": "The Smoke Warden roars", "attributes": {"minecraft:generic.armor": {"add": 8}}}
+    ]
+  }
+}

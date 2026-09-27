@@ -1,0 +1,83 @@
+package net.schwarz.rotasutils.server;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
+
+import java.util.function.Predicate;
+
+/**
+ * Puts a mob on solid ground near a player: used by nemesis ambushes and world event waves.
+ *
+ * <p>Tries a ring of positions around the centre, scanning a few blocks up and down from the centre's
+ * height, so a player in a cave is found in the cave and not on the surface above it. Only loaded,
+ * dry, collision-free positions over a sturdy top face are accepted.</p>
+ */
+public final class SpawnPlacer {
+    private static final int ATTEMPTS = 12;
+
+    private SpawnPlacer() {
+    }
+
+    /** A standable position between {@code min} and {@code max} blocks away, or null when none was found. */
+    public static BlockPos find(ServerLevel level, BlockPos center, int min, int max, EntityType<?> type,
+                                RandomSource random, Predicate<BlockPos> allowed) {
+        int low = Math.max(1, min);
+        int high = Math.max(low, max);
+        for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
+            double angle = random.nextDouble() * Math.PI * 2;
+            int distance = low + random.nextInt(high - low + 1);
+            int x = center.getX() + (int) Math.round(Math.cos(angle) * distance);
+            int z = center.getZ() + (int) Math.round(Math.sin(angle) * distance);
+            for (int dy = 6; dy >= -8; dy--) {
+                BlockPos pos = new BlockPos(x, center.getY() + dy, z);
+                if (standable(level, pos, type) && (allowed == null || allowed.test(pos))) {
+                    return pos;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean standable(ServerLevel level, BlockPos pos, EntityType<?> type) {
+        if (!level.isLoaded(pos) || level.isOutsideBuildHeight(pos)) {
+            return false;
+        }
+        BlockPos below = pos.below();
+        if (!level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
+            return false;
+        }
+        if (!level.getFluidState(pos).isEmpty() || !level.getFluidState(pos.above()).isEmpty()) {
+            return false;
+        }
+        return level.noCollision(type.getAABB(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5));
+    }
+
+    /** The entity type for an id, or null when it is unknown or not a mob. */
+    public static EntityType<?> mobType(String id) {
+        ResourceLocation location = ResourceLocation.tryParse(id == null ? "" : id.trim());
+        if (location == null || !BuiltInRegistries.ENTITY_TYPE.containsKey(location)) {
+            return null;
+        }
+        return BuiltInRegistries.ENTITY_TYPE.get(location);
+    }
+
+    /**
+     * Creates, places and equips a mob without adding it to the world, so the caller can tag it before
+     * anything else sees it. Null when the type does not make a mob.
+     */
+    public static Mob create(ServerLevel level, EntityType<?> type, BlockPos pos, RandomSource random) {
+        if (!(type.create(level) instanceof Mob mob)) {
+            return null;
+        }
+        mob.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, random.nextFloat() * 360f, 0f);
+        mob.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), MobSpawnType.EVENT, null, null);
+        return mob;
+    }
+}

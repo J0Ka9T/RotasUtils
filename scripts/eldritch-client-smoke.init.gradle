@@ -1,0 +1,11 @@
+gradle.projectsEvaluated {
+    def forgeProject = gradle.rootProject.project(':forge')
+    def runDir = gradle.startParameter.projectProperties.getOrDefault(
+            'eldritchSmokeRunDir', '../build/eldritch-smoke-client')
+    forgeProject.loom.runs.named('client').configure { run -> run.runDir = runDir }
+    forgeProject.tasks.named('runClient').configure { task ->
+        if (task instanceof JavaExec) {
+            task.args '--quickPlaySingleplayer', 'EldritchSkySmoke'
+        }
+    }
+}

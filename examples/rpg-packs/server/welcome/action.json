@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:action/welcome",
+  "kind": "action",
+  "body": {"type": "set_variable", "key": "rpg.welcomed", "value": "yes"}
+}

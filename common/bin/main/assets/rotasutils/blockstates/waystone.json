@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "segment=0": {
+      "model": "rotasutils:block/waystone_base"
+    },
+    "segment=1": {
+      "model": "rotasutils:block/waystone_shaft"
+    },
+    "segment=2": {
+      "model": "rotasutils:block/waystone_crown"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:action/swift_burst",
+  "kind": "action",
+  "body": {"type": "effect", "target": "self", "id": "minecraft:speed", "duration": 100, "amplifier": 1}
+}

@@ -1,0 +1,18 @@
+{
+  "rift.omen": {"subtitle": "rotasutils.subtitle.rift.omen", "sounds": [{"name": "rotasutils:rift/omen"}]},
+  "rift.heartbeat": {"subtitle": "rotasutils.subtitle.rift.heartbeat", "sounds": [
+    {"name": "rotasutils:rift/heartbeat1"}, {"name": "rotasutils:rift/heartbeat2"}]},
+  "rift.crack": {"subtitle": "rotasutils.subtitle.rift.crack", "sounds": [
+    {"name": "rotasutils:rift/crack1"}, {"name": "rotasutils:rift/crack2"}]},
+  "rift.strain": {"subtitle": "rotasutils.subtitle.rift.strain", "sounds": [{"name": "rotasutils:rift/strain"}]},
+  "rift.zap": {"subtitle": "rotasutils.subtitle.rift.zap", "sounds": [
+    {"name": "rotasutils:rift/zap1"}, {"name": "rotasutils:rift/zap2"},
+    {"name": "rotasutils:rift/zap3"}, {"name": "rotasutils:rift/zap4"}]},
+  "rift.split": {"subtitle": "rotasutils.subtitle.rift.split", "sounds": [{"name": "rotasutils:rift/split", "stream": true}]},
+  "rift.hum": {"subtitle": "rotasutils.subtitle.rift.hum", "sounds": [{"name": "rotasutils:rift/hum", "stream": true}]},
+  "rift.drone": {"subtitle": "rotasutils.subtitle.rift.drone", "sounds": [{"name": "rotasutils:rift/drone", "stream": true}]},
+  "rift.collapse": {"subtitle": "rotasutils.subtitle.rift.collapse", "sounds": [{"name": "rotasutils:rift/collapse"}]},
+  "rift.implode": {"subtitle": "rotasutils.subtitle.rift.implode", "sounds": [{"name": "rotasutils:rift/implode", "stream": true}]},
+  "rift.seal": {"subtitle": "rotasutils.subtitle.rift.seal", "sounds": [{"name": "rotasutils:rift/seal"}]},
+  "rift.vanish": {"subtitle": "rotasutils.subtitle.rift.vanish", "sounds": [{"name": "rotasutils:rift/vanish"}]}
+}

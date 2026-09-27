@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "rotas:item/warden_blade",
+  "kind": "item",
+  "body": {
+    "item": "minecraft:iron_sword",
+    "slot": "MAINHAND",
+    "min_level": 1,
+    "max_level": 60,
+    "name": "{rarity} Warden Blade Lv{level}",
+    "lore": ["Taken from the smoke"],
+    "rarities": {"rotas:rarity/common": 9, "rotas:rarity/rare": 2},
+    "modifiers": [{"attribute": "minecraft:generic.attack_damage", "base": 2, "per_level": 0.4}],
+    "requirement": {"min_level": 5}
+  }
+}

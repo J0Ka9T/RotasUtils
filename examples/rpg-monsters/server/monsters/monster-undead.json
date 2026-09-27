@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "rotas:monster/undead",
+  "kind": "monster",
+  "body": {
+    "priority": 10,
+    "apply_existing": false,
+    "selector": {"entities": ["minecraft:zombie", "minecraft:skeleton"], "dimensions": ["minecraft:overworld"]},
+    "level": {"strategy": "NEAREST_PLAYER", "min": 1, "max": 60, "offset": 0},
+    "base_xp": 40,
+    "xp_per_level": 6,
+    "tiers": {"rotas:tier/normal": 20, "rotas:tier/elite": 3},
+    "affixes": ["rotas:affix/swift", "rotas:affix/armored"],
+    "attributes": {"minecraft:generic.max_health": {"multiplier": 1, "per_level": 0.04}},
+    "name": "{name} [{tier} {level}]"
+  }
+}

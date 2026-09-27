@@ -1,0 +1,14 @@
+{
+	"attributes":
+	{
+		"two_hand":
+		{
+			"damage_bonus": 10.0,
+			"speed_bonus": -3.0,
+			"armor_negation": 15.0,
+			"impact": 2.2,
+			"max_strikes": 2
+		}
+	},
+	"type": "rotasutils:exo_disintegrator"
+}

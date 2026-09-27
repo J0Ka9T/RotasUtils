@@ -1,0 +1,27 @@
+Continue from CURRENT files in C:\Makemod\Mymod\RotasUtils. Do NOT redo planning, skill reading, or broad project exploration. The V4 model/tests are already present and the new concept-specific geometry has been added:
+- EldritchSkyArt now has royal blue / indigo / violet / electric cyan / ice-blue palette constants.
+- EldritchSkyGeometry now has 5 FlowBand records (18-45s counter-rotating broken arcs) and 6 NebulaFilament records (32-72s inward curls).
+- EldritchSkyPulseClock has travelingPulse().
+- Focused geometry/pulse tests are green.
+BUT EldritchSkyRenderer has not yet been wired to draw those new FlowBand / NebulaFilament layers. Finish that now.
+
+IMPLEMENTATION TARGET:
+1. Wire geometry.flowBands() into the actual focal renderer. Render all 5 as broken celestial/spherical vortex strips around/in front of the pointed diamond tear. Alternate clockwise/counter-clockwise from record direction. Use current game seconds/period + phase to rotate. Use horizontalRadiusDeg < verticalRadiusDeg so the motion follows the tall eye/diamond silhouette, not a circular portal. Apply slight inwardDriftDeg over cycle and shell depthOffset for parallax. Respect segmentMask so arcs stay broken. Use royal blue/indigo for body, electric cyan/ice blue for sparse traveling hot heads, violet secondary accents. Visible motion must be obvious but smooth.
+2. Wire geometry.nebulaFilaments() into actual rendering around the outer tear. Render 6 broad broken curling filaments, outerRadius -> innerRadius along arc progression, rotating slowly 32-72s, with curlDeg and axisDeg. They should visually pull space inward toward the wound. Use low alpha but stronger than tiny particles; royal blue/violet body with cyan highlights on selected sections. Do not make flat planes or full rings.
+3. Preserve a near-black central abyss. Existing void shell layers may remain if useful, but ensure focal center is black and flow bands sit around/in front rather than filling it.
+4. Make the pointed diamond/eye tear visually unmistakable. Existing edge geometry must retain sharp top/bottom tips and wider middle; if current drawTornEdges smooths it too much, adjust render geometry only.
+5. Update torn edge energy so EldritchSkyPulseClock.travelingPulse() moves cyan->ice-blue->violet highlights along selected edge segments; most edge remains dark indigo/blue. The corona should be irregular, not a uniform ring.
+6. Ensure composition order: atmosphere -> giant presence -> rear crown(s) -> nebula pull -> shockwaves/fractures -> vortex flow -> black void/depth -> torn rim hot edges -> front crown/plates/debris. If current ordering differs, choose a consistent depth hierarchy without breaking render state.
+7. Keep all current V4 systems and world-fixed celestial anchoring. No camera inverse, no player XYZ translation, no screen anchoring, no per-frame Random, no per-frame collections/arrays, no invalid fan/strip topology. Use existing static scratch arrays and cached geometry.
+8. Keep custom vertex budget below EldritchSkyArt.MAX_CUSTOM_VERTICES; update estimate if needed. Add a renderer/source or geometry behavior test only if needed to protect the new rendering contract; do not add brittle source-text tests except existing anchoring safety.
+9. Do NOT change server/network/persistence/item semantics.
+
+VALIDATE AFTER IMPLEMENTATION:
+A. run focused: .\gradlew.bat :common:test --tests=*Eldritch* --no-daemon --rerun-tasks --console=plain
+B. run full: .\gradlew.bat :common:test --no-daemon --rerun-tasks --console=plain and count test XML totals.
+C. build: .\gradlew.bat :forge:build :fabric:build --no-daemon --rerun-tasks --console=plain
+D. inspect rotasutils.mixins.json for duplicate Eldritch mixins.
+E. Fresh runtime smoke AFTER final build: use scripts/eldritch-client-smoke.init.gradle and a unique runDir via -PeldritchSmokeRunDir=../build/eldritch-smoke-v4-final-<timestamp>. Copy/create the active EldritchSkySmoke world if needed. Launch :forge:runClient, require fresh Java PID/log, join world, leave rendering at least 30 seconds, then terminate only that smoke process tree. Scan ONLY fresh smoke output/log for Mixin apply/InvalidInjection/NoSuchMethod/EldritchSky renderer/RotasUtils crash. If automation cannot prove active state, say so; do not fake it.
+F. Report exact changed files, final palette/motion periods/takeover values, focused/full test counts, builds, runtime evidence, and clearly state that visual beauty still needs the user's screenshot review.
+
+Do implementation directly now. No more broad research.

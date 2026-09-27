@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "rotas:affix/armored",
+  "kind": "affix",
+  "body": {
+    "weight": 3,
+    "min_tier": 1,
+    "tags": ["slow"],
+    "incompatible": ["speed"],
+    "xp_multiplier": 1.1,
+    "attributes": {
+      "minecraft:generic.armor": {"add": 6},
+      "minecraft:generic.movement_speed": {"multiplier": 0.9}
+    }
+  }
+}

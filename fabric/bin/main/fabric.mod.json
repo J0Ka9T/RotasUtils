@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "rotasutils",
+  "version": "${version}",
+  "name": "RotasUtils",
+  "description": "Quest boards, danger ranks, player levels and skill trees as one RPG progression framework.",
+  "authors": [
+    "SchwarzX2"
+  ],
+  "contact": {
+    "homepage": ""
+  },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/rotasutils/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.schwarz.rotasutils.fabric.RotasutilsFabric"
+    ],
+    "client": [
+      "net.schwarz.rotasutils.fabric.client.RotasutilsFabricClient"
+    ]
+  },
+  "mixins": [
+    "rotasutils.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "=1.20.1",
+    "java": ">=17",
+    "architectury": ">=9.2.14",
+    "fabric-api": "*",
+    "lenlorui": ">=0.3.0"
+  },
+  "suggests": {
+    "easy_npc": "*"
+  }
+}

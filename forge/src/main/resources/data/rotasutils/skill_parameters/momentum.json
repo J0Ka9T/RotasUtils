@@ -1,0 +1,7 @@
+{
+  "damage_per_stack": 0.06,
+  "max_momentum": 5,
+  "window_ticks": 60,
+  "crescendo_bonus": 0.4,
+  "crescendo_stamina": 3.0
+}

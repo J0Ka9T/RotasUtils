@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:condition/welcome",
+  "kind": "condition",
+  "body": {"type": "requirement", "name": "MIN_LEVEL", "params": {"level": "1"}}
+}

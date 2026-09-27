@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:reward/welcome",
+  "kind": "reward",
+  "body": {"actions": ["rotas:action/welcome"]}
+}

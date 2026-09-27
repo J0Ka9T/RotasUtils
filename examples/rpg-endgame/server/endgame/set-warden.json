@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "id": "rotas:set/warden",
+  "kind": "set",
+  "body": {
+    "label": "Warden Regalia",
+    "pieces": ["rotas:item/warden_helm", "rotas:item/warden_boots"],
+    "bonuses": [{"pieces": 2, "modifiers": [{"attribute": "minecraft:generic.armor", "base": 4}]}]
+  }
+}

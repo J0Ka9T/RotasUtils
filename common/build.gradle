@@ -1,0 +1,21 @@
+architectury {
+    common rootProject.enabled_platforms.split(',')
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    // We depend on Fabric Loader here to use the Fabric @Environment annotations,
+    // which get remapped to the correct annotations on each platform.
+    // Do NOT use other classes from Fabric Loader.
+    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+
+    modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
+
+    modImplementation files(rootProject.lenloruiArtifact(
+            "${rootProject.lenlorui_project}/common/build/devlibs/LenlorUI-common-${rootProject.lenlorui_version}-dev.jar"))
+
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

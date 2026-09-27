@@ -1,0 +1,9 @@
+﻿build/
+.gradle/
+.idea/
+run/
+*.log
+.architectury-transformer/
+.output/
+backup/
+

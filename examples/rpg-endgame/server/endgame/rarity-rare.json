@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:rarity/rare",
+  "kind": "rarity",
+  "body": {"label": "Rare", "color": "blue", "rank": 2, "modifier_multiplier": 1.8}
+}

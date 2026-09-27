@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "rotas:affix/swift",
+  "kind": "affix",
+  "body": {
+    "weight": 4,
+    "min_tier": 1,
+    "tags": ["speed"],
+    "incompatible": ["slow"],
+    "xp_multiplier": 1.2,
+    "attributes": {"minecraft:generic.movement_speed": {"multiplier": 1.2}},
+    "hooks": [{"event": "HURT", "cooldown": 200, "actions": ["rotas:action/swift_burst"]}]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "rotas:stat/vitality",
+  "kind": "stat",
+  "body": {
+    "base": 0,
+    "per_level": 0,
+    "min": 0,
+    "max": 100,
+    "attribute": "minecraft:generic.max_health",
+    "attribute_scale": 2,
+    "operation": "ADD"
+  }
+}

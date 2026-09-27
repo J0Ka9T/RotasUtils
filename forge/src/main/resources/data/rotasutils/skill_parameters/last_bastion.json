@@ -1,0 +1,6 @@
+{
+  "health_threshold": 0.35,
+  "damage_reduction": 0.3,
+  "stamina_per_hit": 1.5,
+  "cheat_death_cooldown": 1800
+}

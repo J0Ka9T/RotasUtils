@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "rotas:tier/warden",
+  "kind": "tier",
+  "body": {
+    "label": "Warden",
+    "rank": 5,
+    "affix_count": 0,
+    "xp_multiplier": 4,
+    "loot_multiplier": 3,
+    "boss": true,
+    "attributes": {"minecraft:generic.max_health": {"multiplier": 6}}
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:action/starter_points",
+  "kind": "action",
+  "body": {"type": "stat_points", "amount": 2}
+}

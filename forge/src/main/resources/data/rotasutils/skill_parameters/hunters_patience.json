@@ -1,0 +1,6 @@
+{
+  "focus_bonus": 0.4,
+  "focus_ticks": 30,
+  "bonus_per_block": 0.015,
+  "range_bonus_cap": 0.3
+}

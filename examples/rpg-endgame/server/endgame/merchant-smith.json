@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "id": "rotas:merchant/town_smith",
+  "kind": "merchant",
+  "body": {
+    "label": "Town Smith",
+    "trades": [
+      {
+        "key": "blade",
+        "label": "Warden Blade",
+        "profile": "rotas:item/warden_blade",
+        "item_level": 20,
+        "stock": 4,
+        "restock_seconds": 86400,
+        "per_player_limit": 1,
+        "costs": [{"currency": "rotas:gold", "amount": 250}]
+      },
+      {
+        "key": "trade_up",
+        "label": "Iron for a diamond",
+        "item": "minecraft:diamond",
+        "count": 1,
+        "costs": [{"item": "minecraft:iron_ingot", "amount": 6}, {"currency": "rotas:gold", "amount": 10}]
+      }
+    ]
+  }
+}

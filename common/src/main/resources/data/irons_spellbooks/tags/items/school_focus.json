@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "#rotasutils:celestial_focus",
+      "required": false
+    },
+    {
+      "id": "#rotasutils:abyss_focus",
+      "required": false
+    }
+  ]
+}

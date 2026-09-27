@@ -1,0 +1,345 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "rotasutils:block/waystone_stone",
+    "tile": "rotasutils:block/waystone_cap",
+    "stone": "rotasutils:block/waystone_stone",
+    "carved": "rotasutils:block/waystone_rune",
+    "gold": "rotasutils:block/waystone_gold",
+    "rune": "rotasutils:block/waystone_rune",
+    "glow": "rotasutils:block/waystone_glow"
+  },
+  "elements": [
+    {
+      "name": "step_wide",
+      "from": [
+        -2,
+        0,
+        -2
+      ],
+      "to": [
+        18,
+        2,
+        18
+      ],
+      "faces": {
+        "north": {
+          "texture": "#tile"
+        },
+        "south": {
+          "texture": "#tile"
+        },
+        "west": {
+          "texture": "#tile"
+        },
+        "east": {
+          "texture": "#tile"
+        },
+        "up": {
+          "texture": "#tile"
+        },
+        "down": {
+          "texture": "#tile",
+          "cullface": "down"
+        }
+      }
+    },
+    {
+      "name": "step_mid",
+      "from": [
+        0,
+        2,
+        0
+      ],
+      "to": [
+        16,
+        4,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#tile"
+        },
+        "south": {
+          "texture": "#tile"
+        },
+        "west": {
+          "texture": "#tile"
+        },
+        "east": {
+          "texture": "#tile"
+        },
+        "up": {
+          "texture": "#tile"
+        },
+        "down": {
+          "texture": "#tile"
+        }
+      }
+    },
+    {
+      "name": "step_top",
+      "from": [
+        2,
+        4,
+        2
+      ],
+      "to": [
+        14,
+        6,
+        14
+      ],
+      "faces": {
+        "north": {
+          "texture": "#stone"
+        },
+        "south": {
+          "texture": "#stone"
+        },
+        "west": {
+          "texture": "#stone"
+        },
+        "east": {
+          "texture": "#stone"
+        },
+        "up": {
+          "texture": "#stone"
+        },
+        "down": {
+          "texture": "#stone"
+        }
+      }
+    },
+    {
+      "name": "buttress_n",
+      "from": [
+        6,
+        6,
+        2
+      ],
+      "to": [
+        10,
+        9,
+        5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#carved"
+        },
+        "south": {
+          "texture": "#carved"
+        },
+        "west": {
+          "texture": "#carved"
+        },
+        "east": {
+          "texture": "#carved"
+        },
+        "up": {
+          "texture": "#carved"
+        },
+        "down": {
+          "texture": "#carved"
+        }
+      }
+    },
+    {
+      "name": "buttress_s",
+      "from": [
+        6,
+        6,
+        11
+      ],
+      "to": [
+        10,
+        9,
+        14
+      ],
+      "faces": {
+        "north": {
+          "texture": "#carved"
+        },
+        "south": {
+          "texture": "#carved"
+        },
+        "west": {
+          "texture": "#carved"
+        },
+        "east": {
+          "texture": "#carved"
+        },
+        "up": {
+          "texture": "#carved"
+        },
+        "down": {
+          "texture": "#carved"
+        }
+      }
+    },
+    {
+      "name": "buttress_w",
+      "from": [
+        2,
+        6,
+        6
+      ],
+      "to": [
+        5,
+        9,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#carved"
+        },
+        "south": {
+          "texture": "#carved"
+        },
+        "west": {
+          "texture": "#carved"
+        },
+        "east": {
+          "texture": "#carved"
+        },
+        "up": {
+          "texture": "#carved"
+        },
+        "down": {
+          "texture": "#carved"
+        }
+      }
+    },
+    {
+      "name": "buttress_e",
+      "from": [
+        11,
+        6,
+        6
+      ],
+      "to": [
+        14,
+        9,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#carved"
+        },
+        "south": {
+          "texture": "#carved"
+        },
+        "west": {
+          "texture": "#carved"
+        },
+        "east": {
+          "texture": "#carved"
+        },
+        "up": {
+          "texture": "#carved"
+        },
+        "down": {
+          "texture": "#carved"
+        }
+      }
+    },
+    {
+      "name": "base_ring",
+      "from": [
+        3,
+        6,
+        3
+      ],
+      "to": [
+        13,
+        8,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#gold"
+        },
+        "south": {
+          "texture": "#gold"
+        },
+        "west": {
+          "texture": "#gold"
+        },
+        "east": {
+          "texture": "#gold"
+        },
+        "up": {
+          "texture": "#gold"
+        },
+        "down": {
+          "texture": "#gold"
+        }
+      }
+    },
+    {
+      "name": "shaft",
+      "from": [
+        4,
+        8,
+        4
+      ],
+      "to": [
+        12,
+        16,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#stone"
+        },
+        "south": {
+          "texture": "#stone"
+        },
+        "west": {
+          "texture": "#stone"
+        },
+        "east": {
+          "texture": "#stone"
+        },
+        "up": {
+          "texture": "#stone"
+        },
+        "down": {
+          "texture": "#stone"
+        }
+      }
+    },
+    {
+      "name": "rune_band",
+      "from": [
+        3.5,
+        12,
+        3.5
+      ],
+      "to": [
+        12.5,
+        14,
+        12.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#rune"
+        },
+        "south": {
+          "texture": "#rune"
+        },
+        "west": {
+          "texture": "#rune"
+        },
+        "east": {
+          "texture": "#rune"
+        },
+        "up": {
+          "texture": "#rune"
+        },
+        "down": {
+          "texture": "#rune"
+        }
+      }
+    }
+  ]
+}

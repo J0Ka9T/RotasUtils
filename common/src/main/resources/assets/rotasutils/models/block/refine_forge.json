@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "front": "rotasutils:block/refine_forge_front",
+    "side": "rotasutils:block/refine_forge_side",
+    "top": "rotasutils:block/refine_forge_top",
+    "bottom": "rotasutils:block/refine_forge_bottom"
+  }
+}

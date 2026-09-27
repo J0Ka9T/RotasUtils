@@ -1,0 +1,70 @@
+modLoader = "javafml"
+loaderVersion = "[47,48)"
+#issueTrackerURL = ""
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "rotasutils"
+version = "${version}"
+displayName = "RotasUtils"
+authors = "SchwarzX2"
+description = '''
+
+'''
+#logoFile = ""
+
+[[dependencies.rotasutils]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,48)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.rotasutils]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.20.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.rotasutils]]
+modId = "architectury"
+mandatory = true
+versionRange = "[9.2.14,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.rotasutils]]
+modId = "curios"
+mandatory = false
+versionRange = "[5.14.1,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.rotasutils]]
+modId = "lenlorui"
+mandatory = true
+versionRange = "[0.3.0,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.rotasutils]]
+modId = "puffish_skills"
+mandatory = false
+versionRange = "[0.18.1,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.rotasutils]]
+modId = "irons_spellbooks"
+mandatory = false
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.rotasutils]]
+modId = "epicfight"
+mandatory = false
+versionRange = "[20.14,)"
+ordering = "AFTER"
+side = "BOTH"

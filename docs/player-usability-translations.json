@@ -1,0 +1,20 @@
+{
+  "rotasutils.menu.character": "Character",
+  "rotasutils.menu.merchants": "Merchants",
+  "rotasutils.quest.source.kernel": "Staged quest",
+  "rotasutils.quest.source.legacy": "Board quest",
+  "rotasutils.merchant.empty": "No merchants are available on this server yet.",
+  "rotasutils.merchant.buy_count": "Buy × %s",
+  "rotasutils.merchant.total": "Total: %s × %s items",
+  "rotasutils.merchant.select": "Select a trade to review its price.",
+  "rotasutils.merchant.locked": "You do not meet this trade's requirements.",
+  "rotasutils.merchant.stock": "Not enough stock for this quantity.",
+  "rotasutils.merchant.limit": "This quantity exceeds your remaining purchase limit.",
+  "rotasutils.merchant.funds": "Not enough currency for this quantity.",
+  "rotasutils.settings.markers": "Show quest markers",
+  "rotasutils.settings.toast": "Announce level-ups in chat",
+  "rotasutils.settings.announce": "Announce quest completion in chat",
+  "rotasutils.settings.on": "On",
+  "rotasutils.settings.off": "Off",
+  "rotasutils.settings.markers_unavailable": "World quest markers are not available in this version."
+}

@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:reward/starter",
+  "kind": "reward",
+  "body": {"actions": ["rotas:action/starter_gold", "rotas:action/starter_points"]}
+}

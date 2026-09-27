@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "rotasutils:block/rune_altar"
+    },
+    "facing=east": {
+      "model": "rotasutils:block/rune_altar",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "rotasutils:block/rune_altar",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "rotasutils:block/rune_altar",
+      "y": 270
+    }
+  }
+}

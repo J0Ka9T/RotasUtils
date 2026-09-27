@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " RE",
+    "CBR",
+    "NC "
+  ],
+  "key": {
+    "R": {
+      "item": "minecraft:lightning_rod"
+    },
+    "E": {
+      "item": "minecraft:end_crystal"
+    },
+    "C": {
+      "item": "minecraft:echo_shard"
+    },
+    "B": {
+      "item": "minecraft:beacon"
+    },
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    }
+  },
+  "result": {
+    "item": "rotasutils:exo_disintegrator"
+  }
+}

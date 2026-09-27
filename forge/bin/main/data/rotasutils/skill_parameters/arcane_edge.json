@@ -1,0 +1,5 @@
+{
+  "hits_per_burst": 4,
+  "burst_share": 0.35,
+  "burst_radius": 3.5
+}

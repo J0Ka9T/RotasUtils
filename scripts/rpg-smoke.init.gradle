@@ -1,0 +1,20 @@
+gradle.projectsEvaluated {
+    def forgeProject = gradle.rootProject.project(':forge')
+    def smoke = forgeProject.sourceSets.create('rpgSmoke') {
+        java.srcDir gradle.rootProject.file('scripts/smoke/java')
+        resources.srcDir gradle.rootProject.file('scripts/smoke/resources')
+        compileClasspath += forgeProject.sourceSets.main.output + forgeProject.configurations.compileClasspath
+        runtimeClasspath += compileClasspath
+    }
+    forgeProject.tasks.named('compileRpgSmokeJava').configure {
+        dependsOn forgeProject.tasks.named('classes')
+    }
+    forgeProject.loom.runs.named('server').configure {
+        runDir '../build/rpg-smoke-server'
+    }
+    forgeProject.tasks.named('runServer', JavaExec).configure {
+        standardInput = System.in
+        executable = 'C:/Program Files/Java/jdk-17/bin/java.exe'
+        args '--nogui'
+    }
+}

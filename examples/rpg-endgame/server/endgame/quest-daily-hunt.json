@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "rotas:quest/daily_hunt",
+  "kind": "quest",
+  "body": {
+    "label": "Daily Hunt",
+    "reset": "DAILY",
+    "bounty_limit": 20,
+    "reward": "rotas:reward/warden",
+    "stages": [
+      {
+        "label": "Defeat monsters",
+        "objectives": [{"event": "rotas:monster_defeated", "count": 5, "label": "Defeat 5 marked monsters"}]
+      }
+    ]
+  }
+}

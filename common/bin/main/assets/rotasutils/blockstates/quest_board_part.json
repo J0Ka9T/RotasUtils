@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "rotasutils:block/quest_board_part" }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "id": "rotas:action/starter_gold",
+  "kind": "action",
+  "body": {"type": "currency", "id": "rotas:gold", "amount": 25}
+}

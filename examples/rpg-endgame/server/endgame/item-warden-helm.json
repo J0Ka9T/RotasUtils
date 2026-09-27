@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "id": "rotas:item/warden_helm",
+  "kind": "item",
+  "body": {
+    "item": "minecraft:iron_helmet",
+    "slot": "HEAD",
+    "set": "rotas:set/warden",
+    "rarities": {"rotas:rarity/common": 1},
+    "modifiers": [{"attribute": "minecraft:generic.armor", "base": 1, "per_level": 0.1}]
+  }
+}

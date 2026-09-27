@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "rotas:rule/welcome",
+  "kind": "rule",
+  "body": {
+    "event": "rotas:player_login",
+    "scope": "once",
+    "condition": {"type": "ref", "id": "rotas:condition/welcome"},
+    "reward": "rotas:reward/welcome"
+  }
+}
