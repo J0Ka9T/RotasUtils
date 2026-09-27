@@ -156,6 +156,47 @@ public final class SeasonRules {
     public TitleRules titles = new TitleRules();
     /** Prices and offers of the service NPCs: smith, alchemist, inn, priest, bank, bounties, collector, auction. */
     public NpcServiceRules npcServices = new NpcServiceRules();
+    /** Rewards and celebration every few levels, so a level feels like more than a number. */
+    public MilestoneRules milestones = new MilestoneRules();
+    /** EXP for seeing the world: zones, waystones, new monsters, advancements, distance travelled. */
+    public ExplorationRules exploration = new ExplorationRules();
+
+    public static final class MilestoneRules {
+        public boolean enabled = true;
+        /** A milestone every this many levels. */
+        public int every = 5;
+        /** Gold at a milestone: level × this. */
+        public long goldPerLevel = 20;
+        /** Extra stat points at every milestone. */
+        public int statPoints = 1;
+        /** Levels that are big milestones: announced to the server, paid {@link #bigMultiplier} times more. */
+        public int[] bigLevels = {10, 25, 50, 75, 100};
+        public double bigMultiplier = 5;
+        public int bigStatPoints = 3;
+        /** Big screen title and a burst of light on level-up. */
+        public boolean celebrate = true;
+    }
+
+    public static final class ExplorationRules {
+        public boolean enabled = true;
+        /** Discovery EXP grows with the player's level so it stays worth something: base × (1 + level × this). */
+        public double levelScale = 0.05;
+        /** First time in a zone: base EXP, plus this per recommended zone level. */
+        public long zoneBase = 120;
+        public long zonePerLevel = 8;
+        public long waystoneXp = 150;
+        /** First kill of a monster kind (a new bestiary entry). */
+        public long newMonsterXp = 60;
+        /** Vanilla advancements by frame: task, goal, challenge. Recipe unlocks give nothing. */
+        public long[] advancementXp = {40, 150, 500};
+        /** Blocks walked, ridden or flown between two distance rewards (teleports do not count). */
+        public int travelBlocks = 1000;
+        public long travelXp = 80;
+        /** Variety: each other kind of activity done in the window adds this to all EXP, up to the cap. */
+        public double varietyBonus = 0.05;
+        public double varietyMax = 0.25;
+        public int varietyWindowMinutes = 30;
+    }
 
     /** One potion an alchemist brews on the spot. */
     public static final class Brew {
@@ -1569,7 +1610,33 @@ public final class SeasonRules {
         return this;
     }
 
+    private void sanitizeProgression() {
+        if (milestones == null) milestones = new MilestoneRules();
+        MilestoneRules m = milestones;
+        m.every = clamp(m.every, 1, 1000);
+        m.goldPerLevel = Math.max(0, m.goldPerLevel);
+        m.statPoints = clamp(m.statPoints, 0, 100);
+        m.bigStatPoints = clamp(m.bigStatPoints, 0, 100);
+        if (m.bigLevels == null) m.bigLevels = new int[0];
+        m.bigMultiplier = clamp(m.bigMultiplier, 0, 1000, 5);
+        if (exploration == null) exploration = new ExplorationRules();
+        ExplorationRules e = exploration;
+        e.levelScale = clamp(e.levelScale, 0, 10, 0.05);
+        e.zoneBase = Math.max(0, e.zoneBase);
+        e.zonePerLevel = Math.max(0, e.zonePerLevel);
+        e.waystoneXp = Math.max(0, e.waystoneXp);
+        e.newMonsterXp = Math.max(0, e.newMonsterXp);
+        if (e.advancementXp == null || e.advancementXp.length != 3) e.advancementXp = new long[]{40, 150, 500};
+        for (int i = 0; i < 3; i++) e.advancementXp[i] = Math.max(0, e.advancementXp[i]);
+        e.travelBlocks = clamp(e.travelBlocks, 50, 1_000_000);
+        e.travelXp = Math.max(0, e.travelXp);
+        e.varietyBonus = clamp(e.varietyBonus, 0, 1, 0.05);
+        e.varietyMax = clamp(e.varietyMax, 0, 10, 0.25);
+        e.varietyWindowMinutes = clamp(e.varietyWindowMinutes, 1, 1440);
+    }
+
     private void sanitizeNpcServices() {
+        sanitizeProgression();
         if (npcServices == null) npcServices = new NpcServiceRules();
         NpcServiceRules n = npcServices;
         n.repairPerDurability = clamp(n.repairPerDurability, 0, 1000, 0.4);

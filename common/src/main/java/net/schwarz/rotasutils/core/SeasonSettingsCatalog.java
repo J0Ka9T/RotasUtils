@@ -40,7 +40,9 @@ public final class SeasonSettingsCatalog {
             new Section("seasonTrack", "เส้นทางซีซั่น", "ขั้นรางวัลตามแต้มแรงค์ทั้งซีซั่น"),
             new Section("horse", "ม้า", "สุ่มม้า คอก ขาย และตลาด"),
             new Section("titles", "ฉายา", "ใครได้ฉายาอัตโนมัติ (แอดมิน/ครีเอทีฟ) และการถอดฉายา"),
-            new Section("npcServices", "NPC บริการ", "ช่างตีเหล็ก นักปรุงยา โรงเตี๊ยม นักบวช หมอดู ธนาคาร ค่าหัว นักสะสม และโรงประมูล"),
+            new Section("milestones", "หลักไมล์เลเวล", "รางวัลทุก ๆ กี่เลเวล และหลักไมล์ใหญ่ที่ประกาศทั้งเซิร์ฟ"),
+            new Section("exploration", "EXP สำรวจ", "EXP จากการค้นพบโซน หินวาร์ป มอนใหม่ ความสำเร็จ ระยะทาง และโบนัสความหลากหลาย"),
+            new Section("npcServices","NPC บริการ", "ช่างตีเหล็ก นักปรุงยา โรงเตี๊ยม นักบวช หมอดู ธนาคาร ค่าหัว นักสะสม และโรงประมูล"),
             new Section(OTHER,"อื่น ๆ", "ค่าที่ยังไม่มีหมวด"));
 
     /** Internal bookkeeping nobody should edit by hand. */
@@ -345,6 +347,26 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRarityBonus", "โบนัสตามระดับกำเนิด");
         map.put("horse.marketFee", "ค่าธรรมเนียมตลาด (0-0.9)");
         map.put("horse.marketMaxPrice", "ราคาขายสูงสุดในตลาด");
+        map.put("milestones.enabled", "เปิดรางวัลหลักไมล์");
+        map.put("milestones.every", "หลักไมล์ทุกกี่เลเวล");
+        map.put("milestones.goldPerLevel", "เงินต่อเลเวลที่หลักไมล์");
+        map.put("milestones.statPoints", "แต้มสเตตัสที่หลักไมล์");
+        map.put("milestones.bigLevels", "เลเวลหลักไมล์ใหญ่");
+        map.put("milestones.bigMultiplier", "ตัวคูณเงินหลักไมล์ใหญ่");
+        map.put("milestones.bigStatPoints", "แต้มสเตตัสหลักไมล์ใหญ่");
+        map.put("milestones.celebrate", "ฉลองเลเวลอัป");
+        map.put("exploration.enabled", "เปิด EXP สำรวจ");
+        map.put("exploration.levelScale", "EXP สำรวจเพิ่มตามเลเวล");
+        map.put("exploration.zoneBase", "EXP ค้นพบโซน");
+        map.put("exploration.zonePerLevel", "EXP ค้นพบโซนต่อเลเวลโซน");
+        map.put("exploration.waystoneXp", "EXP หินวาร์ปใหม่");
+        map.put("exploration.newMonsterXp", "EXP มอนชนิดใหม่");
+        map.put("exploration.advancementXp", "EXP ความสำเร็จ");
+        map.put("exploration.travelBlocks", "ระยะทางต่อรางวัล (บล็อก)");
+        map.put("exploration.travelXp", "EXP ระยะทาง");
+        map.put("exploration.varietyBonus", "โบนัสหลากหลายต่อกิจกรรม");
+        map.put("exploration.varietyMax", "โบนัสหลากหลายสูงสุด");
+        map.put("exploration.varietyWindowMinutes", "ช่วงเวลานับความหลากหลาย (นาที)");
         map.put("titles.rarityPoints", "แต้มสะสมต่อระดับฉายา");
         map.put("titles.rarityGold", "เงินรางวัลเมื่อได้ฉายา");
         map.put("titles.rarityXp", "EXP รางวัลเมื่อได้ฉายา");
@@ -848,6 +870,26 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRareCoat", "โบนัสราคาสีขนหายาก");
         map.put("horse.marketFee", "ตลาดหักกี่ส่วน 0.05 = 5%, 0 = ผู้ขายได้เต็ม");
         map.put("horse.marketMaxPrice", "ตั้งราคาขายในตลาดได้สูงสุด");
+        map.put("milestones.enabled", "ปิด = เลเวลอัปไม่มีรางวัลหลักไมล์");
+        map.put("milestones.every", "5 = ได้รางวัลที่เลเวล 5, 10, 15...");
+        map.put("milestones.goldPerLevel", "เงินที่หลักไมล์ = เลเวล × ค่านี้");
+        map.put("milestones.statPoints", "แต้มสเตตัสพิเศษที่ได้ทุกหลักไมล์");
+        map.put("milestones.bigLevels", "เลเวลที่เป็นหลักไมล์ใหญ่ ประกาศทั้งเซิร์ฟและได้รางวัลมากกว่า");
+        map.put("milestones.bigMultiplier", "หลักไมล์ใหญ่ได้เงินกี่เท่า");
+        map.put("milestones.bigStatPoints", "แต้มสเตตัสพิเศษของหลักไมล์ใหญ่");
+        map.put("milestones.celebrate", "แสงและตัวอักษรใหญ่กลางจอตอนเลเวลอัป");
+        map.put("exploration.enabled", "ปิด = ไม่มี EXP จากการสำรวจและไม่มีโบนัสความหลากหลาย");
+        map.put("exploration.levelScale", "0.05 = EXP สำรวจเพิ่ม 5% ต่อเลเวลผู้เล่น ให้ยังคุ้มแม้เลเวลสูง");
+        map.put("exploration.zoneBase", "EXP ครั้งแรกที่เข้าโซนใหม่");
+        map.put("exploration.zonePerLevel", "EXP เพิ่มต่อเลเวลแนะนำของโซน");
+        map.put("exploration.waystoneXp", "EXP เมื่อบันทึกหินวาร์ปใหม่");
+        map.put("exploration.newMonsterXp", "EXP เมื่อฆ่ามอนชนิดใหม่ครั้งแรก");
+        map.put("exploration.advancementXp", "EXP ความสำเร็จ vanilla: งาน / เป้าหมาย / ท้าทาย");
+        map.put("exploration.travelBlocks", "เดินทางครบกี่บล็อกได้รางวัลหนึ่งครั้ง (วาร์ปไม่นับ)");
+        map.put("exploration.travelXp", "EXP ต่อระยะทางที่ครบ");
+        map.put("exploration.varietyBonus", "ทำกิจกรรมต่างชนิดกันในช่วงเวลา (สู้ เก็บ คราฟต์ สำรวจ เควส ค้าขาย) ได้ EXP เพิ่มต่อชนิด");
+        map.put("exploration.varietyMax", "โบนัสความหลากหลายสูงสุด 0.25 = 25%");
+        map.put("exploration.varietyWindowMinutes", "กิจกรรมนับว่ายังทำอยู่ภายในกี่นาที");
         map.put("titles.rarityPoints", "ทุกฉายาที่ได้ให้แต้มสะสมตามระดับ ธรรมดา/ไม่ธรรมดา/หายาก/มหากาพย์/ตำนาน");
         map.put("titles.rarityGold", "เงินที่ได้ครั้งเดียวเมื่อได้ฉายาแต่ละระดับ");
         map.put("titles.rarityXp", "EXP ที่ได้ครั้งเดียวเมื่อได้ฉายาแต่ละระดับ");

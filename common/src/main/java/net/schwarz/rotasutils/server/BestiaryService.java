@@ -50,6 +50,7 @@ public final class BestiaryService {
         if (before == 0) {
             player.sendSystemMessage(ThaiText.c("rotasutils.msg.bestiary.new", victim.getType().getDescription().getString())
                     .withStyle(ChatFormatting.GRAY));
+            ExplorationService.onNewMonster(player, data, entityId, victim.getType().getDescription().getString());
         }
         if (newTier > oldTier) {
             player.sendSystemMessage(ThaiText.c("rotasutils.msg.bestiary.tier",

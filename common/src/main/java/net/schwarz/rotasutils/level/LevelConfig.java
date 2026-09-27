@@ -15,7 +15,7 @@ import java.util.Map;
 public final class LevelConfig {
     public enum FirstJoinMode { NONE, CHOOSE, ASSIGN }
     /** Increment when defaults/semantics change so old development worlds can migrate safely. */
-    public static final int CURRENT_PROGRESSION_VERSION = 4;
+    public static final int CURRENT_PROGRESSION_VERSION = 5;
 
     /** Built from the season rules' main curve; never stored on its own. */
     private final LevelCurve curve = new LevelCurve();
@@ -425,6 +425,11 @@ public final class LevelConfig {
             for (XpSource source : XpSource.VALUES) {
                 config.source(source).setEnabled(source.enabledByDefault());
             }
+        }
+        if (storedVersion < 5) {
+            // Version 5 hooked discovery and advancements up; turn them on in worlds made before they worked.
+            config.source(XpSource.DISCOVERY).setEnabled(true);
+            config.source(XpSource.ADVANCEMENT).setEnabled(true);
         }
         CompoundTag rewards = tag.getCompound("level_rewards");
         for (String key : rewards.getAllKeys()) {

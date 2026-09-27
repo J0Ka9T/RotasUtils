@@ -121,6 +121,7 @@ public final class WaystoneService {
             }
             progress.discoverWaystone(id);
             data.setDirty();
+            ExplorationService.onWaystoneDiscovered(player, data, waystone.name());
             RotasNetwork.syncProgress(player);
             RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.waystone.recorded", waystone.name()));
         }

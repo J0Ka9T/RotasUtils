@@ -12,8 +12,9 @@ public enum XpSource {
     PLAYER_KILL("Player Kills", 0, true, false),
     ASSIST("Assists", 0, true, false),
     DUNGEON_COMPLETE("Dungeon Completion", 0, false, false),
-    DISCOVERY("Location Discovery", 0, false, false),
-    ADVANCEMENT("Advancements", 0, false, false),
+    /** Zones, waystones, new monsters and distance: see ExplorationService. */
+    DISCOVERY("Location Discovery", 0, false, true),
+    ADVANCEMENT("Advancements", 0, false, true),
     MINING("Mining", 0, true, false),
     CRAFTING("Crafting", 0, true, false),
     SMELTING("Smelting", 0, true, false),

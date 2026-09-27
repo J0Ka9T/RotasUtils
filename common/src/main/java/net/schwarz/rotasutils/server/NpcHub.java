@@ -145,6 +145,8 @@ public final class NpcHub {
         payload.putLong("balance", balance(data, player));
         ListTag buffs = new ListTag();
         BuffService.describe(data.progress(player.getUUID())).forEach(line -> buffs.add(StringTag.valueOf(line)));
+        String variety = ExplorationService.describe(data, data.progress(player.getUUID()));
+        if (variety != null) buffs.add(StringTag.valueOf(variety));
         payload.put("buffs", buffs);
         payload.put("entries", entries.list);
         RotasNetwork.openScreen(player, "npc_hub", payload);

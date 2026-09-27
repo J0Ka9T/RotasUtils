@@ -73,6 +73,7 @@ public final class ZonePresenceService {
             if (titles != null) {
                 show(serverPlayer, titles);
             }
+            if (top != null) ExplorationService.onZoneEntered(serverPlayer, data, top);
         }
         if (top == null) {
             return;
