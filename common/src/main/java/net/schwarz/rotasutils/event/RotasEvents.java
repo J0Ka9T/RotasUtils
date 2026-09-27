@@ -336,6 +336,7 @@ public final class RotasEvents {
         if (net.schwarz.rotasutils.server.BestiaryService.recordable(entity)) {
             net.schwarz.rotasutils.server.FarmingService.onKill(killer, data);
         }
+        net.schwarz.rotasutils.server.BountyService.onKill(killer, data, entity);
         QuestEvent event = new QuestEvent(EventKind.KILL_ENTITY)
                 .entityType(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()))
                 .entityName(entity.hasCustomName() ? entity.getCustomName().getString() : "")

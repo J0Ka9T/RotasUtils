@@ -154,6 +154,134 @@ public final class SeasonRules {
     public NemesisRules nemesis = new NemesisRules();
     /** Who may earn titles automatically. */
     public TitleRules titles = new TitleRules();
+    /** Prices and offers of the service NPCs: smith, alchemist, inn, priest, bank, bounties, collector, auction. */
+    public NpcServiceRules npcServices = new NpcServiceRules();
+
+    /** One potion an alchemist brews on the spot. */
+    public static final class Brew {
+        public String effect = "minecraft:speed";
+        public int amplifier = 0;
+        public int seconds = 480;
+        public long price = 60;
+
+        public Brew() {
+        }
+
+        public Brew(String effect, int amplifier, int seconds, long price) {
+            this.effect = effect;
+            this.amplifier = amplifier;
+            this.seconds = seconds;
+            this.price = price;
+        }
+    }
+
+    /** An item the collector buys. {@code price} is per item; today's picks pay {@code collectorBonus} times more. */
+    public static final class Wanted {
+        public String item = "minecraft:wheat";
+        public long price = 2;
+
+        public Wanted() {
+        }
+
+        public Wanted(String item, long price) {
+            this.item = item;
+            this.price = price;
+        }
+    }
+
+    /** A bounty contract: kill {@code count} of {@code entity} (an id or #tag) for gold and EXP. */
+    public static final class BountyDef {
+        public String entity = "minecraft:zombie";
+        public int count = 15;
+        public long gold = 120;
+        public long xp = 200;
+        public int minLevel = 1;
+
+        public BountyDef() {
+        }
+
+        public BountyDef(String entity, int count, long gold, long xp, int minLevel) {
+            this.entity = entity;
+            this.count = count;
+            this.gold = gold;
+            this.xp = xp;
+            this.minLevel = minLevel;
+        }
+    }
+
+    public static final class NpcServiceRules {
+        // Blacksmith
+        /** Gold per point of durability restored. */
+        public double repairPerDurability = 0.4;
+        public long repairMinCost = 10;
+        // Enchanter
+        public long disenchantBaseCost = 150;
+        public long disenchantPerLevel = 60;
+        // Alchemist
+        public Brew[] brews = {
+                new Brew("minecraft:speed", 0, 480, 60),
+                new Brew("minecraft:haste", 0, 480, 80),
+                new Brew("minecraft:strength", 0, 180, 150),
+                new Brew("minecraft:regeneration", 0, 90, 120),
+                new Brew("minecraft:night_vision", 0, 480, 40),
+                new Brew("minecraft:fire_resistance", 0, 480, 90),
+                new Brew("minecraft:water_breathing", 0, 480, 60),
+                new Brew("minecraft:luck", 0, 600, 200)};
+        // Innkeeper
+        public long restCost = 40;
+        /** Minutes of Rested (bonus EXP from every source) a night at the inn gives. */
+        public int restedMinutes = 30;
+        public double restedXp = 0.10;
+        public long homeCost = 100;
+        // Priest
+        public long cleanseCost = 30;
+        public long blessingCost = 150;
+        public int blessingMinutes = 10;
+        public long liftCurseCost = 500;
+        /** Free prayer once a day: heals and gives a short blessing. */
+        public boolean dailyPrayer = true;
+        // Fortune teller
+        public long fortuneCost = 100;
+        public int fortuneMinutes = 60;
+        /** Bonus of the fortune's favoured activity; a bad omen gives nothing but the reading. */
+        public double fortuneXp = 0.20;
+        public double badOmenChance = 0.10;
+        // Banker
+        public long[] withdrawSteps = {100, 1000, 10000};
+        // Bounty master
+        public BountyDef[] bounties = {
+                new BountyDef("minecraft:zombie", 15, 120, 200, 1),
+                new BountyDef("minecraft:skeleton", 15, 140, 220, 1),
+                new BountyDef("minecraft:spider", 12, 130, 200, 1),
+                new BountyDef("minecraft:creeper", 8, 180, 260, 5),
+                new BountyDef("minecraft:witch", 5, 260, 380, 10),
+                new BountyDef("minecraft:enderman", 6, 300, 420, 15),
+                new BountyDef("minecraft:blaze", 8, 360, 500, 20),
+                new BountyDef("minecraft:wither_skeleton", 6, 520, 700, 30)};
+        /** Contracts on offer each day, picked from the list by the date so everyone sees the same board. */
+        public int bountiesPerDay = 3;
+        public int bountiesCompletedPerDay = 3;
+        // Collector
+        public Wanted[] wanted = {
+                new Wanted("minecraft:wheat", 2), new Wanted("minecraft:carrot", 2), new Wanted("minecraft:potato", 2),
+                new Wanted("minecraft:beetroot", 3), new Wanted("minecraft:sugar_cane", 2), new Wanted("minecraft:pumpkin", 6),
+                new Wanted("minecraft:melon_slice", 1), new Wanted("minecraft:cod", 5), new Wanted("minecraft:salmon", 6),
+                new Wanted("minecraft:leather", 6), new Wanted("minecraft:string", 3), new Wanted("minecraft:bone", 3),
+                new Wanted("minecraft:gunpowder", 6), new Wanted("minecraft:coal", 3), new Wanted("minecraft:raw_iron", 8),
+                new Wanted("minecraft:raw_copper", 3), new Wanted("minecraft:raw_gold", 14), new Wanted("minecraft:lapis_lazuli", 5),
+                new Wanted("minecraft:redstone", 3), new Wanted("minecraft:oak_log", 2), new Wanted("minecraft:honeycomb", 12)};
+        public int collectorPicksPerDay = 4;
+        public double collectorBonus = 1.5;
+        /** Items one player may sell the collector per day. */
+        public int collectorDailyItems = 256;
+        /** Trading EXP per gold earned at the collector. */
+        public double collectorXpPerGold = 0.5;
+        // Auction house
+        public double auctionFee = 0.05;
+        public int auctionMaxListings = 8;
+        public int auctionHours = 72;
+        public long auctionMaxPrice = 100_000_000;
+    }
 
     /**
      * Titles (ฉายา): who the automatic checker considers. Staff testing a server should not claim a
@@ -1398,7 +1526,63 @@ public final class SeasonRules {
         return this;
     }
 
+    private void sanitizeNpcServices() {
+        if (npcServices == null) npcServices = new NpcServiceRules();
+        NpcServiceRules n = npcServices;
+        n.repairPerDurability = clamp(n.repairPerDurability, 0, 1000, 0.4);
+        n.repairMinCost = Math.max(0, n.repairMinCost);
+        n.disenchantBaseCost = Math.max(0, n.disenchantBaseCost);
+        n.disenchantPerLevel = Math.max(0, n.disenchantPerLevel);
+        if (n.brews == null) n.brews = new Brew[0];
+        n.brews = java.util.Arrays.stream(n.brews).filter(java.util.Objects::nonNull).limit(32).toArray(Brew[]::new);
+        for (Brew brew : n.brews) {
+            if (brew.effect == null) brew.effect = "";
+            brew.amplifier = clamp(brew.amplifier, 0, 9);
+            brew.seconds = clamp(brew.seconds, 1, 86400);
+            brew.price = Math.max(0, brew.price);
+        }
+        n.restCost = Math.max(0, n.restCost);
+        n.restedMinutes = clamp(n.restedMinutes, 0, 1440);
+        n.restedXp = clamp(n.restedXp, 0, 10, 0.10);
+        n.homeCost = Math.max(0, n.homeCost);
+        n.cleanseCost = Math.max(0, n.cleanseCost);
+        n.blessingCost = Math.max(0, n.blessingCost);
+        n.blessingMinutes = clamp(n.blessingMinutes, 1, 1440);
+        n.liftCurseCost = Math.max(0, n.liftCurseCost);
+        n.fortuneCost = Math.max(0, n.fortuneCost);
+        n.fortuneMinutes = clamp(n.fortuneMinutes, 1, 1440);
+        n.fortuneXp = clamp(n.fortuneXp, 0, 10, 0.20);
+        n.badOmenChance = clamp(n.badOmenChance, 0, 1, 0.10);
+        if (n.withdrawSteps == null || n.withdrawSteps.length == 0) n.withdrawSteps = new long[]{100, 1000, 10000};
+        if (n.bounties == null) n.bounties = new BountyDef[0];
+        n.bounties = java.util.Arrays.stream(n.bounties).filter(java.util.Objects::nonNull).limit(128).toArray(BountyDef[]::new);
+        for (BountyDef bounty : n.bounties) {
+            if (bounty.entity == null) bounty.entity = "";
+            bounty.count = clamp(bounty.count, 1, 10000);
+            bounty.gold = Math.max(0, bounty.gold);
+            bounty.xp = Math.max(0, bounty.xp);
+            bounty.minLevel = clamp(bounty.minLevel, 0, 10000);
+        }
+        n.bountiesPerDay = clamp(n.bountiesPerDay, 0, 20);
+        n.bountiesCompletedPerDay = clamp(n.bountiesCompletedPerDay, 0, 100);
+        if (n.wanted == null) n.wanted = new Wanted[0];
+        n.wanted = java.util.Arrays.stream(n.wanted).filter(java.util.Objects::nonNull).limit(256).toArray(Wanted[]::new);
+        for (Wanted wanted : n.wanted) {
+            if (wanted.item == null) wanted.item = "";
+            wanted.price = Math.max(0, wanted.price);
+        }
+        n.collectorPicksPerDay = clamp(n.collectorPicksPerDay, 0, 64);
+        n.collectorBonus = clamp(n.collectorBonus, 1, 100, 1.5);
+        n.collectorDailyItems = clamp(n.collectorDailyItems, 0, 1_000_000);
+        n.collectorXpPerGold = clamp(n.collectorXpPerGold, 0, 1000, 0.5);
+        n.auctionFee = clamp(n.auctionFee, 0, 0.9, 0.05);
+        n.auctionMaxListings = clamp(n.auctionMaxListings, 0, 100);
+        n.auctionHours = clamp(n.auctionHours, 1, 24 * 60);
+        n.auctionMaxPrice = Math.max(1, n.auctionMaxPrice);
+    }
+
     private void sanitizeNemesis() {
+        sanitizeNpcServices();
         if (nemesis == null) nemesis = new NemesisRules();
         if (titles == null) titles = new TitleRules();
         NemesisRules n = nemesis;

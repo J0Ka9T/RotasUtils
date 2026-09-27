@@ -77,6 +77,10 @@ public final class NpcService {
             net.schwarz.rotasutils.server.horse.HorseService.open(player, npc.id(), "STABLE", null);
         } else if (npc.role() == NpcDef.Role.CRAFTER && npc.interactions() == null) {
             CrafterService.open(player, data, npc);
+        } else if (NpcHub.serves(npc.role()) && npc.interactions() == null) {
+            NpcHub.open(player, data, npc);
+        } else if (npc.role() == NpcDef.Role.AUCTIONEER && npc.interactions() == null) {
+            AuctionService.open(player, data, npc, "");
         } else {
             openDialogue(player, data, npc);
         }
@@ -224,6 +228,9 @@ public final class NpcService {
             case MERCHANT -> openShop(player, data, npc);
             case STABLE -> net.schwarz.rotasutils.server.horse.HorseService.open(player, npc.id(), "STABLE", null);
             case CRAFTER -> CrafterService.open(player, data, npc);
+            case AUCTIONEER -> AuctionService.open(player, data, npc, "");
+            case BLACKSMITH, ENCHANTER, ALCHEMIST, INNKEEPER, PRIEST, FORTUNE_TELLER, BANKER, BOUNTY_MASTER, GUARD,
+                 TRAINER, CARTOGRAPHER, COLLECTOR -> NpcHub.open(player, data, npc);
             case JOB_MASTER -> {
                 boolean offered = false;
                 for (net.schwarz.rotasutils.job.JobSlot slot : net.schwarz.rotasutils.job.JobSlot.values()) {

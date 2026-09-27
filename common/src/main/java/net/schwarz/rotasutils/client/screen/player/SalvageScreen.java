@@ -105,8 +105,8 @@ public class SalvageScreen extends RotasScreen {
         for (int index = scroll; index < rows.size() && index < scroll + ROWS; index++) {
             CompoundTag row = rows.getCompound(index);
             ItemStack stack = ItemStack.of(row.getCompound("item"));
-            Ui.rowCard(graphics, guiLeft + 16, rowY, guiWidth - 32, 28, index == selected,
-                    Ui.inside(mouseX, mouseY, guiLeft + 16, rowY, guiWidth - 32, 28));
+            Ui.rowCard(graphics, guiLeft + 16, rowY, guiWidth - 32, 28,
+                    Ui.inside(mouseX, mouseY, guiLeft + 16, rowY, guiWidth - 32, 28), index == selected);
             Ui.icon(graphics, stack, guiLeft + 22, rowY + 6);
             Ui.label(graphics, Ui.truncate(stack.getHoverName().getString(), 190), guiLeft + 44, rowY + 10,
                     index == selected ? Ui.INK_BAD : Ui.INK);

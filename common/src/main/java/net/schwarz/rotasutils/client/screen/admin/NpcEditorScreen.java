@@ -209,12 +209,17 @@ public class NpcEditorScreen extends RotasScreen {
         int y = mainY + 10;
         labels.add(new Label("When a player right-clicks this NPC, it...", x, y, Ui.TEXT_BRIGHT));
         y += 16;
-        int cardW = (w - Ui.GAP) / 2;
+        // Twenty roles: a compact four-column grid, with the picked role's description underneath.
+        int columns = 4;
+        int cardW = (w - Ui.GAP * (columns - 1)) / columns;
+        int cardH = 22;
         NpcDef.Role[] roles = NpcDef.Role.values();
         for (int i = 0; i < roles.length; i++) {
-            cards.add(new Card(roles[i], x + (i % 2) * (cardW + Ui.GAP), y + (i / 2) * (CARD_H + Ui.GAP), cardW, CARD_H));
+            cards.add(new Card(roles[i], x + (i % columns) * (cardW + Ui.GAP), y + (i / columns) * (cardH + 2), cardW, cardH));
         }
-        y += ((roles.length + 1) / 2) * (CARD_H + Ui.GAP) + 10;
+        y += ((roles.length + columns - 1) / columns) * (cardH + 2) + 4;
+        labels.add(new Label(roleTitle(draft.role()) + ": " + roleHelp(draft.role()), x, y, Ui.GOOD));
+        y += 16;
         int bottom = mainY + mainH - 10;
 
         switch (draft.role()) {
@@ -733,11 +738,12 @@ public class NpcEditorScreen extends RotasScreen {
         if (selected) {
             graphics.fill(card.x() + 3, card.y() + 5, card.x() + 5, card.y() + card.h() - 5, RotasTheme.ACCENT_STRONG);
         }
-        graphics.renderFakeItem(roleIcon(card.role()), card.x() + 10, card.y() + (card.h() - 16) / 2);
-        int textW = card.w() - 40;
-        Ui.label(graphics, Ui.truncate(roleTitle(card.role()), textW), card.x() + 32, card.y() + 10,
-                selected ? RotasTheme.TEXT : Ui.TEXT_BRIGHT);
-        Ui.label(graphics, Ui.truncate(roleHelp(card.role()), textW), card.x() + 32, card.y() + 24, Ui.TEXT_MUTED);
+        graphics.renderFakeItem(roleIcon(card.role()), card.x() + 7, card.y() + (card.h() - 16) / 2);
+        int textW = card.w() - 32;
+        boolean compact = card.h() < 40;
+        Ui.label(graphics, Ui.truncate(roleTitle(card.role()), textW), card.x() + 27,
+                compact ? card.y() + (card.h() - 8) / 2 : card.y() + 10, selected ? RotasTheme.TEXT : Ui.TEXT_BRIGHT);
+        if (!compact) Ui.label(graphics, Ui.truncate(roleHelp(card.role()), textW), card.x() + 27, card.y() + 24, Ui.TEXT_MUTED);
     }
 
     private static String roleTitle(NpcDef.Role role) {
@@ -749,6 +755,19 @@ public class NpcEditorScreen extends RotasScreen {
             case JOB_MASTER -> "Assigns jobs";
             case STABLE -> "Runs the stable";
             case CRAFTER -> "Hidden artisan";
+            case BLACKSMITH -> "Blacksmith";
+            case ENCHANTER -> "Enchanter";
+            case ALCHEMIST -> "Alchemist";
+            case INNKEEPER -> "Innkeeper";
+            case PRIEST -> "Priest";
+            case FORTUNE_TELLER -> "Fortune teller";
+            case BANKER -> "Banker";
+            case BOUNTY_MASTER -> "Bounty master";
+            case GUARD -> "Guard";
+            case TRAINER -> "Trainer";
+            case CARTOGRAPHER -> "Cartographer";
+            case COLLECTOR -> "Collector";
+            case AUCTIONEER -> "Auctioneer";
         };
     }
 
@@ -761,6 +780,19 @@ public class NpcEditorScreen extends RotasScreen {
             case JOB_MASTER -> "JOBS";
             case STABLE -> "STABLE";
             case CRAFTER -> "ARTISAN";
+            case BLACKSMITH -> "SMITH";
+            case ENCHANTER -> "ENCHANT";
+            case ALCHEMIST -> "BREWS";
+            case INNKEEPER -> "INN";
+            case PRIEST -> "PRIEST";
+            case FORTUNE_TELLER -> "FORTUNE";
+            case BANKER -> "BANK";
+            case BOUNTY_MASTER -> "BOUNTY";
+            case GUARD -> "GUARD";
+            case TRAINER -> "TRAINER";
+            case CARTOGRAPHER -> "MAPS";
+            case COLLECTOR -> "BUYER";
+            case AUCTIONEER -> "AUCTION";
         };
     }
 
@@ -773,6 +805,19 @@ public class NpcEditorScreen extends RotasScreen {
             case JOB_MASTER -> "Grants a configured main job and sub-job.";
             case STABLE -> "Horse draw, stable, horse market and horse sales.";
             case CRAFTER -> "Makes a sub-role's crafts for a fee. No marker.";
+            case BLACKSMITH -> "Repairs gear; opens refine, salvage, sockets.";
+            case ENCHANTER -> "Disenchants to books; runes and sockets.";
+            case ALCHEMIST -> "Sells potion effects. Brews: season rules.";
+            case INNKEEPER -> "Rest (heal + Rested EXP) and set respawn.";
+            case PRIEST -> "Daily prayer, cleanse, blessing, lift curses.";
+            case FORTUNE_TELLER -> "Fortune: EXP boon or bad omen + a rumour.";
+            case BANKER -> "Deposits coins, withdraws gold.";
+            case BOUNTY_MASTER -> "Daily kill contracts and nemesis posters.";
+            case GUARD -> "Area danger, nearest waystone, events.";
+            case TRAINER -> "Stats, skill tree, job and respec.";
+            case CARTOGRAPHER -> "Waystone travel, unfound waystones, bestiary.";
+            case COLLECTOR -> "Buys materials; daily picks pay more.";
+            case AUCTIONEER -> "Player auction house for items.";
         };
     }
 
@@ -785,6 +830,19 @@ public class NpcEditorScreen extends RotasScreen {
             case JOB_MASTER -> new ItemStack(Items.EXPERIENCE_BOTTLE);
             case STABLE -> new ItemStack(Items.SADDLE);
             case CRAFTER -> new ItemStack(Items.SMITHING_TABLE);
+            case BLACKSMITH -> new ItemStack(Items.ANVIL);
+            case ENCHANTER -> new ItemStack(Items.ENCHANTING_TABLE);
+            case ALCHEMIST -> new ItemStack(Items.BREWING_STAND);
+            case INNKEEPER -> new ItemStack(Items.RED_BED);
+            case PRIEST -> new ItemStack(Items.TOTEM_OF_UNDYING);
+            case FORTUNE_TELLER -> new ItemStack(Items.ENDER_EYE);
+            case BANKER -> new ItemStack(Items.GOLD_INGOT);
+            case BOUNTY_MASTER -> new ItemStack(Items.GOLDEN_SWORD);
+            case GUARD -> new ItemStack(Items.SHIELD);
+            case TRAINER -> new ItemStack(Items.IRON_CHESTPLATE);
+            case CARTOGRAPHER -> new ItemStack(Items.COMPASS);
+            case COLLECTOR -> new ItemStack(Items.CHEST);
+            case AUCTIONEER -> new ItemStack(Items.BELL);
         };
     }
 

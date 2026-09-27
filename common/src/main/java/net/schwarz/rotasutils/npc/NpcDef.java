@@ -34,7 +34,20 @@ public final class NpcDef {
         JOB_MASTER("Assigns configured jobs"),
         STABLE("Runs the stable"),
         /** A hidden artisan: makes its job's crafts from the player's materials for a steep fee. */
-        CRAFTER("Crafts for a fee");
+        CRAFTER("Crafts for a fee"),
+        BLACKSMITH("Blacksmith: repair, refine, salvage"),
+        ENCHANTER("Enchanter: disenchant, runes, sockets"),
+        ALCHEMIST("Alchemist: sells brews"),
+        INNKEEPER("Innkeeper: rest and respawn"),
+        PRIEST("Priest: cleanse, bless, lift curses"),
+        FORTUNE_TELLER("Fortune teller: daily fortune"),
+        BANKER("Banker: deposit and withdraw gold"),
+        BOUNTY_MASTER("Bounty master: hunting contracts"),
+        GUARD("Guard: area report and directions"),
+        TRAINER("Trainer: stats, skills, job"),
+        CARTOGRAPHER("Cartographer: waystones and maps"),
+        COLLECTOR("Collector: buys materials"),
+        AUCTIONEER("Auctioneer: player auction house");
 
         private final String display;
 

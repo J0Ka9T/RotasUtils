@@ -40,7 +40,8 @@ public final class SeasonSettingsCatalog {
             new Section("seasonTrack", "เส้นทางซีซั่น", "ขั้นรางวัลตามแต้มแรงค์ทั้งซีซั่น"),
             new Section("horse", "ม้า", "สุ่มม้า คอก ขาย และตลาด"),
             new Section("titles", "ฉายา", "ใครได้ฉายาอัตโนมัติ (แอดมิน/ครีเอทีฟ) และการถอดฉายา"),
-            new Section(OTHER, "อื่น ๆ", "ค่าที่ยังไม่มีหมวด"));
+            new Section("npcServices", "NPC บริการ", "ช่างตีเหล็ก นักปรุงยา โรงเตี๊ยม นักบวช หมอดู ธนาคาร ค่าหัว นักสะสม และโรงประมูล"),
+            new Section(OTHER,"อื่น ๆ", "ค่าที่ยังไม่มีหมวด"));
 
     /** Internal bookkeeping nobody should edit by hand. */
     private static final Set<String> HIDDEN = Set.of();
@@ -111,6 +112,14 @@ public final class SeasonSettingsCatalog {
         if (isIndex(key) && path.size() > 1) {
             key = parent;
             parent = path.size() > 2 ? path.get(path.size() - 3) : "";
+        }
+        if (!path.isEmpty() && path.get(0).equals("npcServices")) {
+            switch (key) {
+                case "effect" -> { return net.schwarz.rotasutils.data.ParamSpec.ParamKind.EFFECT; }
+                case "item" -> { return net.schwarz.rotasutils.data.ParamSpec.ParamKind.ITEM; }
+                case "entity" -> { return net.schwarz.rotasutils.data.ParamSpec.ParamKind.ENTITY; }
+                default -> { }
+            }
         }
         return switch (key) {
             case "trophyItem", "trophyRangedItem", "gatherFishFallback", "weaponOre", "armorOre",
@@ -318,6 +327,37 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRarityBonus", "โบนัสตามระดับกำเนิด");
         map.put("horse.marketFee", "ค่าธรรมเนียมตลาด (0-0.9)");
         map.put("horse.marketMaxPrice", "ราคาขายสูงสุดในตลาด");
+        map.put("npcServices.repairPerDurability", "ช่างตีเหล็ก: ค่าซ่อมต่อความทนทาน");
+        map.put("npcServices.repairMinCost", "ช่างตีเหล็ก: ค่าซ่อมขั้นต่ำ");
+        map.put("npcServices.disenchantBaseCost", "นักเวท: ค่าถอดมนตร์");
+        map.put("npcServices.disenchantPerLevel", "นักเวท: ค่าถอดเพิ่มต่อเลเวล");
+        map.put("npcServices.brews", "นักปรุงยา: ยาที่ขาย");
+        map.put("npcServices.restCost", "โรงเตี๊ยม: ค่าพัก");
+        map.put("npcServices.restedMinutes", "โรงเตี๊ยม: พักผ่อนกี่นาที");
+        map.put("npcServices.restedXp", "โรงเตี๊ยม: EXP พักผ่อน +");
+        map.put("npcServices.homeCost", "โรงเตี๊ยม: ค่าตั้งจุดเกิด");
+        map.put("npcServices.cleanseCost", "นักบวช: ค่าชำระล้าง");
+        map.put("npcServices.blessingCost", "นักบวช: ค่าขอพร");
+        map.put("npcServices.blessingMinutes", "นักบวช: พรกี่นาที");
+        map.put("npcServices.liftCurseCost", "นักบวช: ค่าถอนคำสาป");
+        map.put("npcServices.dailyPrayer", "นักบวช: สวดมนต์ฟรีรายวัน");
+        map.put("npcServices.fortuneCost", "หมอดู: ค่าดูดวง");
+        map.put("npcServices.fortuneMinutes", "หมอดู: ดวงกี่นาที");
+        map.put("npcServices.fortuneXp", "หมอดู: EXP ดวงดี +");
+        map.put("npcServices.badOmenChance", "หมอดู: โอกาสลางร้าย");
+        map.put("npcServices.withdrawSteps", "ธนาคาร: ปุ่มถอน");
+        map.put("npcServices.bounties", "ค่าหัว: รายการงาน");
+        map.put("npcServices.bountiesPerDay", "ค่าหัว: งานต่อวัน");
+        map.put("npcServices.bountiesCompletedPerDay", "ค่าหัว: ส่งได้ต่อวัน");
+        map.put("npcServices.wanted", "นักสะสม: ของที่รับซื้อ");
+        map.put("npcServices.collectorPicksPerDay", "นักสะสม: ของพิเศษต่อวัน");
+        map.put("npcServices.collectorBonus", "นักสะสม: ตัวคูณของพิเศษ");
+        map.put("npcServices.collectorDailyItems", "นักสะสม: ขายได้ต่อวัน");
+        map.put("npcServices.collectorXpPerGold", "นักสะสม: EXP ต่อเงิน");
+        map.put("npcServices.auctionFee", "โรงประมูล: ค่าธรรมเนียม");
+        map.put("npcServices.auctionMaxListings", "โรงประมูล: ลงขายสูงสุด");
+        map.put("npcServices.auctionHours", "โรงประมูล: ชั่วโมงลงขาย");
+        map.put("npcServices.auctionMaxPrice", "โรงประมูล: ราคาสูงสุด");
         map.put("horse.breedEnabled", "เปิดการผสมพันธุ์ม้า");
         map.put("horse.breedBaseCost", "ค่าผสมพันธุ์พื้นฐาน");
         map.put("horse.breedCostPerLineage", "ค่าผสมเพิ่มต่อรุ่นสายเลือด");
@@ -521,6 +561,14 @@ public final class SeasonSettingsCatalog {
         map.put("waveSeconds", "คลื่นทุกกี่วินาที");
         map.put("maxAlive", "มอนคลื่นสูงสุดต่อผู้เล่น");
         map.put("goal", "เป้าหมาย");
+        map.put("effect", "เอฟเฟกต์");
+        map.put("amplifier", "ระดับ");
+        map.put("seconds", "วินาที");
+        map.put("price", "ราคา");
+        map.put("item", "ไอเทม");
+        map.put("entity", "มอน");
+        map.put("count", "จำนวน");
+        map.put("minLevel", "เลเวลขั้นต่ำ");
         map.put("goalCount", "จำนวนเป้าหมาย");
         map.put("minContribution", "ส่วนร่วมขั้นต่ำ");
         map.put("type", "ประเภท");
@@ -770,6 +818,45 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRareCoat", "โบนัสราคาสีขนหายาก");
         map.put("horse.marketFee", "ตลาดหักกี่ส่วน 0.05 = 5%, 0 = ผู้ขายได้เต็ม");
         map.put("horse.marketMaxPrice", "ตั้งราคาขายในตลาดได้สูงสุด");
+        map.put("npcServices.repairPerDurability", "ช่างตีเหล็ก: เงินต่อความทนทาน 1 หน่วยที่ซ่อม");
+        map.put("npcServices.repairMinCost", "ช่างตีเหล็ก: ค่าซ่อมขั้นต่ำต่อชิ้น");
+        map.put("npcServices.disenchantBaseCost", "นักเวท: ค่าถอดมนตร์ขั้นต่ำ (ได้หนังสือมนตร์คืน)");
+        map.put("npcServices.disenchantPerLevel", "นักเวท: ค่าถอดมนตร์เพิ่มต่อเลเวลมนตร์");
+        map.put("npcServices.brews.*.effect", "เอฟเฟกต์ของยาที่นักปรุงยาขาย");
+        map.put("npcServices.brews.*.amplifier", "ระดับยา 0 = I, 1 = II");
+        map.put("npcServices.brews.*.seconds", "ยาอยู่ได้กี่วินาที");
+        map.put("npcServices.brews.*.price", "ราคายาต่อขวด");
+        map.put("npcServices.restCost", "โรงเตี๊ยม: ค่าพัก (ฟื้นเลือด อิ่ม ล้างผลร้าย ได้สถานะพักผ่อน)");
+        map.put("npcServices.restedMinutes", "โรงเตี๊ยม: สถานะพักผ่อนอยู่กี่นาที");
+        map.put("npcServices.restedXp", "โรงเตี๊ยม: 0.10 = พักผ่อนได้ EXP ทุกอย่างเพิ่ม 10%");
+        map.put("npcServices.homeCost", "โรงเตี๊ยม: ค่าตั้งจุดเกิดใหม่ที่โรงเตี๊ยม");
+        map.put("npcServices.cleanseCost", "นักบวช: ค่าชำระล้าง (ล้างผลร้าย ดับไฟ ฟื้นเลือด)");
+        map.put("npcServices.blessingCost", "นักบวช: ค่าขอพร (ฟื้นฟู + ดูดซับ + โชค)");
+        map.put("npcServices.blessingMinutes", "นักบวช: พรอยู่กี่นาที");
+        map.put("npcServices.liftCurseCost", "นักบวช: ค่าถอนคำสาปจากไอเทมในมือ");
+        map.put("npcServices.dailyPrayer", "นักบวช: สวดมนต์ฟรีวันละครั้ง");
+        map.put("npcServices.fortuneCost", "หมอดู: ค่าดูดวง");
+        map.put("npcServices.fortuneMinutes", "หมอดู: ดวงอยู่กี่นาที");
+        map.put("npcServices.fortuneXp", "หมอดู: EXP ที่เพิ่มในกิจกรรมที่ดวงชี้ 0.20 = 20%");
+        map.put("npcServices.badOmenChance", "หมอดู: โอกาสได้ลางร้าย (ไม่มีโบนัส)");
+        map.put("npcServices.withdrawSteps", "ธนาคาร: ปุ่มถอนเหรียญทอง (จำนวนต่อปุ่ม)");
+        map.put("npcServices.bounties.*.entity", "มอนที่ต้องล่า (id หรือ #tag)");
+        map.put("npcServices.bounties.*.count", "จำนวนที่ต้องล่า");
+        map.put("npcServices.bounties.*.gold", "รางวัลเงิน");
+        map.put("npcServices.bounties.*.xp", "รางวัล EXP");
+        map.put("npcServices.bounties.*.minLevel", "เลเวลขั้นต่ำที่รับงานได้");
+        map.put("npcServices.bountiesPerDay", "ค่าหัว: จำนวนงานบนกระดานแต่ละวัน (สุ่มตามวันที่ ทุกคนเห็นเหมือนกัน)");
+        map.put("npcServices.bountiesCompletedPerDay", "ค่าหัว: ส่งงานได้กี่งานต่อวัน");
+        map.put("npcServices.wanted.*.item", "ไอเทมที่นักสะสมรับซื้อ");
+        map.put("npcServices.wanted.*.price", "ราคาต่อชิ้น");
+        map.put("npcServices.collectorPicksPerDay", "นักสะสม: ของที่ต้องการพิเศษต่อวัน");
+        map.put("npcServices.collectorBonus", "นักสะสม: ตัวคูณราคาของที่ต้องการพิเศษ");
+        map.put("npcServices.collectorDailyItems", "นักสะสม: ขายได้กี่ชิ้นต่อวัน");
+        map.put("npcServices.collectorXpPerGold", "นักสะสม: EXP ค้าขายต่อเงิน 1 เหรียญ");
+        map.put("npcServices.auctionFee", "โรงประมูล: ค่าธรรมเนียมเมื่อขายได้ 0.05 = 5%");
+        map.put("npcServices.auctionMaxListings", "โรงประมูล: ลงขายได้สูงสุดกี่ชิ้นต่อคน");
+        map.put("npcServices.auctionHours", "โรงประมูล: ลงขายได้นานกี่ชั่วโมง");
+        map.put("npcServices.auctionMaxPrice", "โรงประมูล: ราคาสูงสุด");
         map.put("horse.breedEnabled", "ปิด = ผสมพันธุ์ม้าที่ NPC คอกม้าไม่ได้");
         map.put("horse.breedBaseCost", "ค่าผสมพันธุ์ขั้นต่ำต่อครั้ง");
         map.put("horse.breedCostPerLineage", "ค่าผสมเพิ่มต่อรุ่นของพ่อหรือแม่ที่รุ่นสูงกว่า");

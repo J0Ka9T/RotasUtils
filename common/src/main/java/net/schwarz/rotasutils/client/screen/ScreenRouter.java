@@ -40,6 +40,8 @@ public final class ScreenRouter {
             case "shop" -> new net.schwarz.rotasutils.client.screen.player.ShopScreen(payload);
             case "crafter" -> new net.schwarz.rotasutils.client.screen.player.CrafterScreen(payload);
             case "stable" -> new net.schwarz.rotasutils.client.screen.player.StableScreen(payload);
+            case "npc_hub" -> new net.schwarz.rotasutils.client.screen.player.NpcHubScreen(payload);
+            case "auction" -> new net.schwarz.rotasutils.client.screen.player.AuctionScreen(payload);
             case "main_menu" -> new MainMenuScreen(MainMenuScreen.Tab.OVERVIEW);
             case "journal" -> new MainMenuScreen(MainMenuScreen.Tab.JOURNAL);
             case "skill_tree" -> new SkillTreeScreen(null);
