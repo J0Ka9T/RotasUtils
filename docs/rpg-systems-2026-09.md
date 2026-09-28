@@ -1,4 +1,4 @@
-# Systems added 2026-09 (breeding, service NPCs, titles, level/XP, incursions, admin tools)
+# Systems added 2026-09 (breeding, service NPCs, titles, level/XP, admin tools)
 
 Every number below lives in `season.json` and shows in **Admin > Season rules** with a Thai name and hint.
 From a console or RCON use `/rotas season find|get|set|reset|changed` (paths tab-complete).
@@ -54,13 +54,6 @@ From a console or RCON use `/rotas season find|get|set|reset|changed` (paths tab
   `varietyWindowMinutes` adds `varietyBonus` per extra kind, up to `varietyMax`.
 - Milestones every `every` levels pay gold and stat points; `bigLevels` are announced and pay more.
 - Timed buffs (Rested, fortunes) and variety stack with horse traits and events on every EXP source.
-
-## Sky incursions (`incursions.*`)
-
-Opening a sky with an Eldritch Sigil starts an incursion around the admin: omen → `waves` themed waves → a
-champion (per sky palette in `themes`; the four skies bring the Tetrarch). Victory shatters the sky and pays
-everyone who fought (top hunter × `topBonus`); a time-out, closing the sky or a Sundering Sigil ends it with a
-partial reward. Leftover monsters are removed.
 
 ## Admin tools
 
