@@ -67,6 +67,7 @@ public final class NpcService {
                     .withStyle(ChatFormatting.GRAY));
             return npc.captureInteraction();
         }
+        NpcSocial.onTalk(player, data, npc);
         // The role decides what a click opens: a board keeper and a shopkeeper go straight to their
         // board or shop, everyone else starts a conversation.
         if (npc.role() == NpcDef.Role.BOARD_KEEPER && !npc.boardId().isBlank()) {

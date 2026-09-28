@@ -659,6 +659,8 @@ public final class HorseService {
                     ? net.minecraft.core.particles.ParticleTypes.END_ROD : net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER,
                     22, 0.9, 2.0);
             if (horse.traits.contains(HorseTrait.STARBORN)) {
+                net.schwarz.rotasutils.server.NpcSocial.rumor("คอกของ " + owner.getGameProfile().getName()
+                        + " มีลูกม้าบุตรแห่งดาราเกิดใหม่ ชื่อ " + displayName(horse));
                 server.getPlayerList().broadcastSystemMessage(ThaiText.c("rotasutils.msg.horse.starborn_broadcast",
                         owner.getGameProfile().getName(), displayName(horse)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
             }

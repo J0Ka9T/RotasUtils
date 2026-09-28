@@ -412,6 +412,9 @@ public final class TitleService {
             player.level().playSound(null, player.blockPosition(), rarity >= 3
                     ? net.minecraft.sounds.SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,
                     net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.1f);
+            if (title.unique() || rarity >= 3) {
+                NpcSocial.rumor("ว่ากันว่า " + player.getGameProfile().getName() + " ได้รับฉายา \"" + title.name() + "\"");
+            }
             if (title.unique()) {
                 player.server.getPlayerList().broadcastSystemMessage(ThaiText.c("rotasutils.msg.title.unique_claimed",
                         player.getGameProfile().getName(), title.name()), false);

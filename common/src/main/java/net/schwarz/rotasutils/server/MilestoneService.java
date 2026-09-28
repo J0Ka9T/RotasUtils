@@ -45,6 +45,7 @@ public final class MilestoneService {
                     .withStyle(ChatFormatting.WHITE)));
         }
         if (big) {
+            NpcSocial.rumor(player.getGameProfile().getName() + " เพิ่งก้าวถึงเลเวล " + level + " ได้ยินว่าแกร่งขึ้นมาก");
             player.server.getPlayerList().broadcastSystemMessage(Component.literal("★ " + player.getGameProfile().getName()
                     + " ก้าวถึงเลเวล " + level + " แล้ว!").withStyle(ChatFormatting.GOLD), false);
             player.level().playSound(null, player.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1f, 1f);

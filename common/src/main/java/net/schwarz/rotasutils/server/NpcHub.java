@@ -60,7 +60,7 @@ public final class NpcHub {
             tag.putString("id", id);
             tag.putString("title", title);
             tag.putString("desc", desc == null ? "" : desc);
-            tag.putLong("cost", cost);
+            tag.putLong("cost", discounted(cost));
             tag.put("icon", icon.save(new CompoundTag()));
             tag.putString("blocked", blocked == null ? "" : blocked);
             tag.putString("section", section);
@@ -101,12 +101,31 @@ public final class NpcHub {
         return data.progress(player.getUUID()).rpg().currency(GoldCoinService.CURRENCY);
     }
 
+    /**
+     * The friendship discount of the NPC being served. Set at the start of open/perform on the server thread;
+     * every price shown and charged in between goes through {@link #discounted}.
+     */
+    private static double discount;
+    /** Whether the service being performed charged anything: paid services earn friendship. */
+    private static boolean charged;
+
+    private static void serving(RotasData data, ServerPlayer player, NpcDef npc) {
+        discount = NpcSocial.level(data, data.progress(player.getUUID()), npc) * SeasonService.rules(data).npcSocial.discountPerLevel;
+        charged = false;
+    }
+
+    private static long discounted(long cost) {
+        return cost <= 0 ? cost : Math.max(1, Math.round(cost * (1 - discount)));
+    }
+
     private static String afford(RotasData data, ServerPlayer player, long cost) {
-        return balance(data, player) >= cost ? null : "เงินไม่พอ";
+        return balance(data, player) >= discounted(cost) ? null : "เงินไม่พอ";
     }
 
     private static boolean pay(RotasData data, ServerPlayer player, long cost) {
+        cost = discounted(cost);
         if (cost <= 0) return true;
+        charged = true;
         PlayerProgress progress = data.progress(player.getUUID());
         if (progress.rpg().currency(GoldCoinService.CURRENCY) < cost) return false;
         progress.rpg().currency(GoldCoinService.CURRENCY, -cost);
@@ -117,6 +136,7 @@ public final class NpcHub {
     // Screen ---------------------------------------------------------------------------------------
 
     public static void open(ServerPlayer player, RotasData data, NpcDef npc) {
+        serving(data, player, npc);
         Entries entries = new Entries();
         switch (npc.role()) {
             case BLACKSMITH -> blacksmith(player, data, entries);
@@ -148,6 +168,7 @@ public final class NpcHub {
         String variety = ExplorationService.describe(data, data.progress(player.getUUID()));
         if (variety != null) buffs.add(StringTag.valueOf(variety));
         payload.put("buffs", buffs);
+        payload.putString("friendship", NpcSocial.describe(data, data.progress(player.getUUID()), npc));
         payload.put("entries", entries.list);
         RotasNetwork.openScreen(player, "npc_hub", payload);
     }
@@ -262,6 +283,18 @@ public final class NpcHub {
                 rules.restCost, new ItemStack(Items.RED_BED), afford(data, player, rules.restCost));
         entries.service("home", "ตั้งจุดเกิดใหม่ที่นี่", "ตายแล้วจะฟื้นที่โรงเตี๊ยมนี้", rules.homeCost,
                 new ItemStack(Items.RESPAWN_ANCHOR), afford(data, player, rules.homeCost));
+        rumors(data, entries);
+    }
+
+    /** What the server has been talking about lately, as the innkeeper, guard and fortune teller hear it. */
+    private static void rumors(RotasData data, Entries entries) {
+        if (!NpcSocial.rumorsOn(data)) return;
+        List<String> heard = NpcSocial.recentRumors(NpcSocial.rumorsShown(data));
+        entries.section = "ข่าวลือ";
+        if (heard.isEmpty()) {
+            entries.info("ช่วงนี้เงียบ ๆ", "ยังไม่มีเรื่องอะไรให้เล่า", new ItemStack(Items.PAPER));
+        }
+        for (String rumor : heard) entries.info(rumor, "", new ItemStack(Items.PAPER));
     }
 
     private static void rest(ServerPlayer player, RotasData data) {
@@ -312,6 +345,7 @@ public final class NpcHub {
         entries.service("fortune", "ดูดวง", "ดวงดีเพิ่ม EXP +" + Math.round(rules.fortuneXp * 100) + "% ในกิจกรรมหนึ่ง "
                         + rules.fortuneMinutes + " นาที และกระซิบข่าวลือ (อาจเจอลางร้าย)", rules.fortuneCost,
                 new ItemStack(Items.ENDER_EYE), afford(data, player, rules.fortuneCost));
+        rumors(data, entries);
     }
 
     private static final BuffService.Buff[] FORTUNES = {BuffService.Buff.FORTUNE_WARRIOR, BuffService.Buff.FORTUNE_ARTISAN,
@@ -428,6 +462,13 @@ public final class NpcHub {
     // Guard ----------------------------------------------------------------------------------------
 
     private static void guard(ServerPlayer player, RotasData data, Entries entries) {
+        var social = SeasonService.rules(data).npcSocial;
+        if (social.companions) {
+            entries.section = "จ้างผู้คุ้มกัน";
+            entries.service("hire_companion", "ผู้คุ้มกัน " + social.companionMinutes + " นาที",
+                    "เดินตามและสู้ให้ท่าน แข็งแกร่งขึ้นตามเลเวลท่าน", social.companionCost, new ItemStack(Items.IRON_SWORD),
+                    CompanionService.hasCompanion(player) ? "มีผู้คุ้มกันอยู่แล้ว" : afford(data, player, social.companionCost));
+        }
         entries.section = "รายงานพื้นที่";
         var level = player.serverLevel();
         var region = ZoneService.region(data, level, player.getX(), player.getY(), player.getZ());
@@ -462,6 +503,7 @@ public final class NpcHub {
         }
         entries.info(nearby > 0 ? "มีรายงานศัตรูคู่แค้น " + nearby + " ตัว" : "ไม่มีรายงานศัตรูคู่แค้น",
                 nearby > 0 ? "ถามนักล่าค่าหัวเพื่อดูประกาศจับ" : "ขอให้สงบแบบนี้ต่อไป", new ItemStack(Items.SPYGLASS));
+        rumors(data, entries);
     }
 
     static String direction(ServerPlayer player, BlockPos target) {
@@ -572,8 +614,10 @@ public final class NpcHub {
 
     /** Runs one service entry, then shows the refreshed screen. */
     public static void perform(ServerPlayer player, RotasData data, NpcDef npc, String service) {
+        serving(data, player, npc);
         String result = run(player, data, npc, service == null ? "" : service);
         boolean ok = result == null || result.startsWith("+");
+        if (ok && charged) NpcSocial.onService(player, data, npc);
         RotasNetwork.feedback(player, ok, result == null ? "เรียบร้อย" : ok ? result.substring(1) : result);
         if (ok && service != null) Fx.service(player, service.contains(":") ? service.substring(0, service.indexOf(':')) : service);
         RotasNetwork.syncProgress(player);
@@ -693,6 +737,16 @@ public final class NpcHub {
                 for (long step : rules.withdrawSteps) allowed |= step == amount;
                 if (!allowed || amount > GoldCoinService.MAX_WITHDRAWAL) return "จำนวนไม่ถูกต้อง";
                 return GoldCoinService.withdraw(player, (int) amount) ? "+ถอนแล้ว" : "ถอนไม่สำเร็จ";
+            }
+            case "hire_companion" -> {
+                if (role != NpcDef.Role.GUARD) return "ที่นี่ไม่มีผู้คุ้มกันให้จ้าง";
+                if (CompanionService.hasCompanion(player)) return "ท่านมีผู้คุ้มกันอยู่แล้ว";
+                long cost = SeasonService.rules(data).npcSocial.companionCost;
+                if (balance(data, player) < discounted(cost)) return "เงินไม่พอ";
+                String blocked = CompanionService.hire(player, data);
+                if (blocked != null) return blocked;
+                pay(data, player, cost);
+                return "+ผู้คุ้มกันพร้อมเดินทางกับท่าน " + SeasonService.rules(data).npcSocial.companionMinutes + " นาที";
             }
             case "bounty_take" -> {
                 if (role != NpcDef.Role.BOUNTY_MASTER) return "ที่นี่ไม่มีงานค่าหัว";

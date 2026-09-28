@@ -156,7 +156,7 @@ public class NpcHubScreen extends RotasScreen {
         int x = guiLeft + Ui.PAD;
         int w = guiWidth - Ui.PAD * 2;
         int y = guiTop + 32;
-        for (String line : Ui.wrap("“" + payload.getString("greeting") + "”", w - 150)) {
+        for (String line : Ui.wrap("“" + payload.getString("greeting") + "”", w - 190)) {
             Ui.label(graphics, line, x, y, Ui.TEXT_MUTED);
             y += 11;
         }
@@ -164,6 +164,8 @@ public class NpcHubScreen extends RotasScreen {
         int bw = font.width(balance) + 12;
         PixelUi.fill(graphics, guiLeft + guiWidth - Ui.PAD - bw, guiTop + 30, bw, 16, 1, RotasTheme.SURFACE_HIGH);
         Ui.label(graphics, balance, guiLeft + guiWidth - Ui.PAD - bw + 6, guiTop + 34, 0xFFE3A857);
+        String friendship = payload.getString("friendship");
+        if (!friendship.isEmpty()) Ui.labelRight(graphics, friendship, guiLeft + guiWidth - Ui.PAD, guiTop + 50, 0xFFF08CC8);
         ListTag buffs = payload.getList("buffs", Tag.TAG_STRING);
         if (!buffs.isEmpty()) {
             StringBuilder text = new StringBuilder("สถานะ: ");

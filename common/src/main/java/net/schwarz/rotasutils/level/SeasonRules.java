@@ -156,6 +156,31 @@ public final class SeasonRules {
     public TitleRules titles = new TitleRules();
     /** Prices and offers of the service NPCs: smith, alchemist, inn, priest, bank, bounties, collector, auction. */
     public NpcServiceRules npcServices = new NpcServiceRules();
+    /** NPCs as people: friendship, hired companions and the rumours they pass on. */
+    public NpcSocialRules npcSocial = new NpcSocialRules();
+
+    public static final class NpcSocialRules {
+        public boolean friendship = true;
+        /** Points for the first talk with an NPC each day, and for each paid service it performs. */
+        public int chatPoints = 3;
+        public int servicePoints = 2;
+        /** Service points one NPC can give one player per day. */
+        public int servicePointsPerDay = 10;
+        /** Points needed for each friendship level after Stranger. */
+        public int[] levels = {30, 100, 250, 500};
+        /** Discount on that NPC's services per friendship level. */
+        public double discountPerLevel = 0.03;
+        public boolean companions = true;
+        public long companionCost = 300;
+        public int companionMinutes = 10;
+        /** The hired fighter; iron golems fight monsters on their own and never turn on players. */
+        public String companionEntity = "minecraft:iron_golem";
+        /** Companion health and damage grow by this per level of the one who hired it. */
+        public double companionPerLevel = 0.02;
+        public boolean rumors = true;
+        public int rumorsShown = 5;
+    }
+
     /** Rewards and celebration every few levels, so a level feels like more than a number. */
     public MilestoneRules milestones = new MilestoneRules();
     /** EXP for seeing the world: zones, waystones, new monsters, advancements, distance travelled. */
@@ -1610,7 +1635,24 @@ public final class SeasonRules {
         return this;
     }
 
+    private void sanitizeSocial() {
+        if (npcSocial == null) npcSocial = new NpcSocialRules();
+        NpcSocialRules s = npcSocial;
+        s.chatPoints = clamp(s.chatPoints, 0, 1000);
+        s.servicePoints = clamp(s.servicePoints, 0, 1000);
+        s.servicePointsPerDay = clamp(s.servicePointsPerDay, 0, 100000);
+        if (s.levels == null || s.levels.length == 0) s.levels = new int[]{30, 100, 250, 500};
+        java.util.Arrays.sort(s.levels);
+        s.discountPerLevel = clamp(s.discountPerLevel, 0, 0.25, 0.03);
+        s.companionCost = Math.max(0, s.companionCost);
+        s.companionMinutes = clamp(s.companionMinutes, 1, 240);
+        if (s.companionEntity == null || s.companionEntity.isBlank()) s.companionEntity = "minecraft:iron_golem";
+        s.companionPerLevel = clamp(s.companionPerLevel, 0, 1, 0.02);
+        s.rumorsShown = clamp(s.rumorsShown, 0, 20);
+    }
+
     private void sanitizeProgression() {
+        sanitizeSocial();
         if (milestones == null) milestones = new MilestoneRules();
         MilestoneRules m = milestones;
         m.every = clamp(m.every, 1, 1000);

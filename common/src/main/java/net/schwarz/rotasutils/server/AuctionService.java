@@ -229,6 +229,9 @@ public final class AuctionService {
         store.setDirty();
         data.setDirty();
         give(player, listing.item.copy());
+        if (listing.price >= 10_000) {
+            NpcSocial.rumor("โรงประมูลคึกคัก! " + listing.item.getHoverName().getString() + " ขายไป " + listing.price + " ทอง");
+        }
         ServerPlayer seller = player.server.getPlayerList().getPlayer(listing.seller);
         if (seller != null) {
             seller.sendSystemMessage(Component.literal("โรงประมูล: " + listing.item.getHoverName().getString() + " ขายได้แล้ว +"

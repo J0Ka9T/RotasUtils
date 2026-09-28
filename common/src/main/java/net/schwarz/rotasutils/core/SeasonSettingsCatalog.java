@@ -40,7 +40,8 @@ public final class SeasonSettingsCatalog {
             new Section("seasonTrack", "เส้นทางซีซั่น", "ขั้นรางวัลตามแต้มแรงค์ทั้งซีซั่น"),
             new Section("horse", "ม้า", "สุ่มม้า คอก ขาย และตลาด"),
             new Section("titles", "ฉายา", "ใครได้ฉายาอัตโนมัติ (แอดมิน/ครีเอทีฟ) และการถอดฉายา"),
-            new Section("milestones", "หลักไมล์เลเวล", "รางวัลทุก ๆ กี่เลเวล และหลักไมล์ใหญ่ที่ประกาศทั้งเซิร์ฟ"),
+            new Section("npcSocial", "มิตรภาพ NPC", "ความสนิทกับ NPC ผู้คุ้มกันที่จ้างได้ และข่าวลือ"),
+            new Section("milestones","หลักไมล์เลเวล", "รางวัลทุก ๆ กี่เลเวล และหลักไมล์ใหญ่ที่ประกาศทั้งเซิร์ฟ"),
             new Section("exploration", "EXP สำรวจ", "EXP จากการค้นพบโซน หินวาร์ป มอนใหม่ ความสำเร็จ ระยะทาง และโบนัสความหลากหลาย"),
             new Section("npcServices","NPC บริการ", "ช่างตีเหล็ก นักปรุงยา โรงเตี๊ยม นักบวช หมอดู ธนาคาร ค่าหัว นักสะสม และโรงประมูล"),
             new Section(OTHER,"อื่น ๆ", "ค่าที่ยังไม่มีหมวด"));
@@ -347,6 +348,19 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRarityBonus", "โบนัสตามระดับกำเนิด");
         map.put("horse.marketFee", "ค่าธรรมเนียมตลาด (0-0.9)");
         map.put("horse.marketMaxPrice", "ราคาขายสูงสุดในตลาด");
+        map.put("npcSocial.friendship", "เปิดมิตรภาพ NPC");
+        map.put("npcSocial.chatPoints", "แต้มคุยต่อวัน");
+        map.put("npcSocial.servicePoints", "แต้มต่อบริการ");
+        map.put("npcSocial.servicePointsPerDay", "แต้มบริการสูงสุดต่อวัน");
+        map.put("npcSocial.levels", "แต้มต่อระดับความสนิท");
+        map.put("npcSocial.discountPerLevel", "ส่วนลดต่อระดับ");
+        map.put("npcSocial.companions", "เปิดจ้างผู้คุ้มกัน");
+        map.put("npcSocial.companionCost", "ค่าจ้างผู้คุ้มกัน");
+        map.put("npcSocial.companionMinutes", "เวลาจ้าง (นาที)");
+        map.put("npcSocial.companionEntity", "มอนผู้คุ้มกัน");
+        map.put("npcSocial.companionPerLevel", "ผู้คุ้มกันแกร่งขึ้นต่อเลเวล");
+        map.put("npcSocial.rumors", "เปิดข่าวลือ");
+        map.put("npcSocial.rumorsShown", "ข่าวลือที่แสดง");
         map.put("milestones.enabled", "เปิดรางวัลหลักไมล์");
         map.put("milestones.every", "หลักไมล์ทุกกี่เลเวล");
         map.put("milestones.goldPerLevel", "เงินต่อเลเวลที่หลักไมล์");
@@ -870,6 +884,19 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRareCoat", "โบนัสราคาสีขนหายาก");
         map.put("horse.marketFee", "ตลาดหักกี่ส่วน 0.05 = 5%, 0 = ผู้ขายได้เต็ม");
         map.put("horse.marketMaxPrice", "ตั้งราคาขายในตลาดได้สูงสุด");
+        map.put("npcSocial.friendship", "ปิด = ไม่มีความสนิทและส่วนลดจาก NPC");
+        map.put("npcSocial.chatPoints", "แต้มความสนิทเมื่อคุยกับ NPC ครั้งแรกของวัน");
+        map.put("npcSocial.servicePoints", "แต้มความสนิทต่อบริการที่จ่ายเงิน");
+        map.put("npcSocial.servicePointsPerDay", "แต้มจากบริการที่ NPC หนึ่งให้ได้ต่อวัน กันซื้อรัว ๆ เพื่อปั๊มแต้ม");
+        map.put("npcSocial.levels", "แต้มสะสมที่ต้องมีเพื่อเป็น คนรู้จัก / เพื่อน / เพื่อนสนิท / สหายร่วมชะตา");
+        map.put("npcSocial.discountPerLevel", "0.03 = บริการของ NPC นั้นถูกลง 3% ต่อระดับความสนิท");
+        map.put("npcSocial.companions", "ทหารยามมีบริการจ้างผู้คุ้มกัน");
+        map.put("npcSocial.companionCost", "ค่าจ้างผู้คุ้มกันต่อครั้ง");
+        map.put("npcSocial.companionMinutes", "ผู้คุ้มกันอยู่กี่นาทีก่อนกลับ");
+        map.put("npcSocial.companionEntity", "มอนที่มาเป็นผู้คุ้มกัน (golem สู้มอนเองและไม่ทำร้ายผู้เล่น)");
+        map.put("npcSocial.companionPerLevel", "0.02 = HP และดาเมจผู้คุ้มกัน +2% ต่อเลเวลของผู้จ้าง");
+        map.put("npcSocial.rumors", "โรงเตี๊ยม ทหารยาม และหมอดู เล่าข่าวล่าสุดของเซิร์ฟ");
+        map.put("npcSocial.rumorsShown", "จำนวนข่าวลือที่แสดง");
         map.put("milestones.enabled", "ปิด = เลเวลอัปไม่มีรางวัลหลักไมล์");
         map.put("milestones.every", "5 = ได้รางวัลที่เลเวล 5, 10, 15...");
         map.put("milestones.goldPerLevel", "เงินที่หลักไมล์ = เลเวล × ค่านี้");

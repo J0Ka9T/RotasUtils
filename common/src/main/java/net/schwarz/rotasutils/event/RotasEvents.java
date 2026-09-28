@@ -91,6 +91,12 @@ public final class RotasEvents {
         EntityEvent.LIVING_DEATH.register((entity, source) ->
                 net.schwarz.rotasutils.server.horse.HorseService.onDeath(entity));
         EntityEvent.ADD.register(net.schwarz.rotasutils.server.horse.HorseService::onAdd);
+        EntityEvent.ADD.register(net.schwarz.rotasutils.server.CompanionService::onAdd);
+        EntityEvent.LIVING_DEATH.register((entity, source) -> net.schwarz.rotasutils.server.CompanionService.onDeath(entity));
+        // Owners cannot hurt their own companion, and nothing the companion does can be pinned on a player.
+        EntityEvent.LIVING_HURT.register((entity, source, amount) ->
+                net.schwarz.rotasutils.server.CompanionService.protectedFrom(entity, source.getEntity())
+                        ? EventResult.interruptFalse() : EventResult.pass());
         EntityEvent.LIVING_HURT.register(net.schwarz.rotasutils.server.horse.HorseTraitEffects::onHurt);
         PlayerEvent.PLAYER_ADVANCEMENT.register(net.schwarz.rotasutils.server.ExplorationService::onAdvancement);
         // Deaths are a title too: some players earn their name by never staying down.
@@ -192,6 +198,8 @@ public final class RotasEvents {
     private static void onServerStopping(MinecraftServer server) {
         net.schwarz.rotasutils.sky.SkyClash.clear();
         net.schwarz.rotasutils.sky.SkySunder.clear();
+        net.schwarz.rotasutils.server.CompanionService.clear();
+        net.schwarz.rotasutils.server.NpcSocial.clear();
         RotasData data = RotasData.instance();
         if (data != null) {
             if (data.kernel() != null) {
@@ -700,6 +708,7 @@ public final class RotasEvents {
         net.schwarz.rotasutils.server.horse.HorseService.tick(server);
         net.schwarz.rotasutils.server.TitleService.tickAura(server, data);
         net.schwarz.rotasutils.server.ExplorationService.tick(server, data);
+        net.schwarz.rotasutils.server.CompanionService.tick(server);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerProgress progress = data.peek(player.getUUID());
             if (progress == null) {
