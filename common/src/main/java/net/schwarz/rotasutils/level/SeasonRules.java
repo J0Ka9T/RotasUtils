@@ -156,75 +156,6 @@ public final class SeasonRules {
     public TitleRules titles = new TitleRules();
     /** Prices and offers of the service NPCs: smith, alchemist, inn, priest, bank, bounties, collector, auction. */
     public NpcServiceRules npcServices = new NpcServiceRules();
-    /** What an eldritch sky brings when an admin opens it with a sigil: waves, a champion, rewards. */
-    public IncursionRules incursions = new IncursionRules();
-
-    /** One sky palette's invasion. */
-    public static final class IncursionTheme {
-        public String title = "ท้องฟ้าแตกร้าว";
-        public String subtitle = "บางสิ่งกำลังข้ามมา...";
-        public String[] mobs = {"minecraft:zombie"};
-        public String champion = "minecraft:wither_skeleton";
-        public String championName = "ผู้บุกรุกจากฟากฟ้า";
-        /** Champion health × this (and ×1 per extra player nearby, up to 4). */
-        public double championHealth = 8;
-
-        public IncursionTheme() {
-        }
-
-        public IncursionTheme(String title, String subtitle, String[] mobs, String champion, String championName, double championHealth) {
-            this.title = title;
-            this.subtitle = subtitle;
-            this.mobs = mobs;
-            this.champion = champion;
-            this.championName = championName;
-            this.championHealth = championHealth;
-        }
-    }
-
-    public static final class IncursionRules {
-        public boolean enabled = true;
-        /** Players within this many blocks of the sigil take part. */
-        public int radius = 96;
-        public int waves = 5;
-        public int waveSeconds = 35;
-        /** Monsters per wave for each player taking part, growing by one every wave. */
-        public int mobsPerPlayer = 3;
-        public int maxAlive = 40;
-        /** Extra monster health per wave: 0.2 = +20% at wave 2, +40% at wave 3... */
-        public double healthPerWave = 0.20;
-        public int timeLimitMinutes = 12;
-        public long rewardGold = 400;
-        public long rewardXp = 900;
-        /** Reward grows by this per kill, up to double. */
-        public double rewardPerKill = 0.04;
-        /** The best hunter's reward is multiplied by this. */
-        public double topBonus = 1.5;
-        /** Beating the champion shatters the sky with the sundering cinematic. */
-        public boolean shatterOnVictory = true;
-        public Map<String, IncursionTheme> themes = defaultThemes();
-    }
-
-    private static Map<String, IncursionTheme> defaultThemes() {
-        Map<String, IncursionTheme> map = new LinkedHashMap<>();
-        map.put("blue", new IncursionTheme("ท้องฟ้าแตกร้าว", "ผู้มาเยือนจากห้วงดาวลงมาแล้ว",
-                new String[]{"minecraft:phantom", "minecraft:vex", "minecraft:enderman", "minecraft:stray"},
-                "minecraft:evoker", "นักบวชแห่งรอยแยก", 12));
-        map.put("red", new IncursionTheme("ฟ้าเลือด", "เปลวเพลิงแห่งนรกไหลทะลักลงมา",
-                new String[]{"minecraft:blaze", "minecraft:magma_cube", "minecraft:wither_skeleton", "minecraft:piglin_brute"},
-                "minecraft:wither_skeleton", "จอมทัพเพลิงโลหิต", 14));
-        map.put("gold", new IncursionTheme("ฟ้าทองคำ", "กองทัพแห่งแสงมาพิพากษา",
-                new String[]{"minecraft:vindicator", "minecraft:pillager", "minecraft:evoker"},
-                "minecraft:ravager", "อสูรศึกสุริยัน", 6));
-        map.put("void", new IncursionTheme("ห้วงความว่างเปล่า", "ความมืดกลืนกินทุกสิ่ง",
-                new String[]{"minecraft:enderman", "minecraft:endermite", "minecraft:shulker", "minecraft:phantom"},
-                "minecraft:warden", "ผู้เฝ้าความว่างเปล่า", 1));
-        map.put("rainbow", new IncursionTheme("สี่ฟ้าบรรจบ", "เจ้าแห่งจตุรทิศลงมาด้วยตนเอง",
-                new String[]{"minecraft:phantom", "minecraft:blaze", "minecraft:vindicator", "minecraft:enderman"},
-                "rotasutils:tetrarch", "จตุราธิราช", 1));
-        return map;
-    }
-
     /** Rewards and celebration every few levels, so a level feels like more than a number. */
     public MilestoneRules milestones = new MilestoneRules();
     /** EXP for seeing the world: zones, waystones, new monsters, advancements, distance travelled. */
@@ -1679,35 +1610,7 @@ public final class SeasonRules {
         return this;
     }
 
-    private void sanitizeIncursions() {
-        if (incursions == null) incursions = new IncursionRules();
-        IncursionRules i = incursions;
-        i.radius = clamp(i.radius, 16, 512);
-        i.waves = clamp(i.waves, 0, 50);
-        i.waveSeconds = clamp(i.waveSeconds, 5, 3600);
-        i.mobsPerPlayer = clamp(i.mobsPerPlayer, 0, 50);
-        i.maxAlive = clamp(i.maxAlive, 1, 500);
-        i.healthPerWave = clamp(i.healthPerWave, 0, 10, 0.2);
-        i.timeLimitMinutes = clamp(i.timeLimitMinutes, 1, 1440);
-        i.rewardGold = Math.max(0, i.rewardGold);
-        i.rewardXp = Math.max(0, i.rewardXp);
-        i.rewardPerKill = clamp(i.rewardPerKill, 0, 10, 0.04);
-        i.topBonus = clamp(i.topBonus, 1, 100, 1.5);
-        if (i.themes == null) i.themes = defaultThemes();
-        for (IncursionTheme theme : i.themes.values()) {
-            if (theme == null) continue;
-            if (theme.title == null) theme.title = "";
-            if (theme.subtitle == null) theme.subtitle = "";
-            if (theme.mobs == null) theme.mobs = new String[0];
-            if (theme.champion == null) theme.champion = "";
-            if (theme.championName == null) theme.championName = "";
-            theme.championHealth = clamp(theme.championHealth, 0.1, 1000, 8);
-        }
-        i.themes.values().removeIf(java.util.Objects::isNull);
-    }
-
     private void sanitizeProgression() {
-        sanitizeIncursions();
         if (milestones == null) milestones = new MilestoneRules();
         MilestoneRules m = milestones;
         m.every = clamp(m.every, 1, 1000);

@@ -40,8 +40,7 @@ public final class SeasonSettingsCatalog {
             new Section("seasonTrack", "เส้นทางซีซั่น", "ขั้นรางวัลตามแต้มแรงค์ทั้งซีซั่น"),
             new Section("horse", "ม้า", "สุ่มม้า คอก ขาย และตลาด"),
             new Section("titles", "ฉายา", "ใครได้ฉายาอัตโนมัติ (แอดมิน/ครีเอทีฟ) และการถอดฉายา"),
-            new Section("incursions", "การบุกรุกจากฟากฟ้า", "สิ่งที่เกิดเมื่อแอดมินเปิดฟ้าด้วยซิจิล: คลื่นมอน จ้าวผู้บุกรุก และรางวัล"),
-            new Section("milestones","หลักไมล์เลเวล", "รางวัลทุก ๆ กี่เลเวล และหลักไมล์ใหญ่ที่ประกาศทั้งเซิร์ฟ"),
+            new Section("milestones", "หลักไมล์เลเวล", "รางวัลทุก ๆ กี่เลเวล และหลักไมล์ใหญ่ที่ประกาศทั้งเซิร์ฟ"),
             new Section("exploration", "EXP สำรวจ", "EXP จากการค้นพบโซน หินวาร์ป มอนใหม่ ความสำเร็จ ระยะทาง และโบนัสความหลากหลาย"),
             new Section("npcServices","NPC บริการ", "ช่างตีเหล็ก นักปรุงยา โรงเตี๊ยม นักบวช หมอดู ธนาคาร ค่าหัว นักสะสม และโรงประมูล"),
             new Section(OTHER,"อื่น ๆ", "ค่าที่ยังไม่มีหมวด"));
@@ -118,9 +117,6 @@ public final class SeasonSettingsCatalog {
         if (isIndex(key) && path.size() > 1) {
             key = parent;
             parent = path.size() > 2 ? path.get(path.size() - 3) : "";
-        }
-        if (!path.isEmpty() && path.get(0).equals("incursions") && (key.equals("mobs") || key.equals("champion"))) {
-            return net.schwarz.rotasutils.data.ParamSpec.ParamKind.ENTITY;
         }
         if (!path.isEmpty() && path.get(0).equals("npcServices")) {
             switch (key) {
@@ -351,31 +347,6 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRarityBonus", "โบนัสตามระดับกำเนิด");
         map.put("horse.marketFee", "ค่าธรรมเนียมตลาด (0-0.9)");
         map.put("horse.marketMaxPrice", "ราคาขายสูงสุดในตลาด");
-        map.put("incursions.enabled", "เปิดการบุกรุก");
-        map.put("incursions.radius", "รัศมีการต่อสู้ (บล็อก)");
-        map.put("incursions.waves", "จำนวนคลื่น");
-        map.put("incursions.waveSeconds", "คลื่นถัดไปทุกกี่วินาที");
-        map.put("incursions.mobsPerPlayer", "มอนต่อผู้เล่นต่อคลื่น");
-        map.put("incursions.maxAlive", "มอนพร้อมกันสูงสุด");
-        map.put("incursions.healthPerWave", "HP มอนเพิ่มต่อคลื่น");
-        map.put("incursions.timeLimitMinutes", "เวลาจำกัด (นาที)");
-        map.put("incursions.rewardGold", "เงินรางวัล");
-        map.put("incursions.rewardXp", "EXP รางวัล");
-        map.put("incursions.rewardPerKill", "รางวัลเพิ่มต่อการฆ่า");
-        map.put("incursions.topBonus", "ตัวคูณผู้ล่ายอดเยี่ยม");
-        map.put("incursions.shatterOnVictory", "ฟ้าแตกสลายเมื่อชนะ");
-        map.put("incursions.themes", "ธีมตามสีท้องฟ้า");
-        map.put("incursions.themes.blue", "ฟ้าสีคราม");
-        map.put("incursions.themes.red", "ฟ้าเลือด");
-        map.put("incursions.themes.gold", "ฟ้าทองคำ");
-        map.put("incursions.themes.void", "ห้วงความว่างเปล่า");
-        map.put("incursions.themes.rainbow", "สี่ฟ้า / สายรุ้ง");
-        map.put("incursions.themes.*.title", "หัวข้อบนจอ");
-        map.put("incursions.themes.*.subtitle", "ข้อความรอง");
-        map.put("incursions.themes.*.mobs", "มอนในคลื่น");
-        map.put("incursions.themes.*.champion", "จ้าวผู้บุกรุก");
-        map.put("incursions.themes.*.championName", "ชื่อจ้าว");
-        map.put("incursions.themes.*.championHealth", "ตัวคูณ HP จ้าว");
         map.put("milestones.enabled", "เปิดรางวัลหลักไมล์");
         map.put("milestones.every", "หลักไมล์ทุกกี่เลเวล");
         map.put("milestones.goldPerLevel", "เงินต่อเลเวลที่หลักไมล์");
@@ -899,25 +870,6 @@ public final class SeasonSettingsCatalog {
         map.put("horse.sellRareCoat", "โบนัสราคาสีขนหายาก");
         map.put("horse.marketFee", "ตลาดหักกี่ส่วน 0.05 = 5%, 0 = ผู้ขายได้เต็ม");
         map.put("horse.marketMaxPrice", "ตั้งราคาขายในตลาดได้สูงสุด");
-        map.put("incursions.enabled", "ปิด = ซิจิลเปิดฟ้าได้อย่างเดียว ไม่มีคลื่นมอนและรางวัล");
-        map.put("incursions.radius", "ผู้เล่นในระยะนี้จากจุดที่ใช้ซิจิลจะร่วมการต่อสู้และเห็นแถบบอส");
-        map.put("incursions.waves", "คลื่นมอนก่อนจ้าวผู้บุกรุกจะลงมา");
-        map.put("incursions.waveSeconds", "คลื่นถัดไปมาเมื่อครบเวลานี้ หรือเมื่อฆ่าคลื่นเดิมหมด");
-        map.put("incursions.mobsPerPlayer", "มอนต่อผู้เล่นในคลื่นแรก เพิ่มอีก 1 ทุกคลื่น");
-        map.put("incursions.maxAlive", "ไม่เรียกมอนเกินนี้พร้อมกัน กันเซิร์ฟแลค");
-        map.put("incursions.healthPerWave", "0.2 = คลื่น 2 HP +20%, คลื่น 3 +40%...");
-        map.put("incursions.timeLimitMinutes", "หมดเวลาแล้วฟ้าปิดเอง ได้รางวัลครึ่งเดียวตามคลื่นที่ผ่าน");
-        map.put("incursions.rewardGold", "เงินรางวัลต่อคนเมื่อชนะ");
-        map.put("incursions.rewardXp", "EXP รางวัลต่อคนเมื่อชนะ");
-        map.put("incursions.rewardPerKill", "รางวัลเพิ่มต่อการฆ่า สูงสุดสองเท่า");
-        map.put("incursions.topBonus", "คนที่ฆ่ามากที่สุดได้รางวัลคูณเท่านี้");
-        map.put("incursions.shatterOnVictory", "ชนะแล้วเล่นฉากผนึกฟ้าแตกสลาย แทนการปิดฟ้าธรรมดา");
-        map.put("incursions.themes.*.title", "ข้อความใหญ่กลางจอเมื่อฟ้าเปิด");
-        map.put("incursions.themes.*.subtitle", "ข้อความรองใต้หัวข้อ");
-        map.put("incursions.themes.*.mobs", "มอนที่สุ่มมาในแต่ละคลื่น");
-        map.put("incursions.themes.*.champion", "มอนบอสที่ลงมาหลังคลื่นสุดท้าย");
-        map.put("incursions.themes.*.championName", "ชื่อที่แสดงบนหัวบอส");
-        map.put("incursions.themes.*.championHealth", "HP บอสคูณเท่านี้ และคูณเพิ่มตามผู้เล่น (สูงสุด 4)");
         map.put("milestones.enabled", "ปิด = เลเวลอัปไม่มีรางวัลหลักไมล์");
         map.put("milestones.every", "5 = ได้รางวัลที่เลเวล 5, 10, 15...");
         map.put("milestones.goldPerLevel", "เงินที่หลักไมล์ = เลเวล × ค่านี้");

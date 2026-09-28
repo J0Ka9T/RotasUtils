@@ -44,12 +44,6 @@ public final class EldritchSigilItem extends Item {
         EldritchSkyTransition.Snapshot next = EldritchSkyService.toggle(serverLevel, variant);
         boolean opening = next.state == EldritchSkyTransition.State.OPENING
                 || next.state == EldritchSkyTransition.State.ACTIVE;
-        // An opened sky is an invasion: waves, a champion and rewards. Closing it by hand ends the invasion.
-        if (opening) {
-            net.schwarz.rotasutils.sky.IncursionService.start(serverLevel, serverPlayer.position(), variant);
-        } else {
-            net.schwarz.rotasutils.sky.IncursionService.stop(serverLevel, false);
-        }
         // No text: the sky, the letterbox and the sound tell the story.
         serverLevel.playSound(null, serverPlayer.blockPosition(),
                 opening ? SoundEvents.PORTAL_TRIGGER : SoundEvents.BEACON_DEACTIVATE,
