@@ -63,6 +63,23 @@ public final class EldritchRiftRenderer {
     private static final ResourceLocation RIM_B = Rotasutils.id("textures/environment/rift_rim_b.png");
     private static final ResourceLocation BLOOM = Rotasutils.id("textures/environment/rift_bloom.png");
     private static final ResourceLocation RAYS = Rotasutils.id("textures/environment/rift_rays.png");
+    private static final ResourceLocation SIGIL = Rotasutils.id("textures/environment/rift_sigil.png");
+    private static final ResourceLocation FLARE = Rotasutils.id("textures/environment/rift_flare.png");
+
+    /** The seal: outer copy framing the tear, inner copy counter-turning inside it. Radii in degrees. */
+    private static final float SIGIL_OUTER_DEG = 64f;
+    private static final float SIGIL_INNER_DEG = 42f;
+    private static final float SIGIL_DEPTH = EldritchSkyArt.CORONA_RADIUS - 0.2f;
+    private static final int SIGIL_RINGS = 10;
+    private static final int SIGIL_SECTORS = 96;
+    private static final float[] SIGIL_DIR = new float[(SIGIL_RINGS + 1) * (SIGIL_SECTORS + 1) * 3];
+    /** The flare: a 4:1 strip across the tear, curved over the sphere, so it needs more than a quad. */
+    private static final float FLARE_HALF_W_DEG = 84f;
+    private static final float FLARE_HALF_H_DEG = 21f;
+    private static final int FLARE_COLUMNS = 24;
+    private static final int FLARE_ROWS = 4;
+    private static final float[] FLARE_DIR = new float[(FLARE_ROWS + 1) * (FLARE_COLUMNS + 1) * 3];
+    private static double sigilPhase;
 
     private static final float VEIL_DEPTH = EldritchSkyArt.DOME_RADIUS - 0.3f;
     private static final float NEBULA_DEPTH = EldritchSkyArt.CORONA_RADIUS + 0.4f;
@@ -176,6 +193,8 @@ public final class EldritchRiftRenderer {
         nebulaTurnPhase += dt * 360.0 / 240.0 * (0.7 + 0.3 * boost);
         nebulaDriftPhase += dt / 14.0 * rush;
         heartbeatPhase += dt * (0.5 + 2.5 * EldritchSkyCelestial.smoothstep(0.04f, 0.38f, o));
+        sigilPhase += dt * 360.0 / 240.0 * (0.5 + 0.5 * boost);
+        sigilPhase %= 360.0 * 64;
         wrapPhases();
 
         // Whole sky: two veils at different speeds and scales, so the streams have depth.
@@ -217,6 +236,19 @@ public final class EldritchRiftRenderer {
             texture(RAYS, false);
             drawNebula(matrix, time * 6f, 0.95f, 0f, 0f, rayLight);
             drawNebula(matrix, -time * 4.2f + 40f, 1.15f, 0f, 0f, rayLight * 0.6f);
+        }
+
+        // The seal: a colossal rune circle blooms open behind the tear as it splits (overshooting, then
+        // settling), turns slowly, and flares on every surge. An inner copy counter-turns at twice the pace,
+        // so the frame has depth instead of reading as one flat decal.
+        float seal = EldritchSkyCelestial.smoothstep(0.44f, 0.80f, o);
+        if (wholeSkyVeil && seal > 0.004f) {
+            float bloomOpen = 0.55f + 0.45f * easeOutBack(seal);
+            float sealLight = seal * (0.42f + 0.35f * surge + 0.08f * (float) Math.sin(time * 1.3f)) * env.retreat();
+            additive();
+            texture(SIGIL, false);
+            drawSigil(matrix, yaw, elevation, SIGIL_OUTER_DEG * bloomOpen, (float) sigilPhase, sealLight);
+            drawSigil(matrix, yaw, elevation, SIGIL_INNER_DEG * bloomOpen, (float) -sigilPhase * 2f + 15f, sealLight * 0.45f);
         }
 
         // The sky cracks outward from the tear before it splits, and heals as it closes.
@@ -321,6 +353,14 @@ public final class EldritchRiftRenderer {
         }
         if (flash > 0.01f) {
             drawGlow(matrix, yaw, elevation, 34f, flash * 1.4f);
+        }
+        // The one white-hot focal point: a lens flare whose anamorphic streak spans the sky. It is born with
+        // the omen's point of light, blinds on the split, and breathes with the heartbeat once open.
+        float flareLight = seedLight * (0.35f + 0.5f * beat) + flash * 1.3f
+                + body * (0.45f + 0.3f * surge + 0.12f * beat);
+        if (flareLight > 0.004f) {
+            texture(FLARE, false);
+            drawFlare(matrix, yaw, elevation, 0.6f + 0.4f * Math.max(split, seedLight), flareLight);
         }
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
@@ -510,6 +550,70 @@ public final class EldritchRiftRenderer {
         double phi = Math.PI * 2.0 * sector / RING_SECTORS;
         vertex(buffer, matrix, RING_DIR, index, RING_DEPTH, 0.5f + 0.5f * rho * (float) Math.cos(phi),
                 0.5f - 0.5f * rho * (float) Math.sin(phi), alpha);
+    }
+
+    /** The rune seal: a disc on the sphere around the tear whose texture turns while the mesh stays put. */
+    private static void drawSigil(Matrix4f matrix, float yaw, float elevation, float radiusDeg, float angleDeg, float alpha) {
+        if (alpha <= 0.003f) return;
+        for (int ring = 0; ring <= SIGIL_RINGS; ring++) {
+            float rho = 0.3f + 0.7f * ring / SIGIL_RINGS;
+            for (int sector = 0; sector <= SIGIL_SECTORS; sector++) {
+                double phi = Math.PI * 2.0 * sector / SIGIL_SECTORS;
+                EldritchSkyCelestial.around(yaw, elevation, (float) Math.cos(phi) * rho * radiusDeg,
+                        (float) Math.sin(phi) * rho * radiusDeg, 0f, OUT);
+                store(SIGIL_DIR, ring * (SIGIL_SECTORS + 1) + sector, OUT);
+            }
+        }
+        double turn = Math.toRadians(angleDeg);
+        BufferBuilder buffer = begin();
+        for (int ring = 0; ring < SIGIL_RINGS; ring++) {
+            for (int sector = 0; sector < SIGIL_SECTORS; sector++) {
+                int a = ring * (SIGIL_SECTORS + 1) + sector;
+                sigilVertex(buffer, matrix, a, ring, sector, turn, alpha);
+                sigilVertex(buffer, matrix, a + 1, ring, sector + 1, turn, alpha);
+                sigilVertex(buffer, matrix, a + SIGIL_SECTORS + 2, ring + 1, sector + 1, turn, alpha);
+                sigilVertex(buffer, matrix, a + SIGIL_SECTORS + 1, ring + 1, sector, turn, alpha);
+            }
+        }
+        BufferUploader.drawWithShader(buffer.end());
+    }
+
+    private static void sigilVertex(BufferBuilder buffer, Matrix4f matrix, int index, int ring, int sector,
+                                    double turn, float alpha) {
+        float rho = 0.3f + 0.7f * ring / SIGIL_RINGS;
+        double phi = Math.PI * 2.0 * sector / SIGIL_SECTORS + turn;
+        vertex(buffer, matrix, SIGIL_DIR, index, SIGIL_DEPTH, 0.5f + 0.5f * rho * (float) Math.cos(phi),
+                0.5f - 0.5f * rho * (float) Math.sin(phi), alpha);
+    }
+
+    /** The lens flare strip; {@code stretch} widens the streak as the tear splits. */
+    private static void drawFlare(Matrix4f matrix, float yaw, float elevation, float stretch, float alpha) {
+        for (int row = 0; row <= FLARE_ROWS; row++) {
+            float ty = -1f + 2f * row / FLARE_ROWS;
+            for (int column = 0; column <= FLARE_COLUMNS; column++) {
+                float tx = -1f + 2f * column / FLARE_COLUMNS;
+                EldritchSkyCelestial.around(yaw, elevation, tx * FLARE_HALF_W_DEG * stretch, ty * FLARE_HALF_H_DEG, 0f, OUT);
+                store(FLARE_DIR, row * (FLARE_COLUMNS + 1) + column, OUT);
+            }
+        }
+        BufferBuilder buffer = begin();
+        for (int row = 0; row < FLARE_ROWS; row++) {
+            for (int column = 0; column < FLARE_COLUMNS; column++) {
+                int a = row * (FLARE_COLUMNS + 1) + column;
+                flareVertex(buffer, matrix, a, alpha);
+                flareVertex(buffer, matrix, a + 1, alpha);
+                flareVertex(buffer, matrix, a + FLARE_COLUMNS + 2, alpha);
+                flareVertex(buffer, matrix, a + FLARE_COLUMNS + 1, alpha);
+            }
+        }
+        BufferUploader.drawWithShader(buffer.end());
+    }
+
+    private static void flareVertex(BufferBuilder buffer, Matrix4f matrix, int index, float alpha) {
+        int row = index / (FLARE_COLUMNS + 1);
+        int column = index % (FLARE_COLUMNS + 1);
+        vertex(buffer, matrix, FLARE_DIR, index, GLOW_DEPTH - 0.1f, column / (float) FLARE_COLUMNS,
+                1f - row / (float) FLARE_ROWS, alpha);
     }
 
     /** A flare centred on the tear: the omen's point of light, and the flash when it splits. */
