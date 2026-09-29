@@ -1,36 +1,57 @@
 package net.schwarz.rotasutils.client.screen;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.schwarz.rotasutils.Rotasutils;
 
 /**
- * The flat, loud look of anime-game UI: thick black outlines, hard drop shadows, saturated flat colour,
- * rotating rays and diagonal stripes behind the thing that matters, and text that pops. Used by the
- * forge and altar screens; everything is plain fills so it costs nothing and needs no textures.
+ * The look of the forge and altar screens: soft rounded panels, glossy buttons and gauges, hexagonal
+ * sockets, glowing rays behind the item. Every shape is a painted, anti-aliased texture (see
+ * {@code scripts/gen_ui_textures.py}) drawn nine-slice at its native size, so corners stay round and
+ * nothing is a stepped rectangle. The rim, button and fill textures are white and tinted per use.
  */
 @Environment(EnvType.CLIENT)
 public final class AnimeUi {
     private AnimeUi() {
     }
 
+    private static ResourceLocation tex(String name) {
+        return Rotasutils.id("textures/gui/anime/" + name + ".png");
+    }
+
+    private static final ResourceLocation PANEL_BG = tex("panel_bg");
+    private static final ResourceLocation PANEL_RIM = tex("panel_rim");
+    private static final ResourceLocation BUTTON = tex("button");
+    private static final ResourceLocation TROUGH = tex("trough");
+    private static final ResourceLocation FILL = tex("fill");
+    private static final ResourceLocation CARD = tex("card");
+    private static final ResourceLocation CARD_RIM = tex("card_rim");
+    private static final ResourceLocation SOCKET_BG = tex("socket_bg");
+    private static final ResourceLocation SOCKET_RING = tex("socket_ring");
+    private static final ResourceLocation GLOW = tex("glow");
+    private static final ResourceLocation RAYS = tex("rays");
+    private static final ResourceLocation SPARK = tex("spark");
+    private static final ResourceLocation RIBBON = tex("ribbon");
+
     public static final int INK = 0xFF0A0814;
     public static final int NIGHT = 0xFF14122B;
     public static final int PANEL = 0xFF201C44;
-    public static final int PANEL_LIGHT = 0xFF302A62;
+    public static final int PANEL_LIGHT = 0xFF4A4390;
     public static final int GOLD = 0xFFFFC83D;
-    public static final int PINK = 0xFFFF4D8D;
-    public static final int CYAN = 0xFF3DE0FF;
-    public static final int LIME = 0xFF7CFF6B;
+    public static final int PINK = 0xFFFF5C93;
+    public static final int CYAN = 0xFF46D8FF;
+    public static final int LIME = 0xFF86F26F;
     public static final int WHITE = 0xFFFFFFFF;
-    public static final int MUTED = 0xFF8C86B8;
-    public static final int RED = 0xFFFF5A4D;
+    public static final int MUTED = 0xFF9A94C4;
+    public static final int RED = 0xFFFF6A5C;
 
     public static float time() {
         return (Util.getMillis() % 100000L) / 1000f;
@@ -48,45 +69,88 @@ public final class AnimeUi {
         return 0xFF000000 | (r << 16) | (g << 8) | bl;
     }
 
-    /** A card with a hard shadow, a thick ink outline and an accent stripe along its top. */
-    public static void panel(GuiGraphics g, int x, int y, int w, int h, int accent) {
-        g.fill(x + 4, y + 4, x + w + 4, y + h + 4, 0x88000000);
-        g.fill(x - 2, y - 2, x + w + 2, y + h + 2, INK);
-        g.fill(x, y, x + w, y + h, PANEL);
-        g.fill(x, y, x + w, y + 3, accent);
-        g.fill(x, y + 3, x + w, y + 5, alpha(accent, 0.35f));
+    // Texture drawing --------------------------------------------------------------------------------
+
+    private static void tint(int argb) {
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(((argb >> 16) & 0xFF) / 255f, ((argb >> 8) & 0xFF) / 255f, (argb & 0xFF) / 255f,
+                ((argb >>> 24) & 0xFF) / 255f);
     }
 
-    /** Diagonal stripes drifting across an area. */
-    public static void stripes(GuiGraphics g, int x, int y, int w, int h, int color, float speed) {
-        g.enableScissor(x, y, x + w, y + h);
-        float t = time() * speed;
-        for (int i = -4; i < w / 26 + 6; i++) {
-            float sx = x + i * 26 + (t * 26) % 26;
-            g.pose().pushPose();
-            g.pose().translate(sx, y + h / 2f, 0);
-            g.pose().mulPose(Axis.ZP.rotationDegrees(28));
-            g.fill(-6, -h, 6, h, color);
-            g.pose().popPose();
+    private static void untint() {
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+    }
+
+    /** Draws {@code texture} into the box with fixed-size corners and stretched edges and middle. */
+    private static void slice(GuiGraphics g, ResourceLocation texture, int x, int y, int w, int h, int corner, int tw, int th) {
+        int cx = Math.min(corner, w / 2), cy = Math.min(corner, h / 2);
+        int mw = w - 2 * cx, mh = h - 2 * cy;
+        int smw = tw - 2 * corner, smh = th - 2 * corner;
+        g.blit(texture, x, y, cx, cy, 0, 0, corner, corner, tw, th);
+        g.blit(texture, x + w - cx, y, cx, cy, tw - corner, 0, corner, corner, tw, th);
+        g.blit(texture, x, y + h - cy, cx, cy, 0, th - corner, corner, corner, tw, th);
+        g.blit(texture, x + w - cx, y + h - cy, cx, cy, tw - corner, th - corner, corner, corner, tw, th);
+        if (mw > 0) {
+            g.blit(texture, x + cx, y, mw, cy, corner, 0, smw, corner, tw, th);
+            g.blit(texture, x + cx, y + h - cy, mw, cy, corner, th - corner, smw, corner, tw, th);
         }
-        g.disableScissor();
+        if (mh > 0) {
+            g.blit(texture, x, y + cy, cx, mh, 0, corner, corner, smh, tw, th);
+            g.blit(texture, x + w - cx, y + cy, cx, mh, tw - corner, corner, corner, smh, tw, th);
+        }
+        if (mw > 0 && mh > 0) {
+            g.blit(texture, x + cx, y + cy, mw, mh, corner, corner, smw, smh, tw, th);
+        }
     }
 
-    /** Rays turning slowly behind an item, the way a card is lit in a gacha reveal. */
+    private static void tinted(GuiGraphics g, ResourceLocation texture, int color, int x, int y, int w, int h, int corner, int tw, int th) {
+        tint(color);
+        slice(g, texture, x, y, w, h, corner, tw, th);
+        untint();
+    }
+
+    /** A soft shape-less light: a radial glow of {@code color}, centred, {@code size} across. */
+    public static void glow(GuiGraphics g, int cx, int cy, int size, int color) {
+        tint(color);
+        g.blit(GLOW, cx - size / 2, cy - size / 2, size, size, 0, 0, 128, 128, 128, 128);
+        untint();
+    }
+
+    public static void spark(GuiGraphics g, int cx, int cy, int size, int color) {
+        tint(color);
+        g.blit(SPARK, cx - size / 2, cy - size / 2, size, size, 0, 0, 32, 32, 32, 32);
+        untint();
+    }
+
+    // Components -------------------------------------------------------------------------------------
+
+    /** A rounded card with a soft shadow and a bright rim in the accent colour. */
+    public static void panel(GuiGraphics g, int x, int y, int w, int h, int accent) {
+        tinted(g, PANEL_BG, 0x66000000, x - 2, y + 2, w + 4, h + 4, 11, 48, 48);
+        slice(g, PANEL_BG, x, y, w, h, 11, 48, 48);
+        tinted(g, PANEL_RIM, accent, x, y, w, h, 11, 48, 48);
+    }
+
+    /** A smaller inset card, lit when selected. */
+    public static void card(GuiGraphics g, int x, int y, int w, int h, int accent, boolean lit) {
+        if (lit) {
+            glow(g, x + w / 2, y + h / 2, Math.max(w, h) + 34, alpha(accent, 0.45f));
+        }
+        slice(g, CARD, x, y, w, h, 9, 48, 48);
+        tinted(g, CARD_RIM, lit ? accent : alpha(accent, 0.55f), x, y, w, h, 9, 48, 48);
+    }
+
+    /** Light rays turning slowly behind an item, over a soft glow. */
     public static void burst(GuiGraphics g, int cx, int cy, int radius, int color, float spin) {
+        glow(g, cx, cy, radius * 2, alpha(color, 0.55f));
         g.pose().pushPose();
         g.pose().translate(cx, cy, 0);
-        for (int i = 0; i < 12; i++) {
-            g.pose().pushPose();
-            g.pose().mulPose(Axis.ZP.rotationDegrees(i * 30 + time() * spin));
-            int len = (i & 1) == 0 ? radius : (int) (radius * 0.7f);
-            g.fill(6, -4, len, 4, alpha(color, (i & 1) == 0 ? 0.55f : 0.32f));
-            g.fill(6, -1, len, 1, alpha(WHITE, 0.35f));
-            g.pose().popPose();
-        }
+        g.pose().mulPose(Axis.ZP.rotationDegrees(time() * spin));
+        tint(alpha(color, 0.8f));
+        g.blit(RAYS, -radius, -radius, radius * 2, radius * 2, 0, 0, 256, 256, 256, 256);
+        untint();
         g.pose().popPose();
-        Ui.disc(g, cx, cy, (int) (radius * 0.42f), alpha(color, 0.22f));
-        Ui.disc(g, cx, cy, (int) (radius * 0.3f), alpha(color, 0.3f));
     }
 
     /** An item drawn large, bobbing a little. */
@@ -99,11 +163,9 @@ public final class AnimeUi {
         g.pose().popPose();
     }
 
-    /** Text with a thick ink outline, so it reads against anything. */
+    /** Text with a soft drop shadow. */
     public static void outlined(GuiGraphics g, String text, int x, int y, float scale, int color) {
-        for (int[] d : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {1, 1}, {-1, 1}, {1, -1}}) {
-            Ui.scaledLabel(g, text, x + d[0], y + d[1], scale, INK);
-        }
+        Ui.scaledLabel(g, text, x + 1, y + 1, scale, 0xCC000000);
         Ui.scaledLabel(g, text, x, y, scale, color);
     }
 
@@ -111,31 +173,35 @@ public final class AnimeUi {
         outlined(g, text, cx - (int) (Ui.scaledWidth(text, scale) / 2), y, scale, color);
     }
 
-    /** A chunky gauge: ink frame, dark trough, a flat fill with a light strip across its top. */
+    /** A glossy pill gauge: dark trough, a tinted fill with a highlight along its top. */
     public static void gauge(GuiGraphics g, int x, int y, int w, int h, float frac, int color) {
-        g.fill(x - 2, y - 2, x + w + 2, y + h + 2, INK);
-        g.fill(x, y, x + w, y + h, 0xFF0E0C22);
+        slice(g, TROUGH, x, y, w, h, 7, 32, 16);
         int fill = (int) (w * Math.max(0f, Math.min(1f, frac)));
         if (fill > 0) {
-            g.fill(x, y, x + fill, y + h, color);
-            g.fill(x, y, x + fill, y + Math.max(2, h / 3), alpha(WHITE, 0.35f));
-            g.fill(x + fill - 2, y, x + fill, y + h, alpha(WHITE, 0.7f));
+            tinted(g, FILL, color, x, y, Math.max(fill, Math.min(w, 14)), h, 7, 32, 16);
         }
     }
 
-    /** A flat diamond, used for rune sockets. */
-    public static void diamond(GuiGraphics g, int cx, int cy, int half, int fill, int outline) {
-        g.pose().pushPose();
-        g.pose().translate(cx, cy, 0);
-        g.pose().mulPose(Axis.ZP.rotationDegrees(45));
-        int r = (int) (half * 0.72f);
-        g.fill(-r - 2, -r - 2, r + 2, r + 2, outline);
-        g.fill(-r, -r, r, r, fill);
-        g.fill(-r, -r, r, -r + 3, alpha(WHITE, 0.25f));
-        g.pose().popPose();
+    /** A glossy coloured band inside a gauge, for zones and bonus segments. */
+    public static void band(GuiGraphics g, int x, int y, int w, int h, int color) {
+        if (w > 1) {
+            tinted(g, FILL, color, x, y, w, h, 7, 32, 16);
+        }
     }
 
-    /** A thin line between two points, drawn as a rotated bar. */
+    /** A hexagonal socket: a dark well, a glow of {@code lit} behind it when filled, and a tinted bevel ring. */
+    public static void socket(GuiGraphics g, int cx, int cy, int size, int lit, int ring) {
+        int x = cx - size / 2, y = cy - size / 2;
+        g.blit(SOCKET_BG, x, y, size, size, 0, 0, 64, 64, 64, 64);
+        if ((lit >>> 24) != 0) {
+            glow(g, cx, cy, (int) (size * 0.9f), lit);
+        }
+        tint(ring);
+        g.blit(SOCKET_RING, x, y, size, size, 0, 0, 64, 64, 64, 64);
+        untint();
+    }
+
+    /** A thin soft line between two points. */
     public static void line(GuiGraphics g, float x0, float y0, float x1, float y1, int thickness, int color) {
         float dx = x1 - x0, dy = y1 - y0;
         float len = (float) Math.sqrt(dx * dx + dy * dy);
@@ -146,7 +212,12 @@ public final class AnimeUi {
         g.pose().popPose();
     }
 
-    /** A loud flat button: hard shadow, ink frame, colour that lifts on hover, greyed when inactive. */
+    /** A slanted ribbon behind big banner text. */
+    public static void ribbon(GuiGraphics g, int x, int y, int w, int h, int color) {
+        tinted(g, RIBBON, color, x, y, w, h, 14, 96, 32);
+    }
+
+    /** A glossy rounded button: lifts and brightens on hover, greys out when inactive. */
     public static final class Btn extends Button {
         private final int color;
         private final float textScale;
@@ -160,26 +231,23 @@ public final class AnimeUi {
         @Override
         public void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             boolean hot = active && isHoveredOrFocused();
-            int lift = hot ? -2 : 0;
-            int base = active ? (hot ? mix(color, WHITE, 0.25f) : color) : 0xFF4A4668;
-            int x = getX(), y = getY() + lift;
-            g.fill(x + 3, getY() + 3, x + width + 3, getY() + height + 3, 0x88000000);
-            g.fill(x - 2, y - 2, x + width + 2, y + height + 2, INK);
-            g.fill(x, y, x + width, y + height, base);
-            g.fill(x, y, x + width, y + Math.max(3, height / 4), alpha(WHITE, active ? 0.28f : 0.1f));
-            g.fill(x, y + height - 3, x + width, y + height, alpha(INK, 0.35f));
+            int lift = hot ? -1 : 0;
+            int base = active ? (hot ? mix(color, WHITE, 0.22f) : color) : 0xFF57527C;
+            tinted(g, BUTTON, 0x77000000, getX(), getY() + 3, width, height, 10, 48, 32);
+            tinted(g, BUTTON, base, getX(), getY() + lift, width, height, 10, 48, 32);
             String label = getMessage().getString();
-            int textColor = active ? (isDark(base) ? WHITE : INK) : MUTED;
+            int textColor = active ? (isDark(base) ? WHITE : 0xFF1A1230) : 0xFFB4AED6;
             float ws = Ui.scaledWidth(label, textScale);
-            Ui.scaledLabel(g, label, x + (int) ((width - ws) / 2), y + (int) ((height - 8 * textScale) / 2) + 1, textScale, textColor);
+            int tx = getX() + (int) ((width - ws) / 2);
+            int ty = getY() + lift + (int) ((height - 8 * Math.max(1f, (int) textScale)) / 2) + 1;
+            if (active && !isDark(base)) {
+                Ui.scaledLabel(g, label, tx, ty + 1, textScale, alpha(WHITE, 0.55f));
+            }
+            Ui.scaledLabel(g, label, tx, ty, textScale, textColor);
         }
 
         private static boolean isDark(int c) {
-            return ((c >> 16) & 0xFF) * 0.3 + ((c >> 8) & 0xFF) * 0.59 + (c & 0xFF) * 0.11 < 150;
+            return ((c >> 16) & 0xFF) * 0.3 + ((c >> 8) & 0xFF) * 0.59 + (c & 0xFF) * 0.11 < 140;
         }
-    }
-
-    public static float partial() {
-        return Minecraft.getInstance().getFrameTime();
     }
 }

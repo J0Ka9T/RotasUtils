@@ -238,7 +238,8 @@ public class RuneScreen extends RotasScreen {
     @Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, 0xE60A0818, 0xF0190E36);
-        AnimeUi.stripes(graphics, 0, 0, width, height, AnimeUi.alpha(AnimeUi.CYAN, 0.05f), -0.4f);
+        AnimeUi.glow(graphics, width / 4, height / 3, height, AnimeUi.alpha(AnimeUi.CYAN, 0.15f));
+        AnimeUi.glow(graphics, width * 3 / 4, height * 2 / 3, height, AnimeUi.alpha(AnimeUi.PINK, 0.14f));
     }
 
     @Override
@@ -301,9 +302,12 @@ public class RuneScreen extends RotasScreen {
             RuneType rune = RuneType.byId(slot.getString("rune"));
             boolean open = slot.getBoolean("open");
             boolean target = (dragging || hover == i) && canInscribe(i);
-            int fill = !open ? 0xFF1B1934 : rune == null ? AnimeUi.PANEL_LIGHT : AnimeUi.mix(AnimeUi.PANEL, colorOf(rune), 0.55f);
-            int outline = target ? AnimeUi.alpha(AnimeUi.GOLD, 0.7f + 0.3f * (float) Math.sin(AnimeUi.time() * 10f)) : AnimeUi.INK;
-            AnimeUi.diamond(g, p[0], p[1], 30, fill, outline == AnimeUi.INK ? AnimeUi.INK : AnimeUi.GOLD);
+            boolean lit = open && rune != null;
+            int ringColor = target ? AnimeUi.GOLD : !open ? 0xFF4A4668 : rune == null ? AnimeUi.PANEL_LIGHT : colorOf(rune);
+            AnimeUi.socket(g, p[0], p[1], 62, lit ? AnimeUi.alpha(colorOf(rune), 0.75f) : 0, ringColor);
+            if (target) {
+                AnimeUi.glow(g, p[0], p[1], 92, AnimeUi.alpha(AnimeUi.GOLD, 0.35f + 0.2f * (float) Math.sin(AnimeUi.time() * 9f)));
+            }
             if (rune != null) {
                 int tier = slot.getInt("tier");
                 AnimeUi.bigItem(g, iconOf(rune, tier), p[0], p[1] - 2, 1.5f, false);
@@ -336,9 +340,7 @@ public class RuneScreen extends RotasScreen {
             boolean sel = card == selected;
             boolean hot = Ui.inside(mouseX, mouseY, x, y, 72, 56);
             int c = colorOf(card.rune());
-            g.fill(x - 2, y - 2, x + 74, y + 58, sel ? AnimeUi.GOLD : AnimeUi.INK);
-            g.fill(x, y, x + 72, y + 56, sel || hot ? AnimeUi.mix(AnimeUi.PANEL_LIGHT, c, 0.3f) : 0xFF16132E);
-            g.fill(x, y, x + 72, y + 4, c);
+            AnimeUi.card(g, x, y, 72, 56, sel ? AnimeUi.GOLD : c, sel || hot);
             AnimeUi.bigItem(g, iconOf(card.rune(), card.tier()), x + 22, y + 26, 2f, false);
             AnimeUi.outlined(g, ItemRunes.numeral(card.tier()), x + 44, y + 12, 2, AnimeUi.WHITE);
             AnimeUi.outlined(g, "x" + card.count(), x + 44, y + 34, 1, AnimeUi.GOLD);

@@ -256,7 +256,8 @@ public class RefineScreen extends RotasScreen {
     @Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, 0xE60A0818, 0xF01A1038);
-        AnimeUi.stripes(graphics, 0, 0, width, height, AnimeUi.alpha(AnimeUi.PINK, 0.05f), 0.4f);
+        AnimeUi.glow(graphics, width / 5, height / 4, height, AnimeUi.alpha(AnimeUi.PINK, 0.16f));
+        AnimeUi.glow(graphics, width * 4 / 5, height * 3 / 4, height, AnimeUi.alpha(AnimeUi.CYAN, 0.14f));
     }
 
     @Override
@@ -303,12 +304,11 @@ public class RefineScreen extends RotasScreen {
         AnimeUi.outlined(g, "+" + quote.getInt("level") + " > +" + quote.getInt("target"), rx, guiTop + 14, 3, AnimeUi.GOLD);
         Ui.label(g, L.t("rotasutils.refine.chance"), rx, guiTop + 46, AnimeUi.MUTED);
         int gy = guiTop + 58;
-        AnimeUi.gauge(g, rx, gy, rw - 52, 12, (float) baseChance(), mood);
+        AnimeUi.gauge(g, rx, gy, rw - 52, 14, (float) baseChance(), mood);
         if (bonusChance() > 0) {
             int from = (int) ((rw - 52) * baseChance());
             int to = (int) ((rw - 52) * (baseChance() + bonusChance()));
-            g.fill(rx + from, gy, rx + to, gy + 12, AnimeUi.CYAN);
-            g.fill(rx + from, gy, rx + to, gy + 4, AnimeUi.alpha(AnimeUi.WHITE, 0.4f));
+            AnimeUi.band(g, rx + from - 3, gy, to - from + 3, 14, AnimeUi.CYAN);
         }
         int percent = (int) Math.round(chance * 100);
         AnimeUi.outlined(g, percent + "%", rx + rw - 46, gy - 4, 2, mood);
@@ -343,22 +343,16 @@ public class RefineScreen extends RotasScreen {
             boolean owned = tile.have() > 0;
             boolean hot = owned && !locked && Ui.inside(mouseX, mouseY, x, y, 62, 54);
             boolean active = on(tile.key());
-            g.fill(x - 2, y - 2, x + 64, y + 56, AnimeUi.INK);
-            g.fill(x, y, x + 62, y + 54, active ? AnimeUi.mix(AnimeUi.PANEL_LIGHT, AnimeUi.LIME, 0.35f)
-                    : hot ? AnimeUi.PANEL_LIGHT : 0xFF16132E);
-            if (active) {
-                g.fill(x, y, x + 62, y + 3, AnimeUi.LIME);
-            }
+            AnimeUi.card(g, x, y, 62, 54, active ? AnimeUi.LIME : hot ? AnimeUi.CYAN : AnimeUi.PANEL_LIGHT, active || hot);
             g.pose().pushPose();
             g.pose().translate(x + 31, y + 20, 100);
             g.pose().scale(1.5f, 1.5f, 1f);
             g.renderItem(tile.icon(), -8, -8);
             g.pose().popPose();
-            String label = Ui.truncate(tile.label(), 58);
-            Ui.labelCentered(g, label, x + 31, y + 36, owned ? AnimeUi.WHITE : AnimeUi.MUTED);
-            Ui.labelCentered(g, "x" + tile.have(), x + 31, y + 45, owned ? (active ? AnimeUi.LIME : AnimeUi.GOLD) : AnimeUi.MUTED);
+            Ui.labelCentered(g, Ui.truncate(tile.label(), 56), x + 31, y + 35, owned ? AnimeUi.WHITE : AnimeUi.MUTED);
+            Ui.labelCentered(g, "x" + tile.have(), x + 31, y + 44, owned ? (active ? AnimeUi.LIME : AnimeUi.GOLD) : AnimeUi.MUTED);
             if (!owned) {
-                g.fill(x, y, x + 62, y + 54, 0x88000000);
+                AnimeUi.band(g, x, y, 62, 54, 0x99000000);
             }
         }
     }
@@ -378,21 +372,19 @@ public class RefineScreen extends RotasScreen {
         double center = s.getList("centers", Tag.TAG_DOUBLE).getDouble(index);
         boolean over = done.size() >= ForgeTiming.STRIKES;
 
-        g.fill(bx - 2, by - 2, bx + bw + 2, by + 28, AnimeUi.INK);
-        g.fill(bx, by, bx + bw, by + 26, 0xFF0E0C22);
+        AnimeUi.gauge(g, bx, by, bw, 26, 0f, AnimeUi.WHITE);
         int gx0 = bx + (int) ((center - ForgeTiming.GOOD) * bw), gx1 = bx + (int) ((center + ForgeTiming.GOOD) * bw);
         int px0 = bx + (int) ((center - ForgeTiming.PERFECT) * bw), px1 = bx + (int) ((center + ForgeTiming.PERFECT) * bw);
-        float pulse = 0.75f + 0.25f * (float) Math.sin(AnimeUi.time() * 8f);
-        g.fill(gx0, by, gx1, by + 26, AnimeUi.alpha(AnimeUi.CYAN, 0.55f));
-        g.fill(px0, by, px1, by + 26, AnimeUi.alpha(AnimeUi.GOLD, pulse));
-        g.fill(px0, by, px1, by + 6, AnimeUi.alpha(AnimeUi.WHITE, 0.5f));
-        Ui.labelCentered(g, L.t("rotasutils.refine.zone_good"), (gx0 + px0) / 2, by + 9, AnimeUi.INK);
-        Ui.labelCentered(g, "PERFECT", (px0 + px1) / 2, by + 9, AnimeUi.INK);
+        float pulse = 0.8f + 0.2f * (float) Math.sin(AnimeUi.time() * 8f);
+        AnimeUi.band(g, gx0, by + 3, gx1 - gx0, 20, AnimeUi.alpha(AnimeUi.CYAN, 0.8f));
+        AnimeUi.band(g, px0, by + 3, px1 - px0, 20, AnimeUi.alpha(AnimeUi.GOLD, pulse));
+        Ui.labelCentered(g, "PERFECT", (px0 + px1) / 2, by + 9, 0xFF3A2400);
 
         if (!over) {
             int mx = bx + (int) (markerNow() * bw);
-            g.fill(mx - 5, by - 3, mx + 5, by + 29, AnimeUi.alpha(AnimeUi.WHITE, 0.25f));
-            g.fill(mx - 2, by - 3, mx + 2, by + 29, AnimeUi.WHITE);
+            AnimeUi.glow(g, mx, by + 13, 44, AnimeUi.alpha(AnimeUi.WHITE, 0.7f));
+            g.fill(mx - 1, by + 1, mx + 1, by + 25, AnimeUi.WHITE);
+            AnimeUi.spark(g, mx, by + 13, 22, AnimeUi.WHITE);
         }
         // Strike pips with what each earned.
         for (int i = 0; i < ForgeTiming.STRIKES; i++) {
@@ -407,8 +399,8 @@ public class RefineScreen extends RotasScreen {
                 text = i == done.size() ? L.t("rotasutils.refine.next") : "-";
                 color = i == done.size() ? AnimeUi.WHITE : AnimeUi.MUTED;
             }
-            AnimeUi.diamond(g, x + 6, y + 6, 10, i < done.size() ? color : 0xFF16132E, AnimeUi.INK);
-            Ui.label(g, text, x + 20, y + 2, color);
+            AnimeUi.socket(g, x + 8, y + 8, 22, i < done.size() ? AnimeUi.alpha(color, 0.9f) : 0, AnimeUi.PANEL_LIGHT);
+            Ui.label(g, text, x + 24, y + 4, color);
         }
     }
 
@@ -425,9 +417,9 @@ public class RefineScreen extends RotasScreen {
                 : L.t("rotasutils.refine.banner_fail");
         float pop = Math.min(1f, age / 180f);
         float fade = age > 3000 ? 1f - (age - 3000) / 600f : 1f;
-        g.fill(guiLeft, cy - 26, guiLeft + guiWidth, cy + 30, AnimeUi.alpha(0xFF000000, 0.6f * fade * pop));
-        g.fill(guiLeft, cy - 26, guiLeft + guiWidth, cy - 23, AnimeUi.alpha(ok ? AnimeUi.GOLD : AnimeUi.RED, fade));
-        g.fill(guiLeft, cy + 27, guiLeft + guiWidth, cy + 30, AnimeUi.alpha(ok ? AnimeUi.GOLD : AnimeUi.RED, fade));
+        int bw = Math.min(guiWidth - 40, 320);
+        AnimeUi.glow(g, guiLeft + guiWidth / 2, cy, 320, AnimeUi.alpha(ok ? AnimeUi.GOLD : AnimeUi.RED, 0.5f * fade * pop));
+        AnimeUi.ribbon(g, guiLeft + (guiWidth - bw) / 2, cy - 30, bw, 60, AnimeUi.alpha(ok ? 0xFF3A2A70 : 0xFF5A1E2A, fade * pop));
         int scale = pop < 1f ? 3 : 4;
         AnimeUi.outlinedCentered(g, text, guiLeft + guiWidth / 2, cy - 14, scale, ok ? AnimeUi.GOLD : AnimeUi.RED);
         if (ok) {
