@@ -29,7 +29,7 @@ import java.util.function.Consumer;
  * within reach on every attempt (see {@link net.schwarz.rotasutils.server.StationService}), so a
  * screen kept open after walking away cannot be used from across the map.
  */
-public class StationBlock extends HorizontalDirectionalBlock {
+public class StationBlock extends HorizontalDirectionalBlock implements net.minecraft.world.level.block.EntityBlock {
     /** What the station looks and sounds like when alive. */
     public enum Kind { FORGE, ALTAR }
 
@@ -48,6 +48,13 @@ public class StationBlock extends HorizontalDirectionalBlock {
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING);
+    }
+
+    /** Only the altar carries a renderer (its floating crystal). */
+    @org.jetbrains.annotations.Nullable
+    @Override
+    public net.minecraft.world.level.block.entity.BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return kind == Kind.ALTAR ? new RuneAltarBlockEntity(pos, state) : null;
     }
 
     @Override

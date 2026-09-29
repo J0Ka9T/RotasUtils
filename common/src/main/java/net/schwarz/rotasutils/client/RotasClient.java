@@ -43,6 +43,9 @@ public final class RotasClient {
         dev.architectury.registry.client.rendering.BlockEntityRendererRegistry.register(
                 net.schwarz.rotasutils.registry.RotasRegistry.WAYSTONE_BLOCK_ENTITY.get(),
                 net.schwarz.rotasutils.client.render.WaystoneRenderer::new);
+        dev.architectury.registry.client.rendering.BlockEntityRendererRegistry.register(
+                net.schwarz.rotasutils.registry.RotasRegistry.RUNE_ALTAR_BLOCK_ENTITY.get(),
+                net.schwarz.rotasutils.client.render.RuneAltarRenderer::new);
     }
 
     public static void init() {

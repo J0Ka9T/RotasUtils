@@ -182,7 +182,7 @@ public final class RotasRegistry {
                     .noOcclusion()
                     .requiresCorrectToolForDrops(),
                     net.schwarz.rotasutils.block.StationBlock.Kind.ALTAR,
-                    Block.box(0, 0, 0, 16, 13, 16),
+                    Block.box(0, 0, 0, 16, 16, 16),
                     net.schwarz.rotasutils.network.RotasNetwork::openRunes));
 
     public static final RegistrySupplier<Item> REFINE_FORGE_ITEM = ITEMS.register("refine_forge",
@@ -385,6 +385,12 @@ public final class RotasRegistry {
     public static final RegistrySupplier<BlockEntityType<net.schwarz.rotasutils.block.WaystoneBlockEntity>>
             WAYSTONE_BLOCK_ENTITY = BLOCK_ENTITIES.register("waystone", () -> BlockEntityType.Builder
                     .of(net.schwarz.rotasutils.block.WaystoneBlockEntity::new, WAYSTONE.get())
+                    .build(null));
+
+    /** Carries the floating-crystal renderer on the Rune Altar; stores nothing. */
+    public static final RegistrySupplier<BlockEntityType<net.schwarz.rotasutils.block.RuneAltarBlockEntity>>
+            RUNE_ALTAR_BLOCK_ENTITY = BLOCK_ENTITIES.register("rune_altar", () -> BlockEntityType.Builder
+                    .of(net.schwarz.rotasutils.block.RuneAltarBlockEntity::new, RUNE_ALTAR.get())
                     .build(null));
 
     public static final RegistrySupplier<BlockEntityType<QuestBoardBlockEntity>> QUEST_BOARD_BLOCK_ENTITY =
