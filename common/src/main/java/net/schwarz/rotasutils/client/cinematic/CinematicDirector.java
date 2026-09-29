@@ -7,7 +7,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
-import net.schwarz.rotasutils.ability.RedTimings;
 
 /**
  * What the game's camera, lens and controls do while this client's own player is casting. Only the
@@ -21,7 +20,7 @@ public final class CinematicDirector {
 
     private static ClientCast active(float partialTick) {
         ClientCast cast = ClientCasts.local();
-        return cast != null && cast.time(partialTick) < RedTimings.END ? cast : null;
+        return cast != null && cast.time(partialTick) < cast.endSeconds() ? cast : null;
     }
 
     /** The shot to put the camera at, given the player's own camera; null when no cutscene is running. */
@@ -35,6 +34,9 @@ public final class CinematicDirector {
         double base = Minecraft.getInstance().options.fov().get();
         double t = cast.time(partialTick);
         CameraRig.Frame frame = cast.frame(partialTick);
+        if (cast.purple()) {
+            return PurpleCamera.shot(t, frame, PurpleCamera.Timing.of(cast), cast::followPoint, normal, look, base, (int) cast.seed);
+        }
         CameraRig.kickAt = cast.max() && cast.released() ? cast.releaseAt + cast.travelSeconds : -1;
         return CameraRig.shot(t, frame, cast.socketsForCamera(t, frame), cast.followPoint(t), normal, look, base, (int) cast.seed);
     }
@@ -42,14 +44,20 @@ public final class CinematicDirector {
     /** The field of view in degrees, or {@code base} when nothing is playing. */
     public static double fov(float partialTick, double base) {
         ClientCast cast = active(partialTick);
-        return cast == null ? base : CameraRig.fovAt(cast.time(partialTick), base);
+        if (cast == null) {
+            return base;
+        }
+        return cast.purple() ? PurpleCamera.fovAt(cast.time(partialTick), base, PurpleCamera.Timing.of(cast))
+                : CameraRig.fovAt(cast.time(partialTick), base);
     }
 
     /** Applies the shot's roll to the view matrix, right after the game's own hurt tilt. */
     public static void applyRoll(PoseStack pose, float partialTick) {
         ClientCast cast = active(partialTick);
         if (cast != null) {
-            pose.mulPose(Axis.ZP.rotationDegrees((float) CameraRig.rollAt(cast.time(partialTick), (int) cast.seed)));
+            double roll = cast.purple() ? PurpleCamera.rollAt(cast.time(partialTick), (int) cast.seed, PurpleCamera.Timing.of(cast))
+                    : CameraRig.rollAt(cast.time(partialTick), (int) cast.seed);
+            pose.mulPose(Axis.ZP.rotationDegrees((float) roll));
         }
     }
 

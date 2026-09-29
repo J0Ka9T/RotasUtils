@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
+import net.schwarz.rotasutils.ability.PurpleTimings;
 import net.schwarz.rotasutils.ability.RedTimings;
 import net.schwarz.rotasutils.ability.Timeline;
 
@@ -74,9 +75,27 @@ public final class ClientCast {
     /** Sound stages of the aftermath already played. */
     int aftermath;
 
+    /** Hollow Purple: its own film, its own timing. */
+    public boolean purple() {
+        return ability.getPath().equals("hollow_purple");
+    }
+
+    /** When the attack fires, seconds since the cast began. */
+    public double releaseSeconds() {
+        return purple() ? PurpleTimings.RELEASE : RedTimings.RELEASE;
+    }
+
+    /** When the cutscene stops owning the caster's camera and controls. */
+    public double endSeconds() {
+        if (!purple()) {
+            return RedTimings.END;
+        }
+        return released() ? releaseAt + travelSeconds + PurpleTimings.TAIL : PurpleTimings.RELEASE + 3.0;
+    }
+
     /** How long lingering effects last after impact. */
     public double linger() {
-        return max() ? 7.0 : RedTimings.LINGER;
+        return purple() ? PurpleTimings.LINGER : max() ? 7.0 : RedTimings.LINGER;
     }
 
     public boolean released() {
@@ -90,7 +109,7 @@ public final class ClientCast {
 
     /** When this cast stops needing to be drawn: after its own end, and after its impact has finished lingering. */
     public double finishedAt() {
-        double end = RedTimings.END;
+        double end = endSeconds();
         if (released()) {
             end = Math.max(end, releaseAt + travelSeconds + linger());
         }

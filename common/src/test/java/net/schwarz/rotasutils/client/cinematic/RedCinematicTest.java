@@ -1,6 +1,7 @@
 package net.schwarz.rotasutils.client.cinematic;
 
 import net.minecraft.world.phys.Vec3;
+import net.schwarz.rotasutils.ability.PurpleTimings;
 import net.schwarz.rotasutils.ability.RedTimings;
 import org.junit.jupiter.api.Test;
 
@@ -122,5 +123,59 @@ class RedCinematicTest {
         assertTrue(RedProfile.light(RedTimings.HOLD - 0.02, true) > 0.9 && RedProfile.light(RedTimings.HOLD + 0.2, true) < 0.1,
                 "the red light floods the scene, then almost disappears");
         assertTrue(RedProfile.light(RedTimings.RELEASE, true) > 2, "one overbright frame on release");
+    }
+
+    @Test
+    void purpleIsBlueAndRedThenAPointThenAStableSphereThenACompressedCoreBeforeRelease() {
+        assertEquals(0, PurpleProfile.orbRadius(PurpleTimings.BLUE - 0.1, PurpleTimings.BLUE), 1e-9);
+        assertTrue(PurpleProfile.orbRadius(PurpleTimings.COLLAPSE - 0.01, PurpleTimings.RED) > 0.25);
+        assertEquals(0, PurpleProfile.orbRadius(PurpleTimings.POINT + 0.01, PurpleTimings.RED), 1e-9);
+        assertTrue(PurpleProfile.pointRadius(PurpleTimings.POINT + 0.1) < 0.03, "only a tiny spark before Purple is born");
+        assertTrue(PurpleProfile.coreRadius(PurpleTimings.BORN + 0.3) > 0.45, "then it is born big");
+        // pulsing while it shows off, then perfectly stable
+        double a = PurpleProfile.coreRadius(PurpleTimings.STABLE + 0.05), b = PurpleProfile.coreRadius(PurpleTimings.COMPRESS - 0.05);
+        assertEquals(a, b, 1e-9);
+        assertEquals(PurpleProfile.PURPLE_RADIUS, a, 1e-9);
+        boolean pulsed = false;
+        for (double t = PurpleTimings.BORN + 0.6; t < PurpleTimings.STABLE - 0.5; t += 0.02) {
+            pulsed |= Math.abs(PurpleProfile.pulse(t)) > 0.5;
+        }
+        assertTrue(pulsed);
+        assertEquals(PurpleProfile.DENSE_RADIUS, PurpleProfile.coreRadius(PurpleTimings.RELEASE - 0.01), 1e-3);
+        assertTrue(PurpleProfile.light(PurpleTimings.RELEASE - 0.05) < 0.1 && PurpleProfile.light(PurpleTimings.RELEASE) > 2,
+                "the violet light goes out for a beat, then one flash on the release");
+    }
+
+    @Test
+    void purpleCameraStaysFiniteAndCloseThroughoutForAnyFlightTime() {
+        Vec3 feet = new Vec3(0, 64, 0), target = new Vec3(3, 65, 60);
+        for (double travel : new double[]{0.3, 0.9, 1.8}) {
+            PurpleCamera.Timing timing = new PurpleCamera.Timing(PurpleTimings.RELEASE, travel, true);
+            Vec3 impact = new Vec3(3, 65, 60);
+            CameraRig.Frame f = CameraRig.Frame.of(feet, target, impact);
+            Vec3 normal = new Vec3(0, 65.62, 0), look = new Vec3(0, 65.6, 10);
+            for (double t = 0.05; t < timing.impact() + 5.5; t += 0.05) {
+                final double now = t;
+                CameraRig.Shot s = PurpleCamera.shot(t, f, timing, x -> x < PurpleTimings.RELEASE ? null : feet.add(0, 1.5, Math.min(60, (x - PurpleTimings.RELEASE) * 60 / travel)),
+                        normal, look, 70, 3);
+                assertTrue(Double.isFinite(s.yaw()) && Double.isFinite(s.pitch()) && Double.isFinite(s.position().x), "t=" + now);
+                assertTrue(s.position().distanceTo(feet) < 70, "t=" + now + " travel=" + travel);
+            }
+            assertEquals(0, PurpleCamera.weight(timing.impact() + 5.0, timing), 1e-9);
+        }
+    }
+
+    @Test
+    void purpleHandsStartWideCloseForTheMergeAndSpreadRoundTheSphere() {
+        Vec3 feet = new Vec3(0, 64, 0);
+        double wide = gap(4.0, feet), merged = gap(PurpleTimings.BORN, feet), hero = gap(PurpleTimings.BORN + 1.5, feet);
+        assertTrue(wide > 1.2, "hands wide apart: " + wide);
+        assertTrue(merged < 0.25, "hands touching for the merge: " + merged);
+        assertTrue(hero > 0.9 && hero < 1.2, "hands round a block-wide sphere: " + hero);
+    }
+
+    private static double gap(double t, Vec3 feet) {
+        PurplePose.Sockets s = PurplePose.sockets(PurplePose.sample(t), feet, 0);
+        return s.handL().distanceTo(s.handR());
     }
 }

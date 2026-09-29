@@ -29,30 +29,48 @@ import net.schwarz.rotasutils.item.RedReversalItem;
  * it only learns where the attack starts, where it lands and when.
  */
 public final class RedReversalAbility implements AbilityDefinition {
-    public static final RedReversalAbility INSTANCE = new RedReversalAbility("red_reversal", 1.0, 1.0, false);
+    public static final RedReversalAbility INSTANCE = new RedReversalAbility("red_reversal", 1.0, 1.0, false, false,
+            RedTimings.RELEASE, RedTimings.END_TICKS, RedTimings.RANGE, RedTimings.PROJECTILE_SPEED);
     /**
      * Red Reversal MAX: the same sequence, but everything it throws is bigger - twice the blast, a far heavier hit,
      * a line of force that tears through everything along its path, and an aftershock where it lands.
      */
-    public static final RedReversalAbility MAX = new RedReversalAbility("red_reversal_max", 2.0, 2.6, true);
+    public static final RedReversalAbility MAX = new RedReversalAbility("red_reversal_max", 2.0, 2.6, true, true,
+            RedTimings.RELEASE, RedTimings.END_TICKS, RedTimings.RANGE, RedTimings.PROJECTILE_SPEED);
+    /**
+     * Hollow Purple: Blue and Red merged. A far slower, far larger cutscene, a mass of distorted space that erases
+     * everything near its path, and a landing that removes a whole section of the world.
+     */
+    public static final RedReversalAbility PURPLE = new RedReversalAbility("hollow_purple", 2.4, 4.0, true, false,
+            PurpleTimings.RELEASE, PurpleTimings.END_TICKS, PurpleTimings.RANGE, PurpleTimings.PROJECTILE_SPEED);
     public static final ResourceLocation ID = INSTANCE.id;
 
     private final ResourceLocation id;
     /** Blast radius and damage multipliers over the base values in {@link RedTimings}. */
     private final double size;
     private final double power;
-    /** Whether the shot also hurts everything it passes, and the landing sends a second, smaller blast. */
-    private final boolean max;
+    /** Whether the shot also hurts everything it passes. */
+    private final boolean carve;
+    /** Whether the landing sends a second, smaller blast. */
+    private final boolean aftershock;
+    private final int endTicks;
+    private final double range;
+    private final double speed;
+    private final Timeline<AbilityContext> timeline;
 
-    private final Timeline<AbilityContext> timeline = new Timeline<AbilityContext>()
-            .at(RedTimings.ANIM_START, "begin", RedReversalAbility::begin)
-            .at(RedTimings.RELEASE, "release", this::release);
-
-    private RedReversalAbility(String name, double size, double power, boolean max) {
+    private RedReversalAbility(String name, double size, double power, boolean carve, boolean aftershock,
+                               double releaseSeconds, int endTicks, double range, double speed) {
         this.id = Rotasutils.id(name);
         this.size = size;
         this.power = power;
-        this.max = max;
+        this.carve = carve;
+        this.aftershock = aftershock;
+        this.endTicks = endTicks;
+        this.range = range;
+        this.speed = speed;
+        this.timeline = new Timeline<AbilityContext>()
+                .at(RedTimings.ANIM_START, "begin", RedReversalAbility::begin)
+                .at(releaseSeconds, "release", this::release);
     }
 
     @Override
@@ -67,7 +85,7 @@ public final class RedReversalAbility implements AbilityDefinition {
 
     @Override
     public int durationTicks() {
-        return RedTimings.END_TICKS;
+        return endTicks;
     }
 
     @Override
@@ -115,24 +133,26 @@ public final class RedReversalAbility implements AbilityDefinition {
         Vec3 dir = aim.subtract(eye);
         dir = dir.lengthSqr() < 1.0e-4 ? player.getLookAngle() : dir.normalize();
         Vec3 origin = eye.add(dir.scale(0.7)).add(0, -0.2, 0);
-        Vec3 end = origin.add(dir.scale(RedTimings.RANGE));
+        Vec3 end = origin.add(dir.scale(range));
         var block = level.clip(new ClipContext(origin, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
-        double reach = block.getType() == HitResult.Type.MISS ? RedTimings.RANGE : block.getLocation().distanceTo(origin);
+        double reach = block.getType() == HitResult.Type.MISS ? range : block.getLocation().distanceTo(origin);
         Vec3 limit = origin.add(dir.scale(reach));
         EntityHitResult hit = ProjectileUtil.getEntityHitResult(level, player, origin, limit,
                 new AABB(origin, limit).inflate(1.0), e -> canHit(e, player));
         Vec3 impact = hit != null ? hit.getLocation() : limit;
-        int travel = Math.max(1, (int) Math.ceil(impact.distanceTo(origin) / RedTimings.PROJECTILE_SPEED));
+        int travel = Math.max(1, (int) Math.ceil(impact.distanceTo(origin) / speed));
         int hitId = hit != null ? hit.getEntity().getId() : -1;
         AbilityNet.sendRelease(c, origin, impact, hitId, travel);
         level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.WARDEN_SONIC_BOOM, SoundSource.PLAYERS, 1.2f, 0.7f);
         final Vec3 travelDir = dir;
-        if (max) {
+        if (aftershock) {
             level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 2.0f, 0.5f);
+        }
+        if (carve) {
             c.after(Math.max(1, travel / 2), () -> carve(c, origin, impact, travelDir));
         }
         c.after(travel, () -> blast(c, impact, travelDir, 1.0));
-        if (max) {
+        if (aftershock) {
             c.after(travel + 6, () -> blast(c, impact, travelDir, 0.45));
         }
     }
@@ -144,7 +164,7 @@ public final class RedReversalAbility implements AbilityDefinition {
     /** MAX only: everything within a few blocks of the line of fire is struck on the way past. */
     private void carve(AbilityContext c, Vec3 from, Vec3 to, Vec3 travelDir) {
         ServerPlayer caster = c.player;
-        double reach = 3.0;
+        double reach = 3.0 * Math.sqrt(size);
         Vec3 seg = to.subtract(from);
         for (LivingEntity victim : c.level.getEntitiesOfClass(LivingEntity.class, new AABB(from, to).inflate(reach),
                 e -> e.isAlive() && !e.isSpectator() && e != caster && !(e instanceof ArmorStand))) {

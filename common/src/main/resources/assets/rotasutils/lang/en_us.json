@@ -3001,6 +3001,8 @@
   "item.rotasutils.red_reversal.desc": "Right click: a slow, deliberate charge and one violent release.",
   "item.rotasutils.red_reversal_max": "Red Reversal MAX",
   "item.rotasutils.red_reversal_max.desc": "Right click: a block of pressure crushed to a point, then let go all at once. It hits twice.",
+  "item.rotasutils.hollow_purple": "Hollow Purple",
+  "item.rotasutils.hollow_purple.desc": "Right click: Blue and Red, made one. Silence, then a section of space erased.",
   "rotasutils.ability.cooldown": "Not ready: %s s",
   "item.rotasutils.zenith": "Zenith",
   "item.rotasutils.zenith.desc": "Every blade that came before, forged into one.",

@@ -774,7 +774,42 @@ def red_reversal_max():
     red_reversal(True)
 
 
+# ---- Hollow Purple: Blue and Red spiralling into a white-hot violet core -----------------------------------
+def hollow_purple():
+    cv = Canvas()
+    # a faint cosmic halo
+    cv.glow(rgb('#7a2cff') * 0.9, blur(circle(0.5, 0.5, 0.44), 20) * 0.7)
+    # blue and red lobes pulled toward each other
+    for cx, cy, deep, hot in ((0.31, 0.5, '#04124a', '#5fd8ff'), (0.69, 0.5, '#3a0308', '#ff4a30')):
+        m = circle(cx, cy, 0.19)
+        n = fbm(21 if cx < 0.5 else 22, (30, 10, 4), (1, 0.7, 0.4))
+        h = dome(m, 0.19) * 0.9 + n * 0.05
+        diff, sp = light(h, 70)
+        t = np.clip(diff * 0.9 + (n * 0.5 + 0.5) * 0.25 - 0.1, 0, 1)
+        cv.glow(rgb(hot) * 0.7, blur(m, 10) * 0.6)
+        cv.put(np.clip(ramp(t, [(0, deep), (0.6, hot), (1, '#ffffff')]) + sp[..., None] * 0.3, 0, 1), m)
+    # the purple core between them
+    m = circle(0.5, 0.5, 0.25)
+    n = fbm(33, (24, 8, 3), (1, 0.7, 0.4))
+    h = dome(m, 0.25) * 0.9 + n * 0.05
+    diff, sp = light(h, 70)
+    t = np.clip(diff * 0.9 + (n * 0.5 + 0.5) * 0.3, 0, 1)
+    cv.glow(rgb('#b060ff') * 0.9, blur(m, 14) * 0.9)
+    cv.put(np.clip(ramp(t, [(0, '#1a0038'), (0.4, '#5a18c8'), (0.8, '#b878ff'), (1, '#fff0ff')]) + sp[..., None] * 0.35, 0, 1), m)
+    cv.put(rgb('#ffffff'), blur(circle(0.5, 0.5, 0.07), 5) * 0.95)
+    # broken ribbons orbiting
+    rng = np.random.default_rng(5)
+    for k in range(7):
+        a0 = rng.uniform(0, 6.28)
+        span = rng.uniform(0.8, 1.6)
+        r = rng.uniform(0.3, 0.42)
+        pts = [(0.5 + math.cos(a0 + span * i / 12) * r * 1.15, 0.5 + math.sin(a0 + span * i / 12) * r * 0.75) for i in range(13)]
+        cv.put(rgb('#e0b8ff'), blur(stroke(pts, 0.012, 0.004), 1.0) * 0.85)
+    cv.outline(rgb('#0a0416'), 0.012)
+    cv.save('hollow_purple')
+
+
 if __name__ == '__main__':
-    for f in (gems, runes, scrolls, sigils, keys, rings, red_reversal, red_reversal_max):
+    for f in (gems, runes, scrolls, sigils, keys, rings, red_reversal, red_reversal_max, hollow_purple):
         f()
         print('painted', f.__name__)

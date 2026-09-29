@@ -33,7 +33,8 @@ public final class CastPostFx {
 
     // Requested this frame by the renderer; cleared once used.
     private static boolean requested;
-    private static float cx = 0.5f, cy = 0.5f, radius, strength, chroma, vignette, flash;
+    private static float cx = 0.5f, cy = 0.5f, radius, strength, chroma, vignette, flash, darken;
+    private static float tintR = 0.85f, tintG = 0.07f, tintB = 0.03f;
 
     public static void reset() {
         requested = false;
@@ -48,6 +49,12 @@ public final class CastPostFx {
     /** Asks for the pass this frame: the core's world position and how strong each effect is (0..1). */
     public static void request(Vec3 core, Vec3 camera, Matrix4f view, Matrix4f projection, float distortion, float chromatic,
                                float vignetteAmount, float overbright, float coreRadius) {
+        request(core, camera, view, projection, distortion, chromatic, vignetteAmount, overbright, coreRadius, 0.85f, 0.07f, 0.03f, 0f);
+    }
+
+    /** As above, with the colour the effect tints the screen and how much the whole picture is dimmed. */
+    public static void request(Vec3 core, Vec3 camera, Matrix4f view, Matrix4f projection, float distortion, float chromatic,
+                               float vignetteAmount, float overbright, float coreRadius, float r, float g, float b, float dim) {
         Vector4f clip = new Vector4f((float) (core.x - camera.x), (float) (core.y - camera.y), (float) (core.z - camera.z), 1f);
         clip.mul(view).mul(projection);
         if (clip.w <= 0.05f) {
@@ -62,6 +69,10 @@ public final class CastPostFx {
         chroma = chromatic;
         vignette = vignetteAmount;
         flash = overbright;
+        tintR = r;
+        tintG = g;
+        tintB = b;
+        darken = dim;
         requested = true;
     }
 
@@ -100,6 +111,8 @@ public final class CastPostFx {
             effect.safeGetUniform("Vignette").set(vignette);
             effect.safeGetUniform("Flash").set(flash);
             effect.safeGetUniform("Aspect").set((float) w / Math.max(1, h));
+            effect.safeGetUniform("Tint").set(tintR, tintG, tintB);
+            effect.safeGetUniform("Darken").set(darken);
             RenderSystem.disableBlend();
             RenderSystem.disableDepthTest();
             RenderSystem.resetTextureMatrix();

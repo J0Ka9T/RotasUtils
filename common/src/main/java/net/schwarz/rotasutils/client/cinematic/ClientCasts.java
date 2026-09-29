@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.schwarz.rotasutils.ability.AbilityNet;
+import net.schwarz.rotasutils.ability.PurpleTimings;
 import net.schwarz.rotasutils.ability.RedTimings;
 import net.schwarz.rotasutils.ability.Timeline;
 
@@ -46,7 +47,7 @@ public final class ClientCasts {
     /** The cast whose caster is this client's own player, while it still owns the camera. */
     public static ClientCast local() {
         for (ClientCast cast : CASTS.values()) {
-            if (cast.local && !cast.cancelled && cast.time(0) < RedTimings.END) {
+            if (cast.local && !cast.cancelled && cast.time(0) < cast.endSeconds()) {
                 return cast;
             }
         }
@@ -114,7 +115,8 @@ public final class ClientCasts {
         }
         boolean local = mc.player != null && mc.player.getId() == casterId;
         ClientCast cast = new ClientCast(casterId, ability, seed, eye, target, targetEntity, mc.level.getGameTime(), local,
-                buildTimeline(ability.getPath().endsWith("_max")));
+                ability.getPath().equals("hollow_purple") ? buildPurpleTimeline()
+                        : buildTimeline(ability.getPath().endsWith("_max")));
         CASTS.put(casterId, cast);
     }
 
@@ -123,7 +125,7 @@ public final class ClientCasts {
         if (cast == null) {
             return;
         }
-        cast.releaseAt = Math.max(RedTimings.RELEASE, cast.time(0));
+        cast.releaseAt = Math.max(cast.releaseSeconds(), cast.time(0));
         cast.releaseOrigin = origin;
         cast.impact = impact;
         cast.hitEntityId = hit;
@@ -168,7 +170,7 @@ public final class ClientCasts {
                 cast.impactHandled = true;
                 impactSounds(mc, cast);
             }
-            if (cast.max() && cast.impactHandled) {
+            if ((cast.max() || cast.purple()) && cast.impactHandled) {
                 aftermath(mc, cast, cast.sinceImpact(t));
             }
             faceTarget(mc, cast, t);
@@ -177,7 +179,7 @@ public final class ClientCasts {
 
     /** Keeps the caster's body turned to the target for the whole sequence, whatever the player's mouse does. */
     private static void faceTarget(Minecraft mc, ClientCast cast, double t) {
-        if (cast.cancelled || t > RedTimings.END) {
+        if (cast.cancelled || t > cast.endSeconds()) {
             return;
         }
         if (mc.level.getEntity(cast.casterId) instanceof LivingEntity e) {
@@ -198,7 +200,8 @@ public final class ClientCasts {
         if (mc.level == null) {
             return;
         }
-        Vec3 at = RedPose.sockets(RedPose.sample(cast.time(0)), cast.frame(0).feet(), cast.frame(0).yawDeg()).core();
+        Vec3 at = cast.purple() ? cast.frame(0).feet().add(0, 1.3, 0)
+                : RedPose.sockets(RedPose.sample(cast.time(0)), cast.frame(0).feet(), cast.frame(0).yawDeg()).core();
         mc.level.playLocalSound(at.x, at.y, at.z, sound, SoundSource.PLAYERS, volume, pitch, false);
     }
 
@@ -237,8 +240,70 @@ public final class ClientCasts {
         return tl;
     }
 
+    /** Silence, Blue, Red, the forces, the collapse, the hush, Purple's birth, the stillness, the release. */
+    private static Timeline<ClientCast> buildPurpleTimeline() {
+        Timeline<ClientCast> tl = new Timeline<>();
+        double silence = PurpleTimings.SILENCE;
+        tl.at(0.2, "hush", c -> play(c, SoundEvents.AMBIENT_CAVE.value(), 0.5f, 0.5f));
+        tl.at(PurpleTimings.BLUE, "blue", c -> {
+            play(c, SoundEvents.BEACON_AMBIENT, 0.6f, 0.45f);
+            play(c, SoundEvents.PORTAL_AMBIENT, 0.5f, 0.5f);
+        });
+        tl.at(PurpleTimings.RED, "red", c -> play(c, SoundEvents.RESPAWN_ANCHOR_CHARGE, 0.5f, 0.55f));
+        // Two heartbeats of opposing forces, growing, and a warping tone that turns more unnatural.
+        for (double s = 2.6; s < silence - 0.2; s += 0.8) {
+            final double at = s;
+            tl.at(s, "rumble", c -> {
+                float grow = (float) Curves.window(at, 2.6, silence);
+                play(c, SoundEvents.WARDEN_HEARTBEAT, 0.5f + 0.6f * grow, 0.5f + 0.1f * grow);
+                play(c, SoundEvents.BEACON_POWER_SELECT, 0.10f + 0.15f * grow, 1.6f + 0.5f * grow);
+            });
+        }
+        for (double s = 5.0; s < silence - 0.3; s += 1.5) {
+            final double at = s;
+            tl.at(s, "warp", c -> play(c, SoundEvents.PORTAL_AMBIENT, 0.6f, 0.9f - 0.12f * (float) (at - 5.0)));
+        }
+        for (double s = PurpleTimings.SPARKS; s < PurpleTimings.COLLAPSE; s += 0.35) {
+            final double at = s;
+            tl.at(s, "spark", c -> play(c, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.3f, 1.4f + 0.3f * (float) (at - PurpleTimings.SPARKS)));
+        }
+        tl.at(PurpleTimings.COLLAPSE, "fall", c -> play(c, SoundEvents.END_PORTAL_SPAWN, 0.5f, 0.5f));
+        // The hush: nothing from the silence on but one thin tone on the spark.
+        tl.at(PurpleTimings.POINT, "tone", c -> play(c, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.25f, 2.0f));
+        tl.at(PurpleTimings.BORN, "born", c -> {
+            play(c, SoundEvents.LIGHTNING_BOLT_THUNDER, 1.2f, 0.6f);
+            play(c, SoundEvents.BEACON_ACTIVATE, 1.0f, 1.6f);
+            play(c, SoundEvents.END_PORTAL_SPAWN, 0.8f, 1.4f);
+            play(c, SoundEvents.WARDEN_SONIC_BOOM, 1.0f, 0.5f);
+        });
+        // Each pulse of the finished sphere is a deep bass hit; then it stops for the stillness.
+        for (double s = PurpleTimings.BORN + 0.5; s < PurpleTimings.STABLE - 0.4; s += 1.25) {
+            tl.at(s, "pulse", c -> {
+                play(c, SoundEvents.WARDEN_HEARTBEAT, 1.6f, 0.4f);
+                play(c, SoundEvents.BEACON_AMBIENT, 0.5f, 0.4f);
+            });
+        }
+        tl.at(PurpleTimings.COMPRESS, "squeeze", c -> play(c, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.3f, 0.7f));
+        tl.at(PurpleTimings.RELEASE, "fire", c -> {
+            play(c, SoundEvents.WARDEN_SONIC_BOOM, 2.0f, 0.5f);
+            play(c, SoundEvents.LIGHTNING_BOLT_IMPACT, 2.0f, 0.8f);
+            play(c, SoundEvents.GENERIC_EXPLODE, 1.5f, 0.5f);
+            play(c, SoundEvents.END_PORTAL_SPAWN, 1.2f, 0.5f);
+            play(c, SoundEvents.DRAGON_FIREBALL_EXPLODE, 1.2f, 0.6f);
+        });
+        return tl;
+    }
+
     private static void impactSounds(Minecraft mc, ClientCast cast) {
         Vec3 at = cast.impact;
+        if (cast.purple()) {
+            // The world was silent for the compression; now a section of it is erased.
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 4.0f, 0.4f, false);
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 2.5f, 0.5f, false);
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.WARDEN_SONIC_BOOM, SoundSource.PLAYERS, 3.0f, 0.5f, false);
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.END_PORTAL_SPAWN, SoundSource.PLAYERS, 2.0f, 0.4f, false);
+            return;
+        }
         mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 3.0f, 0.75f, false);
         mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 2.0f, 1.3f, false);
         mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GRAVEL_BREAK, SoundSource.PLAYERS, 2.0f, 0.6f, false);
@@ -248,19 +313,22 @@ public final class ClientCasts {
     }
 
     private static final double[] AFTERMATH_AT = {0.30, 0.70, 1.60, 2.80};
+    /** Hollow Purple: only a deep, distant rumble, then silence. */
+    private static final double[] PURPLE_AFTERMATH_AT = {0.9, 2.2, 3.8, 5.2};
 
     /** MAX: the second pulse, then a deep rumble that fades over a few seconds. */
     private static void aftermath(Minecraft mc, ClientCast cast, double sinceImpact) {
-        if (cast.aftermath >= AFTERMATH_AT.length || sinceImpact < AFTERMATH_AT[cast.aftermath]) {
+        double[] table = cast.purple() ? PURPLE_AFTERMATH_AT : AFTERMATH_AT;
+        if (cast.aftermath >= table.length || sinceImpact < table[cast.aftermath]) {
             return;
         }
         int stage = cast.aftermath++;
         Vec3 at = cast.impact;
-        if (stage == 0) {
+        if (stage == 0 && !cast.purple()) {
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 3.0f, 1.2f, false);
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 2.0f, 1.9f, false);
         } else {
-            float v = 2.2f - 0.5f * stage;
+            float v = cast.purple() ? 2.6f - 0.6f * stage : 2.2f - 0.5f * stage;
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.AMBIENT_BASALT_DELTAS_ADDITIONS.value(), SoundSource.PLAYERS, v, 0.5f, false);
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.WARDEN_HEARTBEAT, SoundSource.PLAYERS, v * 0.7f, 0.5f, false);
         }

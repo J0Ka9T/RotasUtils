@@ -30,5 +30,6 @@ public abstract class LevelRendererOutlineMixin {
         net.schwarz.rotasutils.client.render.RiftFxRenderer.render(poseStack, camera, partialTick);
         net.schwarz.rotasutils.client.render.CeroFxRenderer.render(poseStack, camera, partialTick);
         net.schwarz.rotasutils.client.cinematic.RedVfxRenderer.render(poseStack, camera, partialTick, projection);
+        net.schwarz.rotasutils.client.cinematic.PurpleVfxRenderer.render(poseStack, camera, partialTick, projection);
     }
 }

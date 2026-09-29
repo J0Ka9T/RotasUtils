@@ -13,6 +13,8 @@ uniform float Chroma;
 uniform float Vignette;
 uniform float Flash;
 uniform float Aspect;
+uniform vec3 Tint;
+uniform float Darken;
 
 in vec2 texCoord;
 
@@ -41,12 +43,13 @@ void main() {
     col.g = texture(DiffuseSampler, sampleUv).g;
     col.b = texture(DiffuseSampler, sampleUv - fringe).b;
 
-    col += vec3(0.85, 0.07, 0.03) * (Strength * 0.22 * pow(falloff, 3.0));
+    col += Tint * (Strength * 0.22 * pow(falloff, 3.0));
 
     float edge = smoothstep(0.35, 0.95, length(uv - vec2(0.5)));
-    col = mix(col, col * vec3(1.0, 0.55, 0.55), edge * Vignette);
-    col += vec3(0.55, 0.05, 0.03) * edge * Vignette * 0.22;
-    col += vec3(1.0, 0.5, 0.35) * Flash * 0.12 * falloff;
+    col = mix(col, col * (Tint * 0.45 + 0.55), edge * Vignette);
+    col += Tint * 0.65 * edge * Vignette * 0.22;
+    col *= 1.0 - Darken * (0.35 + 0.65 * edge);
+    col += (Tint * 0.4 + 0.6) * Flash * 0.12 * falloff;
 
     fragColor = vec4(col, 1.0);
 }

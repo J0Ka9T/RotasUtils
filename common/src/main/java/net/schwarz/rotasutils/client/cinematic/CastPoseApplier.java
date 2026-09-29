@@ -5,7 +5,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.LivingEntity;
-import net.schwarz.rotasutils.ability.RedTimings;
 
 /**
  * Lays the cast pose over a humanoid model after the game has posed it. Every part is blended between
@@ -26,7 +25,7 @@ public final class CastPoseApplier {
 
     public static boolean hidesHeldItem(LivingEntity entity) {
         ClientCast cast = castOf(entity);
-        return cast != null && cast.time(0) < RedTimings.END;
+        return cast != null && cast.time(0) < cast.endSeconds();
     }
 
     public static void apply(HumanoidModel<?> m, LivingEntity entity, float partialTick) {
@@ -35,11 +34,11 @@ public final class CastPoseApplier {
             return;
         }
         double t = cast.time(partialTick);
-        double w = RedPose.weight(t);
+        double w = cast.purple() ? PurplePose.weight(t) : RedPose.weight(t);
         if (t < 0 || w <= 0) {
             return;
         }
-        RedPose.Pose p = RedPose.sample(t);
+        RedPose.Pose p = cast.purple() ? PurplePose.sample(t) : RedPose.sample(t);
         float dy = (float) p.dy();
         blend(m.body, 0, dy, 0, p.bodyPitch(), p.bodyYaw(), 0, w);
         blend(m.head, 0, dy, 0, m.head.xRot * 0.6 + p.headPitch(), p.headYaw(), 0, w);

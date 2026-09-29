@@ -60,6 +60,9 @@ public final class RedVfxRenderer {
         Matrix4f view = poseStack.last().pose();
         List<Draw> draws = new ArrayList<>();
         for (ClientCast cast : ClientCasts.all()) {
+            if (cast.purple()) {
+                continue;
+            }
             double t = cast.time(partialTick);
             if (t < 0 || t > cast.finishedAt() || (cast.cancelled && !cast.released())) {
                 continue;
@@ -114,7 +117,7 @@ public final class RedVfxRenderer {
 
     // Helpers ----------------------------------------------------------------------------------------
 
-    private static double rnd(long seed, int i, int k) {
+    static double rnd(long seed, int i, int k) {
         long x = seed ^ (i * 0x9E3779B97F4A7C15L) ^ (k * 0xC2B2AE3D27D4EB4FL);
         x ^= x >>> 33;
         x *= 0xFF51AFD7ED558CCDL;
@@ -124,17 +127,17 @@ public final class RedVfxRenderer {
         return (x >>> 11) * (1.0 / (1L << 53));
     }
 
-    private static float[] c(float r, float g, float b, double a) {
+    static float[] c(float r, float g, float b, double a) {
         return new float[]{r, g, b, (float) a};
     }
 
-    private static Vec3 randomDir(long seed, int i) {
+    static Vec3 randomDir(long seed, int i) {
         double u = rnd(seed, i, 1) * 2 - 1, a = rnd(seed, i, 2) * Math.PI * 2;
         double r = Math.sqrt(1 - u * u);
         return new Vec3(Math.cos(a) * r, u, Math.sin(a) * r);
     }
 
-    private static Vec3[] basis(Vec3 axis) {
+    static Vec3[] basis(Vec3 axis) {
         Vec3 ref = Math.abs(axis.y) > 0.9 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
         Vec3 u = axis.cross(ref).normalize();
         return new Vec3[]{u, axis.cross(u).normalize()};
@@ -145,7 +148,7 @@ public final class RedVfxRenderer {
     }
 
     /** A plasma surface: ridged, scrolling noise on a sphere turned by {@code rot}, hot only on its brightest veins. */
-    private static Mesh.Surface plasma(double rot, double scale, double scroll, double t, int seed, float[] deep, float[] hot,
+    static Mesh.Surface plasma(double rot, double scale, double scroll, double t, int seed, float[] deep, float[] hot,
                                        double alpha, double sharp) {
         double cr = Math.cos(rot), sr = Math.sin(rot);
         return (nx, ny, nz, fres, out) -> {
@@ -162,7 +165,7 @@ public final class RedVfxRenderer {
         };
     }
 
-    private static Mesh.Surface flat(float r, float g, float b, double a) {
+    static Mesh.Surface flat(float r, float g, float b, double a) {
         return (nx, ny, nz, fres, out) -> {
             out[0] = r;
             out[1] = g;
@@ -171,16 +174,16 @@ public final class RedVfxRenderer {
         };
     }
 
-    private static int latOf(int lod) {
+    static int latOf(int lod) {
         return lod == 0 ? 16 : lod == 1 ? 10 : 8;
     }
 
-    private static int lonOf(int lod) {
+    static int lonOf(int lod) {
         return lod == 0 ? 26 : lod == 1 ? 16 : 12;
     }
 
     /** A ring of {@code segments} ribbons in the plane spanned by u and w, with gaps where {@code gap} says so. */
-    private static void ring(Mesh m, Vec3 centre, Vec3 u, Vec3 w, double radius, double width, float[] col, int segments, double spin,
+    static void ring(Mesh m, Vec3 centre, Vec3 u, Vec3 w, double radius, double width, float[] col, int segments, double spin,
                              double gapPhase, double gapCut) {
         Vec3 prev = null;
         for (int k = 0; k <= segments; k++) {
@@ -560,7 +563,7 @@ public final class RedVfxRenderer {
     // Release ----------------------------------------------------------------------------------------
 
     /** A surface stretched along {@code dir}: a long, pointed front and a longer tail, like a bolt and not a ball. */
-    private static Mesh.Surface elongated(Vec3 dir, double front, double tail, Mesh.Surface colour) {
+    static Mesh.Surface elongated(Vec3 dir, double front, double tail, Mesh.Surface colour) {
         return new Mesh.Surface() {
             @Override
             public double radius(double nx, double ny, double nz) {
