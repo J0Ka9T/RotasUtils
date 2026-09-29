@@ -17,9 +17,9 @@ public final class RedProfile {
     private static final double[] PULSE_DEPTH = {0.16, 0.13, 0.10, 0.07};
     private static final double PULSE_WIDTH = 0.16;
 
-    public static final double CHARGED_RADIUS = 0.33;
-    public static final double SEED_RADIUS = 0.03;
-    public static final double COMPRESSED_RADIUS = 0.16;
+    public static final double CHARGED_RADIUS = 0.50;
+    public static final double SEED_RADIUS = 0.04;
+    public static final double COMPRESSED_RADIUS = 0.24;
 
     /** The core's slow, non-linear growth before the pulses are laid over it. */
     private static double base(double t) {
@@ -64,9 +64,9 @@ public final class RedProfile {
         return Curves.smootherstep(Curves.window(t, RedTimings.CORE_FORMS, RedTimings.HOLD));
     }
 
-    /** Radius of the pressure volume {@code dt} seconds after release: 0.16 -> 0.3 -> 0.8 -> beyond 2 blocks. */
+    /** Radius of the pressure volume {@code dt} seconds after release: 0.24 -> 0.45 -> 1.3 -> beyond 3 blocks. */
     public static double pressureRadius(double dt) {
-        return Curves.Track.of(0, 0.16, 0.03, 0.30, 0.10, 0.80, 0.22, 2.1, 0.40, 2.7).at(dt);
+        return Curves.Track.of(0, 0.24, 0.03, 0.45, 0.10, 1.3, 0.22, 3.4, 0.40, 4.4).at(dt);
     }
 
     /** Opacity of the pressure volume: it is a shove of force, so it thins as it grows. */
@@ -76,7 +76,7 @@ public final class RedProfile {
 
     /** Radius of the travelling mass, which takes over from the pressure volume. */
     public static double projectileRadius(double dt) {
-        return Curves.lerp(0.25, 0.5, Curves.smoothstep(dt / 0.25));
+        return Curves.lerp(0.45, 0.95, Curves.smoothstep(dt / 0.25));
     }
 
     /** 0..1: the caster is almost perfectly still, from just before the hold until the release lands. */

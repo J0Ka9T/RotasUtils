@@ -16,31 +16,17 @@ public final class RedPose {
     private RedPose() {
     }
 
-    /** Finger curls 0 (straight) to 1 (fully curled). */
-    public record Fingers(double thumb, double index, double middle, double ring, double pinky) {
-    }
-
     public record Pose(double headYaw, double headPitch, double bodyYaw, double bodyPitch, double dy,
                        double rArmX, double rArmY, double rArmZ, double lArmX, double lArmY, double lArmZ,
-                       double rLegX, double rLegZ, double lLegX, double lLegZ, double wrist, Fingers fingers) {
+                       double rLegX, double rLegZ, double lLegX, double lLegZ) {
     }
 
     /** World positions of the effect sockets, and the casting arm's direction. */
     public record Sockets(Vec3 hand, Vec3 palm, Vec3 chest, Vec3 core, Vec3 eye, Vec3 armDir) {
     }
 
-    private static final Fingers RELAXED = new Fingers(0.30, 0.35, 0.38, 0.42, 0.46);
-    /** The technique's hand: index and middle reaching, ring and little finger folded, thumb across. */
-    private static final Fingers TECHNIQUE = new Fingers(0.55, 0.06, 0.24, 0.86, 0.92);
-    private static final Fingers RELEASED = new Fingers(0.20, 0.0, 0.04, 0.55, 0.62);
-
     private static double lerp(double a, double b, double t) {
         return a + (b - a) * t;
-    }
-
-    private static Fingers lerp(Fingers a, Fingers b, double t) {
-        return new Fingers(lerp(a.thumb, b.thumb, t), lerp(a.index, b.index, t), lerp(a.middle, b.middle, t),
-                lerp(a.ring, b.ring, t), lerp(a.pinky, b.pinky, t));
     }
 
     /** How much the cast pose replaces the ordinary animation: it fades in and out at the ends. */
@@ -77,16 +63,10 @@ public final class RedPose {
 
         double headYaw = 0.05 * stance + 0.01 * Curves.fbm(t * 1.1 + 2, 11) * alive;
         double headPitch = 0.05 * raise + 0.4 * 0.0 + 0.008 * breath - 0.06 * snap;
-        double wrist = lerp(0.0, 0.55, raise) * (1 - snap) + 0.3 * snap + 0.02 * Curves.fbm(t * 2.1, 13) * alive;
-
-        Fingers fingers = lerp(RELAXED, TECHNIQUE, Curves.smootherstep(Curves.window(t, 0.4, 2.4)));
-        fingers = lerp(fingers, RELEASED, snap);
-        fingers = lerp(fingers, RELAXED, recover);
-
         double keep = 1 - recover;
         return new Pose(headYaw * keep, headPitch * keep, twist * keep, lean * keep, dy * keep,
                 rArmX * keep, rArmY * keep, rArmZ * keep, lArmX * keep, lArmY * keep, lArmZ * keep,
-                rLegX * keep, rLegZ * keep, lLegX * keep, lLegZ * keep, wrist * keep, fingers);
+                rLegX * keep, rLegZ * keep, lLegX * keep, lLegZ * keep);
     }
 
     // Sockets ----------------------------------------------------------------------------------------
@@ -112,13 +92,16 @@ public final class RedPose {
         return new double[]{px + x3, py + y3, pz + z2};
     }
 
+    /** How far past the fist the core's centre sits, for a core of about the charged size. */
+    public static final double CORE_REACH = 0.16 + 0.9 * 0.42;
+
     public static Sockets sockets(Pose p, Vec3 feet, double yawDeg) {
         double[] palmM = armPoint(p, 9.5), handM = armPoint(p, 12.5);
         Vec3 palm = toWorld(palmM[0], palmM[1], palmM[2], feet, yawDeg);
         Vec3 hand = toWorld(handM[0], handM[1], handM[2], feet, yawDeg);
         Vec3 dir = hand.subtract(palm);
         dir = dir.lengthSqr() < 1.0e-9 ? new Vec3(0, 0, 1) : dir.normalize();
-        Vec3 core = hand.add(dir.scale(0.20)).add(0, 0.04, 0);
+        Vec3 core = hand.add(dir.scale(CORE_REACH)).add(0, 0.03, 0);
         Vec3 chest = toWorld(0, 6.0 + p.dy, 0, feet, yawDeg);
         Vec3 eye = toWorld(0, -1.9 + p.dy, -1.0, feet, yawDeg);
         return new Sockets(hand, palm, chest, core, eye, dir);

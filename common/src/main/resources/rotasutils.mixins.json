@@ -19,6 +19,7 @@
     "client.ItemInHandCastMixin",
     "client.CastInputLockMixin",
     "client.MinecraftCastLockMixin",
+    "client.GameRendererOverlayMixin",
     "client.ClientLevelSkyMixin",
     "client.FogRendererEldritchMixin",
     "client.GuiHudMixin",

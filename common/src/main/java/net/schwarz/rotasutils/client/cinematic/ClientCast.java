@@ -35,6 +35,9 @@ public final class ClientCast {
     public double travelSeconds;
 
     public boolean cancelled;
+    /** The core's sockets as the last frame drew them, in the world; the camera frames the real hand. */
+    RedPose.Sockets live;
+    long liveNanos;
     boolean impactHandled;
     double previous = -1;
     final Timeline<ClientCast> timeline;
@@ -75,6 +78,33 @@ public final class ClientCast {
         }
         return end + 0.5;
     }
+
+    /** The sockets the camera should frame: the ones drawn last frame if they are recent, else the pose's own. */
+    public RedPose.Sockets socketsForCamera(double t, CameraRig.Frame frame) {
+        if (live != null && System.nanoTime() - liveNanos < 250_000_000L) {
+            return live;
+        }
+        return RedPose.sockets(RedPose.sample(t), frame.feet(), frame.yawDeg());
+    }
+
+    /** Where the fired mass is at {@code t}, or null before it is fired or once it has landed. */
+    public Vec3 followPoint(double t) {
+        if (!released() || releaseOrigin == null) {
+            return null;
+        }
+        double dt = t - releaseAt;
+        if (dt < 0) {
+            return null;
+        }
+        double travel = Math.max(0.05, travelSeconds);
+        double launch = Math.min(0.10, travel * 0.4);
+        double u = Curves.clamp01((dt - launch) / (travel - launch));
+        Vec3 origin = liveOrigin != null ? liveOrigin : releaseOrigin;
+        return origin.add(impact.subtract(origin).scale(Math.pow(u, 1.5)));
+    }
+
+    /** Where the mass actually starts (the core at the instant of release), recorded by the renderer. */
+    Vec3 liveOrigin;
 
     /** The caster and target as the camera and the sockets see them. */
     public CameraRig.Frame frame(float pt) {

@@ -17,16 +17,18 @@ import java.util.List;
 
 /**
  * Draws every running Red Reversal in the world, from a handful of GPU batches rather than thousands of
- * particles. The Red itself is layered: a near-black core; dense plasma shells turning in opposite
- * directions on different noise scales, so no repeat is findable; broken, irregular filaments; sparks;
- * a halo and a glare, with white only on the hottest veins. Around the caster a vortex of dust, rock,
- * grass and embers is drawn in; a red light pools on the ground; at release a pressure volume bursts,
- * a barely visible shockwave rolls out, and the red mass flies, wake churning, to where the server said
- * it lands, where it bursts, throws debris and lingers.
+ * particles. The core is anchored to the hand the model really drew (see {@link HandCapture}) and is built in
+ * layers: a near-black heart ringed by a bright event-horizon rim; dense plasma shells turning in opposite
+ * directions on different noise scales; broken orbiting filaments and rings; streams of red drawn in from far
+ * out in spirals; jagged lightning; light rays; sparks; a halo. Around the caster a vortex of dust, rock, grass
+ * and embers is drawn in, and a red light pools on the ground.
  *
- * <p>Every element is a function of the sequence time and a seed, so nothing is stored between frames
- * and every client draws the same thing. Detail thins with distance: the full version to 24 blocks,
- * fewer particles to 48, only the core, projectile and impact to 96, and only the projectile and impact beyond.</p>
+ * <p>At release a pressure volume bursts, shock rings roll out down the line of fire and along the ground, and
+ * the red mass flies, helical wake churning, to where the server said it lands - where it bursts into a mass that
+ * swells and tears, a column of light, expanding rings, glowing cracks in the ground, debris, and particles that
+ * linger for seconds. Every element is a function of the sequence time and a seed, so nothing is stored between
+ * frames and every client draws the same thing. Detail thins with distance: the full version to 24 blocks,
+ * fewer particles to 48, only the core, mass and impact to 96, and only the mass and impact beyond.</p>
  */
 @Environment(EnvType.CLIENT)
 public final class RedVfxRenderer {
@@ -36,12 +38,13 @@ public final class RedVfxRenderer {
     private static final float[] DEEP = {0.45f, 0.01f, 0.03f, 1f};
     private static final float[] HOT = {1.0f, 0.22f, 0.10f, 1f};
     private static final float[] WHITE_HOT = {1.0f, 0.86f, 0.70f, 1f};
-    private static final Vec3 LIGHT = new Vec3(-0.4, 0.8, 0.45).normalize();
 
-    private record Draw(ClientCast cast, double t, CameraRig.Frame frame, RedPose.Pose pose, RedPose.Sockets sockets, int lod,
-                         double distance) {
+    private record Draw(ClientCast cast, double t, CameraRig.Frame frame, RedPose.Sockets sockets, int lod, double distance) {
         /** Where the core sat at the instant of release, which is where the pressure volume and the mass begin. */
         Vec3 releaseCore() {
+            if (cast.liveOrigin != null) {
+                return cast.liveOrigin;
+            }
             return RedPose.sockets(RedPose.sample(RedTimings.RELEASE), frame.feet(), frame.yawDeg()).core();
         }
     }
@@ -54,6 +57,7 @@ public final class RedVfxRenderer {
             return;
         }
         Vec3 cam = camera.getPosition();
+        Matrix4f view = poseStack.last().pose();
         List<Draw> draws = new ArrayList<>();
         for (ClientCast cast : ClientCasts.all()) {
             double t = cast.time(partialTick);
@@ -61,36 +65,30 @@ public final class RedVfxRenderer {
                 continue;
             }
             CameraRig.Frame frame = cast.frame(partialTick);
-            RedPose.Pose pose = RedPose.sample(t);
-            RedPose.Sockets sockets = RedPose.sockets(pose, frame.feet(), frame.yawDeg());
+            RedPose.Sockets guess = RedPose.sockets(RedPose.sample(t), frame.feet(), frame.yawDeg());
+            RedPose.Sockets sockets = HandCapture.resolve(cast.casterId, view, cam, guess, RedProfile.coreRadius(Math.min(t, RedTimings.RELEASE)));
+            cast.live = sockets;
+            cast.liveNanos = System.nanoTime();
+            if (cast.liveOrigin == null && t >= RedTimings.RELEASE - 0.02) {
+                cast.liveOrigin = sockets.core();
+            }
             double distance = cam.distanceTo(sockets.core());
             int lod = distance <= 24 ? 0 : distance <= 48 ? 1 : distance <= 96 ? 2 : 3;
             if (lod == 3 && !cast.released()) {
                 continue;
             }
-            draws.add(new Draw(cast, t, frame, pose, sockets, lod, distance));
+            draws.add(new Draw(cast, t, frame, sockets, lod, distance));
         }
         if (draws.isEmpty()) {
             return;
         }
-        Mesh mesh = new Mesh(poseStack.last().pose(), cam, camera.getLeftVector(), camera.getUpVector());
+        Mesh mesh = new Mesh(view, cam, camera.getLeftVector(), camera.getUpVector());
         RenderSystem.enableBlend();
         RenderSystem.disableCull();
         RenderSystem.enableDepthTest();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         try {
-            // The hand: opaque, depth-written, so its fingers sort among themselves.
-            RenderSystem.disableBlend();
-            RenderSystem.depthMask(true);
-            mesh.begin();
-            for (Draw d : draws) {
-                if (d.lod() <= 1) {
-                    HandRig.draw(mesh, d.t(), d.sockets(), d.pose());
-                }
-            }
-            mesh.draw();
             // Dark and dusty things, blended normally.
-            RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
             RenderSystem.depthMask(false);
             mesh.begin();
@@ -111,7 +109,7 @@ public final class RedVfxRenderer {
             RenderSystem.enableCull();
             RenderSystem.disableBlend();
         }
-        requestPostFx(draws, cam, poseStack.last().pose(), projection);
+        requestPostFx(draws, cam, view, projection);
     }
 
     // Helpers ----------------------------------------------------------------------------------------
@@ -134,6 +132,12 @@ public final class RedVfxRenderer {
         double u = rnd(seed, i, 1) * 2 - 1, a = rnd(seed, i, 2) * Math.PI * 2;
         double r = Math.sqrt(1 - u * u);
         return new Vec3(Math.cos(a) * r, u, Math.sin(a) * r);
+    }
+
+    private static Vec3[] basis(Vec3 axis) {
+        Vec3 ref = Math.abs(axis.y) > 0.9 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+        Vec3 u = axis.cross(ref).normalize();
+        return new Vec3[]{u, axis.cross(u).normalize()};
     }
 
     private static double vis(double t) {
@@ -168,11 +172,40 @@ public final class RedVfxRenderer {
     }
 
     private static int latOf(int lod) {
-        return lod == 0 ? 14 : lod == 1 ? 10 : 8;
+        return lod == 0 ? 16 : lod == 1 ? 10 : 8;
     }
 
     private static int lonOf(int lod) {
-        return lod == 0 ? 22 : lod == 1 ? 16 : 12;
+        return lod == 0 ? 26 : lod == 1 ? 16 : 12;
+    }
+
+    /** A ring of {@code segments} ribbons in the plane spanned by u and w, with gaps where {@code gap} says so. */
+    private static void ring(Mesh m, Vec3 centre, Vec3 u, Vec3 w, double radius, double width, float[] col, int segments, double spin,
+                             double gapPhase, double gapCut) {
+        Vec3 prev = null;
+        for (int k = 0; k <= segments; k++) {
+            double a = spin + Math.PI * 2 * k / segments;
+            Vec3 p = centre.add(u.scale(Math.cos(a) * radius)).add(w.scale(Math.sin(a) * radius));
+            if (prev != null && Math.sin(a * 2 + gapPhase) > gapCut) {
+                m.ribbon(prev, p, width, width, col, col);
+            }
+            prev = p;
+        }
+    }
+
+    /** Light rays fanning across the lens from a point: long, thin, uneven, flickering. */
+    private static void rays(Mesh m, double t, long seed, Vec3 p, double radius, double amount) {
+        if (amount < 0.02) {
+            return;
+        }
+        int n = 12;
+        for (int i = 0; i < n; i++) {
+            double a = i * (Math.PI * 2 / n) + t * 0.15 * (i % 2 == 0 ? 1 : -1) + rnd(seed, 2600 + i, 1) * 0.5;
+            double len = radius * (10 + 8 * rnd(seed, 2600 + i, 2)) * (0.7 + 0.3 * Math.sin(t * 3 + i));
+            Vec3 dir = new Vec3(m.left.x(), m.left.y(), m.left.z()).scale(Math.cos(a)).add(new Vec3(m.up.x(), m.up.y(), m.up.z()).scale(Math.sin(a)));
+            double alpha = amount * 0.34 * (0.5 + 0.5 * rnd(seed, 2600 + i, 3));
+            m.ribbon(p, p.add(dir.scale(len)), radius * 0.08, radius * 0.005, c(1f, 0.14f, 0.07f, alpha), c(1f, 0.14f, 0.07f, 0));
+        }
     }
 
     // Alpha layers -----------------------------------------------------------------------------------
@@ -187,8 +220,8 @@ public final class RedVfxRenderer {
                 double v = vis(t);
                 double density = RedProfile.density(t);
                 // A near-black heart with a dark crimson skin, so the bright shells have something to sit on.
-                m.sphere(p.x, p.y, p.z, radius * 0.72, latOf(d.lod()), lonOf(d.lod()), flat(0.02f, 0.0f, 0.005f, 0.97 * v));
-                m.sphere(p.x, p.y, p.z, radius * 0.92, latOf(d.lod()), lonOf(d.lod()),
+                m.sphere(p.x, p.y, p.z, radius * 0.74, latOf(d.lod()), lonOf(d.lod()), flat(0.015f, 0.0f, 0.004f, 0.98 * v));
+                m.sphere(p.x, p.y, p.z, radius * 0.93, latOf(d.lod()), lonOf(d.lod()),
                         flat(0.30f, 0.01f, 0.03f, (0.45 + 0.25 * density) * v));
             }
             if (d.lod() <= 1) {
@@ -221,7 +254,7 @@ public final class RedVfxRenderer {
         if (drive <= 0) {
             return;
         }
-        int count = d.lod() == 0 ? 36 : 14;
+        int count = d.lod() == 0 ? 44 : 16;
         double ts = Math.max(0, t - RedTimings.DEBRIS);
         Vec3 feet = d.frame().feet();
         for (int i = 0; i < count; i++) {
@@ -260,7 +293,7 @@ public final class RedVfxRenderer {
         double light = RedProfile.light(t);
         Vec3 feet = d.frame().feet();
         // The red light on the ground round the caster, growing with the light.
-        m.groundFan(feet.x, feet.y + 0.03, feet.z, 3.0 + 4.0 * charge, c(1f, 0.06f, 0.04f, Math.min(0.5, 0.30 * light)));
+        m.groundFan(feet.x, feet.y + 0.03, feet.z, 3.5 + 5.0 * charge, c(1f, 0.06f, 0.04f, Math.min(0.55, 0.32 * light)));
         if (t >= RedTimings.DEBRIS && d.lod() <= 1) {
             debrisGlow(m, d);
         }
@@ -272,36 +305,91 @@ public final class RedVfxRenderer {
         double v = vis(t), density = RedProfile.density(t);
         double dense = 0.8 + 0.6 * density;
         int lat = latOf(d.lod()), lon = lonOf(d.lod());
-        m.sphere(p.x, p.y, p.z, radius * 1.00, lat, lon, plasma(t * 0.5236, 2.4, 0.6, t, (int) seed, DEEP, HOT, 0.55 * v * dense, 1.6));
+        // Plasma shells turning against each other on different noise scales.
+        m.sphere(p.x, p.y, p.z, radius * 1.00, lat, lon, plasma(t * 0.5236, 2.4, 0.6, t, (int) seed, DEEP, HOT, 0.6 * v * dense, 1.6));
         if (d.lod() <= 1) {
             m.sphere(p.x, p.y, p.z, radius * 1.14, lat, lon,
-                    plasma(-t * 0.3142, 3.6, -0.4, t, (int) seed + 5, c(0.36f, 0f, 0.05f, 1), c(0.95f, 0.18f, 0.10f, 1), 0.34 * v * dense, 1.9));
+                    plasma(-t * 0.3142, 3.6, -0.4, t, (int) seed + 5, c(0.36f, 0f, 0.05f, 1), c(0.95f, 0.18f, 0.10f, 1), 0.36 * v * dense, 1.9));
+            // The event horizon: a thin, bright rim that makes the dark heart read as a compressed singularity.
+            double rim = (0.35 + 0.65 * density) * v;
+            m.sphere(p.x, p.y, p.z, radius * 1.04, lat, lon, (nx, ny, nz, fres, out) -> {
+                out[0] = 1f;
+                out[1] = 0.42f;
+                out[2] = 0.26f;
+                out[3] = (float) (rim * Math.pow(fres, 3.4));
+            });
         }
         if (d.lod() == 0) {
             m.sphere(p.x, p.y, p.z, radius * 1.30, lat, lon,
                     plasma(t * 0.19, 5.2, 0.3, t, (int) seed + 11, c(0.30f, 0f, 0.04f, 1), c(0.9f, 0.14f, 0.08f, 1), 0.20 * v * dense, 2.2));
         }
-        // The halo and a lens-like glare, strongest as the core is squeezed.
-        m.glow(p, radius * 4.6, c(0.9f, 0.06f, 0.04f, (0.10 + 0.14 * charge) * v));
-        m.glow(p, radius * 2.3, c(1f, 0.16f, 0.08f, (0.16 + 0.20 * charge) * v));
-        if (t > RedTimings.CLOSE_UP && d.lod() == 0) {
-            double glare = 0.18 * density * Curves.window(t, RedTimings.CLOSE_UP, RedTimings.RELEASE);
-            double len = radius * 9;
-            Vec3 l = new Vec3(m.left.x(), m.left.y(), m.left.z()).scale(len);
-            Vec3 u = new Vec3(m.up.x(), m.up.y(), m.up.z()).scale(len * 0.5);
-            m.ribbon(p.subtract(l), p.add(l), radius * 0.05, radius * 0.05, c(1f, 0.2f, 0.12f, 0), c(1f, 0.2f, 0.12f, 0));
-            m.ribbon(p.subtract(l), p, radius * 0.06, radius * 0.01, c(1f, 0.2f, 0.12f, 0), c(1f, 0.25f, 0.15f, glare));
-            m.ribbon(p, p.add(l), radius * 0.01, radius * 0.06, c(1f, 0.25f, 0.15f, glare), c(1f, 0.2f, 0.12f, 0));
-            m.ribbon(p.subtract(u), p, radius * 0.04, radius * 0.008, c(1f, 0.2f, 0.12f, 0), c(1f, 0.25f, 0.15f, glare * 0.6));
-            m.ribbon(p, p.add(u), radius * 0.008, radius * 0.04, c(1f, 0.25f, 0.15f, glare * 0.6), c(1f, 0.2f, 0.12f, 0));
+        // The halo, and a lens-like glare strongest as the core is squeezed.
+        m.glow(p, radius * 5.4, c(0.9f, 0.06f, 0.04f, (0.10 + 0.16 * charge) * v));
+        m.glow(p, radius * 2.5, c(1f, 0.16f, 0.08f, (0.18 + 0.22 * charge) * v));
+        if (d.lod() == 0) {
+            rays(m, t, seed, p, radius, (0.35 * charge + 0.9 * density * Curves.window(t, RedTimings.CLOSE_UP, RedTimings.RELEASE)) * v);
         }
+        streams(m, d, p, radius, charge);
+        rings(m, d, p, radius, charge, v);
         filaments(m, d, p, radius, charge);
+        lightning(m, d, p, radius, charge);
         sparks(m, d, p, radius, charge);
         // The core lights the casting hand and the face.
         if (t > 1.6 && d.lod() <= 1) {
-            double faceLight = Math.min(0.32, 0.30 * light) * Curves.smoothstep((t - 1.6) / 1.0);
-            m.glow(d.sockets().hand(), 0.55, c(1f, 0.08f, 0.05f, faceLight));
-            m.glow(d.sockets().eye(), 0.75, c(1f, 0.08f, 0.05f, faceLight * 0.7));
+            double faceLight = Math.min(0.34, 0.32 * light) * Curves.smoothstep((t - 1.6) / 1.0);
+            m.glow(d.sockets().hand(), 0.6, c(1f, 0.08f, 0.05f, faceLight));
+            m.glow(d.sockets().eye(), 0.8, c(1f, 0.08f, 0.05f, faceLight * 0.7));
+        }
+    }
+
+    /** Streams of red drawn from far out in spirals into the core, so the whole space round it seems to be falling in. */
+    private static void streams(Mesh m, Draw d, Vec3 p, double radius, double charge) {
+        if (d.lod() > 1 || charge < 0.08) {
+            return;
+        }
+        long seed = d.cast().seed;
+        double t = d.t();
+        int count = d.lod() == 0 ? 14 : 6;
+        for (int i = 0; i < count; i++) {
+            Vec3[] b = basis(randomDir(seed, 2000 + i));
+            Vec3 axis = b[0].cross(b[1]);
+            double phase = rnd(seed, 2000 + i, 3);
+            double turns = 0.9 + 1.1 * rnd(seed, 2000 + i, 4);
+            double far = 2.6 + 2.4 * rnd(seed, 2000 + i, 5);
+            double head = (t * (0.35 + 0.25 * rnd(seed, 2000 + i, 6)) + phase) % 1.0;
+            int segs = 22;
+            Vec3 prev = null;
+            for (int k = 0; k <= segs; k++) {
+                double s = head - 0.5 * k / segs;
+                if (s < 0) {
+                    prev = null;
+                    continue;
+                }
+                double r = Curves.lerp(far, radius * 1.05, Math.pow(s, 1.5));
+                double ang = phase * Math.PI * 2 + turns * Math.PI * 2 * s;
+                Vec3 q = p.add(b[0].scale(Math.cos(ang) * r)).add(b[1].scale(Math.sin(ang) * r)).add(axis.scale(r * 0.35 * Math.sin(ang * 0.7 + i)));
+                if (prev != null) {
+                    double a = Math.pow(1 - (double) k / segs, 1.4) * 0.7 * charge * Curves.smoothstep(s * 3);
+                    double w = radius * 0.06 * (1 - 0.6 * k / segs);
+                    m.ribbon(prev, q, w, w, c(1f, 0.16f, 0.08f, a), c(1f, 0.16f, 0.08f, a * 0.9));
+                }
+                prev = q;
+            }
+        }
+    }
+
+    /** Two broken, tilted rings of light turning round the core. */
+    private static void rings(Mesh m, Draw d, Vec3 p, double radius, double charge, double vis) {
+        if (d.lod() > 1 || charge < 0.15) {
+            return;
+        }
+        long seed = d.cast().seed;
+        double t = d.t();
+        for (int r = 0; r < 2; r++) {
+            Vec3[] b = basis(randomDir(seed, 2400 + r));
+            double spin = t * (r == 0 ? 1.1 : -0.8) + rnd(seed, 2400 + r, 3) * 6;
+            ring(m, p, b[0], b[1], radius * (1.75 + 0.5 * r), radius * 0.035, c(1f, 0.20f, 0.10f, 0.5 * charge * vis), 48, spin,
+                    rnd(seed, 2400 + r, 4) * 6, -0.6);
         }
     }
 
@@ -315,8 +403,8 @@ public final class RedVfxRenderer {
         int count = (int) Math.round(Curves.lerp(6, 14, charge)) / (d.lod() == 0 ? 1 : 2);
         for (int i = 0; i < count; i++) {
             Vec3 axis = randomDir(seed, 100 + i);
-            Vec3 ref = Math.abs(axis.y) > 0.9 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
-            Vec3 u = axis.cross(ref).normalize(), w = axis.cross(u).normalize();
+            Vec3[] b = basis(axis);
+            Vec3 u = b[0], w = b[1];
             double orbit = radius * (1.25 + 1.6 * rnd(seed, 100 + i, 3));
             double span = 0.7 + 1.1 * rnd(seed, 100 + i, 4);
             double speed = (0.7 + 1.4 * rnd(seed, 100 + i, 5)) * (rnd(seed, 100 + i, 6) < 0.5 ? -1 : 1);
@@ -331,7 +419,7 @@ public final class RedVfxRenderer {
             Vec3 prev = null;
             for (int k = 0; k <= segs; k++) {
                 double a = phase + speed * t + span * k / segs;
-                double wob = 1 + 0.14 * (Curves.noise(k * 0.7 + t * 1.3 + i * 5.1, (int) seed) );
+                double wob = 1 + 0.14 * Curves.noise(k * 0.7 + t * 1.3 + i * 5.1, (int) seed);
                 double out = radius * 0.25 * Curves.noise(k * 0.5 - t * 0.9 + i * 3.7, (int) seed + 3);
                 Vec3 p = center.add(u.scale(Math.cos(a) * orbit * wob)).add(w.scale(Math.sin(a) * orbit * wob)).add(axis.scale(out));
                 if (prev != null && Curves.noise(k * 0.9 + i * 7 + t * 2.0, (int) seed + 9) > -0.25) {
@@ -348,6 +436,40 @@ public final class RedVfxRenderer {
         }
     }
 
+    /** Jagged bolts that leap off the core's surface, redrawn every other tick, more of them as it is squeezed. */
+    private static void lightning(Mesh m, Draw d, Vec3 p, double radius, double charge) {
+        if (d.lod() > 1 || charge < 0.25) {
+            return;
+        }
+        long seed = d.cast().seed;
+        double t = d.t();
+        int bolts = (int) Math.round(Curves.lerp(2, 7, charge)) + (t >= RedTimings.HOLD ? 3 : 0);
+        long bucket = (long) Math.floor(t * 20 / 2.0);
+        for (int i = 0; i < bolts; i++) {
+            long s = seed ^ (bucket * 7919L) ^ (i * 31L);
+            if (rnd(s, i, 1) < 0.35) {
+                continue;
+            }
+            Vec3 dir = randomDir(s, i);
+            Vec3 start = p.add(dir.scale(radius * 0.95));
+            double len = radius * (1.4 + 2.6 * rnd(s, i, 2));
+            Vec3 end = p.add(dir.scale(radius * 0.95 + len));
+            Vec3 prev = start;
+            int segs = 8;
+            for (int k = 1; k <= segs; k++) {
+                Vec3 q = start.add(end.subtract(start).scale((double) k / segs));
+                if (k < segs) {
+                    q = q.add(randomDir(s, i * 13 + k).scale(len * 0.10 * Math.sin(Math.PI * k / segs)));
+                }
+                float[] halo = c(1f, 0.16f, 0.08f, 0.8);
+                m.ribbon(prev, q, radius * 0.05, radius * 0.05, halo, halo);
+                float[] core = c(1f, 0.85f, 0.75f, 0.95);
+                m.ribbon(prev, q, radius * 0.014, radius * 0.014, core, core);
+                prev = q;
+            }
+        }
+    }
+
     /** Small sparks thrown off the core, streaking outward and dying. */
     private static void sparks(Mesh m, Draw d, Vec3 center, double radius, double charge) {
         if (d.lod() > 1) {
@@ -355,7 +477,7 @@ public final class RedVfxRenderer {
         }
         long seed = d.cast().seed;
         double t = d.t();
-        int count = d.lod() == 0 ? 40 : 16;
+        int count = d.lod() == 0 ? 48 : 18;
         for (int i = 0; i < count; i++) {
             Vec3 dir = randomDir(seed, 300 + i);
             double rate = 0.6 + 0.9 * rnd(seed, 300 + i, 3);
@@ -364,19 +486,19 @@ public final class RedVfxRenderer {
             Vec3 p = center.add(dir.scale(dist));
             Vec3 tail = p.subtract(dir.scale(radius * (0.4 + 0.8 * rnd(seed, 300 + i, 5))));
             double a = (1 - life) * 0.9 * charge * vis(t);
-            m.ribbon(tail, p, 0.004, 0.006, c(1f, 0.3f, 0.12f, 0), c(1f, 0.55f, 0.32f, a));
+            m.ribbon(tail, p, 0.004, 0.007, c(1f, 0.3f, 0.12f, 0), c(1f, 0.55f, 0.32f, a));
         }
     }
 
     /** A vortex of dust, rock and ember drawn inward: each mote's radius shrinks, its spin quickens and it rises. */
     private static Vec3 vortexPoint(long seed, int i, double ts, double drive, Vec3 feet) {
-        double r0 = 0.8 + 5.2 * Math.pow(rnd(seed, i, 1), 0.7);
+        double r0 = 0.8 + 5.4 * Math.pow(rnd(seed, i, 1), 0.7);
         double angle = rnd(seed, i, 2) * Math.PI * 2;
         double omega = 0.8 + 1.4 * rnd(seed, i, 3);
         double r = r0 * (1 - 0.6 * drive);
         double a = angle + omega * (ts * 0.9 + 1.4 * ts * drive);
         double h = -0.05 + 0.9 * rnd(seed, i, 5) + ts * (0.25 + 0.5 * rnd(seed, i, 6)) * (0.4 + drive);
-        h = Math.min(h, 3.6);
+        h = Math.min(h, 3.8);
         return new Vec3(feet.x + Math.cos(a) * r, feet.y + h, feet.z + Math.sin(a) * r);
     }
 
@@ -387,7 +509,7 @@ public final class RedVfxRenderer {
             return;
         }
         long seed = d.cast().seed;
-        int count = d.lod() == 0 ? 90 : 36;
+        int count = d.lod() == 0 ? 110 : 44;
         double ts = Math.max(0, t - RedTimings.DEBRIS);
         Vec3 feet = d.frame().feet();
         double fade = Curves.smoothstep(ts / 0.6) * (0.5 + 0.5 * drive);
@@ -405,13 +527,31 @@ public final class RedVfxRenderer {
 
     private static void releasing(Mesh m, Draw d, double dt) {
         Vec3 o = d.releaseCore();
-        long seed = d.cast().seed;
-        // The pressure volume: a violent shove, 0.16 -> 0.3 -> 0.8 -> beyond two blocks, thinning as it goes.
+        ClientCast cast = d.cast();
+        long seed = cast.seed;
+        Vec3 shot = cast.released() ? cast.impact.subtract(o).normalize() : d.frame().forward();
+        // The pressure volume: a violent shove, 0.24 -> 0.45 -> 1.3 -> beyond three blocks, thinning as it goes.
         if (dt < 0.4) {
             double r = RedProfile.pressureRadius(dt), a = RedProfile.pressureAlpha(dt);
             m.sphere(o.x, o.y, o.z, r, latOf(d.lod()), lonOf(d.lod()), plasma(dt * 6, 2.0, 2.0, dt, (int) seed, DEEP, HOT, 0.9 * a, 1.4));
-            m.glow(o, r * 3.2, c(1f, 0.30f, 0.14f, 0.7 * Math.exp(-dt * 14)));
-            m.glow(o, r * 1.6, c(1f, 0.85f, 0.65f, 0.9 * Math.exp(-dt * 30)));
+            m.glow(o, r * 3.4, c(1f, 0.30f, 0.14f, 0.75 * Math.exp(-dt * 14)));
+            m.glow(o, r * 1.8, c(1f, 0.85f, 0.65f, 0.95 * Math.exp(-dt * 30)));
+        }
+        if (d.lod() == 0) {
+            rays(m, d.t(), seed, o, 0.5, 2.2 * Math.exp(-dt * 5));
+        }
+        // Rings of force expanding across the line of fire, one after another.
+        if (d.lod() <= 1) {
+            Vec3[] b = basis(shot);
+            for (int k = 0; k < 3; k++) {
+                double x = Curves.window(dt, k * 0.06, k * 0.06 + 0.42);
+                if (x <= 0 || x >= 1) {
+                    continue;
+                }
+                double radius = Curves.lerp(0.5, 7.5, 1 - Math.pow(1 - x, 3));
+                double a = 0.75 * Math.pow(1 - x, 1.3);
+                ring(m, o.add(shot.scale(0.3 * k)), b[0], b[1], radius, 0.10 + 0.22 * x, c(1f, 0.20f, 0.10f, a), 64, k, 0, -2);
+            }
         }
         Vec3 feet = d.frame().feet();
         // The shockwave: a transparent dome that is hard to see directly; what shows is the ground ring and the dust.
@@ -425,12 +565,12 @@ public final class RedVfxRenderer {
                     out[0] = 0.9f;
                     out[1] = 0.12f;
                     out[2] = 0.08f;
-                    out[3] = ny < -0.02 ? 0f : (float) (0.05 * fade * (0.4 + 0.6 * fres));
+                    out[3] = ny < -0.02 ? 0f : (float) (0.06 * fade * (0.4 + 0.6 * fres));
                 });
             }
-            m.groundRing(feet.x, feet.y + 0.05, feet.z, radius, 0.5 + 0.7 * x, c(0.9f, 0.14f, 0.09f, 0.20 * fade));
+            m.groundRing(feet.x, feet.y + 0.05, feet.z, radius, 0.6 + 0.9 * x, c(0.9f, 0.14f, 0.09f, 0.24 * fade));
         }
-        m.groundFan(feet.x, feet.y + 0.03, feet.z, 8, c(1f, 0.06f, 0.04f, Math.min(0.6, 0.30 * RedProfile.light(RedTimings.RELEASE + dt))));
+        m.groundFan(feet.x, feet.y + 0.03, feet.z, 9, c(1f, 0.06f, 0.04f, Math.min(0.6, 0.32 * RedProfile.light(RedTimings.RELEASE + dt))));
     }
 
     private static void shockwaveDust(Mesh m, Draw d, double dt) {
@@ -438,7 +578,7 @@ public final class RedVfxRenderer {
         Vec3 feet = d.frame().feet();
         double x = Math.min(1, dt / 0.5);
         double front = RedTimings.SHOCKWAVE_RADIUS * (1 - Math.pow(1 - x, 3));
-        int count = d.lod() == 0 ? 70 : 30;
+        int count = d.lod() == 0 ? 90 : 36;
         for (int i = 0; i < count; i++) {
             double a = rnd(seed, 700 + i, 1) * Math.PI * 2;
             double r = front * (0.75 + 0.25 * rnd(seed, 700 + i, 2));
@@ -504,32 +644,53 @@ public final class RedVfxRenderer {
 
             @Override
             public void color(double nx, double ny, double nz, double fres, float[] out) {
-                plasma(t * 2.6, 2.6, 2.4, t, seed, DEEP, HOT, 0.8, 1.5).color(nx, ny, nz, fres, out);
+                plasma(t * 2.6, 2.6, 2.4, t, seed, DEEP, HOT, 0.85, 1.5).color(nx, ny, nz, fres, out);
             }
         };
         m.sphere(p.x, p.y, p.z, rp, latOf(d.lod()), lonOf(d.lod()), shape);
         if (d.lod() <= 1) {
             m.sphere(p.x, p.y, p.z, rp * 1.25, 10, 16, plasma(-t * 3.1, 3.8, -2.0, t, seed + 3, c(0.4f, 0, 0.05f, 1), c(1f, 0.2f, 0.1f, 1), 0.35, 1.9));
+            m.sphere(p.x, p.y, p.z, rp * 1.04, 12, 18, (nx, ny, nz, fres, out) -> {
+                out[0] = 1f;
+                out[1] = 0.45f;
+                out[2] = 0.3f;
+                out[3] = (float) (0.9 * Math.pow(fres, 3.2));
+            });
         }
-        m.glow(p, rp * 4.5, c(1f, 0.14f, 0.07f, 0.35));
-        m.glow(p, rp * 2, c(1f, 0.5f, 0.32f, 0.5));
-        // The wake: hot red ribbons whose width and turbulence grow with age.
+        m.glow(p, rp * 5.5, c(1f, 0.14f, 0.07f, 0.4));
+        m.glow(p, rp * 2.2, c(1f, 0.5f, 0.32f, 0.55));
+        // The wake: hot red ribbons whose width and turbulence grow with age, with three helices wound through it.
         int samples = d.lod() == 0 ? 26 : 10;
+        Vec3[] b = basis(dir);
         Vec3 prev = p;
+        Vec3[] helixPrev = new Vec3[3];
         for (int k = 1; k <= samples; k++) {
             double tk = dtp - k * 0.012;
-            Vec3 q = pathAt(cast, origin, Math.max(0, tk));
+            Vec3 q0 = pathAt(cast, origin, Math.max(0, tk));
             double width = rp * (0.45 + 1.5 * k / samples);
             Vec3 off = randomDir(cast.seed, 900 + k).scale(width * 0.9 * Curves.noise(k * 0.6 + t * 8, seed));
-            q = q.add(off);
+            Vec3 q = q0.add(off);
             double a = 0.75 * Math.pow(1 - (double) k / samples, 1.3);
             m.ribbon(prev, q, width, width * 1.15, c(1f, 0.16f, 0.08f, a), c(1f, 0.16f, 0.08f, a * 0.85));
             prev = q;
-            // Glowing fragments shed along it.
-            if (d.lod() == 0 && k % 2 == 0) {
-                Vec3 frag = q.add(randomDir(cast.seed, 950 + k).scale(width * 1.4));
-                m.billboard(frag, 0.03 + 0.06 * rnd(cast.seed, 950 + k, 3), c(1f, 0.4f, 0.2f, a), k);
+            if (d.lod() == 0) {
+                for (int h = 0; h < 3; h++) {
+                    double ang = k * 0.55 + t * 14 + h * 2.094;
+                    double hr = rp * (1.1 + 0.6 * k / samples);
+                    Vec3 hp = q0.add(b[0].scale(Math.cos(ang) * hr)).add(b[1].scale(Math.sin(ang) * hr));
+                    if (helixPrev[h] != null) {
+                        m.ribbon(helixPrev[h], hp, rp * 0.05, rp * 0.05, c(1f, 0.55f, 0.35f, 0.7 * a), c(1f, 0.55f, 0.35f, 0.7 * a));
+                    }
+                    helixPrev[h] = hp;
+                }
+                if (k % 2 == 0) {
+                    Vec3 frag = q.add(randomDir(cast.seed, 950 + k).scale(width * 1.4));
+                    m.billboard(frag, 0.03 + 0.06 * rnd(cast.seed, 950 + k, 3), c(1f, 0.4f, 0.2f, a), k);
+                }
             }
+        }
+        if (d.lod() == 0) {
+            rays(m, t, cast.seed, p, rp * 0.6, 0.6);
         }
     }
 
@@ -542,22 +703,24 @@ public final class RedVfxRenderer {
         ClientCast cast = d.cast();
         long seed = cast.seed;
         Vec3 at = cast.impact;
-        int chunks = d.lod() == 0 ? 60 : 24;
+        // The scorched ground.
+        m.groundFan(at.x, at.y + 0.035, at.z, 6.0, c(0.02f, 0.0f, 0.005f, 0.6 * (1 - Curves.smoothstep(di / 5.0))));
+        int chunks = d.lod() == 0 ? 80 : 30;
         for (int i = 0; i < chunks; i++) {
             Vec3 dir = randomDir(seed, 1100 + i);
             dir = new Vec3(dir.x, Math.abs(dir.y) * 0.9 + 0.25, dir.z).normalize();
-            double v = 6 + 10 * rnd(seed, 1100 + i, 3);
+            double v = 6 + 12 * rnd(seed, 1100 + i, 3);
             Vec3 p = at.add(dir.scale(v * di)).add(0, -6.0 * di * di, 0);
-            double a = Math.max(0, 1 - di / 1.7) * 0.95;
+            double a = Math.max(0, 1 - di / 1.8) * 0.95;
             if (a > 0.01) {
-                m.billboard(p, 0.06 + 0.12 * rnd(seed, 1100 + i, 4), c(0.30f, 0.28f, 0.27f, a), di * 4 + i);
+                m.billboard(p, 0.06 + 0.14 * rnd(seed, 1100 + i, 4), c(0.30f, 0.28f, 0.27f, a), di * 4 + i);
             }
         }
         if (d.lod() <= 1) {
-            for (int i = 0; i < 20; i++) {
-                double grow = 1.2 + 2.6 * Curves.smoothstep(di / 1.4);
-                Vec3 p = at.add(randomDir(seed, 1300 + i).scale(grow * 0.9 * rnd(seed, 1300 + i, 3))).add(0, 0.4 + di * 0.7, 0);
-                m.billboard(p, grow * (0.4 + 0.5 * rnd(seed, 1300 + i, 4)), c(0.42f, 0.36f, 0.32f, 0.22 * Math.max(0, 1 - di / 2.4)), i);
+            for (int i = 0; i < 24; i++) {
+                double grow = 1.6 + 3.4 * Curves.smoothstep(di / 1.4);
+                Vec3 p = at.add(randomDir(seed, 1300 + i).scale(grow * 0.9 * rnd(seed, 1300 + i, 3))).add(0, 0.4 + di * 0.8, 0);
+                m.billboard(p, grow * (0.4 + 0.5 * rnd(seed, 1300 + i, 4)), c(0.42f, 0.36f, 0.32f, 0.22 * Math.max(0, 1 - di / 2.6)), i);
             }
         }
     }
@@ -566,16 +729,19 @@ public final class RedVfxRenderer {
         ClientCast cast = d.cast();
         long seed = cast.seed;
         Vec3 at = cast.impact;
-        // Frame zero: a single, extremely bright point.
-        if (di < 0.09) {
-            double k = 1 - di / 0.09;
-            m.glow(at, 0.6 + 1.6 * (1 - k), c(1f, 0.92f, 0.78f, k));
-            m.glow(at, 3.5, c(1f, 0.25f, 0.12f, 0.6 * k));
+        // Frame zero: a single, extremely bright point, and light rays across the lens.
+        if (di < 0.10) {
+            double k = 1 - di / 0.10;
+            m.glow(at, 0.7 + 2.0 * (1 - k), c(1f, 0.92f, 0.78f, k));
+            m.glow(at, 4.5, c(1f, 0.25f, 0.12f, 0.6 * k));
+        }
+        if (d.lod() == 0) {
+            rays(m, d.t(), seed, at, 1.2, 1.6 * Math.exp(-di * 4));
         }
         // The mass deforms and swells, its surface torn by noise.
-        if (di < 0.7) {
-            double r = Curves.Track.of(0, 0.2, 0.05, 0.5, 0.15, 2.4, 0.4, 3.0, 0.7, 3.4).at(di);
-            double a = 0.95 * (1 - Curves.smoothstep(di / 0.7));
+        if (di < 0.8) {
+            double r = Curves.Track.of(0, 0.3, 0.05, 0.9, 0.15, 4.2, 0.4, 5.6, 0.8, 6.4).at(di);
+            double a = 0.95 * (1 - Curves.smoothstep(di / 0.8));
             final double dd = di;
             Mesh.Surface torn = new Mesh.Surface() {
                 @Override
@@ -590,42 +756,75 @@ public final class RedVfxRenderer {
             };
             m.sphere(at.x, at.y, at.z, r, latOf(d.lod()), lonOf(d.lod()), torn);
         }
-        // The repulsion wave, 50-150 ms in, then rolling out.
-        double wave = (di - 0.05) / 0.45;
-        if (wave > 0 && wave < 1.3) {
+        // A column of red light thrown into the sky.
+        double up = Curves.smoothstep(di / 0.22);
+        double fade = 1 - Curves.smoothstep(di / 1.8);
+        if (fade > 0.01) {
+            Vec3 top = at.add(0, 38 * up, 0);
+            float[] outer = c(1f, 0.10f, 0.05f, 0.34 * fade);
+            m.ribbon(at, top, 1.5 * fade + 0.3, 0.5, outer, c(1f, 0.10f, 0.05f, 0.05 * fade));
+            float[] inner = c(1f, 0.6f, 0.45f, 0.7 * fade);
+            m.ribbon(at, top, 0.5 * fade + 0.1, 0.12, inner, c(1f, 0.6f, 0.45f, 0.08 * fade));
+        }
+        // The repulsion wave (three, one after another), 50-150 ms in, rolling out along the ground.
+        for (int k = 0; k < 3; k++) {
+            double wave = (di - 0.05 - k * 0.12) / 0.5;
+            if (wave <= 0 || wave >= 1.3) {
+                continue;
+            }
             double x = Math.min(1, wave);
-            double radius = RedTimings.BLAST_RADIUS * (1 - Math.pow(1 - x, 3));
-            double fade = Math.pow(Math.max(0, 1 - wave / 1.3), 1.6);
-            if (d.lod() <= 1) {
+            double radius = RedTimings.BLAST_RADIUS * (1 - Math.pow(1 - x, 3)) * (1 - 0.12 * k);
+            double wf = Math.pow(Math.max(0, 1 - wave / 1.3), 1.6);
+            if (k == 0 && d.lod() <= 1) {
                 m.sphere(at.x, at.y, at.z, radius, 12, 24, (nx, ny, nz, fres, out) -> {
                     out[0] = 1f;
                     out[1] = 0.16f;
                     out[2] = 0.09f;
-                    out[3] = (float) (0.08 * fade * (0.3 + 0.7 * fres));
+                    out[3] = (float) (0.09 * wf * (0.3 + 0.7 * fres));
                 });
             }
-            m.groundRing(at.x, at.y + 0.05, at.z, radius, 0.6 + 0.6 * x, c(1f, 0.16f, 0.09f, 0.28 * fade));
+            m.groundRing(at.x, at.y + 0.05, at.z, radius, 0.6 + 0.7 * x, c(1f, 0.16f, 0.09f, 0.30 * wf));
         }
-        m.groundFan(at.x, at.y + 0.04, at.z, 8, c(1f, 0.08f, 0.05f, 0.5 * Math.exp(-di * 2)));
-        // Hot chunks and red particles that linger for seconds.
-        if (d.lod() <= 1) {
-            for (int i = 0; i < 24; i++) {
-                Vec3 dir = randomDir(seed, 1100 + i);
-                dir = new Vec3(dir.x, Math.abs(dir.y) * 0.9 + 0.25, dir.z).normalize();
-                double v = 6 + 10 * rnd(seed, 1100 + i, 3);
-                Vec3 p = at.add(dir.scale(v * di)).add(0, -6.0 * di * di, 0);
-                double a = Math.max(0, 1 - di / 1.4);
-                if (a > 0.01) {
-                    m.billboard(p, 0.05 + 0.08 * rnd(seed, 1100 + i, 4), c(1f, 0.35f, 0.15f, a), i);
+        // Glowing cracks radiating out through the ground, fading over a few seconds.
+        double crackLife = Math.max(0, 1 - di / RedTimings.LINGER);
+        if (crackLife > 0 && d.lod() <= 1) {
+            double reach = Curves.smoothstep(di / 0.35);
+            int cracks = d.lod() == 0 ? 16 : 8;
+            for (int i = 0; i < cracks; i++) {
+                double a0 = rnd(seed, 1700 + i, 1) * Math.PI * 2;
+                double len = (3.0 + 5.0 * rnd(seed, 1700 + i, 2)) * reach;
+                Vec3 prev = at.add(0, 0.05, 0);
+                int segs = 10;
+                double a = a0;
+                for (int k = 1; k <= segs; k++) {
+                    a += (rnd(seed, 1700 + i, 10 + k) - 0.5) * 0.7;
+                    Vec3 q = prev.add(Math.cos(a) * len / segs, 0, Math.sin(a) * len / segs);
+                    float[] col = c(1f, 0.20f, 0.08f, 0.85 * crackLife * (1 - 0.6 * k / segs));
+                    m.ribbon(prev, q, 0.07, 0.06, col, col);
+                    prev = q;
                 }
             }
-            int motes = d.lod() == 0 ? 44 : 18;
+        }
+        m.groundFan(at.x, at.y + 0.04, at.z, 9, c(1f, 0.08f, 0.05f, 0.55 * Math.exp(-di * 1.6)));
+        // Hot chunks and red particles that linger for seconds.
+        if (d.lod() <= 1) {
+            for (int i = 0; i < 30; i++) {
+                Vec3 dir = randomDir(seed, 1100 + i);
+                dir = new Vec3(dir.x, Math.abs(dir.y) * 0.9 + 0.25, dir.z).normalize();
+                double v = 6 + 12 * rnd(seed, 1100 + i, 3);
+                Vec3 p = at.add(dir.scale(v * di)).add(0, -6.0 * di * di, 0);
+                double a = Math.max(0, 1 - di / 1.5);
+                if (a > 0.01) {
+                    m.billboard(p, 0.05 + 0.09 * rnd(seed, 1100 + i, 4), c(1f, 0.35f, 0.15f, a), i);
+                }
+            }
+            int motes = d.lod() == 0 ? 60 : 24;
             for (int i = 0; i < motes; i++) {
                 double life = Math.max(0, 1 - di / RedTimings.LINGER);
                 if (life <= 0) {
                     break;
                 }
-                Vec3 off = randomDir(seed, 1500 + i).scale(1.0 + 3.0 * rnd(seed, 1500 + i, 3) * Math.pow(Math.min(1, di * 2), 0.4));
+                Vec3 off = randomDir(seed, 1500 + i).scale(1.0 + 3.6 * rnd(seed, 1500 + i, 3) * Math.pow(Math.min(1, di * 2), 0.4));
                 double sway = di * (0.3 + 0.5 * rnd(seed, 1500 + i, 4));
                 Vec3 p = at.add(off.x, Math.abs(off.y) * 0.6 + sway, off.z);
                 double flick = 0.6 + 0.4 * Math.sin(di * 7 + i);
@@ -670,10 +869,10 @@ public final class RedVfxRenderer {
             double di = cast.sinceImpact(t);
             double dtp = t - cast.releaseAt;
             if (dtp >= 0 && dtp <= cast.travelSeconds) {
-                s = Math.max(s, 0.5);
+                s = Math.max(s, 0.6);
             }
             if (di >= 0) {
-                s = Math.max(s, 0.7 * Math.exp(-di * 3.0));
+                s = Math.max(s, 0.9 * Math.exp(-di * 2.5));
             }
         }
         return s;
@@ -697,9 +896,13 @@ public final class RedVfxRenderer {
 
     private static double focusRadius(Draw d) {
         double t = d.t();
+        ClientCast cast = d.cast();
+        if (cast.released() && cast.sinceImpact(t) >= 0) {
+            return 2.5;
+        }
         if (t < RedTimings.RELEASE) {
             return RedProfile.coreRadius(t);
         }
-        return Math.max(0.4, RedProfile.pressureRadius(t - RedTimings.RELEASE) * 0.5);
+        return Math.max(0.6, RedProfile.pressureRadius(t - RedTimings.RELEASE) * 0.5);
     }
 }

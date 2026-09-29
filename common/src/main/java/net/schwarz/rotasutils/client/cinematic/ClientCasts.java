@@ -56,6 +56,28 @@ public final class ClientCasts {
     public static void clear() {
         CASTS.clear();
         CastPostFx.reset();
+        HandCapture.clear();
+        restoreGui(Minecraft.getInstance());
+    }
+
+    /** The game's interface is hidden while the player's own cutscene plays, and put back exactly as it was. */
+    private static boolean guiHidden;
+
+    private static void syncGui(Minecraft mc) {
+        boolean wants = local() != null;
+        if (wants && !guiHidden && !mc.options.hideGui) {
+            mc.options.hideGui = true;
+            guiHidden = true;
+        } else if (!wants && guiHidden) {
+            restoreGui(mc);
+        }
+    }
+
+    private static void restoreGui(Minecraft mc) {
+        if (guiHidden) {
+            mc.options.hideGui = false;
+            guiHidden = false;
+        }
     }
 
     // Packets ----------------------------------------------------------------------------------------
@@ -127,6 +149,7 @@ public final class ClientCasts {
             }
             return;
         }
+        syncGui(mc);
         if (CASTS.isEmpty() || mc.isPaused()) {
             return;
         }

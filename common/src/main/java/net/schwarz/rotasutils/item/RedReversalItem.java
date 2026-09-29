@@ -31,7 +31,8 @@ public class RedReversalItem extends Item {
             return InteractionResultHolder.pass(stack);
         }
         if (!level.isClientSide && player instanceof ServerPlayer server
-                && AbilityManager.start(server, RedReversalAbility.INSTANCE) == AbilityManager.Result.STARTED) {
+                && AbilityManager.start(server, RedReversalAbility.INSTANCE) == AbilityManager.Result.STARTED
+                && RedReversalAbility.INSTANCE.cooldownTicks() > 0) {
             player.getCooldowns().addCooldown(this, RedReversalAbility.INSTANCE.cooldownTicks());
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);

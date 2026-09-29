@@ -9,11 +9,14 @@ import java.util.Random;
  * The cinematic camera for Red Reversal: a keyframed director, not hard-coded wobbles. Every shot is
  * defined relative to the caster and the target (their positions and the direction between them), so
  * the same film works whichever way the player was facing. It controls position, look-at point, FOV,
- * roll and shake, on Bezier/PCHIP curves, and blends in from and out to the player's own camera.
+ * roll and shake, on Bezier/PCHIP curves, cuts between shots on short blends, and blends in from and out
+ * to the player's own camera.
  *
- * <p>Shots: an orbit round the caster (about 3 blocks out, 35 degrees off their right side, drifting
- * to their side and closing in), the hero shot (the red core nearest the lens, then the hand, then the
- * face), and a wide pull-back that follows the attack toward its target.</p>
+ * <p>The film: <b>1 Reveal</b> - a low crane that rises behind the caster as the core is born;
+ * <b>2 Orbit</b> - a slow arc round them, closing in; <b>3 Macro</b> - almost on the core as it is squeezed,
+ * lens tightening; <b>4 Face</b> - across the core to the caster's face, the core nearest the lens, then the fist,
+ * then the eyes; <b>5 Release</b> - a whip to low behind the caster, down the line of fire, following the mass out
+ * with a lens punch; <b>6 Aftermath</b> - a high wide angle taking in both the caster and the blast.</p>
  */
 public final class CameraRig {
     private CameraRig() {
@@ -35,14 +38,19 @@ public final class CameraRig {
     public record Shot(Vec3 position, double yaw, double pitch, double roll, double fov, double weight) {
     }
 
-    private static final Curves.Track AZIMUTH = Curves.Track.of(0.25, 35, 0.7, 38, 2.2, 66, 3.2, 74, 4.0, 78);
-    private static final Curves.Track RADIUS = Curves.Track.of(0.25, 3.1, 0.7, 3.0, 2.2, 2.45, 3.2, 2.25, 4.0, 2.2);
-    private static final Curves.Track HEIGHT = Curves.Track.of(0.25, 1.35, 0.7, 1.35, 2.2, 1.28, 3.2, 1.3, 4.0, 1.3);
-    private static final Curves.Track LOOK_AHEAD = Curves.Track.of(0.25, 2.6, 2.2, 1.7, 3.2, 1.2, 4.0, 1.0);
-    private static final Curves.Track FOV = Curves.Track.of(0, 70, 0.25, 70, 0.7, 62, 2.2, 55, 3.2, 50, 4.0, 48, 4.34, 48,
-            4.42, 66, 4.45, 71.5, 4.75, 58, 5.5, 60, 6.2, 62, 7.2, 70);
-    private static final Curves.Track ROLL = Curves.Track.of(0, 0, 0.7, 0, 2.5, -1.5, 3.6, -2.2, 4.34, -2.2, 4.4, 3.0,
-            4.7, 0.4, 6.2, 0);
+    private record Rig(Vec3 pos, Vec3 look) {
+    }
+
+    private static final Vec3 UP = new Vec3(0, 1, 0);
+
+    /** When each shot begins, and how long its blend in from the last one takes (a whip for the release). */
+    private static final double[] STARTS = {RedTimings.CAMERA_DETACH, 1.6, 3.0, 3.75, RedTimings.RELEASE_ANIM - 0.01, 5.1};
+    private static final double[] BLENDS = {0.5, 0.4, 0.16, 0.12, 0.05, 0.28};
+
+    private static final Curves.Track FOV = Curves.Track.of(0, 70, 0.25, 70, 0.7, 62, 1.6, 56, 2.9, 50, 3.08, 46, 3.74, 38,
+            3.84, 46, 4.34, 43, 4.42, 66, 4.45, 71.5, 4.75, 58, 5.1, 54, 5.25, 62, 6.2, 62, 7.2, 70);
+    private static final Curves.Track ROLL = Curves.Track.of(0, 0, 0.25, 0, 1.6, -1.2, 3.0, -2, 3.4, -3.5, 3.75, -4.5,
+            4.0, -2.5, 4.34, -1, 4.4, 3.0, 4.7, 0.4, 5.1, 0.3, 6.2, 0);
 
     /** How much of the view the cutscene owns at {@code t}: blends in over the detach, out over the return. */
     public static double weight(double t) {
@@ -66,40 +74,88 @@ public final class CameraRig {
         return ROLL.at(t) * weight + charge * 0.9 * Curves.fbm(t * 1.7 + 4, s3) + impulse * 2.6 * Curves.fbm(t * 30.0 + 3, s1);
     }
 
+    // The shots ---------------------------------------------------------------------------------------
+
+    private static Rig reveal(double t, Frame f) {
+        double u = Curves.window(t, STARTS[0], STARTS[1]);
+        double az = Math.toRadians(Curves.lerp(22, 48, Curves.smootherstep(u)));
+        double radius = Curves.lerp(3.4, 3.0, u);
+        double height = Curves.lerp(0.75, 1.7, Curves.smoothstep(u));
+        Vec3 pos = f.feet().add(UP.scale(height)).add(f.forward().scale(-Math.cos(az)).add(f.right().scale(Math.sin(az))).scale(radius));
+        return new Rig(pos, f.feet().add(UP.scale(1.2)).add(f.forward().scale(1.6)));
+    }
+
+    private static Rig orbit(double t, Frame f) {
+        double u = Curves.window(t, STARTS[1], STARTS[2]);
+        double az = Math.toRadians(Curves.lerp(52, 82, Curves.smootherstep(u)));
+        double radius = Curves.lerp(2.7, 2.15, Curves.smoothstep(u));
+        Vec3 pos = f.feet().add(UP.scale(Curves.lerp(1.32, 1.38, u)))
+                .add(f.forward().scale(-Math.cos(az)).add(f.right().scale(Math.sin(az))).scale(radius));
+        return new Rig(pos, f.feet().add(UP.scale(1.3)).add(f.forward().scale(Curves.lerp(1.1, 0.9, u))));
+    }
+
+    private static Rig macro(double t, Frame f, RedPose.Sockets s) {
+        double u = Curves.window(t, STARTS[2], STARTS[3]);
+        double dist = Curves.lerp(1.25, 0.85, Curves.smootherstep(u));
+        Vec3 pos = s.core().add(f.right().scale(dist * 0.8)).add(f.forward().scale(dist * 0.5)).add(0, 0.12, 0);
+        return new Rig(pos, s.core());
+    }
+
+    private static Rig face(double t, Frame f, RedPose.Sockets s) {
+        double u = Curves.window(t, STARTS[3], STARTS[4]);
+        Vec3 pos = s.core().add(f.forward().scale(Curves.lerp(0.95, 0.85, u))).add(f.right().scale(0.30)).add(0, 0.05, 0);
+        return new Rig(pos, lerp(s.core(), s.eye(), 0.65));
+    }
+
+    private static Rig release(double t, Frame f, Vec3 follow) {
+        double u = Curves.window(t, STARTS[4], STARTS[5]);
+        Vec3 pos = f.feet().add(f.forward().scale(-(2.4 - 1.1 * Curves.smoothstep(u)))).add(f.right().scale(0.7)).add(0, 0.6 + 0.25 * u, 0);
+        Vec3 line = f.feet().add(UP.scale(1.5)).add(f.forward().scale(10));
+        Vec3 look = follow != null ? lerp(line, follow, 0.75) : line;
+        return new Rig(pos, look);
+    }
+
+    private static Rig aftermath(double t, Frame f) {
+        double u = Curves.window(t, STARTS[5], RedTimings.CAMERA_RETURN);
+        Vec3 impact = f.impact() != null ? f.impact() : f.feet().add(f.forward().scale(12));
+        Vec3 mid = lerp(f.feet(), impact, 0.5);
+        double dist = Math.max(9.0, f.feet().distanceTo(impact) * 0.55);
+        Vec3 pos = mid.add(f.right().scale(dist * 0.75)).subtract(f.forward().scale(dist * 0.2)).add(0, 5.0 + 2.0 * u, 0);
+        return new Rig(pos, lerp(mid.add(0, 1.2, 0), impact.add(0, 1.0, 0), 0.55));
+    }
+
+    private static Rig rig(int i, double t, Frame f, RedPose.Sockets s, Vec3 follow) {
+        return switch (i) {
+            case 0 -> reveal(t, f);
+            case 1 -> orbit(t, f);
+            case 2 -> macro(t, f, s);
+            case 3 -> face(t, f, s);
+            case 4 -> release(t, f, follow);
+            default -> aftermath(t, f);
+        };
+    }
+
     /**
      * The camera at {@code t} seconds. {@code normalPos}/{@code normalLook} are the player's own camera, which the
-     * cinematic blends in from and back out to, and {@code baseFov} the FOV the player normally plays at.
+     * cinematic blends in from and back out to, {@code baseFov} the FOV the player normally plays at, {@code sockets}
+     * where the core and face are, and {@code follow} where the attack is (or null before it is fired).
      */
-    public static Shot shot(double t, Frame f, Vec3 normalPos, Vec3 normalLook, double baseFov, int seed) {
-        RedPose.Pose pose = RedPose.sample(t);
-        RedPose.Sockets sockets = RedPose.sockets(pose, f.feet(), f.yawDeg());
-        Vec3 up = new Vec3(0, 1, 0);
-
-        // Rig A: a slow orbit that closes in.
-        double az = Math.toRadians(AZIMUTH.at(t));
-        double radius = RADIUS.at(t);
-        Vec3 offset = f.forward().scale(-Math.cos(az)).add(f.right().scale(Math.sin(az))).scale(radius);
-        Vec3 posA = f.feet().add(up.scale(HEIGHT.at(t))).add(offset);
-        Vec3 lookA = f.feet().add(up.scale(1.35)).add(f.forward().scale(LOOK_AHEAD.at(t)));
-
-        // Rig B: the hero shot. The core is nearest the lens, then the hand, then the face behind it.
-        double closeIn = Curves.lerp(1.05, 0.85, Curves.window(t, RedTimings.CLOSE_UP, RedTimings.RELEASE_ANIM));
-        Vec3 posB = sockets.core().add(f.right().scale(closeIn)).add(f.forward().scale(0.25)).add(0, 0.08, 0);
-        Vec3 lookB = sockets.core().scale(0.55).add(sockets.eye().scale(0.45));
-
-        // Rig C: pulled back and above, following the attack out toward its target.
-        double pull = Curves.window(t, 4.5, RedTimings.CAMERA_RETURN);
-        Vec3 posC = f.feet().add(up.scale(1.75 + 0.25 * pull))
-                .add(f.forward().scale(-2.7).add(f.right().scale(1.7)).scale(1.0 + 0.25 * pull));
-        Vec3 aimC = f.impact() != null ? f.feet().add(up.scale(1.3)).add(f.impact().subtract(f.feet()).scale(0.35))
-                : f.feet().add(up.scale(1.3)).add(f.forward().scale(8));
-
-        double wB = Curves.smoothstep(Curves.window(t, RedTimings.CLOSE_UP - 0.2, RedTimings.CLOSE_UP + 0.35))
-                * (1 - Curves.smoothstep(Curves.window(t, RedTimings.RELEASE_ANIM - 0.01, RedTimings.RELEASE_ANIM + 0.15)));
-        double wC = Curves.smoothstep(Curves.window(t, RedTimings.RELEASE_ANIM - 0.01, RedTimings.RELEASE_ANIM + 0.2));
-        Vec3 pos = lerp(lerp(posA, posB, wB), posC, wC);
-        Vec3 look = lerp(lerp(lookA, lookB, wB), aimC, wC);
-
+    public static Shot shot(double t, Frame f, RedPose.Sockets sockets, Vec3 follow, Vec3 normalPos, Vec3 normalLook,
+                            double baseFov, int seed) {
+        int i = 0;
+        while (i + 1 < STARTS.length && t >= STARTS[i + 1]) {
+            i++;
+        }
+        Rig now = rig(i, t, f, sockets, follow);
+        Vec3 pos = now.pos(), look = now.look();
+        if (i > 0) {
+            double k = Curves.smoothstep(Curves.window(t, STARTS[i], STARTS[i] + BLENDS[i]));
+            if (k < 1) {
+                Rig before = rig(i - 1, t, f, sockets, follow);
+                pos = lerp(before.pos(), pos, k);
+                look = lerp(before.look(), look, k);
+            }
+        }
         double weight = weight(t);
         pos = lerp(normalPos, pos, weight);
         look = lerp(normalLook, look, weight);
@@ -109,16 +165,18 @@ public final class CameraRig {
         double impulse = RedProfile.shakeImpulse(t) * weight;
         Random r = new Random(seed);
         int s1 = r.nextInt(1000), s2 = r.nextInt(1000), s3 = r.nextInt(1000);
-        double yawShake = charge * (1.3 * Curves.fbm(t * 2.0, s1) + 0.4 * Curves.fbm(t * 19.0, s2)) + impulse * 1.7 * Curves.fbm(t * 38.0, s3);
-        double pitchShake = charge * (1.0 * Curves.fbm(t * 2.3 + 9, s2) + 0.35 * Curves.fbm(t * 21.0, s3)) - impulse * 2.4;
-        pos = pos.subtract(f.forward().scale(impulse * 0.2)).add(0, charge * 0.02 * Curves.fbm(t * 15.0, s1), 0);
+        double sway = 0.25 * weight;
+        double yawShake = sway * Curves.fbm(t * 0.8, s1) + charge * (1.3 * Curves.fbm(t * 2.0, s1) + 0.4 * Curves.fbm(t * 19.0, s2))
+                + impulse * 1.7 * Curves.fbm(t * 38.0, s3);
+        double pitchShake = sway * Curves.fbm(t * 0.7 + 5, s2) + charge * (1.0 * Curves.fbm(t * 2.3 + 9, s2) + 0.35 * Curves.fbm(t * 21.0, s3))
+                - impulse * 2.4;
+        pos = pos.subtract(f.forward().scale(impulse * 0.22)).add(0, charge * 0.02 * Curves.fbm(t * 15.0, s1), 0);
 
         Vec3 d = look.subtract(pos);
         double horiz = Math.sqrt(d.x * d.x + d.z * d.z);
         double yaw = Math.toDegrees(Math.atan2(-d.x, d.z)) + yawShake;
         double pitch = -Math.toDegrees(Math.atan2(d.y, horiz)) + pitchShake;
-        double roll = rollAt(t, seed);
-        return new Shot(pos, yaw, pitch, roll, fovAt(t, baseFov), weight);
+        return new Shot(pos, yaw, pitch, rollAt(t, seed), fovAt(t, baseFov), weight);
     }
 
     private static Vec3 lerp(Vec3 a, Vec3 b, double t) {

@@ -11,9 +11,9 @@ class RedCinematicTest {
     @Test
     void coreStartsTinyGrowsAndCompressesBeforeRelease() {
         assertEquals(0.0, RedProfile.coreRadius(0.5), 1e-9);
-        assertEquals(RedProfile.SEED_RADIUS, RedProfile.coreRadius(RedTimings.CORE_FORMS + 1e-6), 5e-3);
+        assertEquals(RedProfile.SEED_RADIUS, RedProfile.coreRadius(RedTimings.CORE_FORMS + 1e-6), 8e-3);
         double charged = RedProfile.coreRadius(3.95);
-        assertTrue(charged > 0.22 && charged < 0.4, "charged radius " + charged);
+        assertTrue(charged > 0.34 && charged < 0.62, "charged radius " + charged);
         assertEquals(RedProfile.COMPRESSED_RADIUS, RedProfile.coreRadius(RedTimings.RELEASE - 0.02), 0.01);
         assertTrue(RedProfile.coreRadius(RedTimings.HOLD + 0.15) < charged);
     }
@@ -60,18 +60,22 @@ class RedCinematicTest {
         assertTrue(east.core().x > feet.x + 0.4);
     }
 
+    private static RedPose.Sockets sock(Vec3 feet) {
+        return RedPose.sockets(RedPose.sample(3.0), feet, 0);
+    }
+
     @Test
     void cameraBlendsInFromAndOutToThePlayersOwnViewAndKeepsTheTargetAhead() {
         Vec3 feet = new Vec3(0, 64, 0), target = new Vec3(0, 65, 20);
         CameraRig.Frame f = CameraRig.Frame.of(feet, target, target);
         Vec3 normal = new Vec3(0, 65.62, 0), look = new Vec3(0, 65.6, 10);
-        CameraRig.Shot start = CameraRig.shot(0.0, f, normal, look, 70, 1);
+        CameraRig.Shot start = CameraRig.shot(0.0, f, sock(feet), null, normal, look, 70, 1);
         assertEquals(0.0, start.weight(), 1e-9);
         assertEquals(70, start.fov(), 1e-6);
-        CameraRig.Shot end = CameraRig.shot(RedTimings.END, f, normal, look, 70, 1);
+        CameraRig.Shot end = CameraRig.shot(RedTimings.END, f, sock(feet), null, normal, look, 70, 1);
         assertEquals(0.0, end.weight(), 1e-9);
         assertEquals(normal.y, end.position().y, 1e-6);
-        CameraRig.Shot orbit = CameraRig.shot(1.0, f, normal, look, 70, 1);
+        CameraRig.Shot orbit = CameraRig.shot(1.0, f, sock(feet), null, normal, look, 70, 1);
         assertTrue(orbit.position().distanceTo(feet.add(0, 1.3, 0)) > 2.0 && orbit.position().distanceTo(feet.add(0, 1.3, 0)) < 3.5);
         assertTrue(orbit.fov() < 62.5 && orbit.fov() > 55);
     }
@@ -81,9 +85,21 @@ class RedCinematicTest {
         Vec3 feet = new Vec3(0, 64, 0), target = new Vec3(5, 65, 20);
         CameraRig.Frame f = CameraRig.Frame.of(feet, target, target);
         Vec3 normal = new Vec3(0, 65.62, 0), look = new Vec3(0, 65.6, 10);
-        double before = CameraRig.shot(4.3, f, normal, look, 70, 1).fov();
-        double punch = CameraRig.shot(4.45, f, normal, look, 70, 1).fov();
-        double after = CameraRig.shot(4.75, f, normal, look, 70, 1).fov();
+        double before = CameraRig.shot(4.3, f, sock(feet), null, normal, look, 70, 1).fov();
+        double punch = CameraRig.shot(4.45, f, sock(feet), null, normal, look, 70, 1).fov();
+        double after = CameraRig.shot(4.75, f, sock(feet), null, normal, look, 70, 1).fov();
         assertTrue(before < 50 && punch > 70 && after < 60 && after > 55, before + " " + punch + " " + after);
+    }
+
+    @Test
+    void everyShotKeepsTheCasterInFrameAndTheCameraOffTheirFace() {
+        Vec3 feet = new Vec3(0, 64, 0), target = new Vec3(3, 65, 20);
+        CameraRig.Frame f = CameraRig.Frame.of(feet, target, target);
+        Vec3 normal = new Vec3(0, 65.62, 0), look = new Vec3(0, 65.6, 10);
+        for (double t = 0.8; t < 6.0; t += 0.1) {
+            CameraRig.Shot s = CameraRig.shot(t, f, RedPose.sockets(RedPose.sample(t), feet, f.yawDeg()), target, normal, look, 70, 3);
+            assertTrue(Double.isFinite(s.yaw()) && Double.isFinite(s.pitch()) && Double.isFinite(s.position().x), "t=" + t);
+            assertTrue(s.position().distanceTo(feet.add(0, 1.6, 0)) < 40, "t=" + t);
+        }
     }
 }

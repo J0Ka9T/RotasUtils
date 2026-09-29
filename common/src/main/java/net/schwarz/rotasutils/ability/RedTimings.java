@@ -27,20 +27,21 @@ public final class RedTimings {
     public static final double CAMERA_RETURN = 6.2;
     public static final double END = 7.2;
     /** How long the world keeps lingering effects after the sequence itself ends. */
-    public static final double LINGER = 3.0;
+    public static final double LINGER = 4.0;
 
     public static final int END_TICKS = (int) Math.round(END * 20);
     public static final int RELEASE_TICKS = (int) Math.round(RELEASE * 20);
 
     /** Blocks the red mass covers each tick once fired. */
-    public static final double PROJECTILE_SPEED = 3.0;
-    public static final double RANGE = 48.0;
+    public static final double PROJECTILE_SPEED = 3.5;
+    public static final double RANGE = 64.0;
     /** Radius of the repulsion blast where it lands. */
-    public static final double BLAST_RADIUS = 7.0;
+    public static final double BLAST_RADIUS = 12.0;
     /** Radius of the release shockwave round the caster. */
-    public static final double SHOCKWAVE_RADIUS = 11.0;
-    public static final float DAMAGE = 40f;
-    public static final double KNOCKBACK = 3.2;
-    public static final double LIFT = 0.55;
-    public static final int COOLDOWN_TICKS = 20 * 30;
+    public static final double SHOCKWAVE_RADIUS = 16.0;
+    public static final float DAMAGE = 150f;
+    public static final double KNOCKBACK = 4.6;
+    public static final double LIFT = 0.85;
+    /** None: it can be used again the moment the last one ends. */
+    public static final int COOLDOWN_TICKS = 0;
 }

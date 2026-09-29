@@ -89,8 +89,10 @@ public final class AbilityManager {
         AbilityContext context = new AbilityContext(player, level, level.getGameTime(), target,
                 level.getRandom().nextLong());
         ACTIVE.put(player.getUUID(), new Active(definition, context));
-        COOLDOWNS.computeIfAbsent(player.getUUID(), k -> new HashMap<>())
-                .put(definition.id(), level.getGameTime() + definition.cooldownTicks());
+        if (definition.cooldownTicks() > 0) {
+            COOLDOWNS.computeIfAbsent(player.getUUID(), k -> new HashMap<>())
+                    .put(definition.id(), level.getGameTime() + definition.cooldownTicks());
+        }
         AbilityNet.sendStart(context, definition.id());
         Rotasutils.LOG.debug("{} began {}", player.getGameProfile().getName(), definition.id());
         return Result.STARTED;

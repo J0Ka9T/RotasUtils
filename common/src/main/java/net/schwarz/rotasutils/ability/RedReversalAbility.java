@@ -68,9 +68,16 @@ public final class RedReversalAbility implements AbilityDefinition {
 
     // Events -----------------------------------------------------------------------------------------
 
+    /** Nothing may interrupt the cutscene: the caster cannot be hurt until it ends. */
+    @Override
+    public void end(AbilityContext context, boolean completed) {
+        context.player.setInvulnerable(false);
+    }
+
     /** Turns the caster to face what they locked onto; the client turns the rest of the body itself. */
     private static void begin(AbilityContext c) {
         ServerPlayer player = c.player;
+        player.setInvulnerable(true);
         Vec3 to = c.target.position().subtract(player.getEyePosition());
         float yaw = (float) (Mth.atan2(to.z, to.x) * 180.0 / Math.PI) - 90f;
         float pitch = (float) -(Mth.atan2(to.y, Math.sqrt(to.x * to.x + to.z * to.z)) * 180.0 / Math.PI);

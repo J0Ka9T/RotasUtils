@@ -33,7 +33,9 @@ public final class CinematicDirector {
         Vec3 normal = camera.getPosition();
         Vec3 look = normal.add(Vec3.directionFromRotation(camera.getXRot(), camera.getYRot()).scale(10));
         double base = Minecraft.getInstance().options.fov().get();
-        return CameraRig.shot(cast.time(partialTick), cast.frame(partialTick), normal, look, base, (int) cast.seed);
+        double t = cast.time(partialTick);
+        CameraRig.Frame frame = cast.frame(partialTick);
+        return CameraRig.shot(t, frame, cast.socketsForCamera(t, frame), cast.followPoint(t), normal, look, base, (int) cast.seed);
     }
 
     /** The field of view in degrees, or {@code base} when nothing is playing. */
