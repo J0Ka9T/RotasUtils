@@ -38,6 +38,7 @@ public final class Rotasutils {
         RotasNetwork.init();
         RotasEvents.init();
         RotasCommands.init();
+        net.schwarz.rotasutils.ability.AbilityManager.init();
         LOG.info("RotasUtils common init complete");
     }
 

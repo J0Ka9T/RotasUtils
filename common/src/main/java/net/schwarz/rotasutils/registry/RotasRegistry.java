@@ -301,6 +301,11 @@ public final class RotasRegistry {
             () -> new net.schwarz.rotasutils.item.ZenithItem(new Item.Properties().stacksTo(1).fireResistant()
                     .rarity(net.minecraft.world.item.Rarity.EPIC)));
 
+    /** Red Reversal: a right click begins a cinematic ability, run by the AbilityManager. */
+    public static final RegistrySupplier<Item> RED_REVERSAL = ITEMS.register("red_reversal",
+            () -> new net.schwarz.rotasutils.item.RedReversalItem(new Item.Properties().stacksTo(1).fireResistant()
+                    .rarity(net.minecraft.world.item.Rarity.EPIC)));
+
     /** ExoElectric Disintegrator: charge, then a continuous piercing ray that unmakes what it kills. */
     public static final RegistrySupplier<Item> EXO_DISINTEGRATOR = ITEMS.register("exo_disintegrator",
             () -> new net.schwarz.rotasutils.item.ExoDisintegratorItem(new Item.Properties().stacksTo(1).fireResistant()
@@ -453,7 +458,7 @@ public final class RotasRegistry {
                 net.schwarz.rotasutils.entity.TetrarchEntity::createAttributes);
         TABS.register();
         PARTICLES.register();
-        CreativeTabRegistry.append(TAB, QUEST_BOARD_ITEM, WAYSTONE_ITEM, HORSE_WHISTLE, ZENITH, EXO_DISINTEGRATOR, GOLD_COIN,
+        CreativeTabRegistry.append(TAB, QUEST_BOARD_ITEM, WAYSTONE_ITEM, HORSE_WHISTLE, ZENITH, RED_REVERSAL, EXO_DISINTEGRATOR, GOLD_COIN,
                 ORIDECON, ELUNIUM, ENRICHED_ORIDECON, ENRICHED_ELUNIUM,
                 PROTECTION_SCROLL, BLESSING_SCROLL, CERTIFICATE_SCROLL, SOCKET_PUNCH, CARD,
                 REFINE_FORGE_ITEM, RUNE_ALTAR_ITEM);

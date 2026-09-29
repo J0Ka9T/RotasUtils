@@ -731,7 +731,37 @@ def rings():
         cv.save(name)
 
 
+# ---- Red Reversal: a dark crimson core wrapped in unstable plasma ---------------------------------------
+def red_reversal():
+    cv = Canvas()
+    m = circle(0.5, 0.5, 0.36)
+    n = fbm(61, (40, 14, 5), (1, 0.7, 0.4))
+    stops = [(0, '#080105'), (0.3, '#3a050c'), (0.6, '#a01420'), (0.85, '#e8422c'), (1, '#ffb08a')]
+    h = dome(m, 0.36) * 0.9 + n * 0.05
+    diff, sp = light(h, 70)
+    t = np.clip(diff * 0.9 + (n * 0.5 + 0.5) * 0.25 - 0.1, 0, 1)
+    cv.glow(rgb('#ff2a1a') * 0.9, blur(m, 22) * 0.75)
+    cv.put(np.clip(ramp(t, stops) + sp[..., None] * 0.35, 0, 1), m)
+    # a near-black heart, so the shell reads as a shell
+    core = circle(0.5, 0.5, 0.17)
+    cv.put(rgb('#0a0206'), blur(core, 3) * 0.85 * m)
+    # broken filaments arcing round it
+    rng = np.random.default_rng(9)
+    for k in range(9):
+        a0 = rng.uniform(0, 6.28)
+        span = rng.uniform(0.6, 1.4)
+        r = rng.uniform(0.2, 0.34)
+        pts = [(0.5 + math.cos(a0 + span * i / 12) * r * (1 + 0.05 * math.sin(i * 1.7)),
+                0.5 + math.sin(a0 + span * i / 12) * r * (1 + 0.05 * math.sin(i * 1.7))) for i in range(13)]
+        arc = stroke(pts, 0.012, 0.004)
+        cv.put(rgb('#ff5a3a'), blur(arc, 1.0) * m * 0.9)
+    hot = blur(circle(0.4, 0.37, 0.05), 6)
+    cv.put(rgb('#fff0d8'), hot * 0.7)
+    cv.outline(rgb('#12030a'), 0.012)
+    cv.save('red_reversal')
+
+
 if __name__ == '__main__':
-    for f in (gems, runes, scrolls, sigils, keys, rings):
+    for f in (gems, runes, scrolls, sigils, keys, rings, red_reversal):
         f()
         print('painted', f.__name__)
