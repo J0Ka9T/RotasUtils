@@ -23,7 +23,7 @@ class SeasonProgressionTest {
         oldCurve.putString("preset", "COMMUNITY_RPG");
         oldCurve.putLong("base_xp", 333);
         tag.put("curve", oldCurve);
-        assertEquals(25, LevelConfig.load(tag).curve().xpToNext(1), "the stored curve is ignored");
+        assertEquals(184, LevelConfig.load(tag).curve().xpToNext(1), "the stored curve is ignored");
     }
 
     @Test void seasonRulesTravelWithTheLevelConfig() {

@@ -220,7 +220,8 @@ public final class SeasonSettingsCatalog {
 
     private static Map<String, String> topSections() {
         Map<String, String> map = new LinkedHashMap<>();
-        for (String key : List.of("enabled", "currency", "mainBaseXp", "mainExponent", "mainMaxLevel", "subBaseXp",
+        for (String key : List.of("enabled", "currency", "pacingEnabled", "killsAtStart", "killsAtMax", "killsCurve",
+                "referenceMonsterXp", "catchUpLevel", "catchUpBonus", "mainBaseXp", "mainExponent", "mainMaxLevel", "subBaseXp",
                 "subExponent", "subMaxLevel", "subJobProductionOnly")) map.put(key, "leveling");
         for (String key : List.of("monsterLevelBonus", "overLevelGrace", "overLevelPenaltyPerLevel",
                 "overLevelMaxPenalty", "minibossMultiplier", "bossMultiplier")) map.put(key, "monster");
@@ -241,8 +242,8 @@ public final class SeasonSettingsCatalog {
             map.put(key, "rank");
         }
         for (String key : List.of("stats", "defenseScale", "magicBonusMaxRatio")) map.put(key, "stats");
-        for (String key : List.of("pveLevelParity", "pvpDamageMultiplier", "pvpStatEfficiency", "pvpEvasionScale",
-                "pvpMaxHitShare", "pvpLevelGrace", "pvpLevelGapPerLevel", "pvpLevelGapMax")) map.put(key, "pvp");
+        for (String key : List.of("pvpDamageMultiplier", "pvpStatEfficiency", "pvpEvasionScale",
+                "pvpMaxHitShare")) map.put(key, "pvp");
         for (Section section : SECTIONS) {
             // Sections named after a nested object: every value inside it lands there.
             if (!map.containsValue(section.id()) && !section.id().equals(OTHER)) map.put(section.id(), section.id());
@@ -254,8 +255,15 @@ public final class SeasonSettingsCatalog {
         Map<String, String> map = new LinkedHashMap<>();
         map.put("enabled", "เปิดใช้กฎซีซั่น");
         map.put("currency", "สกุลเงินหลัก");
-        map.put("mainBaseXp", "อาชีพหลัก: EXP ฐาน");
-        map.put("mainExponent", "อาชีพหลัก: เลขชี้กำลัง");
+        map.put("pacingEnabled", "เลเวลตามจำนวนการฆ่า");
+        map.put("killsAtStart", "ฆ่ามอนกี่ตัวเพื่อเลเวลแรก");
+        map.put("killsAtMax", "ฆ่ามอนกี่ตัวเพื่อเลเวลสุดท้าย");
+        map.put("killsCurve", "ความชันของการเพิ่ม");
+        map.put("referenceMonsterXp", "EXP มอนอ้างอิง");
+        map.put("catchUpLevel", "โบนัสไล่ตามถึงเลเวล");
+        map.put("catchUpBonus", "โบนัส EXP ไล่ตามสูงสุด");
+        map.put("mainBaseXp", "อาชีพหลัก: EXP ฐาน (สูตรเก่า)");
+        map.put("mainExponent", "อาชีพหลัก: เลขชี้กำลัง (สูตรเก่า)");
         map.put("mainMaxLevel", "อาชีพหลัก: เลเวลสูงสุด");
         map.put("subBaseXp", "อาชีพรอง: EXP ฐาน");
         map.put("subExponent", "อาชีพรอง: เลขชี้กำลัง");
@@ -312,14 +320,10 @@ public final class SeasonSettingsCatalog {
         map.put("stats.agiDodge", "AGI: โอกาสหลบต่อแต้ม");
         map.put("defenseScale", "ค่าคงที่พลังป้องกัน");
         map.put("magicBonusMaxRatio", "โบนัสเวทสูงสุด (เท่าของพลังฐาน)");
-        map.put("pveLevelParity", "PvE: ความเท่าเทียมเลเวล");
         map.put("pvpDamageMultiplier", "PvP: ตัวคูณดาเมจ");
         map.put("pvpStatEfficiency", "PvP: ประสิทธิภาพสเตตัส");
         map.put("pvpEvasionScale", "PvP: ตัวคูณหลบหลีก");
         map.put("pvpMaxHitShare", "PvP: ดาเมจสูงสุดต่อครั้ง (สัดส่วน HP)");
-        map.put("pvpLevelGrace", "PvP: เลเวลต่างที่ยังไม่ปรับ");
-        map.put("pvpLevelGapPerLevel", "PvP: ปรับต่อเลเวลที่ต่าง");
-        map.put("pvpLevelGapMax", "PvP: ปรับสูงสุด");
 
         map.put("horse.enabled", "เปิดระบบม้า");
         map.put("horse.pullCost", "ราคาสุ่ม 1 ครั้ง");
@@ -655,14 +659,21 @@ public final class SeasonSettingsCatalog {
         Map<String, String> map = new LinkedHashMap<>();
         map.put("enabled", "ปิด = กลับไปใช้ระบบเดิมก่อนมีซีซั่นทั้งหมด");
         map.put("currency", "สกุลเงินที่ใช้สุ่มม้า รีเซ็ตสเตตัส ซื้อคอก ขายม้า (ปกติ rotas:gold)");
-        map.put("mainBaseXp", "ยิ่งมาก ยิ่งเลเวลช้า ปกติ 20-40");
+        map.put("pacingEnabled", "เปิด = เลเวลแต่ละขั้นคิดจากจำนวนมอนที่ต้องฆ่า ปิด = ใช้สูตรเลขชี้กำลังแบบเก่า");
+        map.put("killsAtStart", "ต้องฆ่ามอนเลเวลเท่ากันกี่ตัวเพื่อขึ้นเลเวล 2 ปกติ 4-8");
+        map.put("killsAtMax", "ต้องฆ่ามอนเลเวลเท่ากันกี่ตัวเพื่อขึ้นเลเวลสุดท้าย ปกติ 50-100");
+        map.put("killsCurve", "1 = เพิ่มเป็นเส้นตรง มากกว่า 1 = เลเวลต้นๆ ไวกว่า ปกติ 1.2-1.6");
+        map.put("referenceMonsterXp", "EXP ของมอนเลเวล 1 ก่อนโบนัสเลเวล ใช้เป็นตัววัดความเร็วเลเวล ปกติ 20");
+        map.put("catchUpLevel", "ผู้เล่นต่ำกว่าเลเวลนี้ได้ EXP เพิ่ม ปกติ 20-40");
+        map.put("catchUpBonus", "EXP เพิ่มสูงสุดที่เลเวล 1 0.5 = +50% ค่อยๆ ลดจนหมดที่เลเวลข้างบน");
+        map.put("mainBaseXp", "ใช้เฉพาะเมื่อปิดเลเวลตามจำนวนการฆ่า ยิ่งมาก ยิ่งเลเวลช้า ปกติ 20-40");
         map.put("mainMaxLevel", "เลเวลสูงสุดของอาชีพหลัก ปกติ 100");
         map.put("subBaseXp", "ยิ่งมาก อาชีพรองยิ่งขึ้นช้า ปกติ 60-120");
         map.put("subMaxLevel", "เลเวลสูงสุดของอาชีพรอง ปกติ 20");
         map.put("subJobProductionOnly", "เปิด = อาชีพรองได้ EXP จากการผลิตเท่านั้น ไม่ได้จากการฆ่ามอน");
         map.put("monsterLevelBonus", "มอนสูงกว่า 1 เลเวล ได้ EXP เพิ่มเท่านี้ 0.15 = +15% ต่อเลเวล");
         map.put("overLevelGrace", "ผู้เล่นเลเวลสูงกว่ามอนได้กี่เลเวลก่อนเริ่มลด EXP ปกติ 3-8");
-        map.put("overLevelPenaltyPerLevel", "ลด EXP ต่อเลเวลที่เกิน 0.10 = -10% ต่อเลเวล");
+        map.put("overLevelPenaltyPerLevel", "ยิ่งมาก EXP ยิ่งลดเร็วเมื่อเลเวลเกินมอน (ลดแบบนุ่ม ไม่ตกหน้าผา) 0.10 = เหลือ ~68% เกิน 5 เลเวล ~41% เกิน 10");
         map.put("overLevelMaxPenalty", "ลดได้มากสุดเท่านี้ 0.90 = เหลืออย่างน้อย 10%");
         map.put("minibossMultiplier", "มินิบอสให้ EXP กี่เท่าของมอนธรรมดา ปกติ 5-15");
         map.put("bossMultiplier", "บอสให้ EXP กี่เท่าของมอนธรรมดา ปกติ 20-60");
@@ -692,7 +703,6 @@ public final class SeasonSettingsCatalog {
         map.put("repeatableRankCapPerDay", "แต้มแรงค์จากเควสทำซ้ำสูงสุดต่อวัน");
         map.put("seasonRankTotal", "แต้มแรงค์ทั้งซีซั่น (ไม่รวมเควสซ้ำ) เกณฑ์แรงค์คิดเป็นสัดส่วนของค่านี้");
         map.put("defenseScale", "ดาเมจที่รับ = ค่านี้ ÷ (ค่านี้ + พลังป้องกัน) ยิ่งมาก ป้องกันยิ่งเห็นผลน้อย ปกติ 100");
-        map.put("pveLevelParity", "เลเวลผู้เล่นหักล้างความแรงของมอนได้แค่ไหน 0-1 ปกติ 0.8");
         map.put("pvpDamageMultiplier", "ดาเมจ PvP ทุกครั้งคูณเท่านี้ 0.6 = สู้กันได้นานขึ้น");
         map.put("stats.startPoints", "แต้มสเตตัสตอนเริ่มเกม");
         map.put("stats.pointsPerLevel", "แต้มที่ได้ทุกเลเวล เลเวล 100 = เริ่มต้น + 99 × ค่านี้");
@@ -706,9 +716,6 @@ public final class SeasonSettingsCatalog {
         map.put("pvpStatEfficiency", "โบนัสโจมตีจากสเตตัสนับใน PvP แค่ไหน 1 = เต็ม ปกติ 0.5");
         map.put("pvpEvasionScale", "โอกาสหลบคูณเท่านี้เมื่อโดนผู้เล่นตี ปกติ 0.5");
         map.put("pvpMaxHitShare", "ตีครั้งเดียวไม่เกินกี่ส่วนของ HP เหยื่อ 0.35 = 35%, 0 = ไม่จำกัด");
-        map.put("pvpLevelGrace", "ผู้โจมตีเลเวลสูงกว่าได้กี่เลเวลก่อนลดดาเมจ PvP");
-        map.put("pvpLevelGapPerLevel", "ลดดาเมจ PvP ต่อเลเวลที่ห่างเกิน 0.02 = -2%");
-        map.put("pvpLevelGapMax", "ลดดาเมจ PvP มากสุด 0.5 = ครึ่งหนึ่ง");
         map.put("magicBonusMaxRatio", "โบนัสเวทต่อครั้งไม่เกินกี่เท่าของดาเมจ 1.0 = ไม่เกินเท่าตัว 0 = ไม่จำกัด");
         map.put("titles.staffEarnTitles", "เปิด = แอดมิน (OP 2+) ได้ฉายาอัตโนมัติเหมือนผู้เล่น ปกติปิด เพื่อไม่ให้แอดมินที่ทดสอบแย่งฉายาเฉพาะตัว");
         map.put("titles.creativeEarnTitles", "เปิด = ผู้เล่นโหมดครีเอทีฟ/สเปกเตเตอร์ได้ฉายาอัตโนมัติ");

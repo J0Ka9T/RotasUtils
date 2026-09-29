@@ -35,13 +35,31 @@ public final class SeasonMath {
         return Math.max(0, base) * (1.0 + Math.max(0, levelBonus) * Math.max(1, monsterLevel));
     }
 
-    /** Multiplier for a player above the monster: nothing inside the grace, then a step per level. */
+    /**
+     * EXP multiplier for a player above the monster: nothing inside the grace, then a smooth decline instead of a
+     * cliff. {@code 1 / (1 + x^1.6)} with {@code x = over * perLevel / 0.8}, never below {@code 1 - maxPenalty}. With the
+     * default 0.10 that is about 68% five levels past the grace, 41% at ten, 19% at twenty.
+     */
     public static double overLevelMultiplier(int playerLevel, int monsterLevel, int grace, double perLevel, double maxPenalty) {
         int over = playerLevel - monsterLevel - Math.max(0, grace);
         if (over <= 0) {
             return 1.0;
         }
-        return 1.0 - Math.min(Math.max(0, maxPenalty), over * Math.max(0, perLevel));
+        double x = over * Math.max(0, perLevel) / 0.8;
+        double smooth = 1.0 / (1.0 + Math.pow(x, 1.6));
+        return Math.max(1.0 - Math.min(1.0, Math.max(0, maxPenalty)), smooth);
+    }
+
+    /**
+     * Catch-up EXP for characters below {@code catchUpLevel}: {@code 1 + bonus} at level 1, easing to nothing at the
+     * catch-up level, so a new character (or one far behind their friends) closes the gap instead of falling further.
+     */
+    public static double catchUpMultiplier(int level, int catchUpLevel, double bonus) {
+        if (bonus <= 0 || catchUpLevel <= 1 || level >= catchUpLevel) {
+            return 1.0;
+        }
+        double t = (Math.max(1, level) - 1.0) / (catchUpLevel - 1.0);
+        return 1.0 + bonus * (1.0 - t);
     }
 
     /** Share of the kill each member in range receives: the bonus-grown pool split evenly. */
@@ -102,26 +120,6 @@ public final class SeasonMath {
     public static double defenseMultiplier(double defense, double scale) {
         double safeScale = Math.max(1, scale);
         return safeScale / (safeScale + Math.max(0, Double.isFinite(defense) ? defense : 0));
-    }
-
-    /**
-     * How much a player's level offsets the monster level curve: {@code 1 + parity * perLevel * (shared - 1)},
-     * where {@code shared} is the lower of the two levels. Matching a monster's level cancels that share of its
-     * growth; out-levelling it gives nothing extra, and a monster above the player keeps its full advantage.
-     */
-    public static double levelParity(int playerLevel, int monsterLevel, double curvePerLevel, double parity) {
-        int shared = Math.max(1, Math.min(playerLevel, monsterLevel));
-        return 1.0 + Math.max(0, Math.min(1, parity)) * Math.max(0, curvePerLevel) * (shared - 1);
-    }
-
-    /** PvP damage multiplier for an attacker above the victim: nothing inside the grace, then a step per level. */
-    public static double levelGapMultiplier(int attackerLevel, int victimLevel, int grace, double perLevel,
-                                            double maxReduction) {
-        int gap = attackerLevel - victimLevel - Math.max(0, grace);
-        if (gap <= 0) {
-            return 1.0;
-        }
-        return 1.0 - Math.min(Math.max(0, Math.min(1, maxReduction)), gap * Math.max(0, perLevel));
     }
 
     /**

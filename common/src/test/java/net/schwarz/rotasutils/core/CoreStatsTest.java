@@ -118,11 +118,13 @@ class CoreStatsTest {
     @Test
     void theCurveComesFromTheSeasonRulesOnly() {
         LevelConfig config = new LevelConfig();
-        assertEquals(25, config.curve().xpToNext(1));
+        // Pacing: the first level costs 8 kills of a level-1 monster (20 EXP, +15% per level).
+        assertEquals(184, config.curve().xpToNext(1));
         long toMax = config.curve().totalXpTo(100);
-        assertTrue(toMax > 12_000_000 && toMax < 14_000_000, "about 13M EXP to level 100: " + toMax);
+        assertTrue(toMax > 1_000_000 && toMax < 1_300_000, "about 1.2M EXP to level 100: " + toMax);
 
         SeasonRules rules = config.season().copy();
+        rules.pacingEnabled = false;
         rules.mainBaseXp = 100;
         rules.mainMaxLevel = 50;
         config.setSeason(rules);

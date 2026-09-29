@@ -21,9 +21,13 @@ public final class SeasonPreview {
         List<String> out = new ArrayList<>();
         switch (section) {
             case "leveling" -> {
-                out.add("อาชีพหลัก EXP/เลเวล: " + at(r.mainBaseXp, r.mainExponent, 10) + " · "
-                        + at(r.mainBaseXp, r.mainExponent, 50) + " · " + at(r.mainBaseXp, r.mainExponent, Math.max(1, r.mainMaxLevel - 1)));
-                out.add("รวมถึงเลเวลสูงสุด " + r.mainMaxLevel + ": " + big(SeasonMath.powerTotal(r.mainBaseXp, r.mainExponent, r.mainMaxLevel))
+                var curve = new net.schwarz.rotasutils.level.LevelCurve();
+                curve.set(r);
+                String kills = r.pacingEnabled ? " (ฆ่ามอนเลเวลเท่ากัน ~" + Math.round(curve.killsFor(10)) + " / ~" + Math.round(curve.killsFor(50))
+                        + " / ~" + Math.round(curve.killsFor(Math.max(1, r.mainMaxLevel - 1))) + " ตัว)" : "";
+                out.add("อาชีพหลัก EXP/เลเวล: LV10 " + big(curve.xpToNext(10)) + " · LV50 " + big(curve.xpToNext(50)) + " · LV"
+                        + Math.max(1, r.mainMaxLevel - 1) + " " + big(curve.xpToNext(Math.max(1, r.mainMaxLevel - 1))) + kills);
+                out.add("รวมถึงเลเวลสูงสุด " + r.mainMaxLevel + ": " + big(curve.totalXpTo(r.mainMaxLevel))
                         + " EXP · อาชีพรองถึง " + r.subMaxLevel + ": " + big(SeasonMath.powerTotal(r.subBaseXp, r.subExponent, r.subMaxLevel)));
             }
             case "monster" -> {

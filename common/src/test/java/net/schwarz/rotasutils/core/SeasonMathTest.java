@@ -1,5 +1,7 @@
 package net.schwarz.rotasutils.core;
 
+import net.schwarz.rotasutils.level.LevelCurve;
+import net.schwarz.rotasutils.level.LevelPacing;
 import net.schwarz.rotasutils.level.SeasonMath;
 import net.schwarz.rotasutils.level.SeasonRules;
 import org.junit.jupiter.api.Test;
@@ -23,24 +25,6 @@ class SeasonMathTest {
         assertTrue(subTotal > 125_000 && subTotal < 135_000, "sub total " + subTotal);
     }
 
-    @Test void levelParityCancelsTheSharedPartOfTheMonsterCurve() {
-        // Equal level 100 against +5% health per level: 80% of 99 levels of growth.
-        assertEquals(1 + 0.8 * 0.05 * 99, SeasonMath.levelParity(100, 100, 0.05, 0.8), 1e-9);
-        // Out-levelling a low monster only counts the monster's own level, so low mobs are not trivialised.
-        assertEquals(1 + 0.8 * 0.05 * 9, SeasonMath.levelParity(100, 10, 0.05, 0.8), 1e-9);
-        // A monster above the player keeps its advantage: only the player's level is shared.
-        assertEquals(1 + 0.8 * 0.05 * 19, SeasonMath.levelParity(20, 60, 0.05, 0.8), 1e-9);
-        assertEquals(1.0, SeasonMath.levelParity(1, 1, 0.05, 0.8));
-        assertEquals(1.0, SeasonMath.levelParity(100, 100, 0.05, 0));
-    }
-
-    @Test void pvpLevelGapOnlyReducesBeyondTheGraceAndIsBounded() {
-        assertEquals(1.0, SeasonMath.levelGapMultiplier(40, 30, 10, 0.02, 0.5));
-        assertEquals(0.8, SeasonMath.levelGapMultiplier(50, 30, 10, 0.02, 0.5), 1e-9);
-        assertEquals(0.5, SeasonMath.levelGapMultiplier(100, 1, 10, 0.02, 0.5), 1e-9);
-        assertEquals(1.0, SeasonMath.levelGapMultiplier(10, 90, 10, 0.02, 0.5));
-    }
-
     @Test void pvpStatScaleKeepsOnlyTheConfiguredShareOfTheBonus() {
         // +100% stat damage at half efficiency: a hit of 2 becomes 1.5.
         assertEquals(0.75, SeasonMath.statBonusScale(1.0, 0.5), 1e-9);
@@ -58,8 +42,15 @@ class SeasonMathTest {
     @Test void monsterPartyAndPenalties() {
         assertEquals(100 * (1 + 0.15 * 20), SeasonMath.monsterXp(100, 20, 0.15), 1e-9);
         assertEquals(1.0, SeasonMath.overLevelMultiplier(25, 20, 5, 0.1, 0.9), 1e-9);
-        assertEquals(0.7, SeasonMath.overLevelMultiplier(28, 20, 5, 0.1, 0.9), 1e-9);
-        assertEquals(0.1, SeasonMath.overLevelMultiplier(90, 20, 5, 0.1, 0.9), 1e-9);
+        // Smooth, not a cliff: each step past the grace costs a little less than the one before it.
+        double a = SeasonMath.overLevelMultiplier(28, 20, 5, 0.1, 0.9);
+        double b = SeasonMath.overLevelMultiplier(33, 20, 5, 0.1, 0.9);
+        double c = SeasonMath.overLevelMultiplier(43, 20, 5, 0.1, 0.9);
+        assertEquals(0.83, a, 0.03);
+        assertEquals(0.50, b, 0.03);
+        assertEquals(0.215, c, 0.03);
+        assertEquals(0.1, SeasonMath.overLevelMultiplier(500, 20, 5, 0.1, 0.9), 1e-9);
+        assertEquals(1.0, SeasonMath.overLevelMultiplier(90, 20, 5, 0.0, 0.9), 1e-9);
         assertEquals(1.0, SeasonMath.partyShare(1, 0.25), 1e-9);
         assertEquals(2.0 / 5, SeasonMath.partyShare(5, 0.25), 1e-9);
     }
@@ -105,5 +96,35 @@ class SeasonMathTest {
         assertEquals(1, broken.stats.maxPerStat);
         assertArrayEquals(new int[]{4, 9, 14, 19}, broken.tierMaxLevel);
         assertEquals(1, broken.partyMaxSize);
+    }
+
+    @Test void catchUpFadesFromItsBonusToNothing() {
+        assertEquals(1.5, SeasonMath.catchUpMultiplier(1, 30, 0.5), 1e-9);
+        assertEquals(1.0, SeasonMath.catchUpMultiplier(30, 30, 0.5), 1e-9);
+        assertEquals(1.0, SeasonMath.catchUpMultiplier(80, 30, 0.5), 1e-9);
+        assertTrue(SeasonMath.catchUpMultiplier(10, 30, 0.5) > SeasonMath.catchUpMultiplier(20, 30, 0.5));
+        assertEquals(1.0, SeasonMath.catchUpMultiplier(1, 30, 0.0), 1e-9);
+    }
+
+    @Test void pacingCostsATargetNumberOfSameLevelKills() {
+        SeasonRules rules = new SeasonRules();
+        assertEquals(6.0, LevelPacing.killsFor(1, 100, 6, 70, 1.35), 1e-9);
+        assertEquals(70.0, LevelPacing.killsFor(100, 100, 6, 70, 1.35), 1e-9);
+        double last = 0;
+        for (int level = 1; level <= 100; level++) {
+            double kills = LevelPacing.killsFor(level, 100, 6, 70, 1.35);
+            assertTrue(kills >= last - 1e-9, "kills per level never fall");
+            last = kills;
+        }
+        // The cost is that many kills of a monster of the same level.
+        long cost = LevelPacing.cost(10, 100, rules.killsAtStart, rules.killsAtMax, rules.killsCurve, rules.referenceMonsterXp, rules.monsterLevelBonus);
+        double perKill = SeasonMath.monsterXp(rules.referenceMonsterXp, 10, rules.monsterLevelBonus);
+        assertEquals(LevelPacing.killsFor(10, 100, rules.killsAtStart, rules.killsAtMax, rules.killsCurve) * perKill, cost, 1.0);
+        LevelCurve curve = new LevelCurve();
+        curve.set(rules);
+        assertEquals(cost, curve.xpToNext(10));
+        rules.pacingEnabled = false;
+        curve.set(rules);
+        assertEquals(SeasonMath.powerCost(rules.mainBaseXp, rules.mainExponent, 10), curve.xpToNext(10));
     }
 }

@@ -183,6 +183,7 @@ public final class ProgressService {
                     * Math.max(0, award.multiplier())
                     * net.schwarz.rotasutils.level.SeasonMath.overLevelMultiplier(level, monsterLevel,
                     rules.overLevelGrace, rules.overLevelPenaltyPerLevel, rules.overLevelMaxPenalty)
+                    * net.schwarz.rotasutils.level.SeasonMath.catchUpMultiplier(level, rules.catchUpLevel, rules.catchUpBonus)
                     * share * sourceConfig.multiplier() * eventMultiplier
                     // A combo is the killer's own streak; party members share the kill, not the streak.
                     * (recipient == killer ? FarmingService.comboXp(killer, data) : 1.0)

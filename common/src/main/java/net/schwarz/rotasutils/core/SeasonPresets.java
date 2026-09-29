@@ -28,7 +28,7 @@ public final class SeasonPresets {
     }
 
     private static final Map<String, List<Knob>> KNOBS = Map.ofEntries(
-            Map.entry("leveling", List.of(Knob.of("mainBaseXp", 0.6, 1.5), Knob.of("subBaseXp", 0.6, 1.5))),
+            Map.entry("leveling", List.of(Knob.of("mainBaseXp", 0.6, 1.5), Knob.of("killsAtStart", 0.6, 1.5), Knob.of("killsAtMax", 0.6, 1.5), Knob.of("subBaseXp", 0.6, 1.5))),
             Map.entry("monster", List.of(Knob.of("monsterLevelBonus", 1.4, 0.7),
                     Knob.chance("overLevelPenaltyPerLevel", 0.5, 1.5), Knob.of("overLevelGrace", 1.6, 0.6))),
             Map.entry("repeatable", List.of(Knob.of("repeatableFullRuns", 2.0, 0.5), Knob.chance("repeatableLowRate", 2.0, 0.5))),

@@ -7,7 +7,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
-import net.schwarz.rotasutils.core.MonsterState;
 import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.level.SeasonMath;
 import net.schwarz.rotasutils.level.SeasonRules;
@@ -20,9 +19,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Logical combat values from character stats: defense, evasion and magic attack. They are rebuilt with the
  * attribute modifiers in {@link CharacterStatService#apply} and read by the damage mixin.
  *
- * <p>The damage hook also carries the combat balance from {@link SeasonRules}: against monsters a player's
- * level cancels part of the monster level curve (level parity), and between players the stat bonus, dodge
- * chance, level gap and single-hit burst are all bounded so PvP is not decided by one stacked stat.</p>
+ * <p>The damage hook also carries the combat balance from {@link SeasonRules}. A player's level never changes a
+ * hit, against monsters or players: it only grants stat points. Between players the stat bonus, dodge chance and
+ * single-hit burst are bounded so PvP is not decided by one stacked stat.</p>
  */
 public final class CombatStats {
     public static final String DEFENSE = "rotas:defense";
@@ -125,8 +124,9 @@ public final class CombatStats {
             result += rules == null ? bonus : SeasonMath.capFlatBonus(result, bonus, rules.magicBonusMaxRatio);
         }
         if (rules != null) {
-            result *= pvp ? pvpMultiplier(data, rules, attacker, defender, source)
-                    : pveMultiplier(data, rules, attacker, defender, victim, source);
+            if (pvp) {
+                result *= pvpMultiplier(rules, attacker, source);
+            }
         }
         if (defender != null && !source.is(DamageTypeTags.BYPASSES_ARMOR)) {
             // Worn armour is read here rather than cached, so a piece swapped mid-fight counts at once.
@@ -170,46 +170,14 @@ public final class CombatStats {
         return total;
     }
 
-    /** Only part of a stacked attack build counts, fights run longer, and a far higher level hits for less. */
-    private static double pvpMultiplier(RotasData data, SeasonRules rules, ServerPlayer attacker, ServerPlayer defender,
-                                        DamageSource source) {
+    /** Only part of a stacked attack build counts, and fights run longer. Level plays no part. */
+    private static double pvpMultiplier(SeasonRules rules, ServerPlayer attacker, DamageSource source) {
         double multiplier = rules.pvpDamageMultiplier;
         // The stat bonus is a multiplier on melee attack damage; projectiles and spells never carried it.
         if (source.getDirectEntity() == attacker) {
             multiplier *= SeasonMath.statBonusScale(CharacterStatService.statAttackBonus(attacker), rules.pvpStatEfficiency);
         }
-        multiplier *= SeasonMath.levelGapMultiplier(level(data, attacker), level(data, defender),
-                rules.pvpLevelGrace, rules.pvpLevelGapPerLevel, rules.pvpLevelGapMax);
         return multiplier;
-    }
-
-    /**
-     * Level parity against leveled monsters. A player hitting a monster deals more, and a monster hitting a
-     * player deals less, by the share of the monster curve both levels have in common.
-     */
-    private static double pveMultiplier(RotasData data, SeasonRules rules, ServerPlayer attacker, ServerPlayer defender,
-                                        LivingEntity victim, DamageSource source) {
-        if (rules.pveLevelParity <= 0) {
-            return 1.0;
-        }
-        var curve = data.levelConfig().mobLevel();
-        if (attacker != null && defender == null) {
-            MonsterState monster = MonsterService.state(victim);
-            if (monster != null) {
-                return SeasonMath.levelParity(level(data, attacker), monster.level(), curve.healthPerLevel(), rules.pveLevelParity);
-            }
-        } else if (defender != null && attacker == null && source.getEntity() instanceof LivingEntity mob) {
-            MonsterState monster = MonsterService.state(mob);
-            if (monster != null) {
-                return 1.0 / SeasonMath.levelParity(level(data, defender), monster.level(), curve.damagePerLevel(), rules.pveLevelParity);
-            }
-        }
-        return 1.0;
-    }
-
-    private static int level(RotasData data, ServerPlayer player) {
-        var progress = data.peek(player.getUUID());
-        return progress == null ? 1 : progress.level();
     }
 
     private static boolean magic(DamageSource source) {

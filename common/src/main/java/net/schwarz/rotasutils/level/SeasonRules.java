@@ -28,6 +28,21 @@ public final class SeasonRules {
     public double mainBaseXp = 25;
     public double mainExponent = 2.1;
     public int mainMaxLevel = 100;
+    /**
+     * When on (the default) the main curve is set by pacing: each level costs a target number of kills of a
+     * same-level monster (see {@link LevelPacing}), and {@code mainBaseXp}/{@code mainExponent} are ignored.
+     */
+    public boolean pacingEnabled = true;
+    /** Kills of a same-level monster for the first level-up, and for the last. */
+    public double killsAtStart = 8;
+    public double killsAtMax = 120;
+    /** Shape of the rise between them: 1 is a straight line, above 1 keeps the early levels quicker. */
+    public double killsCurve = 1.5;
+    /** EXP a level-1 monster pays before its level bonus; the yardstick pacing is measured in. */
+    public double referenceMonsterXp = 20;
+    /** Characters below this level earn extra EXP, most at level 1, fading to nothing here. */
+    public int catchUpLevel = 30;
+    public double catchUpBonus = 0.5;
     public double subBaseXp = 90;
     public double subExponent = 1.8;
     public int subMaxLevel = 20;
@@ -113,13 +128,10 @@ public final class SeasonRules {
     public double defenseScale = 100;
 
     /*
-     * Combat balance. Monsters grow a fixed share per level (MobLevelConfig), while stat points give
-     * a fixed, capped bonus, so without help an equal-level monster gets harder every level. Level parity
-     * lets a player's own level cancel part of that curve; the PvP values keep player fights from being
-     * decided by one stacked stat, a dodge roll or a single hit.
+     * Combat balance. Level does not change a hit: a player's level gives stat points and nothing else, and a
+     * monster's level only grows that monster's own health and damage. The PvP values keep player fights from
+     * being decided by one stacked stat, a dodge roll or a single hit.
      */
-    /** Share (0..1) of the monster level curve a player's level cancels, counted up to the lower of both levels. */
-    public double pveLevelParity = 0.8;
     /** Every player-versus-player hit is multiplied by this, so fights last several exchanges. */
     public double pvpDamageMultiplier = 0.6;
     /** Share of the attacker's stat attack bonus that counts in PvP (1 = all of it). */
@@ -128,10 +140,6 @@ public final class SeasonRules {
     public double pvpEvasionScale = 0.5;
     /** Largest share of the victim's max health one PvP hit may deal; 0 turns the cap off. */
     public double pvpMaxHitShare = 0.35;
-    /** Levels an attacker may be above a victim before their PvP damage is reduced. */
-    public int pvpLevelGrace = 10;
-    public double pvpLevelGapPerLevel = 0.02;
-    public double pvpLevelGapMax = 0.5;
     /** Magic attack's flat bonus on one hit is capped at this multiple of the hit; 0 turns the cap off. */
     public double magicBonusMaxRatio = 1.0;
 
@@ -1355,6 +1363,12 @@ public final class SeasonRules {
         mainBaseXp = clamp(mainBaseXp, 1, 1e9, 25);
         mainExponent = clamp(mainExponent, 0.5, 4, 2.1);
         mainMaxLevel = clamp(mainMaxLevel, 2, 10000);
+        killsAtStart = clamp(killsAtStart, 0.1, 100000, 8);
+        killsAtMax = clamp(killsAtMax, 0.1, 100000, 120);
+        killsCurve = clamp(killsCurve, 0.1, 6, 1.5);
+        referenceMonsterXp = clamp(referenceMonsterXp, 1, 1e9, 20);
+        catchUpLevel = clamp(catchUpLevel, 1, 10000);
+        catchUpBonus = clamp(catchUpBonus, 0, 10, 0.5);
         subBaseXp = clamp(subBaseXp, 1, 1e9, 90);
         subExponent = clamp(subExponent, 0.5, 4, 1.8);
         subMaxLevel = clamp(subMaxLevel, 1, 1000);
@@ -1393,14 +1407,10 @@ public final class SeasonRules {
         if (rankPerks == null) rankPerks = defaultPerks();
         stats = stats == null ? new StatRules() : stats.sanitize();
         defenseScale = clamp(defenseScale, 1, 1e6, 100);
-        pveLevelParity = clamp(pveLevelParity, 0, 1, 0.8);
         pvpDamageMultiplier = clamp(pvpDamageMultiplier, 0, 10, 0.6);
         pvpStatEfficiency = clamp(pvpStatEfficiency, 0, 1, 0.5);
         pvpEvasionScale = clamp(pvpEvasionScale, 0, 1, 0.5);
         pvpMaxHitShare = clamp(pvpMaxHitShare, 0, 1, 0.35);
-        pvpLevelGrace = clamp(pvpLevelGrace, 0, 100000);
-        pvpLevelGapPerLevel = clamp(pvpLevelGapPerLevel, 0, 1, 0.02);
-        pvpLevelGapMax = clamp(pvpLevelGapMax, 0, 1, 0.5);
         magicBonusMaxRatio = clamp(magicBonusMaxRatio, 0, 100, 1.0);
         if (drops == null) drops = new DropRules();
         if (drops.ranks == null || drops.ranks.isEmpty()) drops.ranks = defaultRankDrops();

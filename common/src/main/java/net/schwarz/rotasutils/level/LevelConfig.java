@@ -80,6 +80,7 @@ public final class LevelConfig {
     private final Map<Integer, List<Reward>> levelRewards = new LinkedHashMap<>();
 
     public LevelConfig() {
+        curve.set(season);
         for (DangerRank rank : DangerRank.VALUES) {
             rankLevel.put(rank, rank.defaultLevel());
             rankMultiplier.put(rank, rank.defaultMultiplier());
