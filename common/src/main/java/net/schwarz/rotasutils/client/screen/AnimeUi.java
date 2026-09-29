@@ -28,30 +28,34 @@ public final class AnimeUi {
     }
 
     private static final ResourceLocation PANEL_BG = tex("panel_bg");
-    private static final ResourceLocation PANEL_RIM = tex("panel_rim");
-    private static final ResourceLocation BUTTON = tex("button");
+    private static final ResourceLocation PANEL_FRAME = tex("panel_frame");
+    private static final ResourceLocation PANEL_INLAY = tex("panel_inlay");
+    private static final ResourceLocation BUTTON = tex("button_body");
+    private static final ResourceLocation BUTTON_TRIM = tex("button_trim");
     private static final ResourceLocation TROUGH = tex("trough");
     private static final ResourceLocation FILL = tex("fill");
     private static final ResourceLocation CARD = tex("card");
     private static final ResourceLocation CARD_RIM = tex("card_rim");
     private static final ResourceLocation SOCKET_BG = tex("socket_bg");
     private static final ResourceLocation SOCKET_RING = tex("socket_ring");
+    private static final ResourceLocation SOCKET_INLAY = tex("socket_inlay");
     private static final ResourceLocation GLOW = tex("glow");
     private static final ResourceLocation RAYS = tex("rays");
     private static final ResourceLocation SPARK = tex("spark");
     private static final ResourceLocation RIBBON = tex("ribbon");
+    private static final ResourceLocation RIBBON_TRIM = tex("ribbon_trim");
 
-    public static final int INK = 0xFF0A0814;
-    public static final int NIGHT = 0xFF14122B;
-    public static final int PANEL = 0xFF201C44;
-    public static final int PANEL_LIGHT = 0xFF4A4390;
-    public static final int GOLD = 0xFFFFC83D;
-    public static final int PINK = 0xFFFF5C93;
-    public static final int CYAN = 0xFF46D8FF;
-    public static final int LIME = 0xFF86F26F;
-    public static final int WHITE = 0xFFFFFFFF;
-    public static final int MUTED = 0xFF9A94C4;
-    public static final int RED = 0xFFFF6A5C;
+    public static final int INK = 0xFF0A0810;
+    public static final int NIGHT = 0xFF14101C;
+    public static final int PANEL = 0xFF1E1A2A;
+    public static final int PANEL_LIGHT = 0xFF4A4468;
+    public static final int GOLD = 0xFFE3B65A;
+    public static final int EMBER = 0xFFE0702E;
+    public static final int STEEL = 0xFF6FB3D6;
+    public static final int LIME = 0xFF88BB6A;
+    public static final int WHITE = 0xFFF4EEE0;
+    public static final int MUTED = 0xFF9C94B4;
+    public static final int RED = 0xFFD9584A;
 
     public static float time() {
         return (Util.getMillis() % 100000L) / 1000f;
@@ -125,29 +129,30 @@ public final class AnimeUi {
 
     // Components -------------------------------------------------------------------------------------
 
-    /** A rounded card with a soft shadow and a bright rim in the accent colour. */
+    /** A dark stone slab in a worked gold frame, with an inlaid line in the accent colour. */
     public static void panel(GuiGraphics g, int x, int y, int w, int h, int accent) {
-        tinted(g, PANEL_BG, 0x66000000, x - 2, y + 2, w + 4, h + 4, 11, 48, 48);
-        slice(g, PANEL_BG, x, y, w, h, 11, 48, 48);
-        tinted(g, PANEL_RIM, accent, x, y, w, h, 11, 48, 48);
+        tinted(g, PANEL_BG, 0x88000000, x - 2, y + 3, w + 4, h + 4, 16, 64, 64);
+        slice(g, PANEL_BG, x, y, w, h, 16, 64, 64);
+        tinted(g, PANEL_INLAY, alpha(accent, 0.75f), x, y, w, h, 16, 64, 64);
+        slice(g, PANEL_FRAME, x, y, w, h, 16, 64, 64);
     }
 
-    /** A smaller inset card, lit when selected. */
+    /** A smaller inset plate with a thin bronze edge, lit in the accent colour when selected. */
     public static void card(GuiGraphics g, int x, int y, int w, int h, int accent, boolean lit) {
         if (lit) {
-            glow(g, x + w / 2, y + h / 2, Math.max(w, h) + 34, alpha(accent, 0.45f));
+            glow(g, x + w / 2, y + h / 2, Math.max(w, h) + 30, alpha(accent, 0.35f));
         }
-        slice(g, CARD, x, y, w, h, 9, 48, 48);
-        tinted(g, CARD_RIM, lit ? accent : alpha(accent, 0.55f), x, y, w, h, 9, 48, 48);
+        slice(g, CARD, x, y, w, h, 8, 48, 48);
+        tinted(g, CARD_RIM, lit ? accent : alpha(accent, 0.4f), x, y, w, h, 8, 48, 48);
     }
 
     /** Light rays turning slowly behind an item, over a soft glow. */
     public static void burst(GuiGraphics g, int cx, int cy, int radius, int color, float spin) {
-        glow(g, cx, cy, radius * 2, alpha(color, 0.55f));
+        glow(g, cx, cy, radius * 2, alpha(color, 0.4f));
         g.pose().pushPose();
         g.pose().translate(cx, cy, 0);
         g.pose().mulPose(Axis.ZP.rotationDegrees(time() * spin));
-        tint(alpha(color, 0.8f));
+        tint(alpha(color, 0.4f));
         g.blit(RAYS, -radius, -radius, radius * 2, radius * 2, 0, 0, 256, 256, 256, 256);
         untint();
         g.pose().popPose();
@@ -175,17 +180,17 @@ public final class AnimeUi {
 
     /** A glossy pill gauge: dark trough, a tinted fill with a highlight along its top. */
     public static void gauge(GuiGraphics g, int x, int y, int w, int h, float frac, int color) {
-        slice(g, TROUGH, x, y, w, h, 7, 32, 16);
+        slice(g, TROUGH, x, y, w, h, 6, 32, 16);
         int fill = (int) (w * Math.max(0f, Math.min(1f, frac)));
         if (fill > 0) {
-            tinted(g, FILL, color, x, y, Math.max(fill, Math.min(w, 14)), h, 7, 32, 16);
+            tinted(g, FILL, color, x, y, Math.max(fill, Math.min(w, 12)), h, 6, 32, 16);
         }
     }
 
     /** A glossy coloured band inside a gauge, for zones and bonus segments. */
     public static void band(GuiGraphics g, int x, int y, int w, int h, int color) {
         if (w > 1) {
-            tinted(g, FILL, color, x, y, w, h, 7, 32, 16);
+            tinted(g, FILL, color, x, y, w, h, 6, 32, 16);
         }
     }
 
@@ -196,8 +201,9 @@ public final class AnimeUi {
         if ((lit >>> 24) != 0) {
             glow(g, cx, cy, (int) (size * 0.9f), lit);
         }
-        tint(ring);
         g.blit(SOCKET_RING, x, y, size, size, 0, 0, 64, 64, 64, 64);
+        tint(ring);
+        g.blit(SOCKET_INLAY, x, y, size, size, 0, 0, 64, 64, 64, 64);
         untint();
     }
 
@@ -215,6 +221,7 @@ public final class AnimeUi {
     /** A slanted ribbon behind big banner text. */
     public static void ribbon(GuiGraphics g, int x, int y, int w, int h, int color) {
         tinted(g, RIBBON, color, x, y, w, h, 14, 96, 32);
+        slice(g, RIBBON_TRIM, x, y, w, h, 14, 96, 32);
     }
 
     /** A glossy rounded button: lifts and brightens on hover, greys out when inactive. */
@@ -232,11 +239,15 @@ public final class AnimeUi {
         public void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             boolean hot = active && isHoveredOrFocused();
             int lift = hot ? -1 : 0;
-            int base = active ? (hot ? mix(color, WHITE, 0.22f) : color) : 0xFF57527C;
-            tinted(g, BUTTON, 0x77000000, getX(), getY() + 3, width, height, 10, 48, 32);
-            tinted(g, BUTTON, base, getX(), getY() + lift, width, height, 10, 48, 32);
+            int base = active ? (hot ? mix(color, WHITE, 0.22f) : color) : 0xFF4A4658;
+            tinted(g, BUTTON, 0x88000000, getX(), getY() + 3, width, height, 8, 48, 32);
+            tinted(g, BUTTON, base, getX(), getY() + lift, width, height, 8, 48, 32);
+            g.pose().pushPose();
+            g.pose().translate(0, lift, 0);
+            slice(g, BUTTON_TRIM, getX(), getY(), width, height, 8, 48, 32);
+            g.pose().popPose();
             String label = getMessage().getString();
-            int textColor = active ? (isDark(base) ? WHITE : 0xFF1A1230) : 0xFFB4AED6;
+            int textColor = active ? (isDark(base) ? WHITE : 0xFF241808) : 0xFF8A849C;
             float ws = Ui.scaledWidth(label, textScale);
             int tx = getX() + (int) ((width - ws) / 2);
             int ty = getY() + lift + (int) ((height - 8 * Math.max(1f, (int) textScale)) / 2) + 1;

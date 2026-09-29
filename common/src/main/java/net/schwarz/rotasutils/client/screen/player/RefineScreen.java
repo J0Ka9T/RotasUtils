@@ -30,8 +30,8 @@ import java.util.List;
  */
 @Environment(EnvType.CLIENT)
 public class RefineScreen extends RotasScreen {
-    private static final String[] GRADE_NAMES = {"PERFECT!", "GOOD", "MISS"};
-    private static final int[] GRADE_COLORS = {AnimeUi.GOLD, AnimeUi.CYAN, AnimeUi.MUTED};
+    private static final String[] GRADE_NAMES = {"Perfect", "Good", "Miss"};
+    private static final int[] GRADE_COLORS = {AnimeUi.GOLD, AnimeUi.STEEL, AnimeUi.MUTED};
 
     private final CompoundTag state;
     private final long openedAt = Util.getMillis();
@@ -159,12 +159,12 @@ public class RefineScreen extends RotasScreen {
             return;
         }
         boolean possible = quote().getBoolean("possible") && affordable();
-        var heat = new AnimeUi.Btn(right - 268, by, 176, 30, L.t("rotasutils.refine.heat"), AnimeUi.PINK, 2, button -> {
+        var heat = new AnimeUi.Btn(right - 268, by, 176, 30, L.t("rotasutils.refine.heat"), AnimeUi.EMBER, 2, button -> {
             send("forge_begin", options());
         });
         heat.active = possible;
         addRenderableWidget(heat);
-        var quick = new AnimeUi.Btn(right - 84, by, 84, 30, L.t("rotasutils.refine.quick"), AnimeUi.CYAN, 1, button -> {
+        var quick = new AnimeUi.Btn(right - 84, by, 84, 30, L.t("rotasutils.refine.quick"), AnimeUi.STEEL, 1, button -> {
             send("refine_attempt", options());
         });
         quick.active = possible;
@@ -261,16 +261,16 @@ public class RefineScreen extends RotasScreen {
     @Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, 0xE60A0818, 0xF01A1038);
-        AnimeUi.glow(graphics, width / 5, height / 4, height, AnimeUi.alpha(AnimeUi.PINK, 0.16f));
-        AnimeUi.glow(graphics, width * 4 / 5, height * 3 / 4, height, AnimeUi.alpha(AnimeUi.CYAN, 0.14f));
+        AnimeUi.glow(graphics, width / 5, height / 4, height, AnimeUi.alpha(AnimeUi.EMBER, 0.08f));
+        AnimeUi.glow(graphics, width * 4 / 5, height * 3 / 4, height, AnimeUi.alpha(AnimeUi.STEEL, 0.07f));
     }
 
     @Override
     protected void renderFrame(GuiGraphics graphics) {
         int right = guiLeft + guiWidth;
         AnimeUi.panel(graphics, guiLeft, guiTop, stageW(), topH(), AnimeUi.GOLD);
-        AnimeUi.panel(graphics, guiLeft + stageW() + 12, guiTop, guiWidth - stageW() - 12, topH(), AnimeUi.PINK);
-        AnimeUi.panel(graphics, guiLeft, guiTop + topH() + 12, guiWidth, bottomH(), AnimeUi.CYAN);
+        AnimeUi.panel(graphics, guiLeft + stageW() + 12, guiTop, guiWidth - stageW() - 12, topH(), AnimeUi.EMBER);
+        AnimeUi.panel(graphics, guiLeft, guiTop + topH() + 12, guiWidth, bottomH(), AnimeUi.STEEL);
         renderFeedback(graphics, right - Math.max(40, feedbackWidth()), guiTop - 22,
                 0xFFE8FFE0, 0xFFFFD8D0, Ui.GOOD, Ui.BAD);
     }
@@ -284,7 +284,7 @@ public class RefineScreen extends RotasScreen {
 
         boolean possible = quote.getBoolean("possible");
         double chance = Math.min(1.0, baseChance() + bonusChance());
-        int mood = chance >= 0.75 ? AnimeUi.LIME : chance >= 0.4 ? AnimeUi.GOLD : AnimeUi.PINK;
+        int mood = chance >= 0.75 ? AnimeUi.LIME : chance >= 0.4 ? AnimeUi.GOLD : AnimeUi.EMBER;
         AnimeUi.burst(g, stageCx, stageCy + 6, 66, possible ? mood : AnimeUi.MUTED, 14f);
 
         AnimeUi.outlinedCentered(g, L.t("rotasutils.refine.title"), stageCx, guiTop + 12, 2, AnimeUi.WHITE);
@@ -313,12 +313,12 @@ public class RefineScreen extends RotasScreen {
         if (bonusChance() > 0) {
             int from = (int) ((rw - 52) * baseChance());
             int to = (int) ((rw - 52) * (baseChance() + bonusChance()));
-            AnimeUi.band(g, rx + from - 3, gy, to - from + 3, 14, AnimeUi.CYAN);
+            AnimeUi.band(g, rx + from - 3, gy, to - from + 3, 14, AnimeUi.STEEL);
         }
         int percent = (int) Math.round(chance * 100);
         AnimeUi.outlined(g, percent + "%", rx + rw - 46, gy - 4, 2, mood);
         if (bonusChance() > 0) {
-            Ui.label(g, "+" + (int) Math.round(bonusChance() * 100) + "% " + L.t("rotasutils.refine.forge_bonus"), rx, gy + 16, AnimeUi.CYAN);
+            Ui.label(g, "+" + (int) Math.round(bonusChance() * 100) + "% " + L.t("rotasutils.refine.forge_bonus"), rx, gy + 16, AnimeUi.STEEL);
         }
         long cost = quote.getLong("cost");
         boolean rich = state.getLong("gold") >= cost;
@@ -349,7 +349,7 @@ public class RefineScreen extends RotasScreen {
             boolean owned = tile.have() > 0;
             boolean hot = owned && !locked && Ui.inside(mouseX, mouseY, x, y, 62, 54);
             boolean active = on(tile.key());
-            AnimeUi.card(g, x, y, 62, 54, active ? AnimeUi.LIME : hot ? AnimeUi.CYAN : AnimeUi.PANEL_LIGHT, active || hot);
+            AnimeUi.card(g, x, y, 62, 54, active ? AnimeUi.LIME : hot ? AnimeUi.STEEL : AnimeUi.PANEL_LIGHT, active || hot);
             g.pose().pushPose();
             g.pose().translate(x + 31, y + 20, 100);
             g.pose().scale(1.5f, 1.5f, 1f);
@@ -386,9 +386,9 @@ public class RefineScreen extends RotasScreen {
         int gx0 = bx + (int) ((center - ForgeTiming.GOOD) * bw), gx1 = bx + (int) ((center + ForgeTiming.GOOD) * bw);
         int px0 = bx + (int) ((center - ForgeTiming.PERFECT) * bw), px1 = bx + (int) ((center + ForgeTiming.PERFECT) * bw);
         float pulse = 0.8f + 0.2f * (float) Math.sin(AnimeUi.time() * 8f);
-        AnimeUi.band(g, gx0, by + 3, gx1 - gx0, 20, AnimeUi.alpha(AnimeUi.CYAN, 0.8f));
+        AnimeUi.band(g, gx0, by + 3, gx1 - gx0, 20, AnimeUi.alpha(AnimeUi.STEEL, 0.8f));
         AnimeUi.band(g, px0, by + 3, px1 - px0, 20, AnimeUi.alpha(AnimeUi.GOLD, pulse));
-        Ui.labelCentered(g, "PERFECT", (px0 + px1) / 2, by + 9, 0xFF3A2400);
+        Ui.labelCentered(g, "Perfect", (px0 + px1) / 2, by + 9, 0xFF3A2400);
 
         if (!over) {
             int mx = bx + (int) (markerNow() * bw);

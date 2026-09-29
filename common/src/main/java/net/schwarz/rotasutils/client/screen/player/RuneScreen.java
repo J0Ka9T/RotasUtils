@@ -166,7 +166,7 @@ public class RuneScreen extends RotasScreen {
                 ? L.t("rotasutils.rune.fuse", RuneType.FUSE_COUNT, ItemRunes.numeral(selected.tier() + 1),
                 RuneType.fuseCost(selected.tier()))
                 : L.t("rotasutils.rune.fuse_none");
-        var fuse = new AnimeUi.Btn(guiLeft + guiWidth - 276, by, 268, 30, label, AnimeUi.PINK, 1, button -> {
+        var fuse = new AnimeUi.Btn(guiLeft + guiWidth - 276, by, 268, 30, label, AnimeUi.EMBER, 1, button -> {
             CompoundTag payload = new CompoundTag();
             payload.putString("rune", selected.rune().id());
             payload.putInt("tier", selected.tier());
@@ -238,14 +238,14 @@ public class RuneScreen extends RotasScreen {
     @Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, 0xE60A0818, 0xF0190E36);
-        AnimeUi.glow(graphics, width / 4, height / 3, height, AnimeUi.alpha(AnimeUi.CYAN, 0.15f));
-        AnimeUi.glow(graphics, width * 3 / 4, height * 2 / 3, height, AnimeUi.alpha(AnimeUi.PINK, 0.14f));
+        AnimeUi.glow(graphics, width / 4, height / 3, height, AnimeUi.alpha(AnimeUi.STEEL, 0.07f));
+        AnimeUi.glow(graphics, width * 3 / 4, height * 2 / 3, height, AnimeUi.alpha(AnimeUi.EMBER, 0.07f));
     }
 
     @Override
     protected void renderFrame(GuiGraphics graphics) {
-        AnimeUi.panel(graphics, guiLeft, guiTop, stageW(), panelH(), AnimeUi.CYAN);
-        AnimeUi.panel(graphics, guiLeft + stageW() + 12, guiTop, guiWidth - stageW() - 12, panelH(), AnimeUi.PINK);
+        AnimeUi.panel(graphics, guiLeft, guiTop, stageW(), panelH(), AnimeUi.STEEL);
+        AnimeUi.panel(graphics, guiLeft + stageW() + 12, guiTop, guiWidth - stageW() - 12, panelH(), AnimeUi.EMBER);
         AnimeUi.panel(graphics, guiLeft, guiTop + panelH() + 12, guiWidth, guiHeight - panelH() - 12, AnimeUi.GOLD);
         renderFeedback(graphics, guiLeft + guiWidth - Math.max(40, feedbackWidth()), guiTop - 22,
                 0xFFE8FFE0, 0xFFFFD8D0, Ui.GOOD, Ui.BAD);
@@ -272,7 +272,7 @@ public class RuneScreen extends RotasScreen {
 
     private void renderStage(GuiGraphics g, int mouseX, int mouseY) {
         int cx = stageCx(), cy = stageCy();
-        int accent = selected == null ? AnimeUi.CYAN : colorOf(selected.rune());
+        int accent = selected == null ? AnimeUi.STEEL : colorOf(selected.rune());
         AnimeUi.burst(g, cx, cy, 70, accent, 9f);
         ItemStack weapon = weapon();
         ListTag slots = slots();
