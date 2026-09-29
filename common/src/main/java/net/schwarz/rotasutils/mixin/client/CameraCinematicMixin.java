@@ -38,6 +38,14 @@ public abstract class CameraCinematicMixin {
     @Inject(method = "setup", at = @At("TAIL"))
     private void rotasutils$cinematic(BlockGetter level, Entity entity, boolean detachedView, boolean mirrored,
                                       float partialTick, CallbackInfo ci) {
+        var director = net.schwarz.rotasutils.client.cinematic.CinematicDirector.camera((Camera) (Object) this, partialTick);
+        if (director != null) {
+            setRotation((float) director.yaw(), (float) director.pitch());
+            setPosition(director.position().x, director.position().y, director.position().z);
+            // The player's body is drawn once the camera has left it, not while it is still inside the head.
+            detached = director.weight() > 0.02;
+            return;
+        }
         Vec3 eye = getPosition();
         double[] shot = SkyClashCinematic.camera(eye.x, eye.y, eye.z, getYRot(), getXRot(), partialTick);
         if (shot == null) {

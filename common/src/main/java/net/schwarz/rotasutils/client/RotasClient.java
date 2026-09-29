@@ -113,6 +113,7 @@ public final class RotasClient {
         net.schwarz.rotasutils.client.render.CeroFxRenderer.install();
         ClientTickEvent.CLIENT_POST.register(net.schwarz.rotasutils.client.render.RiftFxRenderer::tick);
         ClientTickEvent.CLIENT_POST.register(net.schwarz.rotasutils.client.render.CeroFxRenderer::tick);
+        ClientTickEvent.CLIENT_POST.register(net.schwarz.rotasutils.client.cinematic.ClientCasts::tick);
         ClientTickEvent.CLIENT_POST.register(net.schwarz.rotasutils.client.render.SkyClashRenderer::tick);
         ClientTickEvent.CLIENT_POST.register(net.schwarz.rotasutils.client.render.SkyClashCinematic::tick);
         ClientTickEvent.CLIENT_POST.register(net.schwarz.rotasutils.client.render.SkySunderRenderer::tick);

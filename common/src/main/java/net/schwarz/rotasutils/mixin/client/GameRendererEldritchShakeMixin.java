@@ -18,5 +18,6 @@ public abstract class GameRendererEldritchShakeMixin {
     private void rotasutils$eldritchShake(PoseStack pose, float partialTick, CallbackInfo ci) {
         EldritchSkyCinema.shake(pose, partialTick);
         net.schwarz.rotasutils.client.render.CameraQuake.apply(pose, partialTick);
+        net.schwarz.rotasutils.client.cinematic.CinematicDirector.applyRoll(pose, partialTick);
     }
 }

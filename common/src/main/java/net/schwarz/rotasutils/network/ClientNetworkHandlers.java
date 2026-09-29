@@ -113,6 +113,12 @@ public final class ClientNetworkHandlers {
         });
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.entity.RiftFx.ID, (buf, context) ->
                 net.schwarz.rotasutils.entity.RiftFx.receive(buf, context::queue));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.ability.AbilityNet.START, (buf, context) ->
+                net.schwarz.rotasutils.client.cinematic.ClientCasts.receiveStart(buf, context::queue));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.ability.AbilityNet.RELEASE, (buf, context) ->
+                net.schwarz.rotasutils.client.cinematic.ClientCasts.receiveRelease(buf, context::queue));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.ability.AbilityNet.END, (buf, context) ->
+                net.schwarz.rotasutils.client.cinematic.ClientCasts.receiveEnd(buf, context::queue));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.entity.CeroFx.ID, (buf, context) ->
                 net.schwarz.rotasutils.entity.CeroFx.receive(buf, context::queue));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.sky.SkyClash.ID, (buf, context) -> {

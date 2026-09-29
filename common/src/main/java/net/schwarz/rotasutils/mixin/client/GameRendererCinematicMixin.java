@@ -18,14 +18,20 @@ public abstract class GameRendererCinematicMixin {
                                          CallbackInfoReturnable<Double> cir) {
         double k = SkyClashCinematic.fov(partialTick)
                 * net.schwarz.rotasutils.client.render.CameraQuake.lens(partialTick);
+        double value = cir.getReturnValue();
         if (k != 1.0) {
-            cir.setReturnValue(cir.getReturnValue() * k);
+            value *= k;
+        }
+        value = net.schwarz.rotasutils.client.cinematic.CinematicDirector.fov(partialTick, value);
+        if (value != cir.getReturnValue()) {
+            cir.setReturnValue(value);
         }
     }
 
     @Inject(method = "renderItemInHand", at = @At("HEAD"), cancellable = true)
     private void rotasutils$cinematicHand(PoseStack pose, Camera camera, float partialTick, CallbackInfo ci) {
-        if (SkyClashCinematic.hidesHand(partialTick)) {
+        if (SkyClashCinematic.hidesHand(partialTick)
+                || net.schwarz.rotasutils.client.cinematic.CinematicDirector.hidesHand(partialTick)) {
             ci.cancel();
         }
     }

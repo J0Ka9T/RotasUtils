@@ -19,5 +19,6 @@ public abstract class GameRendererSkyOverlayMixin {
     private void rotasutils$deferredSky(float partialTick, long finishNanos, PoseStack pose, CallbackInfo ci) {
         SkyShaderOverlay.render();
         net.schwarz.rotasutils.client.render.WorldVfxOverlay.render();
+        net.schwarz.rotasutils.client.cinematic.CastPostFx.process(partialTick);
     }
 }

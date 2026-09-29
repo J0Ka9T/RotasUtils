@@ -44,6 +44,28 @@ public final class CameraRig {
     private static final Curves.Track ROLL = Curves.Track.of(0, 0, 0.7, 0, 2.5, -1.5, 3.6, -2.2, 4.34, -2.2, 4.4, 3.0,
             4.7, 0.4, 6.2, 0);
 
+    /** How much of the view the cutscene owns at {@code t}: blends in over the detach, out over the return. */
+    public static double weight(double t) {
+        return Curves.smootherstep(Curves.window(t, RedTimings.CAMERA_DETACH, RedTimings.CAMERA_ARRIVE))
+                * (1 - Curves.smootherstep(Curves.window(t, RedTimings.CAMERA_RETURN, RedTimings.END)));
+    }
+
+    /** Field of view in degrees at {@code t}, blending from and back to {@code baseFov}. */
+    public static double fovAt(double t, double baseFov) {
+        return Curves.lerp(baseFov, FOV.at(t), weight(t));
+    }
+
+    /** Camera roll in degrees at {@code t}, including the impact and tremor. */
+    public static double rollAt(double t, int seed) {
+        double weight = weight(t);
+        Random r = new Random(seed);
+        int s1 = r.nextInt(1000);
+        r.nextInt(1000);
+        int s3 = r.nextInt(1000);
+        double charge = RedProfile.shakeCharge(t) * weight, impulse = RedProfile.shakeImpulse(t) * weight;
+        return ROLL.at(t) * weight + charge * 0.9 * Curves.fbm(t * 1.7 + 4, s3) + impulse * 2.6 * Curves.fbm(t * 30.0 + 3, s1);
+    }
+
     /**
      * The camera at {@code t} seconds. {@code normalPos}/{@code normalLook} are the player's own camera, which the
      * cinematic blends in from and back out to, and {@code baseFov} the FOV the player normally plays at.
@@ -78,8 +100,7 @@ public final class CameraRig {
         Vec3 pos = lerp(lerp(posA, posB, wB), posC, wC);
         Vec3 look = lerp(lerp(lookA, lookB, wB), aimC, wC);
 
-        double weight = Curves.smootherstep(Curves.window(t, RedTimings.CAMERA_DETACH, RedTimings.CAMERA_ARRIVE))
-                * (1 - Curves.smootherstep(Curves.window(t, RedTimings.CAMERA_RETURN, RedTimings.END)));
+        double weight = weight(t);
         pos = lerp(normalPos, pos, weight);
         look = lerp(normalLook, look, weight);
 
@@ -90,16 +111,14 @@ public final class CameraRig {
         int s1 = r.nextInt(1000), s2 = r.nextInt(1000), s3 = r.nextInt(1000);
         double yawShake = charge * (1.3 * Curves.fbm(t * 2.0, s1) + 0.4 * Curves.fbm(t * 19.0, s2)) + impulse * 1.7 * Curves.fbm(t * 38.0, s3);
         double pitchShake = charge * (1.0 * Curves.fbm(t * 2.3 + 9, s2) + 0.35 * Curves.fbm(t * 21.0, s3)) - impulse * 2.4;
-        double rollShake = charge * 0.9 * Curves.fbm(t * 1.7 + 4, s3) + impulse * 2.6 * Curves.fbm(t * 30.0 + 3, s1);
         pos = pos.subtract(f.forward().scale(impulse * 0.2)).add(0, charge * 0.02 * Curves.fbm(t * 15.0, s1), 0);
 
         Vec3 d = look.subtract(pos);
         double horiz = Math.sqrt(d.x * d.x + d.z * d.z);
         double yaw = Math.toDegrees(Math.atan2(-d.x, d.z)) + yawShake;
         double pitch = -Math.toDegrees(Math.atan2(d.y, horiz)) + pitchShake;
-        double roll = ROLL.at(t) * weight + rollShake;
-        double fov = Curves.lerp(baseFov, FOV.at(t), weight);
-        return new Shot(pos, yaw, pitch, roll, fov, weight);
+        double roll = rollAt(t, seed);
+        return new Shot(pos, yaw, pitch, roll, fovAt(t, baseFov), weight);
     }
 
     private static Vec3 lerp(Vec3 a, Vec3 b, double t) {
