@@ -18,16 +18,14 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 /**
- * The Rune Altar's animation, laid over its solid model: a seal and rune ring turn on the plate, and a
- * faceted crystal of light turns above it with two tilted rune rings, a halo, a column and rising motes.
- * All of it is additive (see {@link VfxRenderTypes}) and driven by game
+ * The Rune Altar's animation, laid over its solid model: a cut gem of light turns above the plate with
+ * three small gems circling it, a thin thread of light rising and motes lifting off. Kept small and
+ * sharp on purpose, with no rune circles. The glow layers are additive (see {@link VfxRenderTypes}) and driven by game
  * time, so every client sees the same phase.
  */
 @Environment(EnvType.CLIENT)
 public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEntity> {
-    private static final ResourceLocation SEAL = tex("seal");
-    private static final ResourceLocation RUNES = tex("rune_ring");
-    private static final ResourceLocation GLOW = tex("glow");
+            private static final ResourceLocation GLOW = tex("glow");
     private static final ResourceLocation FLARE = tex("flare");
     private static final ResourceLocation MOTE = tex("mote");
     private static final float[] VIOLET = {0.62f, 0.42f, 1f};
@@ -62,75 +60,85 @@ public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEnti
 
     private void lights(float time, Vec3 camera, PoseStack pose, MultiBufferSource buffers) {
         Quaternionf camRot = Minecraft.getInstance().gameRenderer.getMainCamera().rotation();
-        float pulse = 0.85f + 0.15f * (float) Math.sin(time * 0.09f);
+        float pulse = 0.88f + 0.12f * (float) Math.sin(time * 0.09f);
         float bob = (float) Math.sin(time * 0.05f) * 0.07f;
-        float coreY = CORE_HEIGHT + bob;
+        float cy = CORE_HEIGHT + bob;
         Matrix4f block = new Matrix4f(pose.last().pose());
 
-        // A faint column of light rising off the crystal.
-        TetrarchVfx.beam(buffers, block, new Vector3f(0.5f, 0.85f, 0.5f), new Vector3f(0.5f, 8f, 0.5f), camera, 0.3f,
-                VIOLET, 0.14f * pulse);
-        TetrarchVfx.beam(buffers, block, new Vector3f(0.5f, 0.85f, 0.5f), new Vector3f(0.5f, 6f, 0.5f), camera, 0.07f,
-                WHITE, 0.28f * pulse);
+        // A thin violet thread of light rising off the crystal.
+        TetrarchVfx.beam(buffers, block, new Vector3f(0.5f, cy, 0.5f), new Vector3f(0.5f, cy + 4f, 0.5f), camera, 0.05f,
+                VIOLET, 0.28f * pulse);
+
+        // The crystal, and three small gems circling it.
+        gem(buffers, camera, block, 0.5f, cy, 0.5f, 0.2f, 0.36f, time * 0.05f, 1f);
+        for (int i = 0; i < 3; i++) {
+            double a = -time * 0.06 + i * Math.PI * 2 / 3;
+            gem(buffers, camera, block, 0.5f + (float) Math.cos(a) * 0.52f,
+                    cy + (float) Math.sin(time * 0.08f + i * 2.1f) * 0.1f, 0.5f + (float) Math.sin(a) * 0.52f,
+                    0.05f, 0.09f, time * 0.12f + i, 0.85f);
+        }
 
         pose.pushPose();
         pose.translate(0.5, 0, 0.5);
-        Matrix4f m = pose.last().pose();
-        // On the plate: a seal and rune ring turning against each other.
-        TetrarchVfx.flat(buffers, SEAL, m, 0.83f, 0.5f, time * 0.02f, 1f, GOLD, 0.8f * pulse);
-        TetrarchVfx.flat(buffers, RUNES, m, 0.84f, 0.68f, -time * 0.03f, 1f, VIOLET, 0.95f);
+        // Small, sharp: a soft glow behind the gem and one flare at its heart.
+        Vector3f core = new Vector3f(0, cy, 0);
+        TetrarchVfx.billboard(buffers, GLOW, pose, camRot, core, 0.75f, 0f, VIOLET, 0.3f * pulse);
+        TetrarchVfx.billboard(buffers, FLARE, pose, camRot, core, 0.42f, time * 0.04f, WHITE, 0.7f * pulse);
 
-        // The crystal: an octahedron of light, turning, with two rune rings about it on tilted axes.
-        pose.pushPose();
-        pose.translate(0, coreY, 0);
-        pose.pushPose();
-        pose.mulPose(Axis.YP.rotationDegrees(time * 2.6f));
-        octahedron(buffers.getBuffer(VfxRenderTypes.ADDITIVE), pose.last().pose(), 0.28f, 0.46f, pulse);
-        pose.popPose();
-        for (int ring = 0; ring < 2; ring++) {
-            pose.pushPose();
-            pose.mulPose(Axis.YP.rotationDegrees(time * (ring == 0 ? 1.6f : -1.1f)));
-            pose.mulPose(Axis.XP.rotationDegrees(ring == 0 ? 72f : -58f));
-            TetrarchVfx.flat(buffers, RUNES, pose.last().pose(), 0f, ring == 0 ? 0.55f : 0.75f,
-                    time * 0.04f * (ring == 0 ? 1 : -1), 1f, ring == 0 ? GOLD : VIOLET, 0.75f * pulse);
-            pose.popPose();
-        }
-        pose.popPose();
-
-        Vector3f core = new Vector3f(0, coreY, 0);
-        TetrarchVfx.billboard(buffers, GLOW, pose, camRot, core, 1.3f, 0f, VIOLET, 0.55f * pulse);
-        TetrarchVfx.billboard(buffers, FLARE, pose, camRot, core, 0.7f, time * 0.05f, WHITE, 0.9f * pulse);
-        // Motes lifting off the seal, thinning as they climb.
-        for (int i = 0; i < 12; i++) {
-            float phase = (time * 0.012f + i / 12f) % 1f;
+        // Motes lifting off the plate, thinning as they climb.
+        for (int i = 0; i < 10; i++) {
+            float phase = (time * 0.012f + i / 10f) % 1f;
             double a = i * 2.4 + time * 0.03;
             float r = 0.5f * (1f - 0.5f * phase);
             Vector3f at = new Vector3f((float) Math.cos(a) * r, 0.85f + phase * 1.6f, (float) Math.sin(a) * r);
-            TetrarchVfx.billboard(buffers, MOTE, pose, camRot, at, 0.1f, 0f, i % 2 == 0 ? GOLD : VIOLET,
+            TetrarchVfx.billboard(buffers, MOTE, pose, camRot, at, 0.09f, 0f, i % 2 == 0 ? GOLD : VIOLET,
                     (float) Math.sin(Math.PI * phase) * 0.9f);
         }
         pose.popPose();
     }
 
-    /** A faceted crystal of light: eight triangles, brighter on alternate facets and toward the tips. */
-    private static void octahedron(VertexConsumer vc, Matrix4f m, float radius, float half, float pulse) {
-        float[][] equator = new float[4][];
+    /**
+     * A cut gem of light: eight flat-shaded facets that read as solid against any sky, lit from one side,
+     * with white edges. Positions are in block space so the edges can be drawn as camera-facing lines.
+     */
+    private static void gem(MultiBufferSource buffers, Vec3 camera, Matrix4f m, float cx, float cy, float cz,
+                            float radius, float half, float spin, float strength) {
+        float[][] eq = new float[4][];
         for (int i = 0; i < 4; i++) {
-            double a = Math.PI / 2 * i + Math.PI / 4;
-            equator[i] = new float[]{(float) Math.cos(a) * radius, 0f, (float) Math.sin(a) * radius};
+            double a = spin + Math.PI / 2 * i;
+            eq[i] = new float[]{cx + (float) Math.cos(a) * radius, cy, cz + (float) Math.sin(a) * radius};
         }
-        for (int apex = -1; apex <= 1; apex += 2) {
+        float[] top = {cx, cy + half, cz}, bottom = {cx, cy - half, cz};
+        VertexConsumer facets = buffers.getBuffer(VfxRenderTypes.TRANSLUCENT);
+        for (int apex = 1; apex >= -1; apex -= 2) {
+            float[] tip = apex > 0 ? top : bottom;
             for (int i = 0; i < 4; i++) {
-                float[] a = equator[i], b = equator[(i + 1) % 4];
-                float k = ((i + (apex > 0 ? 0 : 1)) & 1) == 0 ? 0.85f : 0.45f;
-                float[] c = (i & 1) == 0 ? VIOLET : GOLD;
-                float alpha = k * pulse;
-                vertex(vc, m, 0f, apex * half, 0f, 1f, 0.97f, 0.9f, alpha);
-                vertex(vc, m, a[0], 0f, a[2], c[0], c[1], c[2], alpha * 0.55f);
-                vertex(vc, m, b[0], 0f, b[2], c[0], c[1], c[2], alpha * 0.55f);
-                vertex(vc, m, b[0], 0f, b[2], c[0], c[1], c[2], alpha * 0.55f);
+                float[] a = eq[i], b = eq[(i + 1) % 4];
+                // Lit from one side: facets turned to the light are pale, the far ones deep violet.
+                double mid = spin + Math.PI / 2 * (i + 0.5);
+                float lit = 0.5f + 0.5f * (float) Math.cos(mid - 0.8);
+                float k = (0.35f + 0.65f * lit) * (apex > 0 ? 1f : 0.7f);
+                float r = 0.42f + 0.5f * k, g = 0.25f + 0.5f * k, bl = 0.95f + 0.05f * k;
+                float alpha = 0.85f * strength;
+                vertex(facets, m, tip[0], tip[1], tip[2], r, g, bl, alpha);
+                vertex(facets, m, a[0], a[1], a[2], r * 0.9f, g * 0.9f, bl, alpha);
+                vertex(facets, m, b[0], b[1], b[2], r * 0.9f, g * 0.9f, bl, alpha);
+                vertex(facets, m, b[0], b[1], b[2], r * 0.9f, g * 0.9f, bl, alpha);
             }
         }
+        float w = 0.008f + radius * 0.05f;
+        for (int i = 0; i < 4; i++) {
+            float[] a = eq[i], b = eq[(i + 1) % 4];
+            edge(buffers, m, a, b, camera, w, 0.85f * strength);
+            edge(buffers, m, top, a, camera, w, 0.9f * strength);
+            edge(buffers, m, bottom, a, camera, w, 0.6f * strength);
+        }
+    }
+
+    private static void edge(MultiBufferSource buffers, Matrix4f m, float[] a, float[] b, Vec3 camera, float width,
+                             float alpha) {
+        TetrarchVfx.beam(buffers, m, new Vector3f(a[0], a[1], a[2]), new Vector3f(b[0], b[1], b[2]), camera, width,
+                WHITE, alpha);
     }
 
     private static void vertex(VertexConsumer vc, Matrix4f m, float x, float y, float z, float r, float g, float b, float a) {

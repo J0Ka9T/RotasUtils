@@ -29,6 +29,17 @@ public final class VfxRenderTypes extends RenderType {
                     .setOutputState(WEATHER_TARGET)
                     .createCompositeState(false));
 
+    /** Ordinary alpha blending, coloured, no depth write or culling: solid-looking gems that read against a bright sky. */
+    public static final RenderType TRANSLUCENT = create("rotasutils_vfx_translucent", DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS, 1 << 16, false, false,
+            CompositeState.builder()
+                    .setShaderState(RENDERTYPE_LIGHTNING_SHADER)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .setWriteMaskState(COLOR_WRITE)
+                    .setCullState(NO_CULL)
+                    .setOutputState(WEATHER_TARGET)
+                    .createCompositeState(false));
+
     /** Alpha-blended, fullbright, textured, no depth write: plasma that can hold dark streaks. */
     private static final Function<ResourceLocation, RenderType> GLOW_TEXTURED = Util.memoize(texture ->
             create("rotasutils_vfx_textured", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 1 << 16,
