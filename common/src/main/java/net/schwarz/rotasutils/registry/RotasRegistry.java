@@ -182,7 +182,7 @@ public final class RotasRegistry {
                     .noOcclusion()
                     .requiresCorrectToolForDrops(),
                     net.schwarz.rotasutils.block.StationBlock.Kind.ALTAR,
-                    Block.box(0, 0, 0, 16, 16, 16),
+                    Block.box(0, 0, 0, 16, 6, 16),
                     net.schwarz.rotasutils.network.RotasNetwork::openRunes));
 
     public static final RegistrySupplier<Item> REFINE_FORGE_ITEM = ITEMS.register("refine_forge",
