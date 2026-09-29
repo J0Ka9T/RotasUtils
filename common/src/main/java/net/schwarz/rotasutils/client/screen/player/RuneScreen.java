@@ -114,12 +114,12 @@ public class RuneScreen extends RotasScreen {
     }
 
     private int stageCy() {
-        return guiTop + panelH() / 2 - 4;
+        return guiTop + panelH() / 2 + 14;
     }
 
     private int[] socketAt(int i, int n) {
         double angle = Math.toRadians(-90 + i * (360.0 / Math.max(1, n)));
-        return new int[]{stageCx() + (int) Math.round(Math.cos(angle) * 84), stageCy() + (int) Math.round(Math.sin(angle) * 78)};
+        return new int[]{stageCx() + (int) Math.round(Math.cos(angle) * 80), stageCy() + (int) Math.round(Math.sin(angle) * 72)};
     }
 
     private int socketUnder(double x, double y) {
@@ -273,7 +273,7 @@ public class RuneScreen extends RotasScreen {
     private void renderStage(GuiGraphics g, int mouseX, int mouseY) {
         int cx = stageCx(), cy = stageCy();
         int accent = selected == null ? AnimeUi.CYAN : colorOf(selected.rune());
-        AnimeUi.burst(g, cx, cy, 96, accent, 9f);
+        AnimeUi.burst(g, cx, cy, 70, accent, 9f);
         ItemStack weapon = weapon();
         ListTag slots = slots();
         if (weapon.isEmpty() || slots.isEmpty()) {

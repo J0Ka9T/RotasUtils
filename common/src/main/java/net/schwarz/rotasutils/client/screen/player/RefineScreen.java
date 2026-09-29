@@ -125,29 +125,34 @@ public class RefineScreen extends RotasScreen {
         return 176;
     }
 
+    /** The bottom band is taller while the timing game is on, to hold the bar, the pips and the buttons. */
+    private int bottomH() {
+        return sessionLive() ? 100 : 68;
+    }
+
     private int topH() {
-        return guiHeight - 112;
+        return guiHeight - bottomH() - 12;
     }
 
     private int barY() {
-        return guiTop + topH() + 16;
+        return guiTop + topH() + 24;
     }
 
     @Override
     protected void buildContent() {
-        guiWidth = Ui.fill(width, 480);
+        guiWidth = Ui.fill(width, 520);
         guiHeight = Ui.fill(height, 320);
         guiLeft = (width - guiWidth) / 2;
         guiTop = (height - guiHeight) / 2;
-        int by = guiTop + guiHeight - 44;
-        int right = guiLeft + guiWidth;
+        int by = guiTop + guiHeight - 40;
+        int right = guiLeft + guiWidth - 8;
 
         addRenderableWidget(new AnimeUi.Btn(guiLeft + 8, by, 84, 30, L.t("rotasutils.refine.close"), AnimeUi.PANEL_LIGHT, 1,
                 button -> onClose()));
 
         if (sessionLive()) {
             boolean more = grades(session()).size() < ForgeTiming.STRIKES;
-            var strike = new AnimeUi.Btn(right - 268, by, 260, 30, L.t("rotasutils.refine.strike") + "  [SPACE]", AnimeUi.GOLD, 2,
+            var strike = new AnimeUi.Btn(right - 170, by, 170, 30, L.t("rotasutils.refine.strike") + " [SPACE]", AnimeUi.GOLD, 2,
                     button -> strike());
             strike.active = more;
             addRenderableWidget(strike);
@@ -159,7 +164,7 @@ public class RefineScreen extends RotasScreen {
         });
         heat.active = possible;
         addRenderableWidget(heat);
-        var quick = new AnimeUi.Btn(right - 84, by, 76, 30, L.t("rotasutils.refine.quick"), AnimeUi.CYAN, 1, button -> {
+        var quick = new AnimeUi.Btn(right - 84, by, 84, 30, L.t("rotasutils.refine.quick"), AnimeUi.CYAN, 1, button -> {
             send("refine_attempt", options());
         });
         quick.active = possible;
@@ -218,7 +223,7 @@ public class RefineScreen extends RotasScreen {
     }
 
     private int tileY() {
-        return guiTop + topH() - 62;
+        return guiTop + topH() - 66;
     }
 
     @Override
@@ -265,7 +270,7 @@ public class RefineScreen extends RotasScreen {
         int right = guiLeft + guiWidth;
         AnimeUi.panel(graphics, guiLeft, guiTop, stageW(), topH(), AnimeUi.GOLD);
         AnimeUi.panel(graphics, guiLeft + stageW() + 12, guiTop, guiWidth - stageW() - 12, topH(), AnimeUi.PINK);
-        AnimeUi.panel(graphics, guiLeft, guiTop + topH() + 12, guiWidth, guiHeight - topH() - 12, AnimeUi.CYAN);
+        AnimeUi.panel(graphics, guiLeft, guiTop + topH() + 12, guiWidth, bottomH(), AnimeUi.CYAN);
         renderFeedback(graphics, right - Math.max(40, feedbackWidth()), guiTop - 22,
                 0xFFE8FFE0, 0xFFFFD8D0, Ui.GOOD, Ui.BAD);
     }
@@ -275,14 +280,14 @@ public class RefineScreen extends RotasScreen {
         CompoundTag quote = quote();
         ItemStack stack = ItemStack.of(state.getCompound("item"));
         int stageCx = guiLeft + stageW() / 2;
-        int stageCy = guiTop + topH() / 2 - 8;
+        int stageCy = guiTop + topH() / 2 + 6;
 
         boolean possible = quote.getBoolean("possible");
         double chance = Math.min(1.0, baseChance() + bonusChance());
         int mood = chance >= 0.75 ? AnimeUi.LIME : chance >= 0.4 ? AnimeUi.GOLD : AnimeUi.PINK;
-        AnimeUi.burst(g, stageCx, stageCy, 82, possible ? mood : AnimeUi.MUTED, 14f);
+        AnimeUi.burst(g, stageCx, stageCy + 6, 66, possible ? mood : AnimeUi.MUTED, 14f);
 
-        AnimeUi.outlinedCentered(g, L.t("rotasutils.refine.title"), stageCx, guiTop + 10, 2, AnimeUi.WHITE);
+        AnimeUi.outlinedCentered(g, L.t("rotasutils.refine.title"), stageCx, guiTop + 12, 2, AnimeUi.WHITE);
         if (!possible) {
             String message = quote.getString("message").isBlank() ? L.t("rotasutils.refine.nothing_held") : quote.getString("message");
             int y = guiTop + 40;
@@ -317,14 +322,15 @@ public class RefineScreen extends RotasScreen {
         }
         long cost = quote.getLong("cost");
         boolean rich = state.getLong("gold") >= cost;
-        Ui.label(g, L.t("rotasutils.refine.cost"), rx, guiTop + 96, AnimeUi.MUTED);
-        Ui.label(g, cost + " / " + state.getLong("gold"), rx + 40, guiTop + 96, rich ? AnimeUi.WHITE : AnimeUi.RED);
         String using = armour() ? (enriched ? "enriched_elunium" : "elunium") : (enriched ? "enriched_oridecon" : "oridecon");
-        Ui.label(g, L.t("item.rotasutils." + using) + "  x1 (" + have(using) + ")", rx + 130, guiTop + 96,
+        Ui.label(g, L.t("rotasutils.refine.cost"), rx, guiTop + 92, AnimeUi.MUTED);
+        Ui.label(g, cost + "  /  " + state.getLong("gold"), rx + 44, guiTop + 92, rich ? AnimeUi.WHITE : AnimeUi.RED);
+        Ui.label(g, L.t("rotasutils.refine.material"), rx, guiTop + 106, AnimeUi.MUTED);
+        Ui.label(g, L.t("item.rotasutils." + using) + "  x1  (" + have(using) + ")", rx + 44, guiTop + 106,
                 have(using) > 0 ? AnimeUi.WHITE : AnimeUi.RED);
         String risk = protection ? L.t("rotasutils.refine.risk_protected")
                 : L.t("rotasutils.refine.risk." + state.getString("on_fail").toLowerCase(java.util.Locale.ROOT));
-        int ry = guiTop + 112;
+        int ry = guiTop + 124;
         for (String line : Ui.wrap(risk, rw)) {
             Ui.label(g, line, rx, ry, protection ? AnimeUi.LIME : AnimeUi.RED);
             ry += 11;
@@ -363,7 +369,11 @@ public class RefineScreen extends RotasScreen {
         int bw = guiWidth - 40;
         int by = barY();
         if (!sessionLive()) {
-            Ui.label(g, L.t("rotasutils.refine.hint"), bx + 100, guiTop + guiHeight - 36, AnimeUi.MUTED);
+            int hy = guiTop + topH() + 24;
+            for (String line : Ui.wrap(L.t("rotasutils.refine.hint"), guiWidth - 40)) {
+                Ui.label(g, line, bx, hy, AnimeUi.MUTED);
+                hy += 11;
+            }
             return;
         }
         CompoundTag s = session();
@@ -388,8 +398,8 @@ public class RefineScreen extends RotasScreen {
         }
         // Strike pips with what each earned.
         for (int i = 0; i < ForgeTiming.STRIKES; i++) {
-            int x = bx + i * 110;
-            int y = by + 36;
+            int x = guiLeft + 108 + i * 84;
+            int y = guiTop + guiHeight - 36;
             String text;
             int color;
             if (i < done.size()) {
