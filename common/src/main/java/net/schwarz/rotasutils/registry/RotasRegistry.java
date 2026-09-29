@@ -168,6 +168,7 @@ public final class RotasRegistry {
                     .sound(SoundType.ANVIL)
                     .lightLevel(state -> 7)
                     .requiresCorrectToolForDrops(),
+                    net.schwarz.rotasutils.block.StationBlock.Kind.FORGE,
                     Block.box(0, 0, 0, 16, 16, 16),
                     net.schwarz.rotasutils.network.RotasNetwork::openRefine));
 
@@ -180,6 +181,7 @@ public final class RotasRegistry {
                     .lightLevel(state -> 10)
                     .noOcclusion()
                     .requiresCorrectToolForDrops(),
+                    net.schwarz.rotasutils.block.StationBlock.Kind.ALTAR,
                     Block.box(0, 0, 0, 16, 13, 16),
                     net.schwarz.rotasutils.network.RotasNetwork::openRunes));
 

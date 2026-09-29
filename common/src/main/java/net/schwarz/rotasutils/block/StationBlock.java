@@ -1,6 +1,11 @@
 package net.schwarz.rotasutils.block;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -25,11 +30,16 @@ import java.util.function.Consumer;
  * screen kept open after walking away cannot be used from across the map.
  */
 public class StationBlock extends HorizontalDirectionalBlock {
+    /** What the station looks and sounds like when alive. */
+    public enum Kind { FORGE, ALTAR }
+
+    private final Kind kind;
     private final VoxelShape shape;
     private final Consumer<ServerPlayer> open;
 
-    public StationBlock(Properties properties, VoxelShape shape, Consumer<ServerPlayer> open) {
+    public StationBlock(Properties properties, Kind kind, VoxelShape shape, Consumer<ServerPlayer> open) {
         super(properties);
+        this.kind = kind;
         this.shape = shape;
         this.open = open;
         registerDefaultState(stateDefinition.any().setValue(FACING, net.minecraft.core.Direction.NORTH));
@@ -56,7 +66,33 @@ public class StationBlock extends HorizontalDirectionalBlock {
                                  BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer server) {
             open.accept(server);
+            level.playSound(null, pos, kind == Kind.FORGE ? SoundEvents.ANVIL_USE : SoundEvents.ENCHANTMENT_TABLE_USE,
+                    SoundSource.BLOCKS, kind == Kind.FORGE ? 0.35f : 0.8f, kind == Kind.FORGE ? 1.4f : 1.1f);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /** Embers and a crackle at the forge's mouth; enchanting glyphs rising off the altar. */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (kind == Kind.FORGE) {
+            Direction face = state.getValue(FACING);
+            double x = pos.getX() + 0.5 + face.getStepX() * 0.52, z = pos.getZ() + 0.5 + face.getStepZ() * 0.52;
+            if (random.nextInt(4) == 0) {
+                level.addParticle(ParticleTypes.FLAME, x + (random.nextDouble() - 0.5) * 0.4, pos.getY() + 0.35 + random.nextDouble() * 0.25,
+                        z + (random.nextDouble() - 0.5) * 0.4, 0, 0.01, 0);
+            }
+            if (random.nextInt(8) == 0) {
+                level.addParticle(ParticleTypes.SMOKE, pos.getX() + 0.5, pos.getY() + 1.05, pos.getZ() + 0.5, 0, 0.03, 0);
+            }
+            if (random.nextInt(24) == 0) {
+                level.playLocalSound(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.FIRE_AMBIENT,
+                        SoundSource.BLOCKS, 0.5f, 0.8f + random.nextFloat() * 0.3f, false);
+            }
+        } else if (random.nextInt(3) == 0) {
+            // Glyphs drift up from the ring in the top plate, as over an enchanting table.
+            double ox = (random.nextDouble() - 0.5) * 1.2, oz = (random.nextDouble() - 0.5) * 1.2;
+            level.addParticle(ParticleTypes.ENCHANT, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, ox, 0.6, oz);
+        }
     }
 }
