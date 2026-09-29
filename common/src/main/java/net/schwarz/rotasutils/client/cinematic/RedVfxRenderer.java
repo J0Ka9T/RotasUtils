@@ -525,63 +525,95 @@ public final class RedVfxRenderer {
 
     // Release ----------------------------------------------------------------------------------------
 
+    /** A surface stretched along {@code dir}: a long, pointed front and a longer tail, like a bolt and not a ball. */
+    private static Mesh.Surface elongated(Vec3 dir, double front, double tail, Mesh.Surface colour) {
+        return new Mesh.Surface() {
+            @Override
+            public double radius(double nx, double ny, double nz) {
+                double dp = nx * dir.x + ny * dir.y + nz * dir.z;
+                double a = dp > 0 ? front : tail;
+                return 1.0 / Math.sqrt(dp * dp / (a * a) + (1 - dp * dp));
+            }
+
+            @Override
+            public void color(double nx, double ny, double nz, double fres, float[] out) {
+                colour.color(nx, ny, nz, fres, out);
+            }
+        };
+    }
+
+    /** Where the mass is heading, from where it began to where the server said it lands. */
+    private static Vec3 shotDir(Draw d, Vec3 origin) {
+        ClientCast cast = d.cast();
+        return cast.released() ? cast.impact.subtract(origin).normalize() : d.frame().forward();
+    }
+
+    /**
+     * The release is one directional pulse, not a sphere: a flared trumpet of plasma thrown down the line of fire,
+     * bands of bright light racing up it, a white-hot spine, a streak of flare and a wedge of wind on the ground.
+     */
     private static void releasing(Mesh m, Draw d, double dt) {
         Vec3 o = d.releaseCore();
         ClientCast cast = d.cast();
         long seed = cast.seed;
-        Vec3 shot = cast.released() ? cast.impact.subtract(o).normalize() : d.frame().forward();
-        // The pressure volume: a violent shove, 0.24 -> 0.45 -> 1.3 -> beyond three blocks, thinning as it goes.
-        if (dt < 0.4) {
-            double r = RedProfile.pressureRadius(dt), a = RedProfile.pressureAlpha(dt);
-            m.sphere(o.x, o.y, o.z, r, latOf(d.lod()), lonOf(d.lod()), plasma(dt * 6, 2.0, 2.0, dt, (int) seed, DEEP, HOT, 0.9 * a, 1.4));
-            m.glow(o, r * 3.4, c(1f, 0.30f, 0.14f, 0.75 * Math.exp(-dt * 14)));
-            m.glow(o, r * 1.8, c(1f, 0.85f, 0.65f, 0.95 * Math.exp(-dt * 30)));
-        }
-        if (d.lod() == 0) {
-            rays(m, d.t(), seed, o, 0.5, 2.2 * Math.exp(-dt * 5));
-        }
-        // Rings of force expanding across the line of fire, one after another.
-        if (d.lod() <= 1) {
-            Vec3[] b = basis(shot);
-            for (int k = 0; k < 3; k++) {
-                double x = Curves.window(dt, k * 0.06, k * 0.06 + 0.42);
-                if (x <= 0 || x >= 1) {
-                    continue;
+        Vec3 shot = shotDir(d, o);
+        Vec3[] b = basis(shot);
+        if (dt < 0.55) {
+            double x = Curves.clamp01(dt / 0.16);
+            double len = 11 * (1 - Math.pow(1 - x, 3));
+            double fade = 1 - Curves.smoothstep(dt / 0.55);
+            final double fdt = dt;
+            final int sd = (int) seed;
+            m.tube(o, shot, len, 0.30, 0.30 + 1.7 * (len / 11), 1.7, 16, 26, (u, v, out) -> {
+                double sr = Noise3.ridged(v * 8 + sd * 0.1, u * 3 - fdt * 10, fdt * 2);
+                double band = 0;
+                for (int k = 0; k < 3; k++) {
+                    double q = (u - (fdt / 0.20 - k * 0.28)) / 0.07;
+                    band += Math.exp(-q * q);
                 }
-                double radius = Curves.lerp(0.5, 7.5, 1 - Math.pow(1 - x, 3));
-                double a = 0.75 * Math.pow(1 - x, 1.3);
-                ring(m, o.add(shot.scale(0.3 * k)), b[0], b[1], radius, 0.10 + 0.22 * x, c(1f, 0.20f, 0.10f, a), 64, k, 0, -2);
-            }
+                float heat = (float) Math.min(1, sr * 0.9 + band * 0.5);
+                out[0] = Math.min(1f, DEEP[0] + (HOT[0] - DEEP[0]) * heat + (float) (band * 0.45));
+                out[1] = Math.min(1f, DEEP[1] + (HOT[1] - DEEP[1]) * heat + (float) (band * 0.55));
+                out[2] = Math.min(1f, DEEP[2] + (HOT[2] - DEEP[2]) * heat + (float) (band * 0.45));
+                out[3] = (float) (fade * (0.22 + 0.78 * sr) * (1 - 0.75 * u) * (0.55 + 0.9 * Math.min(1, band)));
+            });
+            // The white-hot spine down the middle.
+            m.tube(o, shot, len * 1.15, 0.09, 0.15, 1.0, 1, 8, (u, v, out) -> {
+                out[0] = 1f;
+                out[1] = 0.9f;
+                out[2] = 0.75f;
+                out[3] = (float) ((1 - u) * fade);
+            });
+            // Streaks of flare: one long down the shot, one thin across it.
+            m.ribbon(o.subtract(shot.scale(0.6)), o.add(shot.scale(7 * x)), 0.5, 0.02, c(1f, 0.5f, 0.3f, 0.8 * fade), c(1f, 0.2f, 0.1f, 0));
+            m.ribbon(o.subtract(b[0].scale(2.4)), o.add(b[0].scale(2.4)), 0.03, 0.03, c(1f, 0.4f, 0.25f, 0.7 * Math.exp(-dt * 12)),
+                    c(1f, 0.4f, 0.25f, 0.7 * Math.exp(-dt * 12)));
+            m.glow(o, 0.7, c(1f, 0.85f, 0.65f, 0.9 * Math.exp(-dt * 40)));
         }
         Vec3 feet = d.frame().feet();
-        // The shockwave: a transparent dome that is hard to see directly; what shows is the ground ring and the dust.
-        double sw = dt / 0.5;
-        if (sw < 1.2) {
-            double x = Math.min(1, sw);
-            double radius = RedTimings.SHOCKWAVE_RADIUS * (1 - Math.pow(1 - x, 3));
-            double fade = Math.pow(Math.max(0, 1 - sw / 1.2), 1.5);
-            if (d.lod() <= 1) {
-                m.sphere(feet.x, feet.y + 0.1, feet.z, radius, 12, 24, (nx, ny, nz, fres, out) -> {
-                    out[0] = 0.9f;
-                    out[1] = 0.12f;
-                    out[2] = 0.08f;
-                    out[3] = ny < -0.02 ? 0f : (float) (0.06 * fade * (0.4 + 0.6 * fres));
-                });
-            }
-            m.groundRing(feet.x, feet.y + 0.05, feet.z, radius, 0.6 + 0.9 * x, c(0.9f, 0.14f, 0.09f, 0.24 * fade));
+        // A wedge of blast across the ground in front of the caster, and a thin bright one inside it.
+        double ang = Math.atan2(shot.z, shot.x);
+        double reach = 16 * (1 - Math.pow(1 - Curves.clamp01(dt / 0.4), 3));
+        double wedgeFade = 1 - Curves.smoothstep(dt / 0.9);
+        if (wedgeFade > 0.01) {
+            m.groundWedge(feet.x, feet.y + 0.04, feet.z, ang, reach, 0.55, c(0.9f, 0.14f, 0.08f, 0.35 * wedgeFade));
+            m.groundWedge(feet.x, feet.y + 0.05, feet.z, ang, reach * 1.1, 0.12, c(1f, 0.3f, 0.15f, 0.55 * wedgeFade));
         }
-        m.groundFan(feet.x, feet.y + 0.03, feet.z, 9, c(1f, 0.06f, 0.04f, Math.min(0.6, 0.32 * RedProfile.light(RedTimings.RELEASE + dt))));
+        m.groundFan(feet.x, feet.y + 0.03, feet.z, 7, c(1f, 0.06f, 0.04f, Math.min(0.5, 0.28 * RedProfile.light(RedTimings.RELEASE + dt))));
     }
 
+    /** Dust and grit thrown forward and out along the line of fire, not in a ring. */
     private static void shockwaveDust(Mesh m, Draw d, double dt) {
-        long seed = d.cast().seed;
+        ClientCast cast = d.cast();
+        long seed = cast.seed;
         Vec3 feet = d.frame().feet();
-        double x = Math.min(1, dt / 0.5);
-        double front = RedTimings.SHOCKWAVE_RADIUS * (1 - Math.pow(1 - x, 3));
+        Vec3 shot = shotDir(d, d.releaseCore());
+        double ang = Math.atan2(shot.z, shot.x);
+        double front = 18 * (1 - Math.pow(1 - Curves.clamp01(dt / 0.5), 3));
         int count = d.lod() == 0 ? 90 : 36;
         for (int i = 0; i < count; i++) {
-            double a = rnd(seed, 700 + i, 1) * Math.PI * 2;
-            double r = front * (0.75 + 0.25 * rnd(seed, 700 + i, 2));
+            double a = ang + (rnd(seed, 700 + i, 1) - 0.5) * 2.2;
+            double r = front * (0.35 + 0.65 * rnd(seed, 700 + i, 2));
             double h = 0.1 + rnd(seed, 700 + i, 3) * (0.3 + 1.6 * dt);
             Vec3 p = new Vec3(feet.x + Math.cos(a) * r, feet.y + h, feet.z + Math.sin(a) * r);
             double fade = Math.max(0, 1 - dt / 1.1);
@@ -605,8 +637,9 @@ public final class RedVfxRenderer {
             return;
         }
         Vec3 p = pathAt(cast, origin, dtp);
+        Vec3 dir = shotDir(d, origin);
         double rp = RedProfile.projectileRadius(dtp);
-        m.sphere(p.x, p.y, p.z, rp * 0.72, 10, 16, flat(0.03f, 0.0f, 0.01f, 0.95));
+        m.sphere(p.x, p.y, p.z, rp * 0.62, 10, 16, elongated(dir, 2.2, 4.5, flat(0.03f, 0.0f, 0.01f, 0.95)));
         // A wake of dark, churning smoke behind it.
         int samples = d.lod() == 0 ? 22 : 10;
         Vec3 prev = p;
@@ -622,6 +655,10 @@ public final class RedVfxRenderer {
         }
     }
 
+    /**
+     * The mass in flight is a pulse: a long bolt of plasma, pointed in front and tapering behind, a white-hot streak
+     * through its middle, a flared cone of energy streaming back from it, and lines of light racing past it.
+     */
     private static void projectileAdditive(Mesh m, Draw d) {
         ClientCast cast = d.cast();
         Vec3 origin = d.releaseCore();
@@ -630,43 +667,55 @@ public final class RedVfxRenderer {
             return;
         }
         Vec3 p = pathAt(cast, origin, dtp);
-        Vec3 dir = cast.impact.subtract(origin).normalize();
+        Vec3 dir = shotDir(d, origin);
+        Vec3[] b = basis(dir);
         double rp = RedProfile.projectileRadius(dtp);
         double t = d.t();
         int seed = (int) cast.seed;
-        // Front compressed, tail stretched: the shape of something moving faster than the air can get out of its way.
-        Mesh.Surface shape = new Mesh.Surface() {
-            @Override
-            public double radius(double nx, double ny, double nz) {
-                double dp = nx * dir.x + ny * dir.y + nz * dir.z;
-                return dp > 0 ? 1 - 0.28 * dp : 1 + 0.9 * -dp;
-            }
-
-            @Override
-            public void color(double nx, double ny, double nz, double fres, float[] out) {
-                plasma(t * 2.6, 2.6, 2.4, t, seed, DEEP, HOT, 0.85, 1.5).color(nx, ny, nz, fres, out);
-            }
-        };
-        m.sphere(p.x, p.y, p.z, rp, latOf(d.lod()), lonOf(d.lod()), shape);
+        Mesh.Surface plasmaSurface = plasma(t * 2.6, 2.6, 2.4, t, seed, DEEP, HOT, 0.9, 1.5);
+        m.sphere(p.x, p.y, p.z, rp, latOf(d.lod()), lonOf(d.lod()), elongated(dir, 2.4, 5.0, plasmaSurface));
         if (d.lod() <= 1) {
-            m.sphere(p.x, p.y, p.z, rp * 1.25, 10, 16, plasma(-t * 3.1, 3.8, -2.0, t, seed + 3, c(0.4f, 0, 0.05f, 1), c(1f, 0.2f, 0.1f, 1), 0.35, 1.9));
-            m.sphere(p.x, p.y, p.z, rp * 1.04, 12, 18, (nx, ny, nz, fres, out) -> {
+            m.sphere(p.x, p.y, p.z, rp * 1.25, 10, 18, elongated(dir, 2.2, 5.5,
+                    plasma(-t * 3.1, 3.8, -2.0, t, seed + 3, c(0.4f, 0, 0.05f, 1), c(1f, 0.2f, 0.1f, 1), 0.34, 1.9)));
+            m.sphere(p.x, p.y, p.z, rp * 1.04, 12, 20, elongated(dir, 2.4, 5.0, (nx, ny, nz, fres, out) -> {
                 out[0] = 1f;
                 out[1] = 0.45f;
                 out[2] = 0.3f;
                 out[3] = (float) (0.9 * Math.pow(fres, 3.2));
+            }));
+        }
+        // The white-hot streak through the middle, and a long soft glow along the whole bolt (a line, not a disc).
+        m.ribbon(p.add(dir.scale(rp * 2.4)), p.subtract(dir.scale(rp * 5.2)), rp * 0.28, rp * 0.02, c(1f, 0.88f, 0.72f, 0.95), c(1f, 0.4f, 0.2f, 0));
+        m.ribbon(p.add(dir.scale(rp * 3.0)), p.subtract(dir.scale(rp * 7.0)), rp * 1.5, rp * 0.1, c(1f, 0.14f, 0.07f, 0.4), c(1f, 0.14f, 0.07f, 0));
+        if (d.lod() <= 1) {
+            // The flared cone of energy streaming back from it.
+            final double ft = t;
+            m.tube(p.subtract(dir.scale(rp * 1.4)), dir.scale(-1), 6.5 * rp + 2.0, rp * 0.55, rp * 2.4 + 0.6, 1.25, 8, 22, (u, v, out) -> {
+                double sr = Noise3.ridged(v * 7 + seed * 0.1, u * 3 + ft * 9, ft);
+                out[0] = 1f;
+                out[1] = (float) (0.16 + 0.35 * sr);
+                out[2] = (float) (0.08 + 0.25 * sr);
+                out[3] = (float) (0.30 * (0.3 + 0.7 * sr) * (1 - u));
             });
         }
-        m.glow(p, rp * 5.5, c(1f, 0.14f, 0.07f, 0.4));
-        m.glow(p, rp * 2.2, c(1f, 0.5f, 0.32f, 0.55));
+        // Lines of light racing past the bolt, all along its direction of travel.
+        int lines = d.lod() == 0 ? 18 : 7;
+        for (int i = 0; i < lines; i++) {
+            double a = rnd(seed, 3000 + i, 1) * Math.PI * 2;
+            double off = rp * (0.7 + 1.6 * rnd(seed, 3000 + i, 2));
+            double slide = ((t * (4 + 5 * rnd(seed, 3000 + i, 3)) + rnd(seed, 3000 + i, 4)) % 1.0);
+            Vec3 lateral = b[0].scale(Math.cos(a) * off).add(b[1].scale(Math.sin(a) * off));
+            Vec3 head = p.add(dir.scale(rp * 2.0)).add(lateral).subtract(dir.scale(slide * 7.0));
+            double len = 2.0 + 5.0 * rnd(seed, 3000 + i, 5);
+            m.ribbon(head, head.subtract(dir.scale(len)), 0.02 + 0.03 * rp, 0.004, c(1f, 0.5f, 0.32f, 0.65 * (1 - slide)), c(1f, 0.2f, 0.1f, 0));
+        }
         // The wake: hot red ribbons whose width and turbulence grow with age, with three helices wound through it.
         int samples = d.lod() == 0 ? 26 : 10;
-        Vec3[] b = basis(dir);
-        Vec3 prev = p;
+        Vec3 prev = p.subtract(dir.scale(rp * 2.5));
         Vec3[] helixPrev = new Vec3[3];
         for (int k = 1; k <= samples; k++) {
             double tk = dtp - k * 0.012;
-            Vec3 q0 = pathAt(cast, origin, Math.max(0, tk));
+            Vec3 q0 = pathAt(cast, origin, Math.max(0, tk)).subtract(dir.scale(rp * 2.5));
             double width = rp * (0.45 + 1.5 * k / samples);
             Vec3 off = randomDir(cast.seed, 900 + k).scale(width * 0.9 * Curves.noise(k * 0.6 + t * 8, seed));
             Vec3 q = q0.add(off);
@@ -689,12 +738,16 @@ public final class RedVfxRenderer {
                 }
             }
         }
-        if (d.lod() == 0) {
-            rays(m, t, cast.seed, p, rp * 0.6, 0.6);
-        }
     }
 
     // Impact -----------------------------------------------------------------------------------------
+
+    /** Debris flung mostly forward, the way a blast leaves the thing it hit. */
+    private static Vec3 flungDir(long seed, int i, Vec3 shot) {
+        Vec3 r = randomDir(seed, 1100 + i);
+        Vec3 dir = shot.scale(0.75).add(r.x * 0.9, Math.abs(r.y) * 0.9 + 0.25, r.z * 0.9);
+        return dir.normalize();
+    }
 
     private static void impactSolid(Mesh m, Draw d, double di) {
         if (d.lod() > 2) {
@@ -703,12 +756,15 @@ public final class RedVfxRenderer {
         ClientCast cast = d.cast();
         long seed = cast.seed;
         Vec3 at = cast.impact;
-        // The scorched ground.
-        m.groundFan(at.x, at.y + 0.035, at.z, 6.0, c(0.02f, 0.0f, 0.005f, 0.6 * (1 - Curves.smoothstep(di / 5.0))));
+        Vec3 shot = shotDir(d, d.releaseCore());
+        // The scorched ground, a streak pointing along the blast.
+        double ang = Math.atan2(shot.z, shot.x);
+        double scorch = 0.6 * (1 - Curves.smoothstep(di / 5.0));
+        m.groundWedge(at.x, at.y + 0.035, at.z, ang, 9.0, 0.5, c(0.02f, 0.0f, 0.005f, scorch));
+        m.groundFan(at.x, at.y + 0.035, at.z, 3.0, c(0.02f, 0.0f, 0.005f, scorch));
         int chunks = d.lod() == 0 ? 80 : 30;
         for (int i = 0; i < chunks; i++) {
-            Vec3 dir = randomDir(seed, 1100 + i);
-            dir = new Vec3(dir.x, Math.abs(dir.y) * 0.9 + 0.25, dir.z).normalize();
+            Vec3 dir = flungDir(seed, i, shot);
             double v = 6 + 12 * rnd(seed, 1100 + i, 3);
             Vec3 p = at.add(dir.scale(v * di)).add(0, -6.0 * di * di, 0);
             double a = Math.max(0, 1 - di / 1.8) * 0.95;
@@ -719,34 +775,42 @@ public final class RedVfxRenderer {
         if (d.lod() <= 1) {
             for (int i = 0; i < 24; i++) {
                 double grow = 1.6 + 3.4 * Curves.smoothstep(di / 1.4);
-                Vec3 p = at.add(randomDir(seed, 1300 + i).scale(grow * 0.9 * rnd(seed, 1300 + i, 3))).add(0, 0.4 + di * 0.8, 0);
+                Vec3 p = at.add(shot.scale(grow * 0.9 * rnd(seed, 1300 + i, 3))).add(randomDir(seed, 1300 + i).scale(grow * 0.5))
+                        .add(0, 0.4 + di * 0.8, 0);
                 m.billboard(p, grow * (0.4 + 0.5 * rnd(seed, 1300 + i, 4)), c(0.42f, 0.36f, 0.32f, 0.22 * Math.max(0, 1 - di / 2.6)), i);
             }
         }
     }
 
+    /**
+     * The impact is the pulse arriving, not a ball: a torn mass stretched along the blast, a cone of energy driven on
+     * through the point of impact, elliptical waves stretched along the shot, streaks fanning forward, glowing cracks
+     * pointing the same way, a column of light, debris flung ahead, and particles that linger for seconds.
+     */
     private static void impactAdditive(Mesh m, Draw d, double di) {
         ClientCast cast = d.cast();
         long seed = cast.seed;
         Vec3 at = cast.impact;
-        // Frame zero: a single, extremely bright point, and light rays across the lens.
+        Vec3 shot = shotDir(d, d.releaseCore());
+        Vec3[] b = basis(shot);
+        double ang = Math.atan2(shot.z, shot.x);
+        // Frame zero: a single, extremely bright point with a streak of flare along the shot.
         if (di < 0.10) {
             double k = 1 - di / 0.10;
-            m.glow(at, 0.7 + 2.0 * (1 - k), c(1f, 0.92f, 0.78f, k));
-            m.glow(at, 4.5, c(1f, 0.25f, 0.12f, 0.6 * k));
+            m.glow(at, 0.7 + 1.4 * (1 - k), c(1f, 0.92f, 0.78f, k));
+            m.ribbon(at.subtract(shot.scale(3.5)), at.add(shot.scale(9 * (1 - k) + 1)), 0.6, 0.03, c(1f, 0.6f, 0.4f, 0.8 * k), c(1f, 0.2f, 0.1f, 0));
         }
-        if (d.lod() == 0) {
-            rays(m, d.t(), seed, at, 1.2, 1.6 * Math.exp(-di * 4));
-        }
-        // The mass deforms and swells, its surface torn by noise.
+        // The mass, stretched along the blast, deforming and swelling, its surface torn by noise.
         if (di < 0.8) {
-            double r = Curves.Track.of(0, 0.3, 0.05, 0.9, 0.15, 4.2, 0.4, 5.6, 0.8, 6.4).at(di);
+            double r = Curves.Track.of(0, 0.3, 0.05, 0.9, 0.15, 3.4, 0.4, 4.2, 0.8, 4.8).at(di);
             double a = 0.95 * (1 - Curves.smoothstep(di / 0.8));
             final double dd = di;
             Mesh.Surface torn = new Mesh.Surface() {
                 @Override
                 public double radius(double nx, double ny, double nz) {
-                    return 1 + 0.4 * (Noise3.fbm(nx * 2.2 + dd * 6, ny * 2.2, nz * 2.2) - 0.5) * 2;
+                    double dp = nx * shot.x + ny * shot.y + nz * shot.z;
+                    double ell = 1.0 / Math.sqrt(dp * dp / 6.0 + (1 - dp * dp));
+                    return ell * (1 + 0.4 * (Noise3.fbm(nx * 2.2 + dd * 6, ny * 2.2, nz * 2.2) - 0.5) * 2);
                 }
 
                 @Override
@@ -756,43 +820,61 @@ public final class RedVfxRenderer {
             };
             m.sphere(at.x, at.y, at.z, r, latOf(d.lod()), lonOf(d.lod()), torn);
         }
+        // A cone of energy driven on through the point of impact.
+        if (di < 0.7 && d.lod() <= 1) {
+            double x = Curves.clamp01(di / 0.2);
+            double len = 16 * (1 - Math.pow(1 - x, 3));
+            double fade = 1 - Curves.smoothstep(di / 0.7);
+            final double fdi = di;
+            final int sd = (int) seed;
+            m.tube(at.subtract(shot.scale(1.0)), shot, len, 1.2, 1.2 + 5.0 * (len / 16), 1.5, 14, 24, (u, v, out) -> {
+                double sr = Noise3.ridged(v * 7 + sd * 0.1, u * 3 - fdi * 9, fdi * 2);
+                double band = Math.exp(-Math.pow((u - fdi / 0.4) / 0.08, 2));
+                out[0] = 1f;
+                out[1] = (float) Math.min(1, 0.16 + 0.35 * sr + band * 0.5);
+                out[2] = (float) Math.min(1, 0.08 + 0.25 * sr + band * 0.4);
+                out[3] = (float) (fade * (0.2 + 0.8 * sr) * (1 - 0.7 * u) * (0.6 + 0.9 * band));
+            });
+        }
+        // Streaks fanning forward through the blast.
+        if (d.lod() == 0) {
+            double sf = Math.exp(-di * 3.5);
+            for (int i = 0; i < 9; i++) {
+                double spread = (rnd(seed, 3300 + i, 1) - 0.5) * 0.55;
+                double lift = (rnd(seed, 3300 + i, 2) - 0.5) * 0.4;
+                Vec3 dir = shot.add(b[0].scale(spread)).add(b[1].scale(lift)).normalize();
+                m.ribbon(at, at.add(dir.scale(10 + 10 * rnd(seed, 3300 + i, 3) * Math.min(1, di * 6))), 0.09, 0.005,
+                        c(1f, 0.35f, 0.18f, 0.7 * sf), c(1f, 0.15f, 0.08f, 0));
+            }
+        }
         // A column of red light thrown into the sky.
         double up = Curves.smoothstep(di / 0.22);
         double fade = 1 - Curves.smoothstep(di / 1.8);
         if (fade > 0.01) {
             Vec3 top = at.add(0, 38 * up, 0);
-            float[] outer = c(1f, 0.10f, 0.05f, 0.34 * fade);
-            m.ribbon(at, top, 1.5 * fade + 0.3, 0.5, outer, c(1f, 0.10f, 0.05f, 0.05 * fade));
-            float[] inner = c(1f, 0.6f, 0.45f, 0.7 * fade);
-            m.ribbon(at, top, 0.5 * fade + 0.1, 0.12, inner, c(1f, 0.6f, 0.45f, 0.08 * fade));
+            m.ribbon(at, top, 1.2 * fade + 0.25, 0.4, c(1f, 0.10f, 0.05f, 0.30 * fade), c(1f, 0.10f, 0.05f, 0.04 * fade));
+            m.ribbon(at, top, 0.42 * fade + 0.08, 0.1, c(1f, 0.6f, 0.45f, 0.7 * fade), c(1f, 0.6f, 0.45f, 0.08 * fade));
         }
-        // The repulsion wave (three, one after another), 50-150 ms in, rolling out along the ground.
+        // Waves rolling out along the ground as ellipses stretched along the shot, three in turn.
         for (int k = 0; k < 3; k++) {
             double wave = (di - 0.05 - k * 0.12) / 0.5;
             if (wave <= 0 || wave >= 1.3) {
                 continue;
             }
             double x = Math.min(1, wave);
-            double radius = RedTimings.BLAST_RADIUS * (1 - Math.pow(1 - x, 3)) * (1 - 0.12 * k);
+            double base = RedTimings.BLAST_RADIUS * (1 - Math.pow(1 - x, 3)) * (1 - 0.12 * k);
             double wf = Math.pow(Math.max(0, 1 - wave / 1.3), 1.6);
-            if (k == 0 && d.lod() <= 1) {
-                m.sphere(at.x, at.y, at.z, radius, 12, 24, (nx, ny, nz, fres, out) -> {
-                    out[0] = 1f;
-                    out[1] = 0.16f;
-                    out[2] = 0.09f;
-                    out[3] = (float) (0.09 * wf * (0.3 + 0.7 * fres));
-                });
-            }
-            m.groundRing(at.x, at.y + 0.05, at.z, radius, 0.6 + 0.7 * x, c(1f, 0.16f, 0.09f, 0.30 * wf));
+            m.groundEllipseRing(at.x, at.y + 0.05, at.z, ang, base * 1.55, base * 0.7, 0.6 + 0.6 * x, c(1f, 0.16f, 0.09f, 0.32 * wf));
         }
-        // Glowing cracks radiating out through the ground, fading over a few seconds.
+        // Glowing cracks through the ground, longest along the shot, fading over a few seconds.
         double crackLife = Math.max(0, 1 - di / RedTimings.LINGER);
         if (crackLife > 0 && d.lod() <= 1) {
             double reach = Curves.smoothstep(di / 0.35);
             int cracks = d.lod() == 0 ? 16 : 8;
             for (int i = 0; i < cracks; i++) {
                 double a0 = rnd(seed, 1700 + i, 1) * Math.PI * 2;
-                double len = (3.0 + 5.0 * rnd(seed, 1700 + i, 2)) * reach;
+                double along = 0.5 + 0.5 * Math.cos(a0 - ang);
+                double len = (2.0 + 3.0 * rnd(seed, 1700 + i, 2) + 6.0 * along) * reach;
                 Vec3 prev = at.add(0, 0.05, 0);
                 int segs = 10;
                 double a = a0;
@@ -805,12 +887,11 @@ public final class RedVfxRenderer {
                 }
             }
         }
-        m.groundFan(at.x, at.y + 0.04, at.z, 9, c(1f, 0.08f, 0.05f, 0.55 * Math.exp(-di * 1.6)));
-        // Hot chunks and red particles that linger for seconds.
+        m.groundFan(at.x, at.y + 0.04, at.z, 7, c(1f, 0.08f, 0.05f, 0.5 * Math.exp(-di * 1.6)));
+        // Hot chunks flung ahead, and red particles that linger for seconds.
         if (d.lod() <= 1) {
             for (int i = 0; i < 30; i++) {
-                Vec3 dir = randomDir(seed, 1100 + i);
-                dir = new Vec3(dir.x, Math.abs(dir.y) * 0.9 + 0.25, dir.z).normalize();
+                Vec3 dir = flungDir(seed, i, shot);
                 double v = 6 + 12 * rnd(seed, 1100 + i, 3);
                 Vec3 p = at.add(dir.scale(v * di)).add(0, -6.0 * di * di, 0);
                 double a = Math.max(0, 1 - di / 1.5);
@@ -824,7 +905,7 @@ public final class RedVfxRenderer {
                 if (life <= 0) {
                     break;
                 }
-                Vec3 off = randomDir(seed, 1500 + i).scale(1.0 + 3.6 * rnd(seed, 1500 + i, 3) * Math.pow(Math.min(1, di * 2), 0.4));
+                Vec3 off = randomDir(seed, 1500 + i).scale(1.0 + 3.6 * rnd(seed, 1500 + i, 3) * Math.pow(Math.min(1, di * 2), 0.4)).add(shot.scale(2.0 * rnd(seed, 1500 + i, 6)));
                 double sway = di * (0.3 + 0.5 * rnd(seed, 1500 + i, 4));
                 Vec3 p = at.add(off.x, Math.abs(off.y) * 0.6 + sway, off.z);
                 double flick = 0.6 + 0.4 * Math.sin(di * 7 + i);

@@ -200,6 +200,104 @@ final class Mesh {
         }
     }
 
+    // Tubes and ground shapes -------------------------------------------------------------------------
+
+    /** Colour of a tube at {@code u} along its length (0..1) and {@code v} round it (0..1). */
+    interface TubeColor {
+        void color(double u, double v, float[] out);
+    }
+
+    /**
+     * A flared tube from {@code a} along {@code dir}: radius {@code r0} at the start growing to {@code r1} at the end
+     * (shaped by {@code bell}), coloured per vertex. The body of a directional pulse.
+     */
+    void tube(Vec3 a, Vec3 dir, double length, double r0, double r1, double bell, int rings, int sides, TubeColor fn) {
+        if (length <= 0.01) {
+            return;
+        }
+        Vec3 ref = Math.abs(dir.y) > 0.9 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+        Vec3 bu = dir.cross(ref).normalize();
+        Vec3 bw = dir.cross(bu).normalize();
+        int cols = sides + 1;
+        double[] px = new double[(rings + 1) * cols], py = new double[(rings + 1) * cols], pz = new double[(rings + 1) * cols];
+        float[][] col = new float[(rings + 1) * cols][4];
+        for (int i = 0; i <= rings; i++) {
+            double u = (double) i / rings;
+            double r = r0 + (r1 - r0) * Math.pow(u, bell);
+            for (int j = 0; j <= sides; j++) {
+                double phi = Math.PI * 2 * j / sides;
+                int k = i * cols + j;
+                px[k] = a.x + dir.x * u * length + (bu.x * Math.cos(phi) + bw.x * Math.sin(phi)) * r;
+                py[k] = a.y + dir.y * u * length + (bu.y * Math.cos(phi) + bw.y * Math.sin(phi)) * r;
+                pz[k] = a.z + dir.z * u * length + (bu.z * Math.cos(phi) + bw.z * Math.sin(phi)) * r;
+                fn.color(u, (double) j / sides, col[k]);
+            }
+        }
+        for (int i = 0; i < rings; i++) {
+            for (int j = 0; j < sides; j++) {
+                int p = i * cols + j, q = p + 1, r = p + cols, s = r + 1;
+                v(px[p], py[p], pz[p], col[p]);
+                v(px[r], py[r], pz[r], col[r]);
+                v(px[q], py[q], pz[q], col[q]);
+                v(px[q], py[q], pz[q], col[q]);
+                v(px[r], py[r], pz[r], col[r]);
+                v(px[s], py[s], pz[s], col[s]);
+            }
+        }
+    }
+
+    /** A wedge lying on the ground from a point, opening along {@code angle} (radians in x/z), fading toward its far edge. */
+    void groundWedge(double cx, double y, double cz, double angle, double length, double halfAngle, float[] rgba) {
+        if (rgba[3] <= 0.004f || length <= 0.05) {
+            return;
+        }
+        int n = 14;
+        float[] far = {rgba[0], rgba[1], rgba[2], 0f};
+        for (int i = 0; i < n; i++) {
+            double a0 = angle - halfAngle + 2 * halfAngle * i / n, a1 = angle - halfAngle + 2 * halfAngle * (i + 1) / n;
+            v(cx, y, cz, rgba);
+            v(cx + Math.cos(a0) * length, y, cz + Math.sin(a0) * length, far);
+            v(cx + Math.cos(a1) * length, y, cz + Math.sin(a1) * length, far);
+        }
+    }
+
+    /** A flat elliptical ring on the ground, long axis {@code ra} along {@code angle} and short axis {@code rb} across it. */
+    void groundEllipseRing(double cx, double y, double cz, double angle, double ra, double rb, double width, float[] rgba) {
+        if (rgba[3] <= 0.004f || ra <= 0.05) {
+            return;
+        }
+        double ca = Math.cos(angle), sa = Math.sin(angle);
+        double grow = width / Math.max(ra, rb);
+        int n = 56;
+        float[] edge = {rgba[0], rgba[1], rgba[2], 0f};
+        for (int i = 0; i < n; i++) {
+            double t0 = Math.PI * 2 * i / n, t1 = Math.PI * 2 * (i + 1) / n;
+            double[][] ring = new double[6][];
+            double[] scales = {1 - grow, 1, 1 + grow};
+            for (int k = 0; k < 3; k++) {
+                ring[k] = ellipsePoint(cx, cz, ca, sa, ra * scales[k], rb * scales[k], t0);
+                ring[k + 3] = ellipsePoint(cx, cz, ca, sa, ra * scales[k], rb * scales[k], t1);
+            }
+            // inner-to-middle and middle-to-outer bands, soft at the outer edges
+            quadFlat(ring[0], ring[1], ring[4], ring[3], y, edge, rgba, rgba, edge);
+            quadFlat(ring[1], ring[2], ring[5], ring[4], y, rgba, edge, edge, rgba);
+        }
+    }
+
+    private static double[] ellipsePoint(double cx, double cz, double ca, double sa, double ra, double rb, double t) {
+        double x = Math.cos(t) * ra, z = Math.sin(t) * rb;
+        return new double[]{cx + x * ca - z * sa, cz + x * sa + z * ca};
+    }
+
+    private void quadFlat(double[] a, double[] b, double[] c2, double[] d, double y, float[] ca, float[] cb, float[] cc, float[] cd) {
+        v(a[0], y, a[1], ca);
+        v(b[0], y, b[1], cb);
+        v(c2[0], y, c2[1], cc);
+        v(a[0], y, a[1], ca);
+        v(c2[0], y, c2[1], cc);
+        v(d[0], y, d[1], cd);
+    }
+
     // Boxes ------------------------------------------------------------------------------------------
 
     /**
