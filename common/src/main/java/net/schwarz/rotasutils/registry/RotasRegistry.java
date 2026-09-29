@@ -310,7 +310,7 @@ public final class RotasRegistry {
 
     /** Visual denomination for rotas:gold; wallet balances remain the economic source of truth. */
     public static final RegistrySupplier<Item> GOLD_COIN = ITEMS.register("gold_coin",
-            () -> new net.schwarz.rotasutils.item.GoldCoinItem(new Item.Properties()));
+            () -> new net.schwarz.rotasutils.item.GoldCoinItem(new Item.Properties().stacksTo(1)));
 
     // Refinement materials ------------------------------------------------------------------------
     /**
