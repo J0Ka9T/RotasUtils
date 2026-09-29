@@ -63,6 +63,13 @@ public final class CameraRig {
         return Curves.lerp(baseFov, FOV.at(t), weight(t));
     }
 
+    /** When the pressure wave of a MAX cast lands (seconds since it began), or -1: the camera takes a kick then. */
+    static double kickAt = -1;
+
+    private static double kick(double t) {
+        return kickAt < 0 ? 0 : RedProfile.shakeKick(t - kickAt);
+    }
+
     /** Camera roll in degrees at {@code t}, including the impact and tremor. */
     public static double rollAt(double t, int seed) {
         double weight = weight(t);
@@ -70,7 +77,7 @@ public final class CameraRig {
         int s1 = r.nextInt(1000);
         r.nextInt(1000);
         int s3 = r.nextInt(1000);
-        double charge = RedProfile.shakeCharge(t) * weight, impulse = RedProfile.shakeImpulse(t) * weight;
+        double charge = RedProfile.shakeCharge(t) * weight, impulse = (RedProfile.shakeImpulse(t) + kick(t)) * weight;
         return ROLL.at(t) * weight + charge * 0.9 * Curves.fbm(t * 1.7 + 4, s3) + impulse * 2.6 * Curves.fbm(t * 30.0 + 3, s1);
     }
 
@@ -162,7 +169,7 @@ public final class CameraRig {
 
         // Shake: layered noise (a low tremor and a high buzz that grow with the charge) plus one impact impulse.
         double charge = RedProfile.shakeCharge(t) * weight;
-        double impulse = RedProfile.shakeImpulse(t) * weight;
+        double impulse = (RedProfile.shakeImpulse(t) + kick(t)) * weight;
         Random r = new Random(seed);
         int s1 = r.nextInt(1000), s2 = r.nextInt(1000), s3 = r.nextInt(1000);
         double sway = 0.25 * weight;

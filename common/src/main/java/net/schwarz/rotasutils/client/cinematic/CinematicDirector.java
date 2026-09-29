@@ -35,6 +35,7 @@ public final class CinematicDirector {
         double base = Minecraft.getInstance().options.fov().get();
         double t = cast.time(partialTick);
         CameraRig.Frame frame = cast.frame(partialTick);
+        CameraRig.kickAt = cast.max() && cast.released() ? cast.releaseAt + cast.travelSeconds : -1;
         return CameraRig.shot(t, frame, cast.socketsForCamera(t, frame), cast.followPoint(t), normal, look, base, (int) cast.seed);
     }
 

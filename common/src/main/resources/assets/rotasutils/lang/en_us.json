@@ -3000,7 +3000,7 @@
   "item.rotasutils.red_reversal": "Red Reversal",
   "item.rotasutils.red_reversal.desc": "Right click: a slow, deliberate charge and one violent release.",
   "item.rotasutils.red_reversal_max": "Red Reversal MAX",
-  "item.rotasutils.red_reversal_max.desc": "Right click: the full-output Red. A sigil, a halo, and a blast that erases everything in its path.",
+  "item.rotasutils.red_reversal_max.desc": "Right click: a block of pressure crushed to a point, then let go all at once. It hits twice.",
   "rotasutils.ability.cooldown": "Not ready: %s s",
   "item.rotasutils.zenith": "Zenith",
   "item.rotasutils.zenith.desc": "Every blade that came before, forged into one.",

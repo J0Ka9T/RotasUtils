@@ -71,6 +71,14 @@ public final class ClientCast {
         return max() ? 1.8 : 1.0;
     }
 
+    /** Sound stages of the aftermath already played. */
+    int aftermath;
+
+    /** How long lingering effects last after impact. */
+    public double linger() {
+        return max() ? 7.0 : RedTimings.LINGER;
+    }
+
     public boolean released() {
         return releaseAt >= 0 && impact != null;
     }
@@ -84,7 +92,7 @@ public final class ClientCast {
     public double finishedAt() {
         double end = RedTimings.END;
         if (released()) {
-            end = Math.max(end, releaseAt + travelSeconds + RedTimings.LINGER);
+            end = Math.max(end, releaseAt + travelSeconds + linger());
         }
         return end + 0.5;
     }

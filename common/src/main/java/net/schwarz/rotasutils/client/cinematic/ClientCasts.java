@@ -168,6 +168,9 @@ public final class ClientCasts {
                 cast.impactHandled = true;
                 impactSounds(mc, cast);
             }
+            if (cast.max() && cast.impactHandled) {
+                aftermath(mc, cast, cast.sinceImpact(t));
+            }
             faceTarget(mc, cast, t);
         }
     }
@@ -202,10 +205,9 @@ public final class ClientCasts {
     private static Timeline<ClientCast> buildTimeline(boolean max) {
         Timeline<ClientCast> tl = new Timeline<>();
         if (max) {
-            // MAX: a choir-like swell as the sigil opens, a bell tolling the hold, a roar on release.
-            tl.at(RedTimings.CORE_FORMS, "sigil", c -> play(c, SoundEvents.BEACON_ACTIVATE, 1.0f, 0.5f));
+            // MAX: a low swell as the point forms and builds, silence in the collapse, a roar on release.
+            tl.at(RedTimings.CORE_FORMS, "seed", c -> play(c, SoundEvents.BEACON_ACTIVATE, 0.6f, 0.4f));
             tl.at(RedTimings.CLOSE_UP, "swell", c -> play(c, SoundEvents.END_PORTAL_SPAWN, 0.6f, 0.7f));
-            tl.at(RedTimings.HOLD, "toll", c -> play(c, SoundEvents.BELL_BLOCK, 1.6f, 0.5f));
             tl.at(RedTimings.RELEASE, "roar", c -> play(c, SoundEvents.WITHER_SPAWN, 0.8f, 0.7f));
         }
         tl.at(RedTimings.CORE_FORMS, "core", c -> play(c, SoundEvents.RESPAWN_ANCHOR_CHARGE, 0.5f, 0.6f));
@@ -242,6 +244,25 @@ public final class ClientCasts {
         mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GRAVEL_BREAK, SoundSource.PLAYERS, 2.0f, 0.6f, false);
         if (cast.max()) {
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.DRAGON_FIREBALL_EXPLODE, SoundSource.PLAYERS, 4.0f, 0.4f, false);
+        }
+    }
+
+    private static final double[] AFTERMATH_AT = {0.30, 0.70, 1.60, 2.80};
+
+    /** MAX: the second pulse, then a deep rumble that fades over a few seconds. */
+    private static void aftermath(Minecraft mc, ClientCast cast, double sinceImpact) {
+        if (cast.aftermath >= AFTERMATH_AT.length || sinceImpact < AFTERMATH_AT[cast.aftermath]) {
+            return;
+        }
+        int stage = cast.aftermath++;
+        Vec3 at = cast.impact;
+        if (stage == 0) {
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 3.0f, 1.2f, false);
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 2.0f, 1.9f, false);
+        } else {
+            float v = 2.2f - 0.5f * stage;
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.AMBIENT_BASALT_DELTAS_ADDITIONS.value(), SoundSource.PLAYERS, v, 0.5f, false);
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.WARDEN_HEARTBEAT, SoundSource.PLAYERS, v * 0.7f, 0.5f, false);
         }
     }
 

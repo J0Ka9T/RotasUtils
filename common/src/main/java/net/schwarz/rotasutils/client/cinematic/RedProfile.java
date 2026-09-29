@@ -37,6 +37,93 @@ public final class RedProfile {
         return d;
     }
 
+    // Red MAX ---------------------------------------------------------------------------------------
+    // Same marks as Red (RedTimings), a different body: a marble that grows to a block or more while
+    // pulsing ever faster, then a violent collapse to a point a few centimetres wide, then a calm.
+
+    public static final double MAX_SEED_RADIUS = 0.03;
+    public static final double MAX_CHARGED_RADIUS = 0.72;
+    public static final double MAX_POINT_RADIUS = 0.028;
+    /** Seconds the giant core takes to fall into its point at the hold. */
+    public static final double COLLAPSE = 0.12;
+
+    private static double maxBase(double t) {
+        double k = Curves.window(t, RedTimings.CORE_FORMS, RedTimings.HOLD);
+        return Curves.lerp(MAX_SEED_RADIUS, MAX_CHARGED_RADIUS, Curves.smootherstep(Math.pow(k, 1.3)));
+    }
+
+    private static double pulsePhase(double t) {
+        double tau = t - RedTimings.CORE_FORMS;
+        return 2 * Math.PI * (1.2 * tau + 0.42 * tau * tau); // 1.2 Hz rising to about 4 Hz by the hold
+    }
+
+    /** -1..1 (times how far the charge has come): the core's beat, for lights and distortion to follow. */
+    public static double pulse(double t) {
+        return Math.sin(pulsePhase(t)) * Curves.window(t, RedTimings.CORE_FORMS, RedTimings.HOLD);
+    }
+
+    private static double maxPulse(double t) {
+        double k = Curves.window(t, RedTimings.CORE_FORMS, RedTimings.HOLD);
+        double s = Math.sin(pulsePhase(t));
+        // expands slightly, compresses again, expands harder: a beat that deepens as the charge builds
+        return 1 + (0.03 + 0.14 * k) * (s > 0 ? s : 0.6 * s);
+    }
+
+    public static double coreRadius(double t, boolean max) {
+        if (!max) {
+            return coreRadius(t);
+        }
+        if (t < RedTimings.CORE_FORMS) {
+            return 0;
+        }
+        if (t < RedTimings.HOLD) {
+            return maxBase(t) * maxPulse(t);
+        }
+        double before = maxBase(RedTimings.HOLD) * maxPulse(RedTimings.HOLD);
+        return Curves.lerp(before, MAX_POINT_RADIUS, Curves.snap(Curves.window(t, RedTimings.HOLD, RedTimings.HOLD + COLLAPSE)));
+    }
+
+    /** Strength of the red light: floods the scene at the peak, all but gone in the calm, one overbright frame. */
+    public static double light(double t, boolean max) {
+        if (!max) {
+            return light(t);
+        }
+        return Curves.Track.of(0, 0, 0.7, 0.02, 1.5, 0.15, 2.5, 0.45, 3.3, 0.8, 3.95, 1.0, 4.0, 1.0, 4.12, 0.03, 4.39, 0.03,
+                4.4, 2.6, 4.46, 1.2, 4.7, 0.4, 5.6, 0.18, 7.5, 0.06, 10, 0).at(t);
+    }
+
+    /** Screen-space bend: builds through the charge, all but vanishes in the calm, spikes on release. */
+    public static double distortion(double t, boolean max) {
+        if (!max) {
+            return distortion(t);
+        }
+        return Curves.Track.of(0, 0, 1.2, 0, 1.8, 0.2, 3.0, 0.55, 3.95, 0.95, 4.0, 1.0, 4.12, 0.14, 4.39, 0.12, 4.4, 1.0,
+                4.55, 0.55, 5.2, 0.2, 7, 0.05, 9, 0).at(t);
+    }
+
+    public static double chroma(double t, boolean max) {
+        if (!max) {
+            return chroma(t);
+        }
+        return Curves.Track.of(0, 0, 3.0, 0, 3.95, 0.15, 4.0, 0.3, 4.12, 0, 4.39, 0, 4.4, 1.0, 4.56, 0.2, 5.1, 0).at(t);
+    }
+
+    public static double vignette(double t, boolean max) {
+        if (!max) {
+            return vignette(t);
+        }
+        return Curves.Track.of(0, 0, 2.0, 0, 3.95, 0.6, 4.0, 0.6, 4.12, 0, 4.39, 0, 4.4, 0.9, 4.8, 0.2, 6, 0).at(t);
+    }
+
+    /** Camera kick {@code dt} seconds after the pressure wave arrives: a hard backward hit, then the second pulse's. */
+    public static double shakeKick(double dt) {
+        if (dt < 0) {
+            return 0;
+        }
+        double k = 1.6 * Math.exp(-dt / 0.09);
+        return dt >= 0.3 ? k + Math.exp(-(dt - 0.3) / 0.06) : k;
+    }
+
     /** Radius of the charging core in blocks; 0 before it forms, the pressure volume's job after release. */
     public static double coreRadius(double t) {
         if (t < RedTimings.CORE_FORMS) {

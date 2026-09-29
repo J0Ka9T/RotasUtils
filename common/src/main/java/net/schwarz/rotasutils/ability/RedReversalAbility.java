@@ -133,7 +133,7 @@ public final class RedReversalAbility implements AbilityDefinition {
         }
         c.after(travel, () -> blast(c, impact, travelDir, 1.0));
         if (max) {
-            c.after(travel + 12, () -> blast(c, impact, travelDir, 0.45));
+            c.after(travel + 6, () -> blast(c, impact, travelDir, 0.45));
         }
     }
 

@@ -102,4 +102,25 @@ class RedCinematicTest {
             assertTrue(s.position().distanceTo(feet.add(0, 1.6, 0)) < 40, "t=" + t);
         }
     }
+
+    @Test
+    void maxIsAMarbleThatSwellsPulsesThenCollapsesToAPointAndStaysCalm() {
+        assertEquals(RedProfile.MAX_SEED_RADIUS, RedProfile.coreRadius(RedTimings.CORE_FORMS + 1e-6, true), 8e-3);
+        double peak = 0;
+        boolean shrank = false;
+        double last = 0;
+        for (double t = 0.8; t < RedTimings.HOLD; t += 0.01) {
+            double r = RedProfile.coreRadius(t, true);
+            peak = Math.max(peak, r);
+            shrank |= r < last - 1e-4;
+            last = r;
+        }
+        assertTrue(peak > 0.6 && peak < 0.95, "block-wide at the peak: " + peak);
+        assertTrue(shrank, "it pulses rather than scaling smoothly");
+        assertEquals(RedProfile.MAX_POINT_RADIUS, RedProfile.coreRadius(RedTimings.HOLD + 0.2, true), 1e-3);
+        assertEquals(RedProfile.MAX_POINT_RADIUS, RedProfile.coreRadius(RedTimings.RELEASE - 0.01, true), 1e-3);
+        assertTrue(RedProfile.light(RedTimings.HOLD - 0.02, true) > 0.9 && RedProfile.light(RedTimings.HOLD + 0.2, true) < 0.1,
+                "the red light floods the scene, then almost disappears");
+        assertTrue(RedProfile.light(RedTimings.RELEASE, true) > 2, "one overbright frame on release");
+    }
 }
