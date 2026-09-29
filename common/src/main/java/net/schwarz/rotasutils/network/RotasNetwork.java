@@ -717,6 +717,9 @@ public final class RotasNetwork {
                 && net.schwarz.rotasutils.item.ItemRefine.categoryOf(held) == net.schwarz.rotasutils.item.ItemRefine.Category.WEAPON
                 && net.schwarz.rotasutils.server.StationService.near(player,
                         net.schwarz.rotasutils.registry.RotasRegistry.RUNE_ALTAR.get());
+        String station = net.schwarz.rotasutils.server.RuneService.stationRefusal(player, data);
+        payload.putString("station_refusal", station);
+        payload.putBoolean("station", station.isEmpty());
         payload.putBoolean("blocked", !refusal.isEmpty() && !underRefined);
         net.minecraft.nbt.ListTag slots = new net.minecraft.nbt.ListTag();
         for (int i = 0; i < rules.slotLevels.length; i++) {
@@ -726,11 +729,15 @@ public final class RotasNetwork {
             slot.putLong("cost", rules.goldPerSlot[i]);
             var rune = net.schwarz.rotasutils.item.ItemRunes.get(held, i);
             slot.putString("rune", rune == null ? "" : rune.id());
+            slot.putInt("tier", net.schwarz.rotasutils.item.ItemRunes.tier(held, i));
             slots.add(slot);
         }
         payload.put("slots", slots);
         for (var rune : net.schwarz.rotasutils.core.RuneType.values()) {
-            payload.putInt("have_" + rune.id(), net.schwarz.rotasutils.server.RuneService.carried(player, rune));
+            for (int tier = 1; tier <= net.schwarz.rotasutils.item.ItemRunes.MAX_TIER; tier++) {
+                payload.putInt("have_" + rune.id() + "_" + tier,
+                        net.schwarz.rotasutils.server.RuneService.carried(player, rune, tier));
+            }
         }
         payload.putLong("gold", data.progress(player.getUUID()).rpg().currency(season.currency));
         return payload;
@@ -803,6 +810,7 @@ public final class RotasNetwork {
             tag.putString("message", quote.message());
             payload.put(enriched ? "enriched" : "plain", tag);
         }
+        payload.merge(net.schwarz.rotasutils.server.ForgeSessions.view(player));
         payload.put("item", player.getMainHandItem().save(new CompoundTag()));
         payload.putInt("max_level", rules == null ? 0 : rules.maxLevel);
         payload.putInt("safe_level", rules == null ? 0 : rules.safeLevel);

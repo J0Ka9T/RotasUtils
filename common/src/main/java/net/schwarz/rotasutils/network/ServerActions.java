@@ -301,7 +301,12 @@ public final class ServerActions {
             }
             case "rune_inscribe" -> {
                 net.schwarz.rotasutils.server.RuneService.inscribe(player, data, payload.getInt("slot"),
-                        payload.getString("rune"));
+                        payload.getString("rune"), payload.getInt("tier"));
+                RotasNetwork.openRunes(player);
+            }
+            case "rune_fuse" -> {
+                net.schwarz.rotasutils.server.RuneService.fuse(player, data, payload.getString("rune"),
+                        payload.getInt("tier"));
                 RotasNetwork.openRunes(player);
             }
             case "card_insert" -> {
@@ -328,6 +333,17 @@ public final class ServerActions {
                     RotasNetwork.feedback(player, false, outcome.message());
                 }
                 // The bench always reopens on the fresh numbers, so a broken or levelled item is visible at once.
+                RotasNetwork.openRefine(player);
+            }
+            case "forge_begin" -> {
+                net.schwarz.rotasutils.server.ForgeSessions.begin(player, data,
+                        new net.schwarz.rotasutils.server.RefineService.Options(
+                                payload.getBoolean("enriched"), payload.getBoolean("protection"),
+                                payload.getBoolean("blessing"), payload.getBoolean("certificate")));
+                RotasNetwork.openRefine(player);
+            }
+            case "forge_strike" -> {
+                net.schwarz.rotasutils.server.ForgeSessions.strike(player, data);
                 RotasNetwork.openRefine(player);
             }
             case "open_skills" -> {

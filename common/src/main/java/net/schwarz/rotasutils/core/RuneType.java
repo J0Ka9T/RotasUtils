@@ -25,6 +25,15 @@ public enum RuneType {
     FURY(ChatFormatting.GOLD, 0.12, 0);
 
     public static final double FURY_MULTIPLIER = 1.5;
+    /** Runes of one tier fused at the altar into one rune of the next. */
+    public static final int FUSE_COUNT = 3;
+    /** Gold to fuse tier 1 into 2, and tier 2 into 3. */
+    private static final long[] FUSE_COST = {300, 1500};
+
+    /** Gold to fuse runes of {@code tier} into the next tier; 0 when there is no next tier. */
+    public static long fuseCost(int tier) {
+        return tier >= 1 && tier <= FUSE_COST.length ? FUSE_COST[tier - 1] : 0;
+    }
 
     private final ChatFormatting color;
     private final double perRune;

@@ -59,6 +59,14 @@ public class RpgMaterialItem extends Item {
         return net.minecraft.world.InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
+    /** A tiered rune shows its tier after its name. */
+    @Override
+    public Component getName(ItemStack stack) {
+        int tier = ItemRunes.tierOf(stack);
+        return tier > 1 && stack.hasTag() ? Component.empty().append(super.getName(stack)).append(" " + ItemRunes.numeral(tier))
+                : super.getName(stack);
+    }
+
     @Override
     public boolean isFoil(ItemStack stack) {
         return glint || super.isFoil(stack);
@@ -67,6 +75,11 @@ public class RpgMaterialItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Level level, List<Component> lines, TooltipFlag flag) {
         super.appendHoverText(stack, level, lines, flag);
+        int tier = ItemRunes.tierOf(stack);
+        if (tier > 1 && stack.hasTag()) {
+            lines.add(Component.literal(ThaiText.t("rotasutils.rune.tier_line", ItemRunes.numeral(tier),
+                    ItemRunes.power(tier))).withStyle(style));
+        }
         if (ThaiText.has(descriptionKey)) {
             for (String line : ThaiText.t(descriptionKey).split("\\|")) {
                 lines.add(Component.literal(line).withStyle(style));

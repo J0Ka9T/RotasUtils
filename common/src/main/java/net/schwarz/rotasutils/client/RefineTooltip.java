@@ -45,11 +45,15 @@ public final class RefineTooltip {
     /** Each inscribed rune in slot order, in its own colour, with what it does. */
     private static void appendRunes(ItemStack stack, List<Component> lines) {
         List<net.schwarz.rotasutils.core.RuneType> runes = net.schwarz.rotasutils.item.ItemRunes.read(stack);
-        for (net.schwarz.rotasutils.core.RuneType rune : runes) {
+        for (int i = 0; i < runes.size(); i++) {
+            net.schwarz.rotasutils.core.RuneType rune = runes.get(i);
             if (rune == null) {
                 continue;
             }
-            lines.add(Component.literal(L.t("rotasutils.rune.tooltip", L.t("item.rotasutils." + rune.itemPath()),
+            int tier = net.schwarz.rotasutils.item.ItemRunes.tier(stack, i);
+            String name = L.t("item.rotasutils." + rune.itemPath())
+                    + (tier > 1 ? " " + net.schwarz.rotasutils.item.ItemRunes.numeral(tier) : "");
+            lines.add(Component.literal(L.t("rotasutils.rune.tooltip", name,
                     L.t("rotasutils.rune.effect." + rune.id()))).withStyle(rune.color()));
         }
     }

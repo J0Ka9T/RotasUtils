@@ -57,6 +57,11 @@ public final class RefineService {
 
     /** What an attempt on the held item would cost and how likely it is, without spending anything. */
     public static Quote quote(ServerPlayer player, RotasData data, Options options) {
+        return quote(player, data, options, 0);
+    }
+
+    /** As {@link #quote(ServerPlayer, RotasData, Options)}, with the chance the forge timing game earned added. */
+    public static Quote quote(ServerPlayer player, RotasData data, Options options, double extraChance) {
         SeasonRules rules = SeasonService.rules(data);
         SeasonRules.RefineRules refine = rules.refine;
         if (refine == null || !refine.enabled) {
@@ -76,7 +81,7 @@ public final class RefineService {
         }
         int target = level + 1;
         double chance = options.certificate() ? 1.0
-                : RefineMath.chance(refine.chances, refine.safeLevel, target, bonus(refine, options));
+                : RefineMath.chance(refine.chances, refine.safeLevel, target, bonus(refine, options) + Math.max(0, extraChance));
         String ore = oreId(refine, category, options.enriched());
         return new Quote(true, category, level, target, chance,
                 RefineMath.cost(refine.goldPerAttempt, refine.goldGrowth, target), ore, "");
@@ -87,7 +92,12 @@ public final class RefineService {
      * the caller only has to report the outcome.
      */
     public static Outcome refine(ServerPlayer player, RotasData data, Options options) {
-        Quote quote = quote(player, data, options);
+        return refine(player, data, options, 0);
+    }
+
+    /** One attempt with {@code extraChance} added to the odds (the forge timing game's bonus). */
+    public static Outcome refine(ServerPlayer player, RotasData data, Options options, double extraChance) {
+        Quote quote = quote(player, data, options, extraChance);
         if (!quote.possible()) {
             return Outcome.refused(quote.message());
         }
@@ -96,25 +106,15 @@ public final class RefineService {
         ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
         PlayerProgress progress = data.progress(player.getUUID());
 
-        Item ore = item(quote.ore());
-        if (ore == Items.AIR || count(player, ore) <= 0) {
-            return Outcome.refused(ThaiText.t("rotasutils.msg.refine.need_ore", name(ore, quote.ore())));
+        String lack = missing(player, data, options, quote);
+        if (!lack.isEmpty()) {
+            return Outcome.refused(lack);
         }
+        Item ore = item(quote.ore());
         Item protection = options.protection() ? RotasRegistry.PROTECTION_SCROLL.get() : null;
         Item blessing = options.blessing() ? RotasRegistry.BLESSING_SCROLL.get() : null;
         Item certificate = options.certificate() ? RotasRegistry.CERTIFICATE_SCROLL.get() : null;
-        for (Item scroll : new Item[]{protection, blessing, certificate}) {
-            if (scroll != null && count(player, scroll) <= 0) {
-                return Outcome.refused(ThaiText.t("rotasutils.msg.refine.need_scroll",
-                        Component.translatable(scroll.getDescriptionId()).getString()));
-            }
-        }
         long cost = quote.cost();
-        if (cost > 0 && progress.rpg().currency(rules.currency) < cost) {
-            return Outcome.refused(ThaiText.t("rotasutils.msg.refine.need_gold", cost,
-                    progress.rpg().currency(rules.currency)));
-        }
-
         net.minecraft.core.BlockPos forge = StationService.find(player, RotasRegistry.REFINE_FORGE.get());
         // Everything is in hand: take the price, then roll. Nothing above this line has changed the world.
         if (cost > 0) {
@@ -155,6 +155,29 @@ public final class RefineService {
         data.audit(player.getGameProfile().getName() + " refine " + quote.category().key() + " "
                 + quote.level() + "->" + next + " " + result.name().toLowerCase(Locale.ROOT) + " cost=" + cost);
         return new Outcome(true, result, next, cost, ThaiText.t(result.messageKey(), itemName, next));
+    }
+
+    /** What is missing for an attempt (ore, scrolls, gold), or an empty string when everything is in hand. */
+    public static String missing(ServerPlayer player, RotasData data, Options options, Quote quote) {
+        SeasonRules rules = SeasonService.rules(data);
+        Item ore = item(quote.ore());
+        if (ore == Items.AIR || count(player, ore) <= 0) {
+            return ThaiText.t("rotasutils.msg.refine.need_ore", name(ore, quote.ore()));
+        }
+        Item protection = options.protection() ? RotasRegistry.PROTECTION_SCROLL.get() : null;
+        Item blessing = options.blessing() ? RotasRegistry.BLESSING_SCROLL.get() : null;
+        Item certificate = options.certificate() ? RotasRegistry.CERTIFICATE_SCROLL.get() : null;
+        for (Item scroll : new Item[]{protection, blessing, certificate}) {
+            if (scroll != null && count(player, scroll) <= 0) {
+                return ThaiText.t("rotasutils.msg.refine.need_scroll",
+                        Component.translatable(scroll.getDescriptionId()).getString());
+            }
+        }
+        long have = data.progress(player.getUUID()).rpg().currency(rules.currency);
+        if (quote.cost() > 0 && have < quote.cost()) {
+            return ThaiText.t("rotasutils.msg.refine.need_gold", quote.cost(), have);
+        }
+        return "";
     }
 
     /** The strike at the anvil: a bright hit when it holds, a red one when it fails, a blast when the item shatters. */

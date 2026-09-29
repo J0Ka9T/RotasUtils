@@ -44,8 +44,8 @@ public final class RuneService {
         return RuneType.slots(ItemRefine.level(stack), rules.slotLevels);
     }
 
-    /** Why the held item cannot take runes here at all, or an empty string when it can. */
-    public static String refusal(ServerPlayer player, RotasData data) {
+    /** Why the altar cannot be used at all (runes off, no altar in reach), or an empty string. */
+    public static String stationRefusal(ServerPlayer player, RotasData data) {
         SeasonRules.RuneRules rules = SeasonService.rules(data).runes;
         if (rules == null || !rules.enabled) {
             return ThaiText.t("rotasutils.msg.rune.disabled");
@@ -53,6 +53,16 @@ public final class RuneService {
         if (!StationService.near(player, RotasRegistry.RUNE_ALTAR.get())) {
             return ThaiText.t("rotasutils.msg.rune.need_altar");
         }
+        return "";
+    }
+
+    /** Why the held item cannot take runes here at all, or an empty string when it can. */
+    public static String refusal(ServerPlayer player, RotasData data) {
+        String station = stationRefusal(player, data);
+        if (!station.isEmpty()) {
+            return station;
+        }
+        SeasonRules.RuneRules rules = SeasonService.rules(data).runes;
         ItemStack held = player.getMainHandItem();
         if (ItemRefine.categoryOf(held) != ItemRefine.Category.WEAPON) {
             return ThaiText.t("rotasutils.msg.rune.not_weapon");
@@ -65,7 +75,7 @@ public final class RuneService {
     }
 
     /** Inscribes {@code rune} into {@code slot} of the held weapon. True when it was written. */
-    public static boolean inscribe(ServerPlayer player, RotasData data, int slot, String runeId) {
+    public static boolean inscribe(ServerPlayer player, RotasData data, int slot, String runeId, int tier) {
         String refusal = refusal(player, data);
         if (!refusal.isEmpty()) {
             RotasNetwork.feedback(player, false, refusal);
@@ -79,12 +89,13 @@ public final class RuneService {
             return false;
         }
         Item runeItem = RotasRegistry.RUNES.get(rune).get();
-        if (count(player, runeItem) <= 0) {
+        tier = ItemRunes.clampTier(tier);
+        if (count(player, runeItem, tier) <= 0) {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.rune.need_rune",
-                    runeItem.getDescription().getString()));
+                    runeItem.getDescription().getString() + " " + ItemRunes.numeral(tier)));
             return false;
         }
-        if (ItemRunes.get(weapon, slot) == rune) {
+        if (ItemRunes.get(weapon, slot) == rune && ItemRunes.tier(weapon, slot) == tier) {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.rune.same", runeItem.getDescription().getString()));
             return false;
         }
@@ -99,11 +110,12 @@ public final class RuneService {
         if (cost > 0) {
             progress.rpg().currency(rules.currency, -cost);
         }
-        take(player, runeItem);
+        take(player, runeItem, tier, 1);
         RuneType replaced = ItemRunes.get(weapon, slot);
-        ItemRunes.set(weapon, slot, rune);
+        int replacedTier = ItemRunes.tier(weapon, slot);
+        ItemRunes.set(weapon, slot, rune, tier);
         if (replaced != null) {
-            ItemStack back = new ItemStack(RotasRegistry.RUNES.get(replaced).get());
+            ItemStack back = ItemRunes.stack(replaced, replacedTier, 1);
             if (!player.getInventory().add(back)) {
                 player.drop(back, false);
             }
@@ -112,7 +124,7 @@ public final class RuneService {
         progress.markDirty();
 
         String weaponName = weapon.getHoverName().getString();
-        String runeName = runeItem.getDescription().getString();
+        String runeName = runeItem.getDescription().getString() + " " + ItemRunes.numeral(tier);
         String message = ThaiText.t("rotasutils.msg.rune.inscribed", runeName, weaponName, slot + 1);
         player.sendSystemMessage(ThaiText.c("rotasutils.msg.rune.inscribed", runeName, weaponName, slot + 1));
         RotasNetwork.feedback(player, true, message);
@@ -129,8 +141,67 @@ public final class RuneService {
         player.level().playSound(null, player.blockPosition(), SoundEvents.ENCHANTMENT_TABLE_USE,
                 SoundSource.PLAYERS, 1.0f, 0.9f);
         RotasNetwork.syncProgress(player);
-        data.audit(player.getGameProfile().getName() + " rune " + rune.id() + " slot=" + (slot + 1)
+        data.audit(player.getGameProfile().getName() + " rune " + rune.id() + " t" + tier + " slot=" + (slot + 1)
                 + (replaced == null ? "" : " replaced=" + replaced.id()) + " cost=" + cost);
+        return true;
+    }
+
+    /** Fuses {@link RuneType#FUSE_COUNT} runes of {@code tier} into one of the next tier. True when it was done. */
+    public static boolean fuse(ServerPlayer player, RotasData data, String runeId, int tier) {
+        String refusal = stationRefusal(player, data);
+        if (!refusal.isEmpty()) {
+            RotasNetwork.feedback(player, false, refusal);
+            return false;
+        }
+        RuneType rune = RuneType.byId(runeId);
+        if (rune == null || tier < 1 || tier >= ItemRunes.MAX_TIER) {
+            RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.rune.max_tier"));
+            return false;
+        }
+        Item runeItem = RotasRegistry.RUNES.get(rune).get();
+        if (count(player, runeItem, tier) < RuneType.FUSE_COUNT) {
+            RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.rune.need_fuse", RuneType.FUSE_COUNT,
+                    runeItem.getDescription().getString() + " " + ItemRunes.numeral(tier)));
+            return false;
+        }
+        SeasonRules rules = SeasonService.rules(data);
+        long cost = RuneType.fuseCost(tier);
+        PlayerProgress progress = data.progress(player.getUUID());
+        if (cost > 0 && progress.rpg().currency(rules.currency) < cost) {
+            RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.rune.need_gold", cost,
+                    progress.rpg().currency(rules.currency)));
+            return false;
+        }
+        if (cost > 0) {
+            progress.rpg().currency(rules.currency, -cost);
+        }
+        take(player, runeItem, tier, RuneType.FUSE_COUNT);
+        ItemStack fused = ItemRunes.stack(rune, tier + 1, 1);
+        if (!player.getInventory().add(fused)) {
+            player.drop(fused, false);
+        }
+        data.setDirty();
+        progress.markDirty();
+        String name = runeItem.getDescription().getString() + " " + ItemRunes.numeral(tier + 1);
+        String message = ThaiText.t("rotasutils.msg.rune.fused", name);
+        player.sendSystemMessage(ThaiText.c("rotasutils.msg.rune.fused", name));
+        RotasNetwork.feedback(player, true, message);
+        net.minecraft.core.BlockPos altar = StationService.find(player, RotasRegistry.RUNE_ALTAR.get());
+        if (altar != null) {
+            net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atCenterOf(altar).add(0, 1.2, 0);
+            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
+                    colourOf(rune), at, 1.2f + 0.5f * tier, 14);
+            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.BURST,
+                    net.schwarz.rotasutils.entity.RiftFx.PRISM, at, 1.0f + 0.4f * tier, 20);
+            if (tier + 1 >= ItemRunes.MAX_TIER) {
+                net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.SHOCKWAVE,
+                        colourOf(rune), at.subtract(0, 1.0, 0), 4f, 20);
+            }
+        }
+        player.level().playSound(null, player.blockPosition(), SoundEvents.ENCHANTMENT_TABLE_USE,
+                SoundSource.PLAYERS, 1.0f, 1.3f);
+        RotasNetwork.syncProgress(player);
+        data.audit(player.getGameProfile().getName() + " rune fuse " + rune.id() + " t" + tier + "->t" + (tier + 1) + " cost=" + cost);
         return true;
     }
 
@@ -229,10 +300,10 @@ public final class RuneService {
         return chance > 0 && attacker.getRandom().nextDouble() < chance;
     }
 
-    private static int count(ServerPlayer player, Item item) {
+    private static int count(ServerPlayer player, Item item, int tier) {
         int total = 0;
         for (ItemStack stack : player.getInventory().items) {
-            if (stack.is(item)) {
+            if (stack.is(item) && ItemRunes.tierOf(stack) == tier) {
                 total += stack.getCount();
             }
         }
@@ -240,17 +311,22 @@ public final class RuneService {
     }
 
     /** Main inventory only, like the refine bench, so nothing is pulled out of an armour slot. */
-    private static void take(ServerPlayer player, Item item) {
+    private static void take(ServerPlayer player, Item item, int tier, int amount) {
+        int left = amount;
         for (ItemStack stack : player.getInventory().items) {
-            if (stack.is(item)) {
-                stack.shrink(1);
+            if (left <= 0) {
                 return;
+            }
+            if (stack.is(item) && ItemRunes.tierOf(stack) == tier) {
+                int taken = Math.min(left, stack.getCount());
+                stack.shrink(taken);
+                left -= taken;
             }
         }
     }
 
     /** How many of this rune the player carries, for the altar screen. */
-    public static int carried(ServerPlayer player, RuneType rune) {
-        return count(player, RotasRegistry.RUNES.get(rune).get());
+    public static int carried(ServerPlayer player, RuneType rune, int tier) {
+        return count(player, RotasRegistry.RUNES.get(rune).get(), tier);
     }
 }
