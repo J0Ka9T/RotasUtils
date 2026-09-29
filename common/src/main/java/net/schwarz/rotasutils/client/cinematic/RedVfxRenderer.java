@@ -230,10 +230,6 @@ public final class RedVfxRenderer {
         } else {
             double dt = t - RedTimings.RELEASE;
             Vec3 o = d.releaseCore();
-            if (dt < 0.4) {
-                double r = RedProfile.pressureRadius(dt), a = RedProfile.pressureAlpha(dt);
-                m.sphere(o.x, o.y, o.z, r * 0.6, 10, 16, flat(0.03f, 0.0f, 0.01f, 0.9 * a));
-            }
             if (d.lod() <= 1 && dt < 1.2) {
                 shockwaveDust(m, d, dt);
             }
