@@ -132,11 +132,9 @@ public final class RuneService {
                 40, 0.5, 0.6, 0.5, 0.6);
         net.minecraft.core.BlockPos altar = StationService.find(player, RotasRegistry.RUNE_ALTAR.get());
         if (altar != null) {
-            net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atCenterOf(altar).add(0, 1.0, 0);
-            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
-                    colourOf(rune), at, 1.5f, 14);
-            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.BURST,
-                    colourOf(rune), at, 1.0f, 18);
+            net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atBottomCenterOf(altar).add(0, 0.8, 0);
+            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.ALTAR_SUCCESS,
+                    colourOf(rune), at, 0.9f + 0.25f * tier, 52);
         }
         player.level().playSound(null, player.blockPosition(), SoundEvents.ENCHANTMENT_TABLE_USE,
                 SoundSource.PLAYERS, 1.0f, 0.9f);
@@ -188,15 +186,10 @@ public final class RuneService {
         RotasNetwork.feedback(player, true, message);
         net.minecraft.core.BlockPos altar = StationService.find(player, RotasRegistry.RUNE_ALTAR.get());
         if (altar != null) {
-            net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atCenterOf(altar).add(0, 1.2, 0);
-            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
-                    colourOf(rune), at, 1.2f + 0.5f * tier, 14);
-            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.BURST,
-                    net.schwarz.rotasutils.entity.RiftFx.PRISM, at, 1.0f + 0.4f * tier, 20);
-            if (tier + 1 >= ItemRunes.MAX_TIER) {
-                net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.SHOCKWAVE,
-                        colourOf(rune), at.subtract(0, 1.0, 0), 4f, 20);
-            }
+            net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atBottomCenterOf(altar).add(0, 0.8, 0);
+            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.ALTAR_SUCCESS,
+                    tier + 1 >= ItemRunes.MAX_TIER ? net.schwarz.rotasutils.entity.RiftFx.PRISM : colourOf(rune), at,
+                    1.2f + 0.4f * tier, 60);
         }
         player.level().playSound(null, player.blockPosition(), SoundEvents.ENCHANTMENT_TABLE_USE,
                 SoundSource.PLAYERS, 1.0f, 1.3f);

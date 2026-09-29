@@ -190,13 +190,9 @@ public final class RefineService {
         net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atCenterOf(forge).add(0, 0.9, 0);
         if (result.success()) {
             boolean grand = refine.announceFrom > 0 && level >= refine.announceFrom;
-            net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
-                    grand ? net.schwarz.rotasutils.entity.RiftFx.PRISM : net.schwarz.rotasutils.entity.RiftFx.GOLD, at,
-                    grand ? 2.4f : 1.4f, grand ? 18 : 12);
-            if (grand) {
-                net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.SHOCKWAVE,
-                        net.schwarz.rotasutils.entity.RiftFx.GOLD, at.subtract(0, 0.8, 0), 5f, 22);
-            }
+            net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.FORGE_SUCCESS,
+                    grand ? net.schwarz.rotasutils.entity.RiftFx.PRISM : net.schwarz.rotasutils.entity.RiftFx.GOLD,
+                    net.minecraft.world.phys.Vec3.atCenterOf(forge).add(0, 0.5, 0), grand ? 1.8f : 1.0f, grand ? 46 : 36);
             world.playSound(null, forge, SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.9f, 1.3f);
         } else {
             net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,

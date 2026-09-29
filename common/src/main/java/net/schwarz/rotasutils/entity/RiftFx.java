@@ -52,7 +52,11 @@ public final class RiftFx {
         /** Its last light: a column into the heavens and four rings, all colours. */
         APOTHEOSIS,
         /** Anime-style hit: white impact frame, flat starburst, speed lines and a hard ring at {@code a}; {@code size} is its radius. */
-        IMPACT
+        IMPACT,
+        /** A refinement holding at the forge: slag crown, molten pillar, ground ring, sparks arcing down. All in world space. */
+        FORGE_SUCCESS,
+        /** An inscription or fusion taking at the altar: a gem forming, shattering into tumbling shards, a spiral of light. */
+        ALTAR_SUCCESS
     }
 
     /** Client-side receiver of effects. */

@@ -76,6 +76,8 @@ public final class RiftFxRenderer {
             case GATHER -> new Gather(colour, a, size, life > 0 ? life : 30);
             case APOTHEOSIS -> new Apotheosis(a, size, life > 0 ? life : 110);
             case IMPACT -> new Impact(colour, a, size, life > 0 ? life : 12);
+            case FORGE_SUCCESS -> new ForgeSuccess(colour, a, size, life > 0 ? life : 36);
+            case ALTAR_SUCCESS -> new AltarSuccess(colour, a, size, life > 0 ? life : 52);
         };
     }
 
@@ -714,6 +716,142 @@ public final class RiftFxRenderer {
         }
     }
 
+    /**
+     * A refinement holding at the forge, built from real 3D shapes rather than screen-facing sprites: a
+     * crown of slag spikes thrown out and up from the anvil, a tapering column of molten light, a ring
+     * rolling out along the ground, and sparks that arc up and fall back.
+     */
+    private static final class ForgeSuccess extends Effect {
+        private final float[] spin = new float[14];
+
+        ForgeSuccess(int colour, Vec3 a, float size, int life) {
+            super(colour, a, size, life);
+            for (int i = 0; i < spin.length; i++) {
+                spin[i] = RANDOM.nextFloat() * 0.5f - 0.25f;
+            }
+            for (int n = 0; n < 46; n++) {
+                double ang = RANDOM.nextDouble() * Math.PI * 2;
+                double out = 0.06 + RANDOM.nextDouble() * 0.16 * size;
+                mote(a.x, a.y + 0.1, a.z, Math.cos(ang) * out, 0.25 + RANDOM.nextDouble() * 0.35 * size, Math.sin(ang) * out,
+                        RANDOM.nextInt(3) == 0 ? RiftFx.WHITE : RiftFx.GOLD, 0.11f + RANDOM.nextFloat() * 0.08f,
+                        26f + RANDOM.nextFloat() * 14f, 0.97f, -0.018f, 0f, true);
+            }
+        }
+
+        @Override
+        void renderLight(Batch batch, float t) {
+            float k = t / life;
+            float rise = ease(Math.min(1f, t / 6f));
+            float fade = 1f - k * k;
+            float[] hot = {1f, 0.97f, 0.85f};
+            float[] ember = {1f, 0.55f, 0.14f};
+            float[] c = colour == RiftFx.PRISM ? colour(t * 0.05f) : ember;
+            // A flash where the hammer lands.
+            if (t < 4f) {
+                batch.glow(a.x, a.y + 0.3, a.z, size * 1.6f, 1f, 0.8f, 0.4f, 1f - t / 4f);
+            }
+            // Slag crown: spikes thrown outward and up, fanning out as they age.
+            for (int i = 0; i < spin.length; i++) {
+                double ang = Math.PI * 2 * i / spin.length + spin[i] * t * 0.1;
+                double tilt = 0.55 + 0.25 * ((i & 1) == 0 ? 1 : 0);
+                double dx = Math.cos(ang) * (1 - tilt * 0.5), dz = Math.sin(ang) * (1 - tilt * 0.5);
+                float len = size * (0.7f + 1.5f * rise) * ((i & 1) == 0 ? 1f : 0.7f) * (1f - 0.4f * k);
+                batch.spike(a.x, a.y + 0.05, a.z, dx, tilt, dz, len, 0.11f * size * (1f - 0.5f * k), c, 0.85f * fade, 0f);
+                batch.spike(a.x, a.y + 0.05, a.z, dx, tilt, dz, len * 0.7f, 0.05f * size, hot, 0.95f * fade, 0f);
+            }
+            // The molten column.
+            float height = (1.2f + 3.2f * rise) * size;
+            float radius = (0.22f + 0.18f * (1f - k)) * size;
+            batch.prism(a.x, a.y, a.z, radius, radius * 0.25f, height, 10, c, 0.6f * fade, 0f);
+            batch.prism(a.x, a.y, a.z, radius * 0.4f, radius * 0.08f, height * 1.15f, 8, hot, 0.9f * fade, 0f);
+            // Ring rolling out on the ground.
+            batch.flatRing(a.x, a.y + 0.03, a.z, size * (0.5f + 3.2f * ease(k)), 0.18f * size * (1f - k * 0.6f), RiftFx.GOLD,
+                    0.85f * fade, t);
+        }
+    }
+
+    /**
+     * An inscription or fusion taking at the altar, again in 3D: a cut gem grows over the plate and
+     * spins, then bursts into shards that tumble outward, with a helix of light climbing past it and a
+     * tapering beam that swells and thins. No flat circles.
+     */
+    private static final class AltarSuccess extends Effect {
+        private static final int SHARDS = 9;
+        private final float[] shardYaw = new float[SHARDS];
+        private final float[] shardSpeed = new float[SHARDS];
+        private final double[][] shardDir = new double[SHARDS][];
+        private final int burstAt;
+
+        AltarSuccess(int colour, Vec3 a, float size, int life) {
+            super(colour, a, size, life);
+            burstAt = (int) (life * 0.55f);
+            for (int i = 0; i < SHARDS; i++) {
+                shardYaw[i] = RANDOM.nextFloat() * 6.28f;
+                shardSpeed[i] = 0.25f + RANDOM.nextFloat() * 0.4f;
+                double ang = Math.PI * 2 * i / SHARDS + RANDOM.nextDouble() * 0.5;
+                double lift = -0.15 + RANDOM.nextDouble() * 0.9;
+                shardDir[i] = new double[]{Math.cos(ang), lift, Math.sin(ang)};
+            }
+        }
+
+        Vec3 centre() {
+            return a.add(0, 0.9 + 1.0 * ease(Math.min(1f, age / 20f)), 0);
+        }
+
+        @Override
+        void tick() {
+            Vec3 c = centre();
+            // A helix of light climbing round the gem.
+            if (age < burstAt) {
+                for (int n = 0; n < 2; n++) {
+                    double ang = age * 0.55 + n * Math.PI;
+                    double r = 0.55 * size;
+                    mote(a.x + Math.cos(ang) * r, a.y + 0.3, a.z + Math.sin(ang) * r, 0, 0.07 + age * 0.001, 0, colour, 0.12f,
+                            22f, 0.98f, 0f, 0f, false);
+                }
+            }
+            if (age == burstAt) {
+                sphereBurst(c, 34, colour, 0.22 * size, 0.14f, 22f);
+            }
+        }
+
+        @Override
+        void renderLight(Batch batch, float t) {
+            float k = t / life;
+            float[] c = colour(t * 0.04f);
+            float[] hot = {1f, 0.97f, 0.9f};
+            Vec3 ctr = centre();
+            // Beam: swells while the gem forms, thins after it bursts.
+            float beam = (float) Math.sin(Math.PI * Math.min(1f, k * 1.1f));
+            batch.prism(a.x, a.y, a.z, 0.16f * size * beam, 0.04f * size, 7f, 8, c, 0.35f * beam, 0f);
+            if (t < burstAt) {
+                float grow = ease(Math.min(1f, t / 16f));
+                float fadeIn = 1f - smoothStep((t - burstAt + 6f) / 6f);
+                batch.gem(ctr.x, ctr.y, ctr.z, 0.22f * size * (0.4f + 0.6f * grow), 0.42f * size * (0.4f + 0.6f * grow),
+                        t * 0.13f, 0.35f, c, hot, 0.95f * fadeIn);
+                batch.glow(ctr.x, ctr.y, ctr.z, 1.3f * size * grow, c[0], c[1], c[2], 0.35f * grow * fadeIn);
+            } else {
+                float s = (t - burstAt) / (life - burstAt);
+                float dist = ease(s) * 2.4f * size;
+                float fade = 1f - s * s;
+                if (s < 0.25f) {
+                    batch.glow(ctr.x, ctr.y, ctr.z, 3.2f * size, hot[0], hot[1], hot[2], 1f - s * 4f);
+                }
+                for (int i = 0; i < SHARDS; i++) {
+                    double[] d = shardDir[i];
+                    double px = ctr.x + d[0] * dist, py = ctr.y + d[1] * dist - 0.8 * s * s * size, pz = ctr.z + d[2] * dist;
+                    batch.gem(px, py, pz, 0.08f * size * (1f - 0.4f * s), 0.16f * size * (1f - 0.4f * s),
+                            shardYaw[i] + t * shardSpeed[i] * 1.6f, 0.4f + t * shardSpeed[i] * 0.5f, c, hot, 0.9f * fade);
+                }
+            }
+        }
+
+        private static float smoothStep(float x) {
+            x = Math.max(0f, Math.min(1f, x));
+            return x * x * (3f - 2f * x);
+        }
+    }
+
     // Colour and easing --------------------------------------------------------------------------------
 
     /** The colour of {@code index}; a prism turns through all four with {@code phase}. */
@@ -890,6 +1028,84 @@ public final class RiftFxRenderer {
                 vp(x, y, z, c0 * in, s0 * in, c[0], c[1], c[2], alpha);
                 vp(x, y, z, c1 * out, s1 * out, c[0], c[1], c[2], alpha);
                 vp(x, y, z, c1 * in, s1 * in, c[0], c[1], c[2], alpha);
+            }
+        }
+
+        /** A tapered tube of {@code sides} faces standing on (x, y, z): base radius r0, top radius r1, alpha fading a0 to a1. */
+        void prism(double x, double y, double z, float r0, float r1, float h, int sides, float[] c, float a0, float a1) {
+            if (h <= 0.01f || (a0 <= 0.01f && a1 <= 0.01f)) {
+                return;
+            }
+            for (int i = 0; i < sides; i++) {
+                double t0 = Math.PI * 2 * i / sides, t1 = Math.PI * 2 * (i + 1) / sides;
+                double c0 = Math.cos(t0), s0 = Math.sin(t0), c1 = Math.cos(t1), s1 = Math.sin(t1);
+                quad(x + c0 * r0, y, z + s0 * r0, a0, x + c1 * r0, y, z + s1 * r0, a0,
+                        x + c1 * r1, y + h, z + s1 * r1, a1, x + c0 * r1, y + h, z + s0 * r1, a1, c[0], c[1], c[2]);
+            }
+        }
+
+        /** A four-sided cone from (bx, by, bz) along (dx, dy, dz), {@code len} long, {@code w} wide at the base. */
+        void spike(double bx, double by, double bz, double dx, double dy, double dz, float len, float w, float[] c,
+                   float aBase, float aTip) {
+            if (len <= 0.01f || w <= 0.001f || (aBase <= 0.01f && aTip <= 0.01f)) {
+                return;
+            }
+            double l = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            dx /= l;
+            dy /= l;
+            dz /= l;
+            double ux = Math.abs(dy) > 0.95 ? 1 : 0, uy = Math.abs(dy) > 0.95 ? 0 : 1;
+            double p1x = dy * 0 - dz * uy, p1y = dz * ux - dx * 0, p1z = dx * uy - dy * ux;
+            double pl = Math.sqrt(p1x * p1x + p1y * p1y + p1z * p1z);
+            p1x /= pl;
+            p1y /= pl;
+            p1z /= pl;
+            double p2x = dy * p1z - dz * p1y, p2y = dz * p1x - dx * p1z, p2z = dx * p1y - dy * p1x;
+            double[][] base = {{p1x, p1y, p1z}, {p2x, p2y, p2z}, {-p1x, -p1y, -p1z}, {-p2x, -p2y, -p2z}};
+            double tx = bx + dx * len, ty = by + dy * len, tz = bz + dz * len;
+            for (int i = 0; i < 4; i++) {
+                double[] p = base[i], q = base[(i + 1) % 4];
+                v(bx + p[0] * w, by + p[1] * w, bz + p[2] * w, c[0], c[1], c[2], aBase);
+                v(bx + q[0] * w, by + q[1] * w, bz + q[2] * w, c[0], c[1], c[2], aBase);
+                v(tx, ty, tz, c[0], c[1], c[2], aTip);
+            }
+        }
+
+        /**
+         * A cut gem in world space: eight facets lit from one side, tumbling by {@code yaw} and {@code pitch},
+         * with white edges. {@code hot} is the colour the lit facets and edges lean toward.
+         */
+        void gem(double cx, double cy, double cz, float radius, float half, float yaw, float pitch, float[] c, float[] hot,
+                 float alpha) {
+            if (alpha <= 0.01f || radius <= 0.001f) {
+                return;
+            }
+            double[][] p = {{0, half, 0}, {0, -half, 0}, {radius, 0, 0}, {0, 0, radius}, {-radius, 0, 0}, {0, 0, -radius}};
+            double cp = Math.cos(pitch), sp = Math.sin(pitch), cyw = Math.cos(yaw), syw = Math.sin(yaw);
+            for (double[] q : p) {
+                double y1 = q[1] * cp - q[2] * sp, z1 = q[1] * sp + q[2] * cp;
+                double x2 = q[0] * cyw + z1 * syw, z2 = -q[0] * syw + z1 * cyw;
+                q[0] = x2;
+                q[1] = y1;
+                q[2] = z2;
+            }
+            int[][] faces = {{0, 2, 3}, {0, 3, 4}, {0, 4, 5}, {0, 5, 2}, {1, 3, 2}, {1, 4, 3}, {1, 5, 4}, {1, 2, 5}};
+            for (int[] f : faces) {
+                double ax = p[f[1]][0] - p[f[0]][0], ay = p[f[1]][1] - p[f[0]][1], az = p[f[1]][2] - p[f[0]][2];
+                double bx = p[f[2]][0] - p[f[0]][0], by = p[f[2]][1] - p[f[0]][1], bz = p[f[2]][2] - p[f[0]][2];
+                double nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+                double nl = Math.sqrt(nx * nx + ny * ny + nz * nz) + 1e-9;
+                double lit = Math.max(0, (nx * -0.5 + ny * 0.7 + nz * 0.5) / nl);
+                float k = (float) (0.3 + 0.7 * lit);
+                float r = c[0] + (hot[0] - c[0]) * k * 0.6f, g = c[1] + (hot[1] - c[1]) * k * 0.6f, b = c[2] + (hot[2] - c[2]) * k * 0.6f;
+                for (int idx : f) {
+                    v(cx + p[idx][0], cy + p[idx][1], cz + p[idx][2], r, g, b, alpha * (0.4f + 0.5f * k));
+                }
+            }
+            int[][] edges = {{0, 2}, {0, 3}, {0, 4}, {0, 5}, {1, 2}, {1, 3}, {1, 4}, {1, 5}, {2, 3}, {3, 4}, {4, 5}, {5, 2}};
+            for (int[] e : edges) {
+                ribbon(cx + p[e[0]][0], cy + p[e[0]][1], cz + p[e[0]][2], cx + p[e[1]][0], cy + p[e[1]][1], cz + p[e[1]][2],
+                        Math.max(0.012f, radius * 0.06f), hot[0], hot[1], hot[2], alpha * 0.8f, alpha * 0.8f);
             }
         }
 
