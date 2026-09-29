@@ -112,6 +112,7 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
         float time = age / 20f;
         wake(glow, m, u, fade, prismatic, time);
+        flatBand(glow, m, u, fade, prismatic, time);
         rims(glow, m, u, fade, prismatic, time);
 
         // Halo around the blade itself.
@@ -124,6 +125,7 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         scratch.set(tangent).mul(0.95f).add(bladePos);
         float twinkle = 0.75f + 0.25f * Mth.sin(age * 1.7f + seed);
         star(glow, m, scratch, 1.2f * twinkle, whiteHot(color, 0.6f), 0.95f * fade, age * 0.12f);
+        star(glow, m, scratch, 1.8f * twinkle, whiteHot(color, 0.3f), 0.5f * fade, -age * 0.08f);
         for (int s = 0; s < 6; s++) {
             int k = 4 + s * 6;
             float life = 1f - (float) k / TRAIL_SAMPLES;
@@ -162,7 +164,7 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
             float r1 = c1[0], g1 = c1[1], b1 = c1[2];
             // Outer glow, in-plane and cross-plane.
             ribbon(vc, m, i, across[i], across[i + 1], GLOW_WIDTH * f0, GLOW_WIDTH * f1,
-                    r0, g0, b0, 0.55f * fade * f0, r1, g1, b1, 0.55f * fade * f1);
+                    r0, g0, b0, 0.3f * fade * f0, r1, g1, b1, 0.3f * fade * f1);
             ribbon(vc, m, i, normal, normal, GLOW_WIDTH * 0.55f * f0, GLOW_WIDTH * 0.55f * f1,
                     r0, g0, b0, 0.35f * fade * f0, r1, g1, b1, 0.35f * fade * f1);
             // White-hot core.
@@ -174,6 +176,49 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
                     lerpWhite(r0, w0), lerpWhite(g0, w0), lerpWhite(b0, w0), 0.7f * fade * f0 * f0,
                     lerpWhite(r1, w1), lerpWhite(g1, w1), lerpWhite(b1, w1), 0.7f * fade * f1 * f1);
         }
+    }
+
+    /**
+     * The anime layer: a flat, hard-edged band of the blade's colour with a flat white core, plus
+     * tapered speed-line streaks trailing at either side, all crisp rather than soft.
+     */
+    private void flatBand(VertexConsumer vc, Matrix4f m, float u, float fade, boolean prismatic, float time) {
+        for (int i = 0; i < TRAIL_SAMPLES; i++) {
+            if (u - TRAIL_SPAN * i / TRAIL_SAMPLES <= 0f) {
+                break;
+            }
+            float t0 = (float) i / TRAIL_SAMPLES, t1 = (float) (i + 1) / TRAIL_SAMPLES;
+            float f0 = taper(t0), f1 = taper(t1);
+            float[] c = segmentColor(prismatic, t0, time, hue);
+            float r = c[0], g = c[1], b = c[2];
+            hard(vc, m, i, GLOW_WIDTH * 0.32f * f0, GLOW_WIDTH * 0.32f * f1, r, g, b, 0.8f * fade * f0, 0.8f * fade * f1);
+            hard(vc, m, i, GLOW_WIDTH * 0.12f * f0, GLOW_WIDTH * 0.12f * f1, 1f, 1f, 1f, fade * f0, fade * f1);
+            // Speed lines: three streaks off the band, each ending earlier the further out it sits.
+            for (int line = 0; line < 3; line++) {
+                float reach = 0.85f - 0.2f * line;
+                if (t0 > reach) {
+                    continue;
+                }
+                float off = GLOW_WIDTH * (0.5f + 0.22f * line) * ((line & 1) == 0 ? 1f : -1f);
+                float k0 = 1f - t0 / reach, k1 = Math.max(0f, 1f - t1 / reach);
+                Vector3f p0 = points[i], p1 = points[i + 1], s0 = across[i], s1 = across[i + 1];
+                float w0 = 0.05f * k0, w1 = 0.05f * k1;
+                vertex(vc, m, p0.x + s0.x * (off - w0), p0.y + s0.y * (off - w0), p0.z + s0.z * (off - w0), r, g, b, 0.9f * fade * k0);
+                vertex(vc, m, p0.x + s0.x * (off + w0), p0.y + s0.y * (off + w0), p0.z + s0.z * (off + w0), r, g, b, 0.9f * fade * k0);
+                vertex(vc, m, p1.x + s1.x * (off + w1), p1.y + s1.y * (off + w1), p1.z + s1.z * (off + w1), r, g, b, 0.9f * fade * k1);
+                vertex(vc, m, p1.x + s1.x * (off - w1), p1.y + s1.y * (off - w1), p1.z + s1.z * (off - w1), r, g, b, 0.9f * fade * k1);
+            }
+        }
+    }
+
+    /** One segment of a hard-edged ribbon: constant alpha across its width. */
+    private void hard(VertexConsumer vc, Matrix4f m, int i, float w0, float w1, float r, float g, float b, float a0,
+                      float a1) {
+        Vector3f p0 = points[i], p1 = points[i + 1], s0 = across[i], s1 = across[i + 1];
+        vertex(vc, m, p0.x - s0.x * w0, p0.y - s0.y * w0, p0.z - s0.z * w0, r, g, b, a0);
+        vertex(vc, m, p0.x + s0.x * w0, p0.y + s0.y * w0, p0.z + s0.z * w0, r, g, b, a0);
+        vertex(vc, m, p1.x + s1.x * w1, p1.y + s1.y * w1, p1.z + s1.z * w1, r, g, b, a1);
+        vertex(vc, m, p1.x - s1.x * w1, p1.y - s1.y * w1, p1.z - s1.z * w1, r, g, b, a1);
     }
 
     /**

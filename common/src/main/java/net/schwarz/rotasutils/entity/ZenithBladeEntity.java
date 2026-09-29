@@ -245,10 +245,9 @@ public class ZenithBladeEntity extends Entity {
                 // A bright slash mark across the victim along the blade's own path: the cut itself.
                 Vec3 dir = new Vec3(to.x - from.x, to.y - from.y, to.z - from.z);
                 Vec3 half = dir.lengthSqr() < 1.0e-6 ? new Vec3(1.2, 0, 0) : dir.normalize().scale(1.4);
-                RiftFx.send(level, RiftFx.Kind.SLASH, RiftFx.PRISM, center.subtract(half), center.add(half), 0.9f, 7);
-                level.sendParticles(ParticleTypes.ENCHANTED_HIT, center.x, center.y, center.z, 14, 0.3, 0.3, 0.3, 0.6);
-                level.sendParticles(ParticleTypes.SWEEP_ATTACK, center.x, center.y, center.z, 1, 0, 0, 0, 0);
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, center.x, center.y, center.z, 6, 0.2, 0.2, 0.2, 0.5);
+                RiftFx.send(level, RiftFx.Kind.SLASH, RiftFx.PRISM, center.subtract(half), center.add(half), 0.9f, 9);
+                // Anime hit: flash, starburst, speed lines, ring.
+                RiftFx.send(level, RiftFx.Kind.IMPACT, RiftFx.PRISM, center, 0.9f + victim.getBbWidth() * 0.5f, 12);
                 level.sendParticles(ParticleTypes.END_ROD, center.x, center.y, center.z, 3, 0.1, 0.1, 0.1, 0.12);
                 level.playSound(null, center.x, center.y, center.z, SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS,
                         0.35f, 1.4f + random.nextFloat() * 0.4f);

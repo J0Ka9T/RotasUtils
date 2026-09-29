@@ -50,7 +50,9 @@ public final class RiftFx {
         /** Motes drawn in from all around towards {@code a}, radius {@code size}, for {@code life} ticks. */
         GATHER,
         /** Its last light: a column into the heavens and four rings, all colours. */
-        APOTHEOSIS
+        APOTHEOSIS,
+        /** Anime-style hit: white impact frame, flat starburst, speed lines and a hard ring at {@code a}; {@code size} is its radius. */
+        IMPACT
     }
 
     /** Client-side receiver of effects. */

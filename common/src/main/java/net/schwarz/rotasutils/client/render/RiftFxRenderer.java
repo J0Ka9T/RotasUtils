@@ -75,6 +75,7 @@ public final class RiftFxRenderer {
             case METEOR -> new Meteor(colour, a, b, size, life > 0 ? life : 16);
             case GATHER -> new Gather(colour, a, size, life > 0 ? life : 30);
             case APOTHEOSIS -> new Apotheosis(a, size, life > 0 ? life : 110);
+            case IMPACT -> new Impact(colour, a, size, life > 0 ? life : 12);
         };
     }
 
@@ -545,12 +546,38 @@ public final class RiftFxRenderer {
                 double ang = -1.3 + 2.6 * f;
                 Vec3 p = a.add(fwd.scale(Math.cos(ang) * radius)).add(tilt.scale(Math.sin(ang) * radius));
                 if (prev != null) {
+                    // Cel-shaded: a flat colour band with a flat white core, hard edges, pointed tips.
                     float thick = (float) Math.sin(Math.PI * f) * 0.28f * size;
-                    batch.ribbon(prev.x, prev.y, prev.z, p.x, p.y, p.z, thick * 2.2f, c[0], c[1], c[2], 0.45f * fade, 0.45f * fade);
-                    batch.ribbon(prev.x, prev.y, prev.z, p.x, p.y, p.z, thick * 0.6f, 1f, 1f, 1f, 0.9f * fade, 0.9f * fade);
+                    batch.hardRibbon(prev.x, prev.y, prev.z, p.x, p.y, p.z, thick * 1.7f, c[0], c[1], c[2], 0.75f * fade);
+                    batch.hardRibbon(prev.x, prev.y, prev.z, p.x, p.y, p.z, thick * 0.6f, 1f, 1f, 1f, fade);
                 }
                 prev = p;
             }
+        }
+    }
+
+    /** Roblox/anime hit: one-frame white flash, flat starburst, radial speed lines, a hard ring, diamond sparks. */
+    private static final class Impact extends Effect {
+        private final float spin = RANDOM.nextFloat() * 6.28f;
+
+        Impact(int colour, Vec3 a, float size, int life) {
+            super(colour, a, size, life);
+            sphereBurst(a, 10, colour, 0.16 * size, 0.1f, 10f);
+        }
+
+        @Override
+        void renderLight(Batch batch, float t) {
+            float k = t / life;
+            float pop = ease(Math.min(1f, t / 3f));
+            float fade = 1f - k * k;
+            float[] c = colour(t * 0.05f);
+            if (t < 2f) {
+                batch.disc(a.x, a.y, a.z, size * 1.5f, 1f, 1f, 1f, 0.9f * (1f - t / 2f));
+            }
+            batch.starburst(a.x, a.y, a.z, size * (0.5f + 1.5f * pop), 8, spin, c, 0.9f * fade);
+            batch.starburst(a.x, a.y, a.z, size * (0.3f + 0.8f * pop), 8, spin + 0.39f, new float[]{1f, 1f, 1f}, fade);
+            batch.speedLines(a.x, a.y, a.z, size * (1f + 2.6f * pop), 16, spin, c, 0.85f * fade);
+            batch.hardRing(a.x, a.y, a.z, size * (0.3f + 2.2f * pop), size * 0.12f * (1f - k), c, 0.95f * fade);
         }
     }
 
@@ -771,6 +798,99 @@ public final class RiftFxRenderer {
             sz *= width / len;
             quad(ax - sx, ay - sy, az - sz, 0f, ax, ay, az, alphaA, bx, by, bz, alphaB, bx - sx, by - sy, bz - sz, 0f, r, g, b);
             quad(ax, ay, az, alphaA, ax + sx, ay + sy, az + sz, 0f, bx + sx, by + sy, bz + sz, 0f, bx, by, bz, alphaB, r, g, b);
+        }
+
+        /** A vertex offset (dx, dy) in the camera's plane around (x, y, z). */
+        private void vp(double x, double y, double z, double dx, double dy, float r, float g, float b, float a) {
+            v(x + left.x() * dx + up.x() * dy, y + left.y() * dx + up.y() * dy, z + left.z() * dx + up.z() * dy, r, g, b, a);
+        }
+
+        /** A ribbon with hard edges: the same alpha across its whole width, no soft falloff. */
+        void hardRibbon(double ax, double ay, double az, double bx, double by, double bz, float width,
+                        float r, float g, float b, float alpha) {
+            if (width <= 0.001f || alpha <= 0.01f) {
+                return;
+            }
+            double dx = bx - ax, dy = by - ay, dz = bz - az;
+            double mx = (ax + bx) * 0.5 - cam.x, my = (ay + by) * 0.5 - cam.y, mz = (az + bz) * 0.5 - cam.z;
+            double sx = dy * mz - dz * my, sy = dz * mx - dx * mz, sz = dx * my - dy * mx;
+            double len = Math.sqrt(sx * sx + sy * sy + sz * sz);
+            if (len < 1.0e-6) {
+                return;
+            }
+            sx *= width / len;
+            sy *= width / len;
+            sz *= width / len;
+            quad(ax - sx, ay - sy, az - sz, alpha, ax + sx, ay + sy, az + sz, alpha,
+                    bx + sx, by + sy, bz + sz, alpha, bx - sx, by - sy, bz - sz, alpha, r, g, b);
+        }
+
+        /** A flat, solid, camera-facing disc. */
+        void disc(double x, double y, double z, float radius, float r, float g, float b, float a) {
+            if (a <= 0.01f) {
+                return;
+            }
+            int n = 20;
+            for (int i = 0; i < n; i++) {
+                double a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
+                vp(x, y, z, 0, 0, r, g, b, a);
+                vp(x, y, z, Math.cos(a0) * radius, Math.sin(a0) * radius, r, g, b, a);
+                vp(x, y, z, Math.cos(a1) * radius, Math.sin(a1) * radius, r, g, b, a);
+            }
+        }
+
+        /** A comic "pow" star: {@code points} flat kites, every other one shorter. */
+        void starburst(double x, double y, double z, float radius, int points, float spin, float[] c, float alpha) {
+            if (alpha <= 0.01f || radius <= 0.001f) {
+                return;
+            }
+            for (int i = 0; i < points; i++) {
+                double ang = spin + Math.PI * 2 * i / points;
+                double len = radius * ((i & 1) == 0 ? 1.0 : 0.55);
+                double half = Math.PI / points * 0.45;
+                double base = radius * 0.2;
+                vp(x, y, z, 0, 0, c[0], c[1], c[2], alpha);
+                vp(x, y, z, Math.cos(ang - half) * base, Math.sin(ang - half) * base, c[0], c[1], c[2], alpha);
+                vp(x, y, z, Math.cos(ang) * len, Math.sin(ang) * len, c[0], c[1], c[2], alpha);
+                vp(x, y, z, 0, 0, c[0], c[1], c[2], alpha);
+                vp(x, y, z, Math.cos(ang) * len, Math.sin(ang) * len, c[0], c[1], c[2], alpha);
+                vp(x, y, z, Math.cos(ang + half) * base, Math.sin(ang + half) * base, c[0], c[1], c[2], alpha);
+            }
+        }
+
+        /** Thin tapered lines flying out of a point, like manga speed lines. */
+        void speedLines(double x, double y, double z, float radius, int count, float seed, float[] c, float alpha) {
+            if (alpha <= 0.01f || radius <= 0.001f) {
+                return;
+            }
+            for (int i = 0; i < count; i++) {
+                double ang = seed + i * 2.39996;
+                double reach = radius * (0.6 + 0.4 * ((i * 0.618) % 1.0));
+                double from = reach * 0.4;
+                double w = radius * 0.025;
+                double ca = Math.cos(ang), sa = Math.sin(ang);
+                vp(x, y, z, ca * from - sa * w, sa * from + ca * w, c[0], c[1], c[2], alpha);
+                vp(x, y, z, ca * reach, sa * reach, c[0], c[1], c[2], alpha);
+                vp(x, y, z, ca * from + sa * w, sa * from - ca * w, c[0], c[1], c[2], alpha);
+            }
+        }
+
+        /** A solid ring facing the camera. */
+        void hardRing(double x, double y, double z, float radius, float thick, float[] c, float alpha) {
+            if (alpha <= 0.01f || thick <= 0.001f) {
+                return;
+            }
+            for (int i = 0; i < SEGMENTS; i++) {
+                double a0 = Math.PI * 2 * i / SEGMENTS, a1 = Math.PI * 2 * (i + 1) / SEGMENTS;
+                double c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+                double in = Math.max(0, radius - thick), out = radius + thick;
+                vp(x, y, z, c0 * in, s0 * in, c[0], c[1], c[2], alpha);
+                vp(x, y, z, c0 * out, s0 * out, c[0], c[1], c[2], alpha);
+                vp(x, y, z, c1 * out, s1 * out, c[0], c[1], c[2], alpha);
+                vp(x, y, z, c0 * in, s0 * in, c[0], c[1], c[2], alpha);
+                vp(x, y, z, c1 * out, s1 * out, c[0], c[1], c[2], alpha);
+                vp(x, y, z, c1 * in, s1 * in, c[0], c[1], c[2], alpha);
+            }
         }
 
         private void quad(double x0, double y0, double z0, float a0, double x1, double y1, double z1, float a1,
