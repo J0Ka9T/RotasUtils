@@ -75,7 +75,6 @@ public final class RiftFxRenderer {
             case METEOR -> new Meteor(colour, a, b, size, life > 0 ? life : 16);
             case GATHER -> new Gather(colour, a, size, life > 0 ? life : 30);
             case APOTHEOSIS -> new Apotheosis(a, size, life > 0 ? life : 110);
-            case IMPACT -> new Impact(colour, a, size, life > 0 ? life : 12);
             case FORGE_SUCCESS -> new ForgeSuccess(colour, a, size, life > 0 ? life : 36);
             case ALTAR_SUCCESS -> new AltarSuccess(colour, a, size, life > 0 ? life : 52);
         };
@@ -558,31 +557,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** Roblox/anime hit: one-frame white flash, flat starburst, radial speed lines, a hard ring, diamond sparks. */
-    private static final class Impact extends Effect {
-        private final float spin = RANDOM.nextFloat() * 6.28f;
-
-        Impact(int colour, Vec3 a, float size, int life) {
-            super(colour, a, size, life);
-            sphereBurst(a, 10, colour, 0.16 * size, 0.1f, 10f);
-        }
-
-        @Override
-        void renderLight(Batch batch, float t) {
-            float k = t / life;
-            float pop = ease(Math.min(1f, t / 3f));
-            float fade = 1f - k * k;
-            float[] c = colour(t * 0.05f);
-            if (t < 2f) {
-                batch.disc(a.x, a.y, a.z, size * 1.5f, 1f, 1f, 1f, 0.9f * (1f - t / 2f));
-            }
-            batch.starburst(a.x, a.y, a.z, size * (0.5f + 1.5f * pop), 8, spin, c, 0.9f * fade);
-            batch.starburst(a.x, a.y, a.z, size * (0.3f + 0.8f * pop), 8, spin + 0.39f, new float[]{1f, 1f, 1f}, fade);
-            batch.speedLines(a.x, a.y, a.z, size * (1f + 2.6f * pop), 16, spin, c, 0.85f * fade);
-            batch.hardRing(a.x, a.y, a.z, size * (0.3f + 2.2f * pop), size * 0.12f * (1f - k), c, 0.95f * fade);
-        }
-    }
-
     /** Sparks and a hexagon flash off the aegis. */
     private static final class ShieldSpark extends Effect {
         ShieldSpark(Vec3 a, int life) {
@@ -938,11 +912,6 @@ public final class RiftFxRenderer {
             quad(ax, ay, az, alphaA, ax + sx, ay + sy, az + sz, 0f, bx + sx, by + sy, bz + sz, 0f, bx, by, bz, alphaB, r, g, b);
         }
 
-        /** A vertex offset (dx, dy) in the camera's plane around (x, y, z). */
-        private void vp(double x, double y, double z, double dx, double dy, float r, float g, float b, float a) {
-            v(x + left.x() * dx + up.x() * dy, y + left.y() * dx + up.y() * dy, z + left.z() * dx + up.z() * dy, r, g, b, a);
-        }
-
         /** A ribbon with hard edges: the same alpha across its whole width, no soft falloff. */
         void hardRibbon(double ax, double ay, double az, double bx, double by, double bz, float width,
                         float r, float g, float b, float alpha) {
@@ -961,74 +930,6 @@ public final class RiftFxRenderer {
             sz *= width / len;
             quad(ax - sx, ay - sy, az - sz, alpha, ax + sx, ay + sy, az + sz, alpha,
                     bx + sx, by + sy, bz + sz, alpha, bx - sx, by - sy, bz - sz, alpha, r, g, b);
-        }
-
-        /** A flat, solid, camera-facing disc. */
-        void disc(double x, double y, double z, float radius, float r, float g, float b, float a) {
-            if (a <= 0.01f) {
-                return;
-            }
-            int n = 20;
-            for (int i = 0; i < n; i++) {
-                double a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
-                vp(x, y, z, 0, 0, r, g, b, a);
-                vp(x, y, z, Math.cos(a0) * radius, Math.sin(a0) * radius, r, g, b, a);
-                vp(x, y, z, Math.cos(a1) * radius, Math.sin(a1) * radius, r, g, b, a);
-            }
-        }
-
-        /** A comic "pow" star: {@code points} flat kites, every other one shorter. */
-        void starburst(double x, double y, double z, float radius, int points, float spin, float[] c, float alpha) {
-            if (alpha <= 0.01f || radius <= 0.001f) {
-                return;
-            }
-            for (int i = 0; i < points; i++) {
-                double ang = spin + Math.PI * 2 * i / points;
-                double len = radius * ((i & 1) == 0 ? 1.0 : 0.55);
-                double half = Math.PI / points * 0.45;
-                double base = radius * 0.2;
-                vp(x, y, z, 0, 0, c[0], c[1], c[2], alpha);
-                vp(x, y, z, Math.cos(ang - half) * base, Math.sin(ang - half) * base, c[0], c[1], c[2], alpha);
-                vp(x, y, z, Math.cos(ang) * len, Math.sin(ang) * len, c[0], c[1], c[2], alpha);
-                vp(x, y, z, 0, 0, c[0], c[1], c[2], alpha);
-                vp(x, y, z, Math.cos(ang) * len, Math.sin(ang) * len, c[0], c[1], c[2], alpha);
-                vp(x, y, z, Math.cos(ang + half) * base, Math.sin(ang + half) * base, c[0], c[1], c[2], alpha);
-            }
-        }
-
-        /** Thin tapered lines flying out of a point, like manga speed lines. */
-        void speedLines(double x, double y, double z, float radius, int count, float seed, float[] c, float alpha) {
-            if (alpha <= 0.01f || radius <= 0.001f) {
-                return;
-            }
-            for (int i = 0; i < count; i++) {
-                double ang = seed + i * 2.39996;
-                double reach = radius * (0.6 + 0.4 * ((i * 0.618) % 1.0));
-                double from = reach * 0.4;
-                double w = radius * 0.025;
-                double ca = Math.cos(ang), sa = Math.sin(ang);
-                vp(x, y, z, ca * from - sa * w, sa * from + ca * w, c[0], c[1], c[2], alpha);
-                vp(x, y, z, ca * reach, sa * reach, c[0], c[1], c[2], alpha);
-                vp(x, y, z, ca * from + sa * w, sa * from - ca * w, c[0], c[1], c[2], alpha);
-            }
-        }
-
-        /** A solid ring facing the camera. */
-        void hardRing(double x, double y, double z, float radius, float thick, float[] c, float alpha) {
-            if (alpha <= 0.01f || thick <= 0.001f) {
-                return;
-            }
-            for (int i = 0; i < SEGMENTS; i++) {
-                double a0 = Math.PI * 2 * i / SEGMENTS, a1 = Math.PI * 2 * (i + 1) / SEGMENTS;
-                double c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
-                double in = Math.max(0, radius - thick), out = radius + thick;
-                vp(x, y, z, c0 * in, s0 * in, c[0], c[1], c[2], alpha);
-                vp(x, y, z, c0 * out, s0 * out, c[0], c[1], c[2], alpha);
-                vp(x, y, z, c1 * out, s1 * out, c[0], c[1], c[2], alpha);
-                vp(x, y, z, c0 * in, s0 * in, c[0], c[1], c[2], alpha);
-                vp(x, y, z, c1 * out, s1 * out, c[0], c[1], c[2], alpha);
-                vp(x, y, z, c1 * in, s1 * in, c[0], c[1], c[2], alpha);
-            }
         }
 
         /** A tapered tube of {@code sides} faces standing on (x, y, z): base radius r0, top radius r1, alpha fading a0 to a1. */

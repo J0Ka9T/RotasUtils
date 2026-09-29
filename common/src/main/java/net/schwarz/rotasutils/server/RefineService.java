@@ -195,8 +195,6 @@ public final class RefineService {
                     net.minecraft.world.phys.Vec3.atCenterOf(forge).add(0, 0.5, 0), grand ? 1.8f : 1.0f, grand ? 46 : 36);
             world.playSound(null, forge, SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.9f, 1.3f);
         } else {
-            net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
-                    net.schwarz.rotasutils.entity.RiftFx.CRIMSON, at, result.destroyed() ? 2.2f : 1.1f, 12);
             world.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, at.x, at.y, at.z, 10, 0.3, 0.2, 0.3, 0.02);
             if (result.destroyed()) {
                 net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.SHOCKWAVE,

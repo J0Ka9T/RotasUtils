@@ -246,8 +246,6 @@ public class ZenithBladeEntity extends Entity {
                 Vec3 dir = new Vec3(to.x - from.x, to.y - from.y, to.z - from.z);
                 Vec3 half = dir.lengthSqr() < 1.0e-6 ? new Vec3(1.2, 0, 0) : dir.normalize().scale(1.4);
                 RiftFx.send(level, RiftFx.Kind.SLASH, RiftFx.PRISM, center.subtract(half), center.add(half), 0.9f, 9);
-                // Anime hit: flash, starburst, speed lines, ring.
-                RiftFx.send(level, RiftFx.Kind.IMPACT, RiftFx.PRISM, center, 0.9f + victim.getBbWidth() * 0.5f, 12);
                 level.sendParticles(ParticleTypes.END_ROD, center.x, center.y, center.z, 3, 0.1, 0.1, 0.1, 0.12);
                 level.playSound(null, center.x, center.y, center.z, SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS,
                         0.35f, 1.4f + random.nextFloat() * 0.4f);

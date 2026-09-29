@@ -222,7 +222,6 @@ public final class RuneService {
         }
         attacker.serverLevel().sendParticles(ParticleTypes.CRIT, victim.getX(), victim.getY(0.6), victim.getZ(),
                 12, 0.3, 0.3, 0.3, 0.3);
-        proc(attacker, victim, RuneType.FURY);
         return RuneType.FURY_MULTIPLIER;
     }
 
@@ -248,14 +247,12 @@ public final class RuneService {
                 case FIRE -> {
                     if (roll(attacker, strength)) {
                         victim.setSecondsOnFire(rune.seconds());
-                        proc(attacker, victim, rune);
                     }
                 }
                 case FROST -> {
                     if (roll(attacker, strength)) {
                         victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, rune.seconds() * 20, 1),
                                 attacker);
-                        proc(attacker, victim, rune);
                         attacker.serverLevel().sendParticles(ParticleTypes.SNOWFLAKE, victim.getX(), victim.getY(0.5),
                                 victim.getZ(), 10, 0.3, 0.4, 0.3, 0.02);
                     }
@@ -263,7 +260,6 @@ public final class RuneService {
                 case VENOM -> {
                     if (roll(attacker, strength)) {
                         victim.addEffect(new MobEffectInstance(MobEffects.POISON, rune.seconds() * 20, 0), attacker);
-                        proc(attacker, victim, rune);
                     }
                 }
                 default -> {
@@ -281,12 +277,6 @@ public final class RuneService {
             case FROST -> net.schwarz.rotasutils.entity.RiftFx.WHITE;
             case VENOM -> net.schwarz.rotasutils.entity.RiftFx.VIOLET;
         };
-    }
-
-    /** A small anime-style flash on the victim when a rune fires. */
-    private static void proc(ServerPlayer attacker, LivingEntity victim, RuneType rune) {
-        net.schwarz.rotasutils.entity.RiftFx.send(attacker.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
-                colourOf(rune), victim.position().add(0, victim.getBbHeight() * 0.6, 0), 0.7f, 9);
     }
 
     private static boolean roll(ServerPlayer attacker, double chance) {

@@ -103,11 +103,9 @@ public final class ForgeSessions {
         Vec3 at = Vec3.atCenterOf(forge).add(0, 0.9, 0);
         switch (grade) {
             case PERFECT -> {
-                RiftFx.send(world, RiftFx.Kind.IMPACT, RiftFx.WHITE, at, 0.8f, 9);
                 world.playSound(null, forge, SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.9f, 1.6f);
             }
             case GOOD -> {
-                RiftFx.send(world, RiftFx.Kind.IMPACT, RiftFx.GOLD, at, 0.55f, 8);
                 world.playSound(null, forge, SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.7f, 1.2f);
             }
             case MISS -> world.playSound(null, forge, SoundEvents.ANVIL_LAND, SoundSource.BLOCKS, 0.4f, 0.6f);
