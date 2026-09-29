@@ -114,7 +114,7 @@ public final class ClientCasts {
         }
         boolean local = mc.player != null && mc.player.getId() == casterId;
         ClientCast cast = new ClientCast(casterId, ability, seed, eye, target, targetEntity, mc.level.getGameTime(), local,
-                buildTimeline());
+                buildTimeline(ability.getPath().endsWith("_max")));
         CASTS.put(casterId, cast);
     }
 
@@ -199,8 +199,15 @@ public final class ClientCasts {
         mc.level.playLocalSound(at.x, at.y, at.z, sound, SoundSource.PLAYERS, volume, pitch, false);
     }
 
-    private static Timeline<ClientCast> buildTimeline() {
+    private static Timeline<ClientCast> buildTimeline(boolean max) {
         Timeline<ClientCast> tl = new Timeline<>();
+        if (max) {
+            // MAX: a choir-like swell as the sigil opens, a bell tolling the hold, a roar on release.
+            tl.at(RedTimings.CORE_FORMS, "sigil", c -> play(c, SoundEvents.BEACON_ACTIVATE, 1.0f, 0.5f));
+            tl.at(RedTimings.CLOSE_UP, "swell", c -> play(c, SoundEvents.END_PORTAL_SPAWN, 0.6f, 0.7f));
+            tl.at(RedTimings.HOLD, "toll", c -> play(c, SoundEvents.BELL_BLOCK, 1.6f, 0.5f));
+            tl.at(RedTimings.RELEASE, "roar", c -> play(c, SoundEvents.WITHER_SPAWN, 0.8f, 0.7f));
+        }
         tl.at(RedTimings.CORE_FORMS, "core", c -> play(c, SoundEvents.RESPAWN_ANCHOR_CHARGE, 0.5f, 0.6f));
         // Charging: a low rumble whose pulses match the core's compressions, a thin electrical shimmer, a suction swell.
         for (double s = RedTimings.CHARGE_SOUND; s < RedTimings.HOLD - 0.1; s += 0.55) {
@@ -233,6 +240,9 @@ public final class ClientCasts {
         mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 3.0f, 0.75f, false);
         mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 2.0f, 1.3f, false);
         mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GRAVEL_BREAK, SoundSource.PLAYERS, 2.0f, 0.6f, false);
+        if (cast.max()) {
+            mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.DRAGON_FIREBALL_EXPLODE, SoundSource.PLAYERS, 4.0f, 0.4f, false);
+        }
     }
 
     /** Extra names for tools and tests that want the list without the map. */

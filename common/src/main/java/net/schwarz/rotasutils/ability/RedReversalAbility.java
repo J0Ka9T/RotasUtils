@@ -29,21 +29,35 @@ import net.schwarz.rotasutils.item.RedReversalItem;
  * it only learns where the attack starts, where it lands and when.
  */
 public final class RedReversalAbility implements AbilityDefinition {
-    public static final RedReversalAbility INSTANCE = new RedReversalAbility();
-    public static final ResourceLocation ID = Rotasutils.id("red_reversal");
-    /** Whether the blast may break blocks. Off: this is a duel move, not a terrain wrecker. */
-    private static final boolean BREAKS_BLOCKS = false;
+    public static final RedReversalAbility INSTANCE = new RedReversalAbility("red_reversal", 1.0, 1.0, false);
+    /**
+     * Red Reversal MAX: the same sequence, but everything it throws is bigger - twice the blast, a far heavier hit,
+     * a line of force that tears through everything along its path, and an aftershock where it lands.
+     */
+    public static final RedReversalAbility MAX = new RedReversalAbility("red_reversal_max", 2.0, 2.6, true);
+    public static final ResourceLocation ID = INSTANCE.id;
+
+    private final ResourceLocation id;
+    /** Blast radius and damage multipliers over the base values in {@link RedTimings}. */
+    private final double size;
+    private final double power;
+    /** Whether the shot also hurts everything it passes, and the landing sends a second, smaller blast. */
+    private final boolean max;
 
     private final Timeline<AbilityContext> timeline = new Timeline<AbilityContext>()
             .at(RedTimings.ANIM_START, "begin", RedReversalAbility::begin)
-            .at(RedTimings.RELEASE, "release", RedReversalAbility::release);
+            .at(RedTimings.RELEASE, "release", this::release);
 
-    private RedReversalAbility() {
+    private RedReversalAbility(String name, double size, double power, boolean max) {
+        this.id = Rotasutils.id(name);
+        this.size = size;
+        this.power = power;
+        this.max = max;
     }
 
     @Override
     public ResourceLocation id() {
-        return ID;
+        return id;
     }
 
     @Override
@@ -58,7 +72,7 @@ public final class RedReversalAbility implements AbilityDefinition {
 
     @Override
     public boolean canStart(ServerPlayer player) {
-        return player.getMainHandItem().getItem() instanceof RedReversalItem;
+        return player.getMainHandItem().getItem() instanceof RedReversalItem item && item.ability() == this;
     }
 
     @Override
@@ -87,7 +101,7 @@ public final class RedReversalAbility implements AbilityDefinition {
     }
 
     /** The real attack. Everything the client shows of it is decided here. */
-    private static void release(AbilityContext c) {
+    private void release(AbilityContext c) {
         ServerPlayer player = c.player;
         ServerLevel level = c.level;
         Vec3 aim = c.target.position();
@@ -113,18 +127,48 @@ public final class RedReversalAbility implements AbilityDefinition {
         AbilityNet.sendRelease(c, origin, impact, hitId, travel);
         level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.WARDEN_SONIC_BOOM, SoundSource.PLAYERS, 1.2f, 0.7f);
         final Vec3 travelDir = dir;
-        c.after(travel, () -> blast(c, impact, travelDir));
+        if (max) {
+            level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 2.0f, 0.5f);
+            c.after(Math.max(1, travel / 2), () -> carve(c, origin, impact, travelDir));
+        }
+        c.after(travel, () -> blast(c, impact, travelDir, 1.0));
+        if (max) {
+            c.after(travel + 12, () -> blast(c, impact, travelDir, 0.45));
+        }
     }
 
     private static boolean canHit(Entity e, ServerPlayer caster) {
         return e != caster && e.isAlive() && !e.isSpectator() && e.isPickable() && !(e instanceof ArmorStand);
     }
 
+    /** MAX only: everything within a few blocks of the line of fire is struck on the way past. */
+    private void carve(AbilityContext c, Vec3 from, Vec3 to, Vec3 travelDir) {
+        ServerPlayer caster = c.player;
+        double reach = 3.0;
+        Vec3 seg = to.subtract(from);
+        for (LivingEntity victim : c.level.getEntitiesOfClass(LivingEntity.class, new AABB(from, to).inflate(reach),
+                e -> e.isAlive() && !e.isSpectator() && e != caster && !(e instanceof ArmorStand))) {
+            Vec3 centre = victim.getBoundingBox().getCenter();
+            double u = Mth.clamp(centre.subtract(from).dot(seg) / Math.max(1.0e-4, seg.lengthSqr()), 0, 1);
+            double f = Falloff.of(centre.distanceTo(from.add(seg.scale(u))), reach);
+            if (f < 0.02 || spared(victim, caster)) {
+                continue;
+            }
+            victim.invulnerableTime = 0;
+            victim.hurt(c.level.damageSources().playerAttack(caster), (float) (RedTimings.DAMAGE * 0.5 * power * f));
+            victim.setDeltaMovement(victim.getDeltaMovement().add(travelDir.scale(1.5 * f)).add(0, 0.4 * f, 0));
+            victim.hurtMarked = true;
+        }
+    }
+
     /** Damage and knockback round the impact, both fading smoothly with distance from its centre. */
-    private static void blast(AbilityContext c, Vec3 impact, Vec3 travelDir) {
+    private void blast(AbilityContext c, Vec3 impact, Vec3 travelDir, double strength) {
         ServerPlayer caster = c.player;
         ServerLevel level = c.level;
-        double radius = RedTimings.BLAST_RADIUS;
+        double radius = RedTimings.BLAST_RADIUS * size * (strength < 1 ? 1.3 : 1.0);
+        if (strength < 1) {
+            level.playSound(null, impact.x, impact.y, impact.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 4.0f, 0.5f);
+        }
         AABB box = new AABB(impact, impact).inflate(radius);
         for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, box,
                 e -> e.isAlive() && !e.isSpectator() && e != caster && !(e instanceof ArmorStand))) {
@@ -139,17 +183,14 @@ public final class RedReversalAbility implements AbilityDefinition {
             }
             DamageSource source = level.damageSources().playerAttack(caster);
             victim.invulnerableTime = 0;
-            victim.hurt(source, (float) (RedTimings.DAMAGE * f));
+            victim.hurt(source, (float) (RedTimings.DAMAGE * power * strength * f));
             Vec3 away = centre.subtract(impact);
             away = away.lengthSqr() < 0.04 ? travelDir : away.normalize();
             double resist = 1.0 - victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
-            double push = RedTimings.KNOCKBACK * f * Math.max(0, resist);
+            double push = RedTimings.KNOCKBACK * Math.sqrt(power) * strength * f * Math.max(0, resist);
             double lift = (0.12 + RedTimings.LIFT * f) * Math.max(0, resist);
             victim.setDeltaMovement(victim.getDeltaMovement().add(away.x * push, lift, away.z * push));
             victim.hurtMarked = true;
-        }
-        if (BREAKS_BLOCKS) {
-            Rotasutils.LOG.debug("Red Reversal block breaking is switched off in code");
         }
     }
 

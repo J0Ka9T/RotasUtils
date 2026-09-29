@@ -61,6 +61,16 @@ public final class ClientCast {
         return level == null ? 0 : (level.getGameTime() - startTick + pt) / 20.0;
     }
 
+    /** Red Reversal MAX: the same sequence, drawn bigger and crowned with extra layers. */
+    public boolean max() {
+        return ability.getPath().endsWith("_max");
+    }
+
+    /** How much larger than the base Red everything this cast draws is. */
+    public double scale() {
+        return max() ? 1.8 : 1.0;
+    }
+
     public boolean released() {
         return releaseAt >= 0 && impact != null;
     }

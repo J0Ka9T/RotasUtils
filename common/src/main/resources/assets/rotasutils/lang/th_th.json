@@ -2999,6 +2999,8 @@
   "item.rotasutils.four_skies_sigil": "ตราแห่งสี่นภา",
   "item.rotasutils.red_reversal": "แดง: ผันกลับ",
   "item.rotasutils.red_reversal.desc": "คลิกขวา: ชาร์จอย่างช้าๆ แล้วปลดปล่อยอย่างรุนแรงในครั้งเดียว",
+  "item.rotasutils.red_reversal_max": "แดง: ผันกลับ MAX",
+  "item.rotasutils.red_reversal_max.desc": "คลิกขวา: แดงเต็มกำลัง ตราผนึก รัศมีศักดิ์สิทธิ์ และแรงระเบิดที่ลบทุกสิ่งบนเส้นทาง",
   "rotasutils.ability.cooldown": "ยังไม่พร้อม: %s วินาที",
   "item.rotasutils.zenith": "เซนิธ",
   "item.rotasutils.zenith.desc": "ดาบทุกเล่มที่เคยมีมา หลอมรวมเป็นหนึ่งเดียว",

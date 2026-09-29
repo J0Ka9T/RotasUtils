@@ -732,7 +732,7 @@ def rings():
 
 
 # ---- Red Reversal: a dark crimson core wrapped in unstable plasma ---------------------------------------
-def red_reversal():
+def red_reversal(max_=False):
     cv = Canvas()
     m = circle(0.5, 0.5, 0.36)
     n = fbm(61, (40, 14, 5), (1, 0.7, 0.4))
@@ -757,11 +757,24 @@ def red_reversal():
         cv.put(rgb('#ff5a3a'), blur(arc, 1.0) * m * 0.9)
     hot = blur(circle(0.4, 0.37, 0.05), 6)
     cv.put(rgb('#fff0d8'), hot * 0.7)
+    if max_:
+        # MAX: a turning gold halo round the core, with four points like a crown
+        halo = [(0.5 + math.cos(6.2832 * i / 48) * 0.44, 0.5 + math.sin(6.2832 * i / 48) * 0.44) for i in range(49)]
+        cv.glow(rgb('#ffb040') * 0.8, blur(stroke(halo, 0.02), 8) * 0.6)
+        cv.put(rgb('#ffc860'), blur(stroke(halo, 0.014, 0.014), 0.8))
+        for k in range(4):
+            a = 0.785 + k * 1.5708
+            tip = [(0.5 + math.cos(a) * 0.40, 0.5 + math.sin(a) * 0.40), (0.5 + math.cos(a) * 0.49, 0.5 + math.sin(a) * 0.49)]
+            cv.put(rgb('#fff0c0'), blur(stroke(tip, 0.022, 0.004), 0.8))
     cv.outline(rgb('#12030a'), 0.012)
-    cv.save('red_reversal')
+    cv.save('red_reversal_max' if max_ else 'red_reversal')
+
+
+def red_reversal_max():
+    red_reversal(True)
 
 
 if __name__ == '__main__':
-    for f in (gems, runes, scrolls, sigils, keys, rings, red_reversal):
+    for f in (gems, runes, scrolls, sigils, keys, rings, red_reversal, red_reversal_max):
         f()
         print('painted', f.__name__)
