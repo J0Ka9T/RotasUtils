@@ -2792,6 +2792,7 @@
   "rotasutils.msg.rune.need_altar": "ต้องยืนใกล้แท่นจารึกรูนจึงจะจารึกได้",
   "rotasutils.msg.rune.not_weapon": "ถืออาวุธที่จะจารึกไว้ที่มือหลัก",
   "rotasutils.msg.rune.no_slots": "อาวุธนี้ยังไม่มีช่องรูน ช่องแรกเปิดที่ +%s",
+  "rotasutils.msg.rune.same": "ช่องนี้มี %s อยู่แล้ว",
   "rotasutils.msg.rune.bad_slot": "ช่องรูนนี้ยังไม่เปิดบนอาวุธนี้",
   "rotasutils.msg.rune.need_rune": "ต้องมี %s",
   "rotasutils.msg.rune.need_gold": "จารึกช่องนี้ราคา %s ทอง มีอยู่ %s",

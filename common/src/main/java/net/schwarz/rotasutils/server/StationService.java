@@ -17,13 +17,25 @@ public final class StationService {
     }
 
     public static boolean near(ServerPlayer player, Block station) {
+        return find(player, station) != null;
+    }
+
+    /** The nearest {@code station} within reach, or null; effects play at it. */
+    @org.jetbrains.annotations.Nullable
+    public static BlockPos find(ServerPlayer player, Block station) {
         BlockPos feet = player.blockPosition();
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
         for (BlockPos pos : BlockPos.betweenClosed(feet.offset(-REACH, -REACH, -REACH),
                 feet.offset(REACH, REACH + 1, REACH))) {
             if (player.level().getBlockState(pos).is(station)) {
-                return true;
+                double d = pos.distSqr(feet);
+                if (d < bestDistance) {
+                    bestDistance = d;
+                    best = pos.immutable();
+                }
             }
         }
-        return false;
+        return best;
     }
 }

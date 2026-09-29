@@ -115,6 +115,7 @@ public final class RefineService {
                     progress.rpg().currency(rules.currency)));
         }
 
+        net.minecraft.core.BlockPos forge = StationService.find(player, RotasRegistry.REFINE_FORGE.get());
         // Everything is in hand: take the price, then roll. Nothing above this line has changed the world.
         if (cost > 0) {
             progress.rpg().currency(rules.currency, -cost);
@@ -148,11 +149,43 @@ public final class RefineService {
             TitleService.onRefine(player, data, next);
         }
         announce(player, data, refine, result, next, itemName);
+        forgeEffects(player, forge, result, next, refine);
         report(player, result, next, itemName);
         RotasNetwork.syncProgress(player);
         data.audit(player.getGameProfile().getName() + " refine " + quote.category().key() + " "
                 + quote.level() + "->" + next + " " + result.name().toLowerCase(Locale.ROOT) + " cost=" + cost);
         return new Outcome(true, result, next, cost, ThaiText.t(result.messageKey(), itemName, next));
+    }
+
+    /** The strike at the anvil: a bright hit when it holds, a red one when it fails, a blast when the item shatters. */
+    private static void forgeEffects(ServerPlayer player, net.minecraft.core.BlockPos forge, RefineMath.Result result,
+                                     int level, SeasonRules.RefineRules refine) {
+        if (forge == null) {
+            return;
+        }
+        net.minecraft.server.level.ServerLevel world = player.serverLevel();
+        net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atCenterOf(forge).add(0, 0.9, 0);
+        if (result.success()) {
+            boolean grand = refine.announceFrom > 0 && level >= refine.announceFrom;
+            net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
+                    grand ? net.schwarz.rotasutils.entity.RiftFx.PRISM : net.schwarz.rotasutils.entity.RiftFx.GOLD, at,
+                    grand ? 2.4f : 1.4f, grand ? 18 : 12);
+            if (grand) {
+                net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.SHOCKWAVE,
+                        net.schwarz.rotasutils.entity.RiftFx.GOLD, at.subtract(0, 0.8, 0), 5f, 22);
+            }
+            world.playSound(null, forge, SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.9f, 1.3f);
+        } else {
+            net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
+                    net.schwarz.rotasutils.entity.RiftFx.CRIMSON, at, result.destroyed() ? 2.2f : 1.1f, 12);
+            world.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, at.x, at.y, at.z, 10, 0.3, 0.2, 0.3, 0.02);
+            if (result.destroyed()) {
+                net.schwarz.rotasutils.entity.RiftFx.send(world, net.schwarz.rotasutils.entity.RiftFx.Kind.SHOCKWAVE,
+                        net.schwarz.rotasutils.entity.RiftFx.CRIMSON, at.subtract(0, 0.8, 0), 3.5f, 16);
+                world.playSound(null, forge, SoundEvents.ITEM_BREAK, SoundSource.BLOCKS, 1.0f, 0.7f);
+            }
+            world.playSound(null, forge, SoundEvents.ANVIL_LAND, SoundSource.BLOCKS, 0.8f, 0.7f);
+        }
     }
 
     /** The extra success chance the enriched ore and a blessing scroll are worth together. */

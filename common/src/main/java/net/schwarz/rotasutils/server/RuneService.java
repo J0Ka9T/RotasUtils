@@ -27,7 +27,8 @@ import java.util.Map;
  * Rune inscribing at the Rune Altar, and what inscribed runes do in a fight.
  *
  * <p>A weapon gains a rune slot at each refine threshold in {@link SeasonRules.RuneRules#slotLevels}.
- * Inscribing consumes one rune item and the slot's gold price; a rune already in the slot is lost.
+ * Inscribing consumes one rune item and the slot's gold price; a rune already in the slot comes back
+ * to the player, and inscribing the rune a slot already holds is refused so nothing is wasted.
  * Runes act only on melee hits from the weapon in the main hand, so a bow or a spell never triggers
  * the sword's runes.</p>
  */
@@ -83,6 +84,10 @@ public final class RuneService {
                     runeItem.getDescription().getString()));
             return false;
         }
+        if (ItemRunes.get(weapon, slot) == rune) {
+            RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.rune.same", runeItem.getDescription().getString()));
+            return false;
+        }
         long cost = rules.runes.goldPerSlot[slot];
         PlayerProgress progress = data.progress(player.getUUID());
         if (cost > 0 && progress.rpg().currency(rules.currency) < cost) {
@@ -97,6 +102,12 @@ public final class RuneService {
         take(player, runeItem);
         RuneType replaced = ItemRunes.get(weapon, slot);
         ItemRunes.set(weapon, slot, rune);
+        if (replaced != null) {
+            ItemStack back = new ItemStack(RotasRegistry.RUNES.get(replaced).get());
+            if (!player.getInventory().add(back)) {
+                player.drop(back, false);
+            }
+        }
         data.setDirty();
         progress.markDirty();
 
@@ -107,6 +118,14 @@ public final class RuneService {
         RotasNetwork.feedback(player, true, message);
         player.serverLevel().sendParticles(ParticleTypes.ENCHANT, player.getX(), player.getY() + 1.2, player.getZ(),
                 40, 0.5, 0.6, 0.5, 0.6);
+        net.minecraft.core.BlockPos altar = StationService.find(player, RotasRegistry.RUNE_ALTAR.get());
+        if (altar != null) {
+            net.minecraft.world.phys.Vec3 at = net.minecraft.world.phys.Vec3.atCenterOf(altar).add(0, 1.0, 0);
+            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
+                    colourOf(rune), at, 1.5f, 14);
+            net.schwarz.rotasutils.entity.RiftFx.send(player.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.BURST,
+                    colourOf(rune), at, 1.0f, 18);
+        }
         player.level().playSound(null, player.blockPosition(), SoundEvents.ENCHANTMENT_TABLE_USE,
                 SoundSource.PLAYERS, 1.0f, 0.9f);
         RotasNetwork.syncProgress(player);
@@ -139,6 +158,7 @@ public final class RuneService {
         }
         attacker.serverLevel().sendParticles(ParticleTypes.CRIT, victim.getX(), victim.getY(0.6), victim.getZ(),
                 12, 0.3, 0.3, 0.3, 0.3);
+        proc(attacker, victim, RuneType.FURY);
         return RuneType.FURY_MULTIPLIER;
     }
 
@@ -164,12 +184,14 @@ public final class RuneService {
                 case FIRE -> {
                     if (roll(attacker, strength)) {
                         victim.setSecondsOnFire(rune.seconds());
+                        proc(attacker, victim, rune);
                     }
                 }
                 case FROST -> {
                     if (roll(attacker, strength)) {
                         victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, rune.seconds() * 20, 1),
                                 attacker);
+                        proc(attacker, victim, rune);
                         attacker.serverLevel().sendParticles(ParticleTypes.SNOWFLAKE, victim.getX(), victim.getY(0.5),
                                 victim.getZ(), 10, 0.3, 0.4, 0.3, 0.02);
                     }
@@ -177,6 +199,7 @@ public final class RuneService {
                 case VENOM -> {
                     if (roll(attacker, strength)) {
                         victim.addEffect(new MobEffectInstance(MobEffects.POISON, rune.seconds() * 20, 0), attacker);
+                        proc(attacker, victim, rune);
                     }
                 }
                 default -> {
@@ -184,6 +207,22 @@ public final class RuneService {
                 }
             }
         }
+    }
+
+    /** The flash colour of a rune: fire and lifesteal red, fury gold, frost white, venom the rift's violet. */
+    private static int colourOf(RuneType rune) {
+        return switch (rune) {
+            case FIRE, LIFESTEAL -> net.schwarz.rotasutils.entity.RiftFx.CRIMSON;
+            case FURY -> net.schwarz.rotasutils.entity.RiftFx.GOLD;
+            case FROST -> net.schwarz.rotasutils.entity.RiftFx.WHITE;
+            case VENOM -> net.schwarz.rotasutils.entity.RiftFx.VIOLET;
+        };
+    }
+
+    /** A small anime-style flash on the victim when a rune fires. */
+    private static void proc(ServerPlayer attacker, LivingEntity victim, RuneType rune) {
+        net.schwarz.rotasutils.entity.RiftFx.send(attacker.serverLevel(), net.schwarz.rotasutils.entity.RiftFx.Kind.IMPACT,
+                colourOf(rune), victim.position().add(0, victim.getBbHeight() * 0.6, 0), 0.7f, 9);
     }
 
     private static boolean roll(ServerPlayer attacker, double chance) {

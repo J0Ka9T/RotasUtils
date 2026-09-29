@@ -2792,6 +2792,7 @@
   "rotasutils.msg.rune.need_altar": "Stand next to a Rune Altar to inscribe runes.",
   "rotasutils.msg.rune.not_weapon": "Hold the weapon you want to inscribe in your main hand.",
   "rotasutils.msg.rune.no_slots": "This weapon has no rune slots yet. The first opens at +%s.",
+  "rotasutils.msg.rune.same": "This slot already holds %s.",
   "rotasutils.msg.rune.bad_slot": "That rune slot is not open on this weapon.",
   "rotasutils.msg.rune.need_rune": "You need a %s.",
   "rotasutils.msg.rune.need_gold": "Inscribing this slot costs %s gold; you have %s.",

@@ -1,6 +1,6 @@
-"""Paints the mod's item icons at 128x128: lit, bevelled, textured renders instead of flat pixel art.
+"""Paints the mod's item icons at 64x64: lit, bevelled, textured renders instead of flat pixel art.
 
-Everything is painted at 512px and box-filtered down to 128, so edges are clean. Shapes are masks;
+Everything is painted at 512px and box-filtered down to 64, so edges are clean. Shapes are masks;
 their depth is a height field from a distance transform, and light from the top left (diffuse and
 specular from the height field's normals) picks colours from hue-shifted ramps. Stone, paper and
 metal get layered noise so no surface is a flat gradient.
@@ -16,7 +16,7 @@ from scipy import ndimage as ndi
 OUT = os.path.join(os.path.dirname(__file__), '..', 'common', 'src', 'main', 'resources',
                    'assets', 'rotasutils', 'textures', 'item')
 N = 512
-OUTN = 128
+OUTN = 64
 Y, X = np.mgrid[0:N, 0:N].astype(np.float32) / N
 LIGHT = np.array([-0.55, -0.65, 0.52], np.float32)
 LIGHT /= np.linalg.norm(LIGHT)
