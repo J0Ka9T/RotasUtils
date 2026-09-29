@@ -7,7 +7,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.schwarz.rotasutils.client.screen.AnimeUi;
 import net.schwarz.rotasutils.client.screen.L;
 import net.schwarz.rotasutils.client.screen.RotasScreen;
 import net.schwarz.rotasutils.client.screen.Ui;
@@ -18,16 +17,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The Rune Altar (แท่นจารึกรูน).
+ * The Rune Altar (แท่นจารึกรูน), in the same board style as the other Rotas screens.
  *
- * <p>The weapon hangs in the middle of the stage with a socket for each rune slot round it; slots open
- * as the weapon is refined. The runes the player carries are cards on the right, each with its tier.
- * Drag a card onto a socket (or select it and click the socket) to inscribe it - the rune it replaces
- * comes back - and fuse three runes of one tier into a stronger one with the button below. Every number
- * is the server's, which re-checks the altar, the runes and the gold and reopens the screen.</p>
+ * <p>The weapon is on the left with a socket for each rune slot beneath it; slots open as the weapon is
+ * refined. The runes the player carries are cards on the right, each with its tier. Drag a card onto a
+ * socket (or select it and click the socket) to inscribe it - the rune it replaces comes back - and fuse
+ * three runes of one tier into one of the next with the button below. Every number is the server's,
+ * which re-checks the altar, the runes and the gold and reopens the screen.</p>
  */
 @Environment(EnvType.CLIENT)
 public class RuneScreen extends RotasScreen {
+    private static final int PAD = 14;
+    private static final int LEFT_W = 216;
+
     private record Card(RuneType rune, int tier, int count) {
     }
 
@@ -72,17 +74,12 @@ public class RuneScreen extends RotasScreen {
         return state.getLong("gold");
     }
 
-    private static int colorOf(RuneType rune) {
-        Integer tint = rune.color().getColor();
-        return tint == null ? AnimeUi.WHITE : 0xFF000000 | tint;
-    }
-
     private static ItemStack iconOf(RuneType rune, int tier) {
         return ItemRunes.stack(rune, tier, 1);
     }
 
-    private boolean hasCard(Card card) {
-        return card != null && state.getInt("have_" + card.rune().id() + "_" + card.tier()) > 0;
+    private static String nameOf(RuneType rune, int tier) {
+        return L.t("item.rotasutils." + rune.itemPath()) + " " + ItemRunes.numeral(tier);
     }
 
     private boolean canFuse() {
@@ -101,49 +98,61 @@ public class RuneScreen extends RotasScreen {
 
     // Layout -----------------------------------------------------------------------------------------
 
-    private int stageW() {
-        return 244;
+    private int top() {
+        return guiTop + 56;
     }
 
-    private int panelH() {
-        return guiHeight - 60;
+    private int leftX() {
+        return guiLeft + PAD;
     }
 
-    private int stageCx() {
-        return guiLeft + stageW() / 2;
+    private int rightX() {
+        return guiLeft + PAD + LEFT_W + 12;
     }
 
-    private int stageCy() {
-        return guiTop + panelH() / 2 + 14;
+    private int rightW() {
+        return guiWidth - 2 * PAD - LEFT_W - 12;
     }
 
-    private int[] socketAt(int i, int n) {
-        double angle = Math.toRadians(-90 + i * (360.0 / Math.max(1, n)));
-        return new int[]{stageCx() + (int) Math.round(Math.cos(angle) * 80), stageCy() + (int) Math.round(Math.sin(angle) * 72)};
+    private int socketSize() {
+        int n = Math.max(1, slots().size());
+        return Math.min(62, (LEFT_W - 20 - (n - 1) * 8) / n);
+    }
+
+    private int socketX(int i) {
+        int n = slots().size(), size = socketSize();
+        int total = n * size + (n - 1) * 8;
+        return leftX() + (LEFT_W - total) / 2 + i * (size + 8);
+    }
+
+    private int socketY() {
+        return top() + 106;
     }
 
     private int socketUnder(double x, double y) {
-        int n = slots().size();
-        for (int i = 0; i < n; i++) {
-            int[] p = socketAt(i, n);
-            if (Math.abs(x - p[0]) + Math.abs(y - p[1]) <= 26) {
+        for (int i = 0; i < slots().size(); i++) {
+            if (Ui.inside((int) x, (int) y, socketX(i), socketY(), socketSize(), 78)) {
                 return i;
             }
         }
         return -1;
     }
 
+    private int cardW() {
+        return (rightW() - 12) / 3;
+    }
+
     private int cardX(int i) {
-        return guiLeft + stageW() + 24 + (i % 3) * 78;
+        return rightX() + (i % 3) * (cardW() + 6);
     }
 
     private int cardY(int i) {
-        return guiTop + 40 + (i / 3) * 62;
+        return top() + 22 + (i / 3) * 52;
     }
 
     private int cardUnder(double x, double y) {
         for (int i = 0; i < cards.size(); i++) {
-            if (Ui.inside((int) x, (int) y, cardX(i), cardY(i), 72, 56)) {
+            if (Ui.inside((int) x, (int) y, cardX(i), cardY(i), cardW(), 46)) {
                 return i;
             }
         }
@@ -156,9 +165,9 @@ public class RuneScreen extends RotasScreen {
         guiHeight = Ui.fill(height, 330);
         guiLeft = (width - guiWidth) / 2;
         guiTop = (height - guiHeight) / 2;
-        int by = guiTop + guiHeight - 40;
-        addRenderableWidget(new AnimeUi.Btn(guiLeft + 8, by, 84, 30, L.t("rotasutils.rune.close"), AnimeUi.PANEL_LIGHT, 1,
-                button -> onClose()));
+        int by = guiTop + guiHeight - 36;
+        addRenderableWidget(Ui.boardButton(L.c("rotasutils.rune.close"), button -> onClose())
+                .bounds(guiLeft + PAD, by, 90, 24).build());
         if (!station()) {
             return;
         }
@@ -166,12 +175,12 @@ public class RuneScreen extends RotasScreen {
                 ? L.t("rotasutils.rune.fuse", RuneType.FUSE_COUNT, ItemRunes.numeral(selected.tier() + 1),
                 RuneType.fuseCost(selected.tier()))
                 : L.t("rotasutils.rune.fuse_none");
-        var fuse = new AnimeUi.Btn(guiLeft + guiWidth - 276, by, 268, 30, label, AnimeUi.EMBER, 1, button -> {
+        var fuse = Ui.boardPrimaryButton(Ui.text(label), button -> {
             CompoundTag payload = new CompoundTag();
             payload.putString("rune", selected.rune().id());
             payload.putInt("tier", selected.tier());
             send("rune_fuse", payload);
-        });
+        }).bounds(guiLeft + guiWidth - PAD - 236, by, 236, 24).build();
         fuse.active = canFuse();
         addRenderableWidget(fuse);
     }
@@ -237,123 +246,101 @@ public class RuneScreen extends RotasScreen {
 
     @Override
     protected void renderBackdrop(GuiGraphics graphics) {
-        graphics.fillGradient(0, 0, width, height, 0xE60A0818, 0xF0190E36);
-        AnimeUi.glow(graphics, width / 4, height / 3, height, AnimeUi.alpha(AnimeUi.STEEL, 0.07f));
-        AnimeUi.glow(graphics, width * 3 / 4, height * 2 / 3, height, AnimeUi.alpha(AnimeUi.EMBER, 0.07f));
+        graphics.fillGradient(0, 0, width, height, Ui.BOARD_SCRIM_TOP, Ui.BOARD_SCRIM_BOTTOM);
     }
 
     @Override
     protected void renderFrame(GuiGraphics graphics) {
-        AnimeUi.panel(graphics, guiLeft, guiTop, stageW(), panelH(), AnimeUi.STEEL);
-        AnimeUi.panel(graphics, guiLeft + stageW() + 12, guiTop, guiWidth - stageW() - 12, panelH(), AnimeUi.EMBER);
-        AnimeUi.panel(graphics, guiLeft, guiTop + panelH() + 12, guiWidth, guiHeight - panelH() - 12, AnimeUi.GOLD);
-        renderFeedback(graphics, guiLeft + guiWidth - Math.max(40, feedbackWidth()), guiTop - 22,
+        Ui.woodFrame(graphics, guiLeft, guiTop, guiWidth, guiHeight);
+        renderFeedback(graphics, guiLeft + guiWidth - Math.max(40, feedbackWidth()) - PAD, guiTop + 14,
                 0xFFE8FFE0, 0xFFFFD8D0, Ui.GOOD, Ui.BAD);
     }
 
     @Override
     protected void renderContent(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        AnimeUi.outlined(g, L.t("rotasutils.rune.title"), guiLeft + 12, guiTop + 10, 2, AnimeUi.WHITE);
+        ItemStack weapon = weapon();
+        Ui.boardHeader(g, guiLeft + PAD, guiTop + 12, guiWidth - 2 * PAD - Math.max(0, feedbackWidth()) - 8,
+                L.t("rotasutils.rune.title"), weapon.isEmpty() ? "" : weapon.getHoverName().getString(), Ui.INK_SOFT);
         if (!station()) {
-            int y = guiTop + 50;
-            for (String line : Ui.wrap(state.getString("station_refusal"), stageW() - 24)) {
-                Ui.label(g, line, guiLeft + 12, y, AnimeUi.RED);
-                y += 12;
-            }
+            Ui.wrapped(g, state.getString("station_refusal"), guiLeft + PAD + 6, top() + 6, guiWidth - 2 * PAD - 12, Ui.INK_BAD);
             return;
         }
-        renderStage(g, mouseX, mouseY);
+        renderWeapon(g, mouseX, mouseY, weapon);
         renderCards(g, mouseX, mouseY);
-        AnimeUi.outlined(g, L.t("rotasutils.rune.gold", gold()), guiLeft + 108, guiTop + guiHeight - 30, 1, AnimeUi.GOLD);
+        Ui.labelCentered(g, L.t("rotasutils.rune.gold", gold()), guiLeft + guiWidth / 2 - 60, guiTop + guiHeight - 29, Ui.INK_SOFT);
         if (dragging && selected != null) {
-            AnimeUi.bigItem(g, iconOf(selected.rune(), selected.tier()), (int) dragX, (int) dragY, 2.5f, false);
+            g.pose().pushPose();
+            g.pose().translate(dragX, dragY, 300);
+            g.pose().scale(2f, 2f, 1f);
+            g.renderItem(iconOf(selected.rune(), selected.tier()), -8, -8);
+            g.pose().popPose();
         }
     }
 
-    private void renderStage(GuiGraphics g, int mouseX, int mouseY) {
-        int cx = stageCx(), cy = stageCy();
-        int accent = selected == null ? AnimeUi.STEEL : colorOf(selected.rune());
-        AnimeUi.burst(g, cx, cy, 70, accent, 9f);
-        ItemStack weapon = weapon();
+    private void renderWeapon(GuiGraphics g, int mouseX, int mouseY, ItemStack weapon) {
+        int x = leftX(), y = top();
+        Ui.parchment(g, x, y, LEFT_W, 196, false);
         ListTag slots = slots();
         if (weapon.isEmpty() || slots.isEmpty()) {
             String refusal = state.getString("refusal");
-            int y = guiTop + 46;
-            for (String line : Ui.wrap(refusal.isEmpty() ? L.t("rotasutils.rune.no_weapon") : refusal, stageW() - 24)) {
-                Ui.label(g, line, guiLeft + 12, y, AnimeUi.MUTED);
-                y += 12;
-            }
+            Ui.wrapped(g, refusal.isEmpty() ? L.t("rotasutils.rune.no_weapon") : refusal, x + 12, y + 12, LEFT_W - 24, Ui.INK_SOFT);
             return;
         }
-        int n = slots.size();
-        for (int i = 0; i < n; i++) {
-            CompoundTag slot = slots.getCompound(i);
-            int[] p = socketAt(i, n);
-            RuneType rune = RuneType.byId(slot.getString("rune"));
-            boolean open = slot.getBoolean("open");
-            int c = rune == null ? AnimeUi.MUTED : colorOf(rune);
-            AnimeUi.line(g, cx, cy, p[0], p[1], 3, AnimeUi.alpha(open ? c : 0xFF4A4668, 0.7f));
-        }
-        AnimeUi.bigItem(g, weapon, cx, cy, 4f, true);
+        Ui.parchmentInset(g, x + 10, y + 10, LEFT_W - 20, 84);
+        g.pose().pushPose();
+        g.pose().translate(x + LEFT_W / 2f, y + 52, 100);
+        g.pose().scale(3.5f, 3.5f, 1f);
+        g.renderItem(weapon, -8, -8);
+        g.pose().popPose();
         int hover = socketUnder(mouseX, mouseY);
-        for (int i = 0; i < n; i++) {
+        int size = socketSize();
+        for (int i = 0; i < slots.size(); i++) {
             CompoundTag slot = slots.getCompound(i);
-            int[] p = socketAt(i, n);
             RuneType rune = RuneType.byId(slot.getString("rune"));
             boolean open = slot.getBoolean("open");
             boolean target = (dragging || hover == i) && canInscribe(i);
-            boolean lit = open && rune != null;
-            int ringColor = target ? AnimeUi.GOLD : !open ? 0xFF4A4668 : rune == null ? AnimeUi.PANEL_LIGHT : colorOf(rune);
-            AnimeUi.socket(g, p[0], p[1], 62, lit ? AnimeUi.alpha(colorOf(rune), 0.75f) : 0, ringColor);
-            if (target) {
-                AnimeUi.glow(g, p[0], p[1], 92, AnimeUi.alpha(AnimeUi.GOLD, 0.35f + 0.2f * (float) Math.sin(AnimeUi.time() * 9f)));
-            }
+            int sx = socketX(i), sy = socketY();
+            Ui.rowCard(g, sx, sy, size, 78, target, rune != null && open);
             if (rune != null) {
                 int tier = slot.getInt("tier");
-                AnimeUi.bigItem(g, iconOf(rune, tier), p[0], p[1] - 2, 1.5f, false);
-                AnimeUi.outlinedCentered(g, ItemRunes.numeral(tier), p[0], p[1] + 12, 1, AnimeUi.WHITE);
-            } else if (!open) {
-                AnimeUi.outlinedCentered(g, "+" + slot.getInt("unlock"), p[0], p[1] - 4, 1, AnimeUi.MUTED);
+                g.renderItem(iconOf(rune, tier), sx + size / 2 - 8, sy + 8);
+                Ui.labelCentered(g, ItemRunes.numeral(tier), sx + size / 2, sy + 28, open ? Ui.INK : Ui.INK_FADE);
+                Ui.labelCentered(g, Ui.truncate(L.t("item.rotasutils." + rune.itemPath()), size - 4), sx + size / 2, sy + 42,
+                        open ? Ui.INK : Ui.INK_FADE);
             } else {
-                AnimeUi.outlinedCentered(g, "+", p[0], p[1] - 4, 2, AnimeUi.alpha(AnimeUi.WHITE, 0.5f));
+                Ui.labelCentered(g, open ? "+" : "-", sx + size / 2, sy + 18, Ui.INK_FADE);
             }
-            if (open && (target || hover == i)) {
-                AnimeUi.outlinedCentered(g, slot.getLong("cost") + "g", p[0], p[1] + 32, 1,
-                        gold() >= slot.getLong("cost") ? AnimeUi.GOLD : AnimeUi.RED);
-            }
+            String foot = !open ? L.t("rotasutils.rune.locked_short", slot.getInt("unlock"))
+                    : (target || hover == i) ? slot.getLong("cost") + "g" : rune == null ? L.t("rotasutils.rune.empty") : "";
+            int footColor = !open ? Ui.INK_FADE : gold() >= slot.getLong("cost") ? Ui.INK_SOFT : Ui.INK_BAD;
+            Ui.labelCentered(g, Ui.truncate(foot, size - 4), sx + size / 2, sy + 62, footColor);
         }
     }
 
     private void renderCards(GuiGraphics g, int mouseX, int mouseY) {
-        int rx = guiLeft + stageW() + 24;
+        int rx = rightX(), rw = rightW();
+        Ui.ribbon(g, rx, top(), rw, L.t("rotasutils.rune.carried"));
         if (cards.isEmpty()) {
-            int y = guiTop + 46;
-            for (String line : Ui.wrap(L.t("rotasutils.rune.none_carried"), guiWidth - stageW() - 48)) {
-                Ui.label(g, line, rx, y, AnimeUi.MUTED);
-                y += 12;
-            }
+            Ui.wrapped(g, L.t("rotasutils.rune.none_carried"), rx, top() + 26, rw, Ui.INK_SOFT);
             return;
         }
         for (int i = 0; i < cards.size(); i++) {
             Card card = cards.get(i);
-            int x = cardX(i), y = cardY(i);
-            boolean sel = card == selected;
-            boolean hot = Ui.inside(mouseX, mouseY, x, y, 72, 56);
-            int c = colorOf(card.rune());
-            AnimeUi.card(g, x, y, 72, 56, sel ? AnimeUi.GOLD : c, sel || hot);
-            AnimeUi.bigItem(g, iconOf(card.rune(), card.tier()), x + 22, y + 26, 2f, false);
-            AnimeUi.outlined(g, ItemRunes.numeral(card.tier()), x + 44, y + 12, 2, AnimeUi.WHITE);
-            AnimeUi.outlined(g, "x" + card.count(), x + 44, y + 34, 1, AnimeUi.GOLD);
+            int x = cardX(i), y = cardY(i), w = cardW();
+            Ui.rowCard(g, x, y, w, 46, Ui.inside(mouseX, mouseY, x, y, w, 46), card == selected);
+            g.renderItem(iconOf(card.rune(), card.tier()), x + 8, y + 15);
+            Ui.label(g, ItemRunes.numeral(card.tier()), x + 30, y + 12, Ui.INK);
+            Ui.label(g, "x" + card.count(), x + 30, y + 24, Ui.INK_SOFT);
         }
         if (selected != null) {
-            int y = guiTop + panelH() - 62;
             RuneType rune = selected.rune();
-            String name = L.t("item.rotasutils." + rune.itemPath()) + " " + ItemRunes.numeral(selected.tier());
-            AnimeUi.outlined(g, name, rx, y, 1, colorOf(rune));
+            int y = top() + 22 + ((cards.size() + 2) / 3) * 52 + 4;
+            Ui.separator(g, rx, y - 4, rw);
+            Ui.label(g, nameOf(rune, selected.tier()), rx, y, Ui.INK);
             int percent = (int) Math.round(rune.strength(ItemRunes.power(selected.tier())) * 100);
             Ui.label(g, L.t("rotasutils.rune.effect." + rune.id()) + "  " + percent + "%  (x" + ItemRunes.power(selected.tier()) + ")",
-                    rx, y + 12, AnimeUi.WHITE);
-            Ui.label(g, L.t("rotasutils.rune.drag_hint"), rx, y + 26, AnimeUi.MUTED);
+                    rx, y + 12, Ui.INK_SOFT);
+            Ui.wrapped(g, L.t("rotasutils.rune.drag_hint"), rx, y + 28, rw, Ui.INK_FADE);
         }
     }
 }
