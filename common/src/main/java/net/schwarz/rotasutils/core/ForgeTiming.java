@@ -15,11 +15,11 @@ public final class ForgeTiming {
     }
 
     public static final int STRIKES = 3;
-    /** Ticks for the marker to go across and back; slow on purpose, the game is meant to be easy. */
-    public static final int PERIOD = 56;
+    /** Ticks for the marker to go across and back. Good is forgiving; perfect takes a steady hand. */
+    public static final int PERIOD = 50;
     /** Half-width of the perfect and good zones, as a share of the bar. */
-    public static final double PERFECT = 0.10;
-    public static final double GOOD = 0.24;
+    public static final double PERFECT = 0.05;
+    public static final double GOOD = 0.20;
     public static final double PERFECT_BONUS = 0.06;
     public static final double GOOD_BONUS = 0.03;
     /** Most the game can add to one attempt, however well it went. */
