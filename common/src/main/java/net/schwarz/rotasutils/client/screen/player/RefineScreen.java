@@ -113,6 +113,12 @@ public class RefineScreen extends RotasScreen {
         return (s.getLong("now") - s.getLong("start")) + (Util.getMillis() - openedAt) / 50.0;
     }
 
+    /** Ticks into the current strike's sweep, on the same clock. */
+    private double strikeTicks() {
+        CompoundTag s = session();
+        return (s.getLong("now") - s.getLong("strike_start")) + (Util.getMillis() - openedAt) / 50.0;
+    }
+
     private boolean sessionLive() {
         return session() != null && sessionTicks() < ForgeTiming.SESSION_TICKS;
     }
@@ -364,13 +370,14 @@ public class RefineScreen extends RotasScreen {
 
         Ui.parchmentInset(g, x, y, w, 26);
         int bx = x + 4, bw = w - 8;
-        int gx0 = bx + (int) ((center - ForgeTiming.GOOD) * bw), gx1 = bx + (int) ((center + ForgeTiming.GOOD) * bw);
-        int px0 = bx + (int) ((center - ForgeTiming.PERFECT) * bw), px1 = bx + (int) ((center + ForgeTiming.PERFECT) * bw);
+        double good = ForgeTiming.goodHalf(index), perfect = ForgeTiming.perfectHalf(index);
+        int gx0 = bx + (int) ((center - good) * bw), gx1 = bx + (int) ((center + good) * bw);
+        int px0 = bx + (int) ((center - perfect) * bw), px1 = bx + (int) ((center + perfect) * bw);
         g.fill(gx0, y + 4, gx1, y + 22, 0xAAC9A45C);
         g.fill(px0, y + 4, px1, y + 22, 0xFF8FB06A);
         g.fill(px0, y + 4, px1, y + 6, 0x66FFFFFF);
         if (!over) {
-            int mx = bx + (int) (ForgeTiming.marker(sessionTicks()) * bw);
+            int mx = bx + (int) (ForgeTiming.marker(strikeTicks(), index) * bw);
             g.fill(mx - 1, y + 1, mx + 2, y + 25, Ui.INK);
             g.fill(mx - 3, y + 1, mx + 4, y + 3, Ui.INK);
             g.fill(mx - 3, y + 23, mx + 4, y + 25, Ui.INK);

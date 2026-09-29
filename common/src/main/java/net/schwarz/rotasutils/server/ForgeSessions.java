@@ -35,12 +35,14 @@ public final class ForgeSessions {
     private static final class Session {
         final RefineService.Options options;
         final long start;
+        long strikeStart;
         final double[] centers;
         final List<ForgeTiming.Grade> grades = new ArrayList<>();
 
         Session(RefineService.Options options, long start, double[] centers) {
             this.options = options;
             this.start = start;
+            this.strikeStart = start;
             this.centers = centers;
         }
     }
@@ -79,7 +81,11 @@ public final class ForgeSessions {
             return;
         }
         int index = session.grades.size();
-        ForgeTiming.Grade grade = ForgeTiming.grade(ForgeTiming.marker(now - session.start), session.centers[index]);
+        // The strike reaches the server about a round trip after the player saw the marker there.
+        double lag = Math.min(6.0, Math.max(0, player.latency) / 50.0);
+        ForgeTiming.Grade grade = ForgeTiming.grade(ForgeTiming.marker(now - session.strikeStart - lag, index),
+                session.centers[index], index);
+        session.strikeStart = now;
         session.grades.add(grade);
         strikeEffects(player, grade);
         if (session.grades.size() < ForgeTiming.STRIKES) {
@@ -120,6 +126,7 @@ public final class ForgeSessions {
         if (session != null && now - session.start <= ForgeTiming.SESSION_TICKS) {
             CompoundTag s = new CompoundTag();
             s.putLong("start", session.start);
+            s.putLong("strike_start", session.strikeStart);
             s.putLong("now", now);
             s.putBoolean("enriched", session.options.enriched());
             s.putBoolean("protection", session.options.protection());
