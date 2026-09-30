@@ -30,7 +30,7 @@ void main() {
     float falloff = 1.0 - smoothstep(0.0, max(Radius, 0.001), r);
     vec2 dir = r > 0.0001 ? d / r : vec2(0.0);
 
-    float pull = Strength * 0.10 * falloff * falloff;
+    float pull = min(Strength * 0.10 * falloff * falloff, r * 0.6);
     float shimmer = sin(r * 70.0 - Time * 10.0) * 0.003 * Strength * falloff;
     vec2 offs = dir * (shimmer - pull);
     offs.x /= Aspect;

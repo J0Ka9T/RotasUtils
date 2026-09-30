@@ -11,8 +11,8 @@ import java.util.function.DoubleFunction;
  * same film plays whichever way the player faced. The film: <b>0 Pull-back</b> - out of the player's head into a
  * wide third-person shot; <b>1 Circle</b> - a slow arc round them as the forces build; <b>2 Approach</b> - in to
  * the upper body and hands, slower; <b>3 Close-up</b> - in front of both energies with the face behind them;
- * <b>4 Point</b> - almost on the spark; <b>5 Hero</b> - a slow rotation round the player from behind, silhouetted
- * against the Purple; <b>6 Stable</b> - the same frame, held; <b>7 Chase</b> - behind the mass as it leaves;
+ * <b>4 Point</b> - almost on the spark; <b>5 Hero</b> - low and in front, swinging slowly to the caster's side, the
+ * outstretched arm and the Purple before it in profile; <b>6 Stable</b> - the same frame, held; <b>7 Chase</b> - behind the mass as it leaves;
  * <b>8 Side</b> - still beside the path as the wake crosses the world; <b>9 Wide</b> - far back, taking in caster
  * and target; <b>10 Return</b> - drifting back toward the player, then handing the view back.
  */
@@ -97,7 +97,7 @@ public final class PurpleCamera {
 
     private static Rig closeup(double t, CameraRig.Frame f, PurplePose.Sockets s) {
         double u = Curves.window(t, PurpleTimings.COLLAPSE, PurpleTimings.POINT);
-        Vec3 pos = s.mid().add(f.forward().scale(Curves.lerp(1.5, 1.2, u))).add(f.right().scale(0.25)).add(0, 0.15, 0);
+        Vec3 pos = s.mid().add(f.forward().scale(Curves.lerp(2.1, 1.6, u))).add(f.right().scale(0.25)).add(0, 0.15, 0);
         return new Rig(pos, lerp(s.mid(), s.eye(), 0.55));
     }
 
@@ -107,12 +107,13 @@ public final class PurpleCamera {
 
     private static Rig hero(double t, CameraRig.Frame f, PurplePose.Sockets s) {
         double u = Curves.smootherstep(Curves.window(t, PurpleTimings.BORN, PurpleTimings.STABLE));
-        return new Rig(around(f, Curves.lerp(50, -40, u), Curves.lerp(3.4, 3.0, u), 1.5), s.mid().add(0, 0.05, 0));
+        Vec3 core = PurplePose.core(s, t);
+        return new Rig(around(f, Curves.lerp(150, 98, u), Curves.lerp(3.8, 3.4, u), 0.9), lerp(core, s.chest(), 0.3));
     }
 
     private static Rig chase(Vec3 follow, CameraRig.Frame f, PurplePose.Sockets s) {
         Vec3 at = follow != null ? follow : s.mid().add(f.forward().scale(4));
-        return new Rig(at.subtract(f.forward().scale(6.5)).add(f.right().scale(1.6)).add(0, 1.0, 0), at);
+        return new Rig(at.subtract(f.forward().scale(10.0)).add(f.right().scale(3.2)).add(0, 1.6, 0), at);
     }
 
     private static Rig side(double t, CameraRig.Frame f, Timing timing, DoubleFunction<Vec3> path) {

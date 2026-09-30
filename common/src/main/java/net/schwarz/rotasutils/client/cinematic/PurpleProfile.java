@@ -11,7 +11,7 @@ public final class PurpleProfile {
     private PurpleProfile() {
     }
 
-    public static final double ORB_RADIUS = 0.30;
+    public static final double ORB_RADIUS = 0.22;
     public static final double POINT_RADIUS = 0.012;
     /** Radius of the finished Purple sphere, then of the dense core it is squeezed into before release. */
     public static final double PURPLE_RADIUS = 0.52;
@@ -28,7 +28,7 @@ public final class PurpleProfile {
         }
         double k = w(t, appear, appear + 1.4);
         double r = Curves.lerp(0.03, ORB_RADIUS, Curves.smootherstep(Math.pow(k, 1.2)));
-        r += 0.06 * Curves.smoothstep(w(t, PurpleTimings.REACT, PurpleTimings.COLLAPSE));
+        r += 0.04 * Curves.smoothstep(w(t, PurpleTimings.REACT, PurpleTimings.COLLAPSE));
         double fall = w(t, PurpleTimings.COLLAPSE, PurpleTimings.POINT);
         return Curves.lerp(r, 0.02, Math.pow(fall, 2.2));
     }
@@ -94,10 +94,13 @@ public final class PurpleProfile {
                 11.85, 0.0, 12, 0).at(t);
     }
 
-    /** How dark the world is dimmed (the atmosphere changes before anything is fired). */
+    /**
+     * How dark the world is dimmed (the atmosphere changes before anything is fired). It stays dim through the flight
+     * and the landing: added light washes out to pastel against a noon sky unless the sky is pulled down under it.
+     */
     public static double darken(double t) {
-        return Curves.Track.of(0, 0, 1.4, 0.42, 8.3, 0.5, 8.7, 0.7, 8.95, 0.15, 10.5, 0.35, 11.5, 0.4, 11.85, 0.75, 11.97, 0.85,
-                12.0, 0.0, 12.5, 0).at(t);
+        return Curves.Track.of(0, 0, 1.4, 0.55, 8.3, 0.62, 8.7, 0.8, 8.95, 0.2, 9.4, 0.55, 11.5, 0.6, 11.85, 0.8, 11.97, 0.88,
+                12.0, 0.0, 12.2, 0.5, 15, 0.45, 18, 0.2, 19.5, 0).at(t);
     }
 
     public static double distortion(double t) {
@@ -126,8 +129,20 @@ public final class PurpleProfile {
         return birth + fire;
     }
 
-    /** Radius of the travelling mass: gigantic, swelling as it leaves the hands. */
+    /** Radius of the travelling mass: a gigantic sphere, swelling as it leaves the hand. */
     public static double projectileRadius(double dt) {
-        return Curves.lerp(0.5, 1.9, Curves.smoothstep(dt / 0.4));
+        return Curves.lerp(0.4, 2.6, Curves.smoothstep(dt / 0.35));
+    }
+
+    public static final double BLAST_RADIUS = 14.0;
+
+    /** Radius of the erased space where it lands: out in a blink with a little overshoot, held, then closing to nothing. */
+    public static double blastRadius(double di) {
+        if (di < 0 || di > 1.5) {
+            return 0;
+        }
+        double u = Curves.clamp01(di / 0.22) - 1;
+        double out = 1 + 2.7 * u * u * u + 1.7 * u * u;
+        return BLAST_RADIUS * out * (1 - Math.pow(Curves.smoothstep(w(di, 0.75, 1.5)), 2));
     }
 }

@@ -166,12 +166,19 @@ class RedCinematicTest {
     }
 
     @Test
-    void purpleHandsStartWideCloseForTheMergeAndSpreadRoundTheSphere() {
+    void purpleHandsStartWideCloseForTheMergeThenTheRightHandAloneHoldsIt() {
         Vec3 feet = new Vec3(0, 64, 0);
-        double wide = gap(4.0, feet), merged = gap(PurpleTimings.BORN, feet), hero = gap(PurpleTimings.BORN + 1.5, feet);
-        assertTrue(wide > 1.2, "hands wide apart: " + wide);
+        double wide = gap(4.0, feet), merged = gap(PurpleTimings.BORN, feet);
+        assertTrue(wide > 1.8, "an open palm out to each side: " + wide);
         assertTrue(merged < 0.25, "hands touching for the merge: " + merged);
-        assertTrue(hero > 0.9 && hero < 1.2, "hands round a block-wide sphere: " + hero);
+        double t = PurpleTimings.BORN + 1.5;
+        PurplePose.Sockets s = PurplePose.sockets(PurplePose.sample(t), feet, 0);
+        assertTrue(s.handL().y < s.handR().y - 0.5, "the left arm is let down");
+        Vec3 core = PurplePose.core(s, t);
+        assertTrue(core.distanceTo(s.handR()) > PurpleProfile.PURPLE_RADIUS, "Purple floats clear of the right hand");
+        assertTrue(core.distanceTo(s.chest()) > 1.2, "and well clear of the body");
+        assertEquals(0, PurpleProfile.blastRadius(1.6), 1e-9);
+        assertTrue(PurpleProfile.blastRadius(0.4) > 13, "the erased space opens at once, then closes");
     }
 
     private static double gap(double t, Vec3 feet) {

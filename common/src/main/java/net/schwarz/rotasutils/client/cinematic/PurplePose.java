@@ -5,9 +5,10 @@ import net.schwarz.rotasutils.ability.PurpleTimings;
 
 /**
  * The caster's body through Hollow Purple, as pure numbers (radians, model pixels), in the same {@link RedPose.Pose}
- * the Red pose uses: completely still, both arms raised with the hands wide apart (Blue on the left, Red on the
- * right), the hands drawn together in stages, touching for the merge, spread again round the finished sphere,
- * closed on it for the compression, then one fast, clean release with the right arm.
+ * the Red pose uses, staged the way the technique is drawn: both arms held out wide, an open palm under each
+ * energy (Blue on the left, Red on the right); the hands swept together in front for the merge; then the left arm
+ * dropped to the side and the right held straight out with Purple floating before the fingers; and a short, sharp
+ * flick of that one arm to fire it.
  */
 public final class PurplePose {
     private PurplePose() {
@@ -18,8 +19,13 @@ public final class PurplePose {
     }
 
     /** How far each arm is turned out from straight ahead (radians): the hands' separation is set by this. */
-    private static final Curves.Track SPREAD = Curves.Track.of(0, 0.55, 4.6, 0.55, 6.2, 0.30, 7.6, 0.18, 8.4, -0.10, 8.7, -0.34,
-            8.95, -0.34, 9.4, 0.28, 11.5, 0.28, 11.8, -0.20, 12.0, -0.20);
+    private static final Curves.Track SPREAD = Curves.Track.of(0, 1.05, 4.6, 1.05, 6.2, 0.80, 7.6, 0.45, 8.4, 0.0, 8.7, -0.34,
+            8.95, -0.34, 9.8, -0.28, 12.0, -0.28);
+
+    /** 0..1: the left arm let down to the side once Purple exists; the right arm alone holds and fires it. */
+    private static double lowered(double t) {
+        return Curves.smootherstep(Curves.window(t, PurpleTimings.BORN + 0.25, PurpleTimings.BORN + 1.1));
+    }
 
     public static double weight(double t) {
         return Curves.smoothstep(t / 0.4) * (1 - Curves.smoothstep((t - (PurpleTimings.POSE_END - 1.0)) / 1.0));
@@ -42,15 +48,17 @@ public final class PurplePose {
         double breath = Math.sin(t * 1.7) * alive * (1 - snap);
         double tremble = 0.018 * react * Math.sin(t * 43);
         double spread = SPREAD.at(t) * raise;
+        double down = lowered(t);
 
         double twist = lerp(0, 0.16, snap);
         double lean = lerp(0.06 * stance, 0.2, snap) + 0.008 * breath;
-        double armX = -1.50 * raise;
-        double rArmX = lerp(armX, -1.98, snap) + 0.012 * breath + tremble;
-        double lArmX = lerp(armX, 0.75, snap) + 0.012 * breath - tremble;
-        double rArmY = lerp(spread, -0.05, snap) + twist;
-        double lArmY = lerp(-spread, -0.10, snap) + twist;
-        double lArmZ = lerp(0, 0.45, snap);
+        // Held out wide the arms sit a little below the shoulder; they come level as the hands close.
+        double armX = lerp(-1.50, -1.22, Curves.clamp01(spread)) * raise;
+        double rArmX = lerp(armX, -1.80, snap) + 0.012 * breath + tremble;
+        double lArmX = lerp(lerp(armX, 0.10, down), 0.75, snap) + 0.012 * breath - tremble;
+        double rArmY = lerp(spread, -0.22, snap) + twist;
+        double lArmY = lerp(-spread * (1 - down), -0.10, snap) + twist;
+        double lArmZ = lerp(0.10 * down, 0.45, snap);
 
         double rLegX = lerp(-0.20 * stance, -0.45, snap);
         double lLegX = lerp(0.24 * stance, 0.40, snap);
@@ -85,6 +93,17 @@ public final class PurplePose {
 
     private static Vec3 world(double[] m, Vec3 feet, double yawDeg) {
         return RedPose.toWorld(m[0], m[1], m[2], feet, yawDeg);
+    }
+
+    /**
+     * Where Purple is: born between the touching hands, then carried out in front of the right hand, which alone
+     * holds it. It sits nearer the fingers the smaller it is squeezed.
+     */
+    public static Vec3 core(Sockets s, double t) {
+        Vec3 held = s.handR().add(s.dirR().scale(0.2 + PurpleProfile.coreRadius(t))).add(0, 0.02, 0);
+        double k = Curves.smoothstep(Curves.window(t, PurpleTimings.BORN, PurpleTimings.BORN + 0.5));
+        Vec3 born = s.mid().add(0, 0.02, 0);
+        return new Vec3(lerp(born.x, held.x, k), lerp(born.y, held.y, k), lerp(born.z, held.z, k));
     }
 
     public static Sockets sockets(RedPose.Pose p, Vec3 feet, double yawDeg) {
