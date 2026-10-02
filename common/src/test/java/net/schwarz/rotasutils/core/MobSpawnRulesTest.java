@@ -63,6 +63,13 @@ class MobSpawnRulesTest {
         assertEquals(4, night.extraCap());
     }
 
+    @Test void dayAndNightMeanNothingWhereTheClockIsFixed() {
+        MobSpawnRules dayOnly = rules("{\"time\":\"DAY\"}");
+        assertFalse(dayOnly.naturalAllowed(new MobSpawnRules.Place("minecraft:the_nether", Set.of(), false, 30, true)));
+        assertTrue(dayOnly.naturalAllowed(new MobSpawnRules.Place("minecraft:the_nether", Set.of(), false, 30, false)),
+                "a fixed-clock dimension ignores the time rule");
+    }
+
     @Test void brokenRulesAreRejectedWithAPlainReason() {
         assertThrows(IllegalArgumentException.class, () -> rules("{\"where\":\"ONLY_IN_ZONES\"}"), "zones are required");
         assertThrows(IllegalArgumentException.class, () -> rules("{\"min_y\":100,\"max_y\":10}"));

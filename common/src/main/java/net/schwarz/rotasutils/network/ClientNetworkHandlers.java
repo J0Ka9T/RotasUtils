@@ -32,7 +32,7 @@ public final class ClientNetworkHandlers {
                 // The server sends its feedback before the content, so without this the open
                 // screen redraws from the old content and a deleted board or quest stays listed
                 // until some later packet happens to refresh it.
-                ScreenRouter.refreshCurrent();
+                ScreenRouter.refresh(ScreenRouter.CONTENT);
             });
         });
 
@@ -56,7 +56,7 @@ public final class ClientNetworkHandlers {
             String message = buf.readUtf(512);
             context.queue(() -> {
                 ClientState.feedback(success, message);
-                ScreenRouter.refreshCurrent();
+                ScreenRouter.refresh(ScreenRouter.FEEDBACK);
                 if (Minecraft.getInstance().screen == null && !message.isEmpty()) {
                     Minecraft.getInstance().gui.setOverlayMessage(
                             net.minecraft.network.chat.Component.literal(message), false);
@@ -83,7 +83,7 @@ public final class ClientNetworkHandlers {
             CompoundTag tag = buf.readNbt();
             context.queue(() -> {
                 ClientState.applyParty(tag == null ? new CompoundTag() : tag);
-                ScreenRouter.refreshCurrent();
+                ScreenRouter.refresh(ScreenRouter.PARTY);
             });
         });
 
@@ -91,7 +91,7 @@ public final class ClientNetworkHandlers {
             CompoundTag tag = buf.readNbt();
             context.queue(() -> {
                 net.schwarz.rotasutils.client.ClientKernelState.apply(tag == null ? new CompoundTag() : tag);
-                ScreenRouter.refreshCurrent();
+                ScreenRouter.refresh(ScreenRouter.KERNEL);
             });
         });
 
@@ -99,7 +99,7 @@ public final class ClientNetworkHandlers {
             CompoundTag tag = buf.readNbt();
             context.queue(() -> {
                 net.schwarz.rotasutils.client.ClientKernelState.applyPreview(tag == null ? new CompoundTag() : tag);
-                ScreenRouter.refreshCurrent();
+                ScreenRouter.refresh(ScreenRouter.PREVIEW);
             });
         });
 

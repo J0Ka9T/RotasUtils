@@ -22,6 +22,17 @@ public class ServerSettingsScreen extends SimpleFieldScreen {
         super("Server Settings", parent);
     }
 
+    /** Holds an unsaved draft of the server settings: never rebuilt by a push, but warns when someone else changes it. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.BANNER;
+    }
+
+    @Override
+    protected Object watchedSource() {
+        return net.schwarz.rotasutils.client.ClientState.serverSettings().save();
+    }
+
     @Override
     protected void buildContent() {
         if (draft == null) {

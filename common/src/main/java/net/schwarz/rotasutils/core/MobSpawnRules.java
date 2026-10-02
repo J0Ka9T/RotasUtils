@@ -54,10 +54,17 @@ public record MobSpawnRules(boolean natural, Where where, Set<String> zones, Set
         }
     }
 
-    /** One candidate spawn position: its dimension, every zone that contains it, day or night, and height. */
-    public record Place(String dimension, Set<String> zones, boolean day, int y) {
+    /**
+     * One candidate spawn position: its dimension, every zone that contains it, day or night, and height.
+     * {@code timed} is false in dimensions with a fixed clock (Nether, End), where day and night mean nothing.
+     */
+    public record Place(String dimension, Set<String> zones, boolean day, int y, boolean timed) {
         public Place {
             zones = Set.copyOf(zones);
+        }
+
+        public Place(String dimension, Set<String> zones, boolean day, int y) {
+            this(dimension, zones, day, y, true);
         }
     }
 
@@ -69,7 +76,7 @@ public record MobSpawnRules(boolean natural, Where where, Set<String> zones, Set
         if (place.y() < minY || place.y() > maxY) {
             return false;
         }
-        if ((time == Time.DAY && !place.day()) || (time == Time.NIGHT && place.day())) {
+        if (place.timed() && ((time == Time.DAY && !place.day()) || (time == Time.NIGHT && place.day()))) {
             return false;
         }
         boolean inListed = place.zones().stream().anyMatch(zones::contains);

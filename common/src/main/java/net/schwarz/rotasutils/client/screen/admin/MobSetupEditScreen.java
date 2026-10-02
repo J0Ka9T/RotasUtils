@@ -96,6 +96,22 @@ public class MobSetupEditScreen extends RotasScreen {
         this.zoneScope = startZoneScoped || this.form.zoneScoped();
     }
 
+    private String serverBody() {
+        return id == null ? null : ClientKernelState.monsters().stream()
+                .filter(entry -> entry.id().equals(id)).map(ClientKernelState.MonsterEntry::body).findFirst().orElse(null);
+    }
+
+    /** An open draft is never rebuilt; the admin is told when someone else saved or deleted this setup. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.BANNER;
+    }
+
+    @Override
+    protected Object watchedSource() {
+        return serverBody();
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 900);

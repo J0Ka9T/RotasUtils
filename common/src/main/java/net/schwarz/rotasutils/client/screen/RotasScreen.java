@@ -3,6 +3,7 @@ package net.schwarz.rotasutils.client.screen;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.Util;
 import net.minecraft.nbt.CompoundTag;
@@ -50,8 +51,120 @@ public abstract class RotasScreen extends Screen {
     public void onPick(String fieldKey, String value) {
     }
 
-    /** Called after a progress sync so live screens refresh their model. */
+    /** What a screen does when the server pushes fresh data while it is open. */
+    protected enum Refresh {
+        /** Nothing: the screen reads live data while drawing, or refreshes itself. */
+        NONE,
+        /** Rebuild the widgets from the new data, keeping scroll positions and typed text. */
+        REBUILD,
+        /** Hold an unsaved draft: leave it alone and tell the admin the data changed underneath. */
+        BANNER
+    }
+
+    private boolean dataChanged;
+    private boolean sourceSeen;
+    private Object lastSource;
+    /** When this screen last sent an action; a change right after it is the screen's own save. */
+    private long ownActionAt;
+    private static final long OWN_ACTION_WINDOW_MS = 5000;
+
+    /** How this screen reacts to content and kernel pushes; opt in per screen, nothing changes by default. */
+    protected Refresh refreshMode() {
+        return Refresh.NONE;
+    }
+
+    /**
+     * The server data this screen shows or was opened on, compared with {@code equals} after each push
+     * (a CompoundTag, a JSON string, a record). Null means "not tracked": a REBUILD screen then rebuilds
+     * on every content or kernel push, a BANNER screen never warns.
+     */
+    protected Object watchedSource() {
+        return null;
+    }
+
+    /** Called after a server sync so live screens refresh their model. Screens with their own refresh override it. */
     public void onDataRefreshed() {
+    }
+
+    /** Entry point for {@link ScreenRouter}: runs the screen's own refresh, then its {@link #refreshMode()}. */
+    public final void dispatchRefresh(int kinds) {
+        onDataRefreshed();
+        if ((kinds & (ScreenRouter.CONTENT | ScreenRouter.KERNEL)) == 0 || minecraft == null) {
+            return;
+        }
+        switch (refreshMode()) {
+            case REBUILD -> {
+                if (sourceChanged(true)) {
+                    rebuildKeepingState();
+                }
+            }
+            case BANNER -> {
+                if (sourceChanged(false)) {
+                    boolean own = Util.getMillis() - ownActionAt < OWN_ACTION_WINDOW_MS;
+                    ownActionAt = 0;
+                    dataChanged |= !own;
+                }
+            }
+            default -> { }
+        }
+    }
+
+    private boolean sourceChanged(boolean whenUntracked) {
+        Object now = watchedSource();
+        if (now == null && lastSource == null) {
+            return whenUntracked;
+        }
+        boolean changed = !java.util.Objects.equals(now, lastSource);
+        lastSource = now;
+        return changed;
+    }
+
+    /**
+     * Rebuilds every widget and puts back what the admin was in the middle of: scroll position of each
+     * list, text and focus of each text box. Matching is by creation order, so it is skipped when the
+     * new layout has a different number of lists or boxes.
+     */
+    protected final void rebuildKeepingState() {
+        if (minecraft == null) {
+            return;
+        }
+        int[] scrolls = panels.stream().mapToInt(ScrollPanel::scroll).toArray();
+        List<EditBox> before = editBoxes();
+        String[] texts = before.stream().map(EditBox::getValue).toArray(String[]::new);
+        int focused = -1;
+        for (int i = 0; i < before.size(); i++) {
+            if (before.get(i).isFocused()) {
+                focused = i;
+            }
+        }
+        rebuildWidgets();
+        if (panels.size() == scrolls.length) {
+            for (int i = 0; i < scrolls.length; i++) {
+                panels.get(i).setScroll(scrolls[i]);
+            }
+        }
+        List<EditBox> after = editBoxes();
+        if (after.size() == texts.length) {
+            for (int i = 0; i < texts.length; i++) {
+                if (!after.get(i).getValue().equals(texts[i])) {
+                    after.get(i).setValue(texts[i]);
+                }
+            }
+            if (focused >= 0) {
+                setFocused(after.get(focused));
+                after.get(focused).setFocused(true);
+            }
+        }
+    }
+
+    private List<EditBox> editBoxes() {
+        List<EditBox> boxes = new ArrayList<>();
+        for (var child : children()) {
+            if (child instanceof EditBox box) {
+                boxes.add(box);
+            }
+        }
+        return boxes;
     }
 
     protected void registerPanel(ScrollPanel panel) {
@@ -79,6 +192,10 @@ public abstract class RotasScreen extends Screen {
         guiTop = (height - guiHeight) / 2;
         panels.clear();
         buildContent();
+        if (!sourceSeen) {
+            sourceSeen = true;
+            lastSource = watchedSource();
+        }
     }
 
     protected abstract void buildContent();
@@ -113,10 +230,12 @@ public abstract class RotasScreen extends Screen {
     }
 
     protected void send(String action) {
+        ownActionAt = Util.getMillis();
         RotasNetwork.sendAction(action);
     }
 
     protected void send(String action, CompoundTag payload) {
+        ownActionAt = Util.getMillis();
         RotasNetwork.sendAction(action, payload);
     }
 
@@ -188,6 +307,12 @@ public abstract class RotasScreen extends Screen {
         Ui.separator(graphics, guiLeft + Ui.PAD, guiTop + 26, guiWidth - 2 * Ui.PAD);
         renderFeedback(graphics, guiLeft + guiWidth - feedbackWidth - Ui.PAD, guiTop + 7,
                 RotasTheme.SURFACE_HIGH, Ui.DANGER_SOFT, Ui.GOOD, Ui.BAD);
+        if (dataChanged) {
+            // Title row, left of the feedback badge, so it never covers the content or the footer buttons.
+            String warning = Ui.truncate(L.t("rotasutils.common.data_changed"), guiWidth / 2 - Ui.PAD);
+            Ui.labelRight(graphics, warning, guiLeft + guiWidth - feedbackWidth - Ui.PAD
+                    - (feedbackWidth == 0 ? 0 : Ui.GAP), guiTop + 9, Ui.WARN);
+        }
     }
 
     /** Width the feedback badge needs, or 0 when there is nothing to show. */

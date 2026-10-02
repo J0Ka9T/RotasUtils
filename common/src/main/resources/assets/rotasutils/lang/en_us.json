@@ -176,6 +176,7 @@
   "rotasutils.party.summary.none": "You are not in a party.",
   "rotasutils.party.summary.hint": "Party members near each other share quest objective progress.",
   "rotasutils.party.summary.invited": "You have an invitation from %s.",
+  "rotasutils.common.data_changed": "Changed by another admin - reopen",
   "rotasutils.common.back": "Back",
   "rotasutils.common.save": "Save",
   "rotasutils.common.apply": "Apply",

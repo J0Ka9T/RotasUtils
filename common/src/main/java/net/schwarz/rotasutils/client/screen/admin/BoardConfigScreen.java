@@ -118,6 +118,17 @@ public class BoardConfigScreen extends RotasScreen {
         this.boardId = boardId;
     }
 
+    /** Holds an unsaved draft of this quest board: never rebuilt by a push, but warns when someone else changes it. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.BANNER;
+    }
+
+    @Override
+    protected Object watchedSource() {
+        return java.util.Optional.ofNullable(net.schwarz.rotasutils.client.ClientState.board(boardId)).map(board -> board.save()).orElse(null);
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 880);

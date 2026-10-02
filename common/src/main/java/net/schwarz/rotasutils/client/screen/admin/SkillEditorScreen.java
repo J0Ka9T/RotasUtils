@@ -56,6 +56,17 @@ public class SkillEditorScreen extends RotasScreen {
         this.categoryId = categoryId;
     }
 
+    /** Holds an unsaved draft of this skill tree: never rebuilt by a push, but warns when someone else changes it. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.BANNER;
+    }
+
+    @Override
+    protected Object watchedSource() {
+        return java.util.Optional.ofNullable(net.schwarz.rotasutils.client.ClientState.category(categoryId)).map(category -> category.save()).orElse(null);
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 720);

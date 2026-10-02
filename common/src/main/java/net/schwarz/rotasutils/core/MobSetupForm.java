@@ -209,7 +209,8 @@ public final class MobSetupForm {
     public void setMin(int value) {
         int clamped = clamp(value, 1, 10_000);
         level().addProperty("min", clamped);
-        if (max() < clamped) {
+        // Compare the stored max: max() already floors at min(), so it can never be below it.
+        if (integer(level(), "max", clamped) < clamped) {
             level().addProperty("max", clamped);
         }
         if (level().has("value") && integer(level(), "value", clamped) < clamped) {

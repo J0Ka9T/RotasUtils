@@ -202,7 +202,7 @@ public final class MobSetupService {
             }
             // Everyone with the editor open sees the saved version, not just the one who saved.
             for (ServerPlayer online : server.getPlayerList().getPlayers()) {
-                KernelUi.sync(online);
+                net.schwarz.rotasutils.network.SyncQueue.kernel(online);
             }
         });
         if (!started) {

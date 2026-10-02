@@ -25,6 +25,14 @@ public final class ScreenRouter {
      * itself once chunks arrive and would wipe anything opened on top of it, so it waits for {@link #tick}.
      */
     private static Screen deferred;
+    /** What arrived since the last refresh, as a mask of the kinds below. */
+    private static int refreshPending;
+    public static final int CONTENT = 1;
+    public static final int PROGRESS = 2;
+    public static final int PARTY = 4;
+    public static final int KERNEL = 8;
+    public static final int FEEDBACK = 16;
+    public static final int PREVIEW = 32;
 
     private ScreenRouter() {
     }
@@ -99,6 +107,14 @@ public final class ScreenRouter {
     }
 
     public static void tick(Minecraft minecraft) {
+        if (refreshPending != 0) {
+            int kinds = refreshPending;
+            refreshPending = 0;
+            Screen open = minecraft.screen;
+            if (open instanceof RotasScreen rotasScreen) {
+                rotasScreen.dispatchRefresh(kinds);
+            }
+        }
         if (deferred != null && !loading(minecraft)) {
             Screen screen = deferred;
             deferred = null;
@@ -111,11 +127,16 @@ public final class ScreenRouter {
         deferred = null;
     }
 
+    /**
+     * Asks the open screen to refresh. Several packets can land in one tick (content, progress, party,
+     * kernel); they share one refresh at the end of the tick instead of one rebuild each.
+     */
     public static void refreshCurrent() {
-        Screen screen = Minecraft.getInstance().screen;
-        if (screen instanceof RotasScreen rotasScreen) {
-            rotasScreen.onDataRefreshed();
-        }
+        refresh(CONTENT | PROGRESS | PARTY | KERNEL);
+    }
+
+    public static void refresh(int kinds) {
+        refreshPending |= kinds;
     }
 
     /** Reopens the screen that asked for a world selection and hands it the value. */

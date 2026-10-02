@@ -223,6 +223,7 @@ public final class RotasEvents {
         net.schwarz.rotasutils.server.MobSpawnDirector.clearCaches();
         net.schwarz.rotasutils.server.ZoneWandService.clear();
         net.schwarz.rotasutils.server.ZoneRuleService.clear();
+        net.schwarz.rotasutils.network.SyncQueue.clear();
         net.schwarz.rotasutils.server.ZoneVisibilityService.clear();
         net.schwarz.rotasutils.server.NpcConversations.clear();
         net.schwarz.rotasutils.server.ObjectiveEngine.clear();
@@ -237,6 +238,8 @@ public final class RotasEvents {
     private static void onPlayerJoin(ServerPlayer player) {
         RotasData data = RotasData.get(player.server);
         PlayerProgress progress = data.progress(player.getUUID());
+        // A fresh client holds nothing, so it must not be skipped as "already up to date".
+        net.schwarz.rotasutils.network.SyncQueue.forget(player.getUUID());
         progress.setLastKnownName(player.getGameProfile().getName());
         if(progress.mainJob().isEmpty() && data.levelConfig().firstJoinMode()==net.schwarz.rotasutils.level.LevelConfig.FirstJoinMode.ASSIGN) {
             var main=data.job(data.levelConfig().firstJoinMainJob());
@@ -285,6 +288,7 @@ public final class RotasEvents {
     private static void onPlayerQuit(ServerPlayer player) {
         net.schwarz.rotasutils.server.RpgKernel.emit(player, "rotas:player_logout",
                 java.util.UUID.randomUUID().toString(), java.util.Map.of());
+        net.schwarz.rotasutils.network.SyncQueue.forget(player.getUUID());
         WorldPicker.clear(player);
         net.schwarz.rotasutils.server.CombatStats.forget(player.getUUID());
         PlayerProgress leaving = RotasData.get(player.server).peek(player.getUUID());
@@ -682,6 +686,7 @@ public final class RotasEvents {
             data.kernel().equipment().tick(server, data);
         }
         net.schwarz.rotasutils.server.MiningService.tick(server, data);
+        net.schwarz.rotasutils.network.SyncQueue.flush(server);
 
         // Vanilla XP is only a compatibility mirror. Restore it every tick so mods that
         // directly mutate Player.experienceLevel cannot create a second level economy.

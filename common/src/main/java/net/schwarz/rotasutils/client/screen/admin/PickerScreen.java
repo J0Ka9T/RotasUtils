@@ -90,6 +90,12 @@ public class PickerScreen extends RotasScreen {
         return new PickerScreen(title, options, parent, onPicked);
     }
 
+    /** Built from server data with no draft of its own, so a push rebuilds it (scroll and typing kept). */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.REBUILD;
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 560);

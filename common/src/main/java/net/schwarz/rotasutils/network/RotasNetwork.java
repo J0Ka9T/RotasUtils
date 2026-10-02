@@ -133,6 +133,8 @@ public final class RotasNetwork {
     /** Content catalog plus this player's kernel state, for the control screens. */
     public static void syncKernelUi(ServerPlayer player, CompoundTag snapshot) {
         if (!connected(player)) { return; }
+        // Record what this player now holds, so a later queued sync can tell when nothing changed.
+        SyncQueue.changed(true, player.getUUID(), snapshot);
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
         buf.writeNbt(snapshot);
         NetworkManager.sendToPlayer(player, SYNC_KERNEL_UI, buf);
@@ -367,22 +369,39 @@ public final class RotasNetwork {
         return tag;
     }
 
+    /**
+     * Asks for fresh content after something changed. Content is shared, so every online player is
+     * refreshed, this one first; {@link SyncQueue} coalesces the requests and only sends a player a
+     * snapshot that actually differs from what they have.
+     */
     public static void syncContent(ServerPlayer player) {
+        if (player != null) {
+            SyncQueue.content(player.server, player);
+        }
+    }
+
+    /** Builds and sends the content snapshot now. Only {@link SyncQueue#flush} calls this. */
+    static void sendContent(ServerPlayer player) {
         if (!connected(player)) { return; }
         CompoundTag tag = contentTag(player, RotasData.get(player.server));
+        if (!SyncQueue.changed(false, player.getUUID(), tag)) { return; }
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
         buf.writeNbt(tag);
         NetworkManager.sendToPlayer(player, SYNC_CONTENT, buf);
     }
 
+    /** Builds and sends the kernel UI snapshot now, unless the player already has this exact one. */
+    static void sendKernelUi(ServerPlayer player) {
+        if (!connected(player)) { return; }
+        CompoundTag snapshot = KernelUi.snapshot(player);
+        if (SyncQueue.changed(true, player.getUUID(), snapshot)) {
+            syncKernelUi(player, snapshot);
+        }
+    }
+
     /** Refreshes the content snapshot for every connected player after a server mutation. */
     public static void syncContent(MinecraftServer server) {
-        if (server == null) {
-            return;
-        }
-        for (ServerPlayer online : server.getPlayerList().getPlayers()) {
-            syncContent(online);
-        }
+        SyncQueue.content(server, null);
     }
 
     /**
@@ -461,7 +480,8 @@ public final class RotasNetwork {
 
     public static void openScreen(ServerPlayer player, String screenId, CompoundTag payload) {
         if (!connected(player)) { return; }
-        syncContent(player);
+        // Not queued: the screen is about to open on this snapshot, so it has to arrive first.
+        sendContent(player);
         syncProgress(player);
         syncParty(player);
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());

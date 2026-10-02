@@ -47,6 +47,12 @@ public class TitleManagerScreen extends RotasScreen {
         return Math.max(1, (guiHeight - 44 - 64) / ROW);
     }
 
+    /** Buttons depend on the selected title, so a title another admin edits or deletes must rebuild them. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.REBUILD;
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 600);

@@ -176,6 +176,7 @@
   "rotasutils.party.summary.none": "คุณยังไม่ได้อยู่ในปาร์ตี้",
   "rotasutils.party.summary.hint": "สมาชิกปาร์ตี้ที่อยู่ใกล้กันจะแบ่งความคืบหน้าเป้าหมายเควสกัน",
   "rotasutils.party.summary.invited": "คุณได้รับคำเชิญจาก %s",
+  "rotasutils.common.data_changed": "มีการแก้ไขจากแอดมินอื่น - เปิดใหม่",
   "rotasutils.common.back": "กลับ",
   "rotasutils.common.save": "บันทึก",
   "rotasutils.common.apply": "ยืนยัน",

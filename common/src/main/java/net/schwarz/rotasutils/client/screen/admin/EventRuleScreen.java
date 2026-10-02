@@ -48,6 +48,17 @@ public class EventRuleScreen extends RotasScreen {
         this.cooldown = rule == null ? 0 : rule.cooldownSeconds();
     }
 
+    /** Holds an unsaved draft of this event rule: never rebuilt by a push, but warns when someone else changes it. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.BANNER;
+    }
+
+    @Override
+    protected Object watchedSource() {
+        return net.schwarz.rotasutils.client.ClientState.eventRule(typeName, filter);
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 460);

@@ -38,6 +38,12 @@ public class ZoneSetupChoiceScreen extends RotasScreen {
         return 520;
     }
 
+    /** Built from server data with no draft of its own, so a push rebuilds it (scroll and typing kept). */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.REBUILD;
+    }
+
     @Override
     protected void buildContent() {
         rows.clear();

@@ -91,4 +91,12 @@ class MobSetupFormTest {
         assertEquals("rotas:monster/zombie", MobSetupForm.newId("minecraft:zombie", Set.of()));
         assertEquals("rotas:monster/zombie_2", MobSetupForm.newId("minecraft:zombie", Set.of("rotas:monster/zombie")));
     }
+
+    @Test void raisingTheMinimumPastTheMaximumLiftsTheStoredMaximum() {
+        MobSetupForm form = MobSetupForm.create("minecraft:zombie");
+        form.setMax(5);
+        form.setMin(10);
+        assertEquals(10, form.body().getAsJsonObject("level").get("max").getAsInt());
+        MonsterDefinitions.profile(new ContentId("rotas:monster/zombie"), form.body());
+    }
 }

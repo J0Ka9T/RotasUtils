@@ -132,6 +132,17 @@ public class DropTableEditScreen extends RotasScreen {
     private int footerY() { return guiTop + guiHeight - 30; }
     private int visibleRows() { return Math.max(1, (footerY() - 30 - listTop()) / ROW_H); }
 
+    /** Holds an unsaved draft of this drop table: never rebuilt by a push, but warns when someone else changes it. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.BANNER;
+    }
+
+    @Override
+    protected Object watchedSource() {
+        return net.schwarz.rotasutils.client.ClientState.levelConfig().season().toJson();
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 600);

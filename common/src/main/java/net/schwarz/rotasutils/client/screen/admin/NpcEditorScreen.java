@@ -100,6 +100,17 @@ public class NpcEditorScreen extends RotasScreen {
 
     // Layout ---------------------------------------------------------------
 
+    /** Holds an unsaved draft of this NPC: never rebuilt by a push, but warns when someone else changes it. */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.BANNER;
+    }
+
+    @Override
+    protected Object watchedSource() {
+        return java.util.Optional.ofNullable(net.schwarz.rotasutils.client.ClientState.npc(npcId)).map(npc -> npc.save()).orElse(null);
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 900);

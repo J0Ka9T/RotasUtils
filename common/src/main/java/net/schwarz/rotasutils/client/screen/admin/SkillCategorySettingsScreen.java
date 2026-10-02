@@ -25,7 +25,7 @@ import java.util.List;
 /** Category-level settings: identity, colours, point pool and unlock conditions. */
 @Environment(EnvType.CLIENT)
 public class SkillCategorySettingsScreen extends RotasScreen {
-    private final SkillCategory category;
+    private SkillCategory category;
     private final SkillEditorScreen editor;
 
     private final List<String> labels = new ArrayList<>();
@@ -38,6 +38,21 @@ public class SkillCategorySettingsScreen extends RotasScreen {
         super("Category Settings", editor);
         this.category = category;
         this.editor = editor;
+    }
+
+    /** Edits go straight to the server, so pick up the saved category before the rebuild draws it. */
+    @Override
+    public void onDataRefreshed() {
+        SkillCategory fresh = net.schwarz.rotasutils.client.ClientState.category(category.id());
+        if (fresh != null) {
+            category = fresh;
+        }
+    }
+
+    /** Built from server data with no draft of its own, so a push rebuilds it (scroll and typing kept). */
+    @Override
+    protected Refresh refreshMode() {
+        return Refresh.REBUILD;
     }
 
     @Override

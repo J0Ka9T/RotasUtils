@@ -56,8 +56,10 @@ public final class MobSpawnDirector {
                     .thenComparing(MonsterDefinitions.Profile::id);
 
     private static MonsterCatalog cachedCatalog;
-    /** Every setup naming an entity, best first, for entities where at least one setup restricts spawning. */
-    private static Map<String, List<MonsterDefinitions.Profile>> cachedNatural = Map.of();
+    /** Setups that name a kind of mob (by id, tag or mod), best first, for the spawn gate. */
+    private static List<MonsterDefinitions.Profile> cachedGate = List.of();
+    /** True when at least one gated setup limits normal spawning; otherwise the gate has nothing to do. */
+    private static boolean cachedRestricts;
     private static List<MonsterDefinitions.Profile> cachedExtra = List.of();
     private static Map<String, Set<String>> cachedZoneEntities = Map.of();
 
@@ -68,7 +70,8 @@ public final class MobSpawnDirector {
      */
     public static synchronized void clearCaches() {
         cachedCatalog = null;
-        cachedNatural = Map.of();
+        cachedGate = List.of();
+        cachedRestricts = false;
         cachedExtra = List.of();
         cachedZoneEntities = Map.of();
     }
@@ -81,6 +84,14 @@ public final class MobSpawnDirector {
     MobSpawnDirector(MinecraftServer server, RpgKernel kernel) {
         this.server = server;
         this.kernel = kernel;
+    }
+
+    /**
+     * Cancels a spawn. Architectury 9.2.14 reads the result differently per loader: Fabric treats false as
+     * "spawn denied", but Forge hands the value to setSpawnCancelled, so only true cancels there.
+     */
+    private static EventResult deny() {
+        return dev.architectury.platform.Platform.isForge() ? EventResult.interruptTrue() : EventResult.interruptFalse();
     }
 
     /** Spawn gate for normal world spawning; see the class javadoc. Never throws. */
@@ -105,28 +116,37 @@ public final class MobSpawnDirector {
                 ZoneDef top = ZoneService.select(data.zones().values(), dimension, x, y, z);
                 boolean hostileOff = !ZoneRuleResolver.hostileSpawningEnabled(data.zones().values(), dimension, x, y, z);
                 Set<String> own = top == null ? Set.of() : zoneEntities(catalog).getOrDefault(top.id(), Set.of());
+                if (top != null && !own.contains(id) && zoneNamesKind(catalog, top.id(), entity.getType())) {
+                    own = Set.of(id);
+                }
                 if (!ZoneMobPolicy.naturalSpawnAllowed(id, true, top, hostileOff, own)) {
-                    return EventResult.interruptFalse();
+                    return deny();
                 }
             }
-            List<MonsterDefinitions.Profile> profiles = naturalRules(catalog).get(id);
-            if (profiles == null) {
+            List<MonsterDefinitions.Profile> profiles = gateRules(catalog);
+            if (profiles.isEmpty()) {
                 return EventResult.pass();
             }
-            String scope = scopeZone(data, level, x, y, z);
+            String dimension = level.dimension().location().toString();
+            ZoneDef top = ZoneService.select(data.zones().values(), dimension, x, y, z);
+            String scope = top == null ? "" : top.id();
+            String biome = accessor.getBiome(BlockPos.containing(x, y, z)).unwrapKey()
+                    .map(key -> key.location().toString()).orElse("");
+            Set<String> tags = tagsOf(entity.getType());
             for (MonsterDefinitions.Profile profile : profiles) {
-                // The best setup in scope decides: a zone version inside its zones, else the global one.
-                if (!inScope(profile, scope)) {
+                // The best setup that matches this mob decides: a zone version inside its zones, else the global one.
+                if (!ZoneMobPolicy.profileAllowed(profile.selector().regions(), top)
+                        || !profile.selector().matches(id, tags, biome, dimension, type.name(), scope)) {
                     continue;
                 }
                 MobSpawnRules rules = profile.spawning();
                 if (!rules.naturalAllowed(place(data, level, x, y, z))) {
-                    return EventResult.interruptFalse();
+                    return deny();
                 }
                 // World generation can run off the server thread; the crowd count only runs where it is safe.
                 if (rules.maxNearby() > 0 && type == MobSpawnType.NATURAL && level.getServer().isSameThread()
-                        && nearby(level, profile.selector().entities(), x, y, z) >= rules.maxNearby()) {
-                    return EventResult.interruptFalse();
+                        && nearby(level, profile.selector(), x, y, z) >= rules.maxNearby()) {
+                    return deny();
                 }
                 return EventResult.pass();
             }
@@ -172,7 +192,11 @@ public final class MobSpawnDirector {
     private void attempt(RotasData data, ServerPlayer player, MonsterDefinitions.Profile profile) {
         ServerLevel level = player.serverLevel();
         MobSpawnRules rules = profile.spawning();
-        List<String> ids = new ArrayList<>(profile.selector().entities());
+        List<String> ids = profile.selector().entities().stream()
+                .filter(id -> !profile.selector().excluded().contains(id)).toList();
+        if (ids.isEmpty()) {
+            return;
+        }
         EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(
                 ResourceLocation.tryParse(ids.get(random.nextInt(ids.size())))).orElse(null);
         if (type == null || !type.canSummon()) {
@@ -191,14 +215,18 @@ public final class MobSpawnDirector {
         double pz = pos.getZ() + 0.5;
         String dimension = level.dimension().location().toString();
         ZoneDef top = ZoneService.select(data.zones().values(), dimension, px, pos.getY(), pz);
-        if (!inScope(profile, top == null ? "" : top.id())
+        String biome = level.getBiome(pos).unwrapKey().map(key -> key.location().toString()).orElse("");
+        // The mob joins as EVENT, so that is the reason its setup is matched on. Tags, biome, dimension and
+        // exclusions all have to agree, exactly as they do when the setup is assigned.
+        if (!profile.selector().matches(BuiltInRegistries.ENTITY_TYPE.getKey(type).toString(), tagsOf(type), biome,
+                        dimension, MobSpawnType.EVENT.name(), top == null ? "" : top.id())
                 || !ZoneMobPolicy.profileAllowed(profile.selector().regions(), top)
                 || (type.getCategory() == MobCategory.MONSTER
                     && !ZoneRuleResolver.hostileSpawningEnabled(data.zones().values(), dimension, px, pos.getY(), pz))
                 || !rules.extraAllowed(place(data, level, px, pos.getY(), pz))) {
             return;
         }
-        int room = rules.extraCap() - nearby(level, profile.selector().entities(), pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
+        int room = rules.extraCap() - nearby(level, profile.selector(), pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
         if (room <= 0) {
             return;
         }
@@ -248,26 +276,36 @@ public final class MobSpawnDirector {
                 zones.add(zone.id());
             }
         }
-        return new MobSpawnRules.Place(dimension, zones, level.isDay(), (int) Math.floor(y));
+        return new MobSpawnRules.Place(dimension, zones, level.isDay(), (int) Math.floor(y),
+                !level.dimensionType().hasFixedTime());
     }
 
-    /** The zone a mob at this position belongs to, exactly as monster assignment resolves it. */
-    private static String scopeZone(RotasData data, ServerLevel level, double x, double y, double z) {
-        ZoneDef zone = ZoneService.select(data.zones().values(), level.dimension().location().toString(), x, y, z);
-        return zone == null ? "" : zone.id();
+    private static Set<String> tagsOf(EntityType<?> type) {
+        return type.builtInRegistryHolder().tags().map(key -> key.location().toString())
+                .collect(java.util.stream.Collectors.toSet());
     }
 
-    /** Global setups apply everywhere; zone versions only inside their zones. */
-    private static boolean inScope(MonsterDefinitions.Profile profile, String zoneId) {
-        Set<String> regions = profile.selector().regions();
-        return regions.isEmpty() || regions.contains(zoneId);
+    /** Whether a mob is one of the kinds a selector names: by id, tag or mod, minus exclusions. */
+    private static boolean sameKind(MonsterDefinitions.Selector selector, EntityType<?> type) {
+        ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        String id = key.toString();
+        return !selector.excluded().contains(id)
+                && (selector.entities().isEmpty() || selector.entities().contains(id))
+                && (selector.namespaces().isEmpty() || selector.namespaces().contains(key.getNamespace()))
+                && (selector.entityTags().isEmpty() || tagsOf(type).stream().anyMatch(selector.entityTags()::contains));
     }
 
-    private static int nearby(ServerLevel level, Set<String> entities, double x, double y, double z) {
+    private static int nearby(ServerLevel level, MonsterDefinitions.Selector selector, double x, double y, double z) {
         AABB box = new AABB(x - CROWD_RADIUS, y - CROWD_RADIUS, z - CROWD_RADIUS,
                 x + CROWD_RADIUS, y + CROWD_RADIUS, z + CROWD_RADIUS);
-        return level.getEntitiesOfClass(Mob.class, box,
-                mob -> entities.contains(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).toString())).size();
+        return level.getEntitiesOfClass(Mob.class, box, mob -> sameKind(selector, mob.getType())).size();
+    }
+
+    /** Whether a Mob Setup scoped to this zone covers the mob by tag or mod (named ids are in zoneEntities). */
+    private static synchronized boolean zoneNamesKind(MonsterCatalog catalog, String zoneId, EntityType<?> type) {
+        refresh(catalog);
+        return cachedGate.stream().anyMatch(profile -> profile.selector().regions().contains(zoneId)
+                && sameKind(profile.selector(), type));
     }
 
     /** Entity ids named by the Mob Setups scoped to each zone: the mobs an isolated zone lets spawn. */
@@ -276,9 +314,10 @@ public final class MobSpawnDirector {
         return cachedZoneEntities;
     }
 
-    private static synchronized Map<String, List<MonsterDefinitions.Profile>> naturalRules(MonsterCatalog catalog) {
+    /** The setups the gate consults, or an empty list when none of them limits spawning. */
+    private static synchronized List<MonsterDefinitions.Profile> gateRules(MonsterCatalog catalog) {
         refresh(catalog);
-        return cachedNatural;
+        return cachedRestricts ? cachedGate : List.of();
     }
 
     private static synchronized List<MonsterDefinitions.Profile> extraRules(MonsterCatalog catalog) {
@@ -291,8 +330,8 @@ public final class MobSpawnDirector {
         if (catalog == cachedCatalog) {
             return;
         }
-        Map<String, List<MonsterDefinitions.Profile>> byEntity = new HashMap<>();
-        Set<String> restricted = new HashSet<>();
+        List<MonsterDefinitions.Profile> gate = new ArrayList<>();
+        boolean restricts = false;
         List<MonsterDefinitions.Profile> extra = new ArrayList<>();
         Map<String, Set<String>> perZone = new HashMap<>();
         catalog.profiles().values().forEach(profile -> profile.selector().regions().forEach(zone ->
@@ -300,27 +339,22 @@ public final class MobSpawnDirector {
         Map<String, Set<String>> zoneEntities = new HashMap<>();
         perZone.forEach((zone, entities) -> zoneEntities.put(zone, Set.copyOf(entities)));
         cachedZoneEntities = Map.copyOf(zoneEntities);
-        catalog.profiles().values().stream().sorted(ORDER).forEach(profile -> {
-            // Rules only bind mobs a setup names explicitly, so a broad profile can never stop all spawning.
-            if (profile.selector().entities().isEmpty()) {
-                return;
+        for (MonsterDefinitions.Profile profile : catalog.profiles().values().stream().sorted(ORDER).toList()) {
+            MonsterDefinitions.Selector selector = profile.selector();
+            // Rules only bind mobs a setup names (by id, tag or mod), so a broad profile can never stop all spawning.
+            if (selector.entities().isEmpty() && selector.entityTags().isEmpty() && selector.namespaces().isEmpty()) {
+                continue;
             }
-            MobSpawnRules rules = profile.spawning();
-            for (String id : profile.selector().entities()) {
-                byEntity.computeIfAbsent(id, ignored -> new ArrayList<>()).add(profile);
-                if (rules.restrictsNatural()) {
-                    restricted.add(id);
-                }
-            }
-            if (rules.extra().enabled()) {
+            gate.add(profile);
+            restricts |= profile.spawning().restrictsNatural();
+            // Extra spawns need a concrete list of mobs to pick from.
+            if (profile.spawning().extra().enabled() && !selector.entities().isEmpty()) {
                 extra.add(profile);
             }
-        });
-        // Keep every setup for a restricted mob, so a zone version without limits still overrides a
-        // restrictive global setup inside its zone.
-        Map<String, List<MonsterDefinitions.Profile>> natural = new HashMap<>();
-        restricted.forEach(id -> natural.put(id, List.copyOf(byEntity.get(id))));
-        cachedNatural = Map.copyOf(natural);
+        }
+        // Every setup is kept, so a zone version without limits still overrides a restrictive global setup inside its zone.
+        cachedGate = List.copyOf(gate);
+        cachedRestricts = restricts;
         cachedExtra = List.copyOf(extra);
         cachedCatalog = catalog;
     }

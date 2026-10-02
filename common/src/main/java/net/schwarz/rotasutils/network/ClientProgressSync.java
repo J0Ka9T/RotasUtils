@@ -71,7 +71,7 @@ public final class ClientProgressSync {
         if (ClientState.progress().level() > before) {
             LevelUpFx.trigger(ClientState.progress().level(), ClientState.progress().prestige());
         }
-        ScreenRouter.refreshCurrent();
+        ScreenRouter.refresh(ScreenRouter.PROGRESS);
     }
 
     private static void request(int operation) {
