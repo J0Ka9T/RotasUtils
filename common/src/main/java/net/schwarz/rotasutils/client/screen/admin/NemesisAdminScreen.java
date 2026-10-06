@@ -12,7 +12,6 @@ import net.schwarz.rotasutils.client.screen.RotasScreen;
 import net.schwarz.rotasutils.client.screen.Ui;
 import net.schwarz.rotasutils.core.ButtonRow;
 
-/** Every nemesis on the server: who it hunts, how strong, whether its body is loaded; remove or summon. */
 @Environment(EnvType.CLIENT)
 public class NemesisAdminScreen extends RotasScreen {
     private static final int ROW = 24;

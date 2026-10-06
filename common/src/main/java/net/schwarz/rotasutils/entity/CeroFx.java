@@ -11,18 +11,10 @@ import net.schwarz.rotasutils.Rotasutils;
 
 import java.util.List;
 
-/**
- * One tick's rounds, sent to everyone near enough to see them. A burst tick carries several rounds in
- * one packet rather than a packet each, and every round carries what the client needs to draw it
- * honestly: where it starts and stops, whether it stopped on something,
- * and how long it spends in the air - the client flies it over exactly that time, so what is seen and
- * what the server hurts agree.
- */
 public final class CeroFx {
     public static final ResourceLocation ID = Rotasutils.id("cero_fx");
     private static final double SEND_RANGE = 192.0;
 
-    /** One round: {@code flightTicks} is how long it takes to get from start to end. */
     public record Shot(Vec3 start, Vec3 end, boolean impact, float flightTicks) {
     }
 

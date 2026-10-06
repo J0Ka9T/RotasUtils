@@ -11,10 +11,6 @@ import net.schwarz.rotasutils.data.ParamSpec;
 
 import java.util.function.Consumer;
 
-/**
- * Asks for the key of a new map entry (an event type id, a card id, a mob id). Offers the registry
- * picker when the key names a registry entry, so the admin rarely has to type an id at all.
- */
 @Environment(EnvType.CLIENT)
 public class KeyPromptScreen extends RotasScreen {
     private final String prompt;
@@ -75,7 +71,7 @@ public class KeyPromptScreen extends RotasScreen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 257 || keyCode == 335) { // Enter
+        if (keyCode == 257 || keyCode == 335) {
             submit();
             return true;
         }

@@ -12,7 +12,6 @@ import net.schwarz.rotasutils.data.ServerSettings;
 
 import java.util.List;
 
-/** Global server toggles. */
 @Environment(EnvType.CLIENT)
 public class ServerSettingsScreen extends SimpleFieldScreen {
     private CompoundTag editingBaseline;
@@ -22,7 +21,6 @@ public class ServerSettingsScreen extends SimpleFieldScreen {
         super("Server Settings", parent);
     }
 
-    /** Holds an unsaved draft of the server settings: never rebuilt by a push, but warns when someone else changes it. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;

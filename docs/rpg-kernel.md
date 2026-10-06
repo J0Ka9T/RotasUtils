@@ -58,11 +58,12 @@ Condition forms:
   `at_least` (also needs `count`). Empty groups are rejected.
 - `{"type":"requirement","name":"MIN_LEVEL","params":{"level":"10"}}`.
   Adapts the existing RequirementChecker. Supported names: MIN_LEVEL, MAX_LEVEL,
-  HAS_ITEM, DIMENSION, PERMISSION, PRESTIGE. Params use strings with strict type
+  HAS_ITEM, DIMENSION, PERMISSION, PRESTIGE, RANK_CLEARANCE (`rank`: F..SSS). Params use strings with strict type
   validation. PERMISSION uses OP `op_level`; named nodes require a future adapter.
   `consume:true` is rejected because condition evaluation cannot consume items.
 
-Facts: `player.level`, `player.xp`, `player.total_xp`, `player.skill_points`,
+Facts: `player.level`, `player.xp`, `player.total_xp`, `player.skill_points`, `player.rank` (clearance as a number,
+F=0 ... SSS=8), `player.rank_name`,
 `player.dimension`, `player.biome`; `rpg.*` player variables; `event.*` facts supplied
 by the event producer. Unavailable/non-finite facts fail the rule, even under NOT.
 

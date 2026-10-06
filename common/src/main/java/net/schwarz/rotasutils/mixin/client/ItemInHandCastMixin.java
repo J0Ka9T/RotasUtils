@@ -16,11 +16,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * While a cast plays, the caster's held item is not drawn (the hand is the ability's own) - but the layer is
- * where the game has the arm's matrix ready, so it is recorded here first: the Red core is anchored to the
- * hand the model really drew.
- */
 @Mixin(ItemInHandLayer.class)
 public abstract class ItemInHandCastMixin {
     @Inject(method = "renderArmWithItem", at = @At("HEAD"), cancellable = true)

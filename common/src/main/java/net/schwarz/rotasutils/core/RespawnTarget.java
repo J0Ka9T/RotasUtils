@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.core;
 
 import net.minecraft.nbt.CompoundTag;
 
-/** Optional fixed respawn destination. The live server still validates the world and safe position. */
 public record RespawnTarget(String dimension, double x, double y, double z, float yaw, float pitch) {
     public RespawnTarget {
         if (dimension == null || dimension.isBlank() || dimension.length() > 128) throw new IllegalArgumentException("Invalid respawn dimension");

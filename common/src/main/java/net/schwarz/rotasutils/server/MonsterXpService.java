@@ -8,20 +8,10 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
 import net.schwarz.rotasutils.level.LevelConfig;
 
-/**
- * Calculates Rotas XP from the monster that was actually fought.
- *
- * <p>This intentionally does not use vanilla's {@code xpReward}. Modded bosses frequently
- * keep a small vanilla orb reward even when their health, armour and damage are orders of
- * magnitude above vanilla mobs. Reading live combat attributes makes the system work with
- * unknown monster mods without hard-coded integrations, while exact entity overrides remain
- * available for scripted or mechanically unusual bosses.</p>
- */
 public final class MonsterXpService {
     private MonsterXpService() {
     }
 
-    /** True when this entity belongs in combat progression rather than farming/animal XP. */
     public static boolean isProgressionMonster(LivingEntity entity, boolean boss) {
         return boss
                 || entity instanceof Enemy
@@ -29,10 +19,6 @@ public final class MonsterXpService {
                 || entity.getTags().contains("rotasutils_progression_monster");
     }
 
-    /**
-     * Returns the base Rotas XP for a kill before the XP-source multiplier is applied.
-     * A return value of zero means the entity is not a progression monster.
-     */
     public static long calculate(LivingEntity entity, LevelConfig config, boolean boss) {
         if (!isProgressionMonster(entity, boss)) {
             return 0;
@@ -45,9 +31,6 @@ public final class MonsterXpService {
             return clamp(override, config.minimumMonsterXp(), config.maximumMonsterXp());
         }
 
-        // Read through getAttribute rather than getAttributeValue: monsters without a
-        // registered attribute (a ghast has no ATTACK_DAMAGE, for example) would otherwise
-        // throw inside the kill handler. A missing attribute simply scores zero threat.
         double health = attribute(entity, Attributes.MAX_HEALTH);
         double damage = attribute(entity, Attributes.ATTACK_DAMAGE);
         double armor = attribute(entity, Attributes.ARMOR);
@@ -55,9 +38,6 @@ public final class MonsterXpService {
         double speed = attribute(entity, Attributes.MOVEMENT_SPEED);
         double knockbackResistance = attribute(entity, Attributes.KNOCKBACK_RESISTANCE);
 
-        // Damage is weighted heavily by default because short, lethal encounters are as dangerous as
-        // large health pools - but every weight and health tier is configurable, since the right
-        // balance depends on how tanky the pack's mobs are relative to vanilla.
         double threat = config.monsterXpWeights()
                 .threat(health, damage, armor, toughness, speed, knockbackResistance);
 

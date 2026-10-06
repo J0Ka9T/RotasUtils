@@ -16,13 +16,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Mutable client input for one atomic housing configuration save.
- *
- * <p>Every editable number is retained as text. Parsing is only performed while
- * validating or building a request, so a rejected value is never replaced by a
- * default or by a clamped number.</p>
- */
 public final class HouseConfigDraft {
     private List<HouseDefinition> houses;
     private HouseConfig baseline;
@@ -57,7 +50,6 @@ public final class HouseConfigDraft {
         this(config, config == null ? List.of() : config.tiers().values(), houses);
     }
 
-    /** Uses the server snapshot order instead of relying on a map's iteration order. */
     public HouseConfigDraft(HouseConfig config, Collection<HouseTier> orderedTiers,
                             Collection<HouseDefinition> houses) {
         Objects.requireNonNull(config, "config");
@@ -442,7 +434,6 @@ public final class HouseConfigDraft {
         return List.copyOf(references);
     }
 
-    /** Returns all current parse and domain validation errors without mutating raw fields. */
     public List<HouseAdminValidator.Error> validationErrors() {
         return parseAndValidate().errors();
     }
@@ -467,7 +458,6 @@ public final class HouseConfigDraft {
         return hasChanges();
     }
 
-    /** Field names are stable, concise labels used by the review line and tests. */
     public List<String> changedFields() {
         Parsed parsed = parseAndValidate();
         List<String> changed = new ArrayList<>();
@@ -510,10 +500,6 @@ public final class HouseConfigDraft {
         return changedFieldsSummary();
     }
 
-    /**
-     * Builds the one complete NBT request expected by {@code house_save_config}.
-     * The method throws with every field error rather than emitting a partial payload.
-     */
     public CompoundTag toPayload() {
         Parsed parsed = parseAndValidate();
         if (!parsed.errors().isEmpty()) {
@@ -551,22 +537,16 @@ public final class HouseConfigDraft {
                 parsed.memberSlotPrice(), parsed.maxPurchasedMemberSlots(), parsed.tiers(), baseRevision);
     }
 
-    /**
-     * Replaces both the baseline and raw values after the server confirms a save.
-     * The supplied snapshot is treated as authoritative and copied immediately.
-     */
     public void rebase(HouseConfig snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
         rebase(snapshot, snapshot.tiers().values(), null);
     }
 
-    /** Replaces the baseline using the order carried by the authenticated admin snapshot. */
     public void rebase(ClientHouseAdminState state) {
         Objects.requireNonNull(state, "state");
         rebase(state.config(), state.tiers(), state.definitions());
     }
 
-    /** Replaces the baseline while retaining the server-provided tier order. */
     public void rebase(HouseConfig snapshot, Collection<HouseTier> orderedTiers) {
         rebase(snapshot, orderedTiers, null);
     }
@@ -604,17 +584,11 @@ public final class HouseConfigDraft {
         rebase(state);
     }
 
-    /**
-     * Updates the concurrency baseline while preserving all raw input. This is
-     * used after a stale response triggers a fresh snapshot; the user can then
-     * review and retry the same typed draft against the new revision.
-     */
     public void rebasePreservingInput(HouseConfig snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
         rebasePreservingInput(snapshot, snapshot.tiers().values(), null);
     }
 
-    /** Updates only the concurrency baseline, preserving every raw field and tier draft. */
     public void rebasePreservingInput(ClientHouseAdminState state) {
         Objects.requireNonNull(state, "state");
         rebasePreservingInput(state.config(), state.tiers(), state.definitions());
@@ -635,7 +609,6 @@ public final class HouseConfigDraft {
     }
 
     public void retainAfterFailure() {
-        // Deliberate no-op: server failures never own or rewrite client input.
     }
 
     public void markSaveFailed() {
@@ -825,7 +798,6 @@ public final class HouseConfigDraft {
         }
     }
 
-    /** Raw, editable values for one tier. Existing IDs are intentionally read-only. */
     public static final class TierDraft {
         private final String originalId;
         private final boolean idEditable;

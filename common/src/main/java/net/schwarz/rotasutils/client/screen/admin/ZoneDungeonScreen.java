@@ -18,11 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * The dungeon run of a zone: party size, key and fee to enter, waves, final boss, time limit, cooldown
- * and pay. Waves and the boss appear at the zone's spawn points (set under Bosses) or, without any,
- * around the party. Changes go to the zone editor's unsaved copy when leaving this screen.
- */
 @Environment(EnvType.CLIENT)
 public class ZoneDungeonScreen extends RotasScreen {
     private static final int ROW = 22;
@@ -87,7 +82,6 @@ public class ZoneDungeonScreen extends RotasScreen {
         addRenderableWidget((enabled ? Ui.primaryButton(Ui.text("Dungeon run: ON"), b -> toggle())
                 : Ui.button(Ui.text("Dungeon run: OFF"), b -> toggle())).bounds(x, y, w, 20).build());
 
-        // Numbers: three per row, labelled above.
         box("players", x, y + 40, small, 2);
         box("minutes", x + small + Ui.GAP, y + 40, small, 4);
         box("cooldown", x + (small + Ui.GAP) * 2, y + 40, small, 6);
@@ -95,7 +89,6 @@ public class ZoneDungeonScreen extends RotasScreen {
         box("gold", x + small + Ui.GAP, y + 80, small, 9);
         box("xp", x + (small + Ui.GAP) * 2, y + 80, small, 9);
 
-        // Entry key.
         int keyY = y + 120;
         addRenderableWidget(Ui.button(Ui.text(Ui.truncate(keyItem.isEmpty() ? "Key: none (pick an item)"
                 : "Key: " + keyItem.replace("minecraft:", ""), w - small - Ui.GAP - 40)), b -> {
@@ -113,7 +106,6 @@ public class ZoneDungeonScreen extends RotasScreen {
         }).bounds(x + w - small - Ui.GAP - 24, keyY, 22, 20).build());
         box("key_count", x + w - small, keyY, small, 2);
 
-        // Final boss.
         int bossY = keyY + 40;
         addRenderableWidget(Ui.button(Ui.text(Ui.truncate(boss.isEmpty() ? "Final boss: none (pick a Mob Setup)"
                 : "Final boss: " + setupName(boss), w - 40)), b -> {
@@ -126,7 +118,6 @@ public class ZoneDungeonScreen extends RotasScreen {
             rebuild();
         }).bounds(x + w - 22, bossY, 22, 20).build());
 
-        // Reward items.
         int rewardTop = bossY + 40;
         int footer = guiTop + guiHeight - 28;
         int rewardRows = Math.max(0, Math.min(rewards.size(), (footer - 30 - rewardTop) / ROW));
@@ -152,7 +143,6 @@ public class ZoneDungeonScreen extends RotasScreen {
             box("reward_count", x + w - small, addY, small, 4);
         }
 
-        // Waves.
         int rx = rightX();
         int waveTop = y + 20;
         int waveRows = Math.max(0, Math.min(waves.size(), (footer - 34 - waveTop) / ROW));
@@ -264,7 +254,6 @@ public class ZoneDungeonScreen extends RotasScreen {
         return (int) Math.min(Integer.MAX_VALUE, number(key, (long) fallback));
     }
 
-    /** Writes everything to the zone editor; false (with feedback) when a value is invalid. */
     private boolean apply() {
         capture();
         try {

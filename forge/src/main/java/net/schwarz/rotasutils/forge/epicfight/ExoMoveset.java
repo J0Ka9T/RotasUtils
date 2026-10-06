@@ -40,19 +40,9 @@ import yesman.epicfight.skill.weaponinnate.WeaponInnateSkill;
 import yesman.epicfight.world.capabilities.item.CapabilityItem;
 import yesman.epicfight.world.capabilities.item.WeaponCapability;
 
-/**
- * The ExoElectric Disintegrator's Epic Fight moveset: a two-handed gun stance layered over Epic Fight's own
- * legs (low ready, port arms at a run, a shouldered aim that follows look pitch while the beam is used),
- * a three-hit melee (stock jab, barrel sweep, point-blank discharge) and the Annihilation Overdrive innate
- * skill, which braces, charges and fires the Annihilation Lance. Clips live under
- * {@code assets/rotasutils/animmodels/animations/biped/}; the item opts in through
- * {@code data/rotasutils/capabilities/weapons/exo_disintegrator.json}.
- */
 public final class ExoMoveset {
-    /** Seconds into exo_auto3 when the point-blank discharge goes off (frame 17 of the 60 fps clip). */
     private static final float BLAST_TIME = 0.28F;
     private static final double BLAST_RANGE = 4.5;
-    /** Seconds into the overdrive when the Lance starts charging: it fires 22 ticks later, on the recoil key. */
     private static final float LANCE_TIME = 0.2F;
 
     public static AnimationManager.AnimationAccessor<StaticAnimation> HOLD;
@@ -68,7 +58,6 @@ public final class ExoMoveset {
     }
 
     static void init(IEventBus modBus) {
-        // clips are registered through ZenithMoveset's builder: EF allows one builder per namespace
         modBus.addListener(ExoMoveset::registerPreset);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             ExoMotionClient.init();
@@ -79,7 +68,6 @@ public final class ExoMoveset {
         return ((HumanoidArmature) Armatures.BIPED.get()).toolR;
     }
 
-    /** The gun along the hand joint (barrel = +Y, top = -Z): stock butt to muzzle. */
     private static Collider gun() {
         return new MultiOBBCollider(3, 0.25, 0.5, 0.25, 0.0, 0.07, -0.25);
     }
@@ -101,7 +89,6 @@ public final class ExoMoveset {
                         .addProperty(AnimationProperty.AttackAnimationProperty.BASIS_ATTACK_SPEED, 1.0F)
                         .addEvents(AnimationEvent.InTimeEvent.create(BLAST_TIME, (entitypatch, animation, params) ->
                                 pointBlank(entitypatch.getOriginal()), AnimationEvent.Side.SERVER)));
-        // the muzzle blast when the Lance fires: a wide box down the barrel
         Collider blast = new OBBCollider(0.9, 1.4, 0.9, 0.0, 1.6, -0.3);
         OVERDRIVE = builder.nextAccessor("biped/skill/exo_overdrive", accessor ->
                 new AttackAnimation(0.15F, accessor, Armatures.BIPED,
@@ -114,7 +101,6 @@ public final class ExoMoveset {
                         }, AnimationEvent.Side.SERVER)));
     }
 
-    /** The third hit's payoff: an azure discharge that hits everything in a short cone in front. */
     private static void pointBlank(LivingEntity user) {
         if (!(user.level() instanceof ServerLevel level)) {
             return;
@@ -129,7 +115,6 @@ public final class ExoMoveset {
                         && !(e instanceof Player other && user instanceof Player p && !p.canHarmPlayer(other)))) {
             Vec3 to = target.getBoundingBox().getCenter().subtract(eye);
             if (to.length() <= BLAST_RANGE + 1 && to.normalize().dot(look) > 0.6) {
-                // magic damage: never re-enters Epic Fight's melee hooks
                 target.hurt(user.damageSources().indirectMagic(user, user), damage);
                 target.knockback(0.6, -look.x, -look.z);
             }

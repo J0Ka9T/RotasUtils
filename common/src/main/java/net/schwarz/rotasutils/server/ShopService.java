@@ -21,11 +21,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * The NPC shop screen's server side. One screen lists the NPC's own barter trades and its content-pack
- * merchant's trades, with what the player holds against every cost, stock, limits and the rank discount.
- * Every purchase is re-checked here; the screen only ever asks.
- */
 public final class ShopService {
     public record Result(boolean ok, String message) {
     }
@@ -161,7 +156,6 @@ public final class ShopService {
         return location != null && BuiltInRegistries.ITEM.containsKey(location) ? BuiltInRegistries.ITEM.get(location) : null;
     }
 
-    /** Stacks that pay for a barter cost: same item, and the same data when the cost names any. */
     private static boolean pays(ItemStack stack, ItemStack cost) {
         if (stack.isEmpty() || !stack.is(cost.getItem()) || ItemFactory.isRpgItem(stack)) return false;
         return !cost.hasTag() || ItemStack.isSameItemSameTags(stack, cost);
@@ -206,14 +200,12 @@ public final class ShopService {
         return barter(player, npc.trades().get(index), count);
     }
 
-    /** A barter trade, all or nothing: every cost for {@code count} trades is checked before anything moves. */
     private static Result barter(ServerPlayer player, NpcDef.Trade trade, int count) {
         List<ItemStack> costs = new ArrayList<>();
         costs.add(trade.costA());
         if (!trade.costB().isEmpty()) costs.add(trade.costB());
         for (ItemStack cost : costs) {
             long needed = (long) cost.getCount() * count;
-            // Two costs of the same item draw from one pile.
             for (ItemStack other : costs) {
                 if (other != cost && ItemStack.isSameItemSameTags(other, cost)) needed += (long) other.getCount() * count;
             }

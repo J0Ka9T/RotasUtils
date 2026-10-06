@@ -1,0 +1,4 @@
+{
+  "vertex": "rotasutils:cinematic/blit",
+  "fragment": "rotasutils:cinematic/blur_h"
+}

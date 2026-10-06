@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Titles (ฉายา): their definition, the tallies they read, and what counts as earned. */
 class TitleDefTest {
     @Test void aTitleRoundTripsThroughNbtWithItsConditionAndBonus() {
         TitleDef title = new TitleDef("rotas:dragon_slayer", "ผู้ล่ามังกร");

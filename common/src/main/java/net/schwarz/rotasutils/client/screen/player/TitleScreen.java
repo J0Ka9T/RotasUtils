@@ -22,17 +22,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * The titles (ฉายา) page.
- *
- * <p>Left: tabs by kind of deed (combat, progress, crafting, wealth, special), a filter for earned or
- * still-locked titles, and the list - each row with its rarity stripe, its name in its own colour and,
- * for a locked title, a progress bar. Right: everything about the selected title - how it looks over
- * your head, what earns it and how far along you are, the bonus it gives while worn, and for a unique
- * title who got there first. Double-click a title you own to wear it.</p>
- *
- * <p>A hidden title is only listed once earned, so finding one stays a surprise.</p>
- */
 @Environment(EnvType.CLIENT)
 public class TitleScreen extends RotasScreen {
     private enum Filter { ALL, EARNED, LOCKED }
@@ -40,7 +29,6 @@ public class TitleScreen extends RotasScreen {
     private static final int ROW_H = 30;
     private static final long DOUBLE_CLICK_MS = 350;
 
-    /** Null shows every category. */
     private TitleDef.Category category;
     private Filter filter = Filter.ALL;
     private String selected = "";
@@ -56,13 +44,10 @@ public class TitleScreen extends RotasScreen {
         super(L.t("rotasutils.title.screen"), parent);
     }
 
-    // Data ----------------------------------------------------------------------------------------
-
-    private static boolean visible(TitleDef title, PlayerProgress progress) {
+private static boolean visible(TitleDef title, PlayerProgress progress) {
         return title.enabled() && (!title.hidden() || progress.hasTitle(title.id()));
     }
 
-    /** Earned first, then closest to earning, then rarest - what a player most wants to look at. */
     private List<TitleDef> filtered() {
         PlayerProgress progress = ClientState.progress();
         List<TitleDef> titles = new ArrayList<>();
@@ -92,10 +77,7 @@ public class TitleScreen extends RotasScreen {
         return selected.isBlank() ? null : ClientState.title(selected);
     }
 
-    // Layout --------------------------------------------------------------------------------------
-
-    /** Built from server data with no draft of its own, so a push rebuilds it (scroll and typing kept). */
-    @Override
+@Override
     protected Refresh refreshMode() {
         return Refresh.REBUILD;
     }
@@ -116,7 +98,6 @@ public class TitleScreen extends RotasScreen {
         detailW = inner + innerW - detailX;
         int tabsY = guiTop + 42;
 
-        // Category tabs.
         List<TitleDef.Category> tabs = new ArrayList<>();
         tabs.add(null);
         tabs.addAll(List.of(TitleDef.Category.values()));
@@ -131,7 +112,6 @@ public class TitleScreen extends RotasScreen {
             }).style(tab == category ? RotasButton.Style.NAVIGATION_SELECTED : RotasButton.Style.NAVIGATION)
                     .bounds(listX + i * (tabW + 2), tabsY, tabW, 16).build());
         }
-        // Filter: all / earned / locked.
         int filterY = tabsY + 20;
         addRenderableWidget(Ui.button(Ui.text(L.t("rotasutils.title.filter." + filter.name().toLowerCase(Locale.ROOT)) + " ▾"), b -> {
             filter = Filter.values()[(filter.ordinal() + 1) % Filter.values().length];
@@ -186,9 +166,7 @@ public class TitleScreen extends RotasScreen {
         rebuildWidgets();
     }
 
-    // Rendering -----------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, Ui.BOARD_SCRIM_TOP, Ui.BOARD_SCRIM_BOTTOM);
     }
@@ -249,7 +227,6 @@ public class TitleScreen extends RotasScreen {
             return;
         }
         boolean owned = progress.hasTitle(title.id());
-        // How it reads over your head.
         String player = net.minecraft.client.Minecraft.getInstance().player == null ? ""
                 : net.minecraft.client.Minecraft.getInstance().player.getGameProfile().getName();
         graphics.fill(x, y, x + w, y + 18, 0xB0101010);
@@ -269,7 +246,6 @@ public class TitleScreen extends RotasScreen {
             }
             y += 4;
         }
-        // What earns it, and how far along this character is.
         Ui.label(graphics, L.t("rotasutils.title.section.earn"), x, y, Ui.INK_SOFT);
         y += 11;
         for (String line : Ui.wrap(howToEarn(title), w)) {
@@ -286,7 +262,6 @@ public class TitleScreen extends RotasScreen {
                     compact(have) + " / " + compact(title.amount()) + "  (" + (int) Math.floor(fraction(title) * 100) + "%)");
             y += 17;
         }
-        // What earning it pays, once, and what it adds to the collection for good.
         if (!owned) {
             var rules = ClientState.levelConfig().season().titles;
             int rarity = title.rarity().ordinal();
@@ -294,7 +269,6 @@ public class TitleScreen extends RotasScreen {
                     + " EXP · +" + rules.rarityPoints[rarity] + " แต้มสะสม", w), x, y, 0xFF8A6428);
             y += 13;
         }
-        // The bonus while worn.
         Ui.label(graphics, L.t("rotasutils.title.section.bonus"), x, y, Ui.INK_SOFT);
         y += 11;
         if (title.effects().isEmpty()) {
@@ -307,7 +281,6 @@ public class TitleScreen extends RotasScreen {
             }
         }
         y += 4;
-        // A unique title: who holds it, or that it is still there for the taking.
         if (title.unique()) {
             String holder = ClientState.titleHolder(title.id());
             Ui.label(graphics, L.t("rotasutils.title.section.unique"), x, y, Ui.INK_SOFT);
@@ -320,9 +293,7 @@ public class TitleScreen extends RotasScreen {
         }
     }
 
-    // Collection ----------------------------------------------------------------------------------
-
-    private static int collectionPoints(PlayerProgress progress) {
+private static int collectionPoints(PlayerProgress progress) {
         int[] points = ClientState.levelConfig().season().titles.rarityPoints;
         int total = 0;
         for (TitleDef title : ClientState.titles()) {
@@ -331,7 +302,6 @@ public class TitleScreen extends RotasScreen {
         return total;
     }
 
-    /** "Collection 23 pts · next at 30: +3% Health" - why every title is worth earning. */
     private static String collectionLine(PlayerProgress progress) {
         int points = collectionPoints(progress);
         var rules = ClientState.levelConfig().season().titles;
@@ -347,21 +317,35 @@ public class TitleScreen extends RotasScreen {
         return "แต้มสะสมฉายา " + points + " · ปลดล็อกโบนัสถาวรครบทุกขั้นแล้ว!";
     }
 
-    // Wording -------------------------------------------------------------------------------------
-
-    /** The condition in a sentence: "Kill 1,000 monsters", "Finish the quest Lost Lamb". */
-    private static String howToEarn(TitleDef title) {
+private static String howToEarn(TitleDef title) {
         String amount = String.format(Locale.ROOT, "%,d", title.amount());
         String key = "rotasutils.title.how." + title.condition().key();
         return switch (title.condition()) {
-            case KILL_ENTITY -> L.t(key, amount, entityName(title.target()));
+            case KILL_ENTITY -> L.t(key, amount, entityNames(title));
             case QUEST -> {
                 var quest = ClientState.quest(title.target());
                 yield L.t(key, quest == null ? title.target() : quest.name());
             }
+            case SUB_LEVEL -> L.t(key, ClientState.jobName(title.target()), amount);
+            case STAT -> L.t("rotasutils.title.how.stat." + title.target().toLowerCase(Locale.ROOT).replace('.', '_'), amount);
             case MANUAL -> L.t(key);
             default -> L.t(key, amount);
         };
+    }
+
+    private static String entityNames(TitleDef title) {
+        var targets = title.targets();
+        if (targets.size() == 1 && !targets.get(0).endsWith("*")) {
+            return entityName(targets.get(0));
+        }
+        if (targets.isEmpty()) {
+            return "";
+        }
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < Math.min(3, targets.size()); i++) {
+            text.append(i == 0 ? "" : ", ").append(targets.get(i).endsWith("*") ? targets.get(i) : entityName(targets.get(i)));
+        }
+        return targets.size() > 3 ? text + " +" + (targets.size() - 3) : text.toString();
     }
 
     private static String entityName(String id) {
@@ -370,7 +354,6 @@ public class TitleScreen extends RotasScreen {
         return BuiltInRegistries.ENTITY_TYPE.get(location).getDescription().getString();
     }
 
-    /** "+2% Attack", "+1 Defense". */
     public static String bonusText(CharacterStat.Effect effect) {
         return bonus(effect);
     }

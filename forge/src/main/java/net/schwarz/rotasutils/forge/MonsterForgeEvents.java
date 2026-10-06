@@ -28,13 +28,20 @@ public final class MonsterForgeEvents {
         if (event.getLevel().isClientSide() || !(event.getEntity() instanceof Mob mob)) { return; }
         MinecraftServer server = event.getLevel().getServer(); if (server == null) { return; }
         String reason = REASONS.remove(mob);
+        String direct = net.schwarz.rotasutils.server.SpawnReasons.take(mob);
+        if (reason == null && direct != null) {
+            reason = direct;
+            if (!event.loadedFromDisk() && net.schwarz.rotasutils.server.MobSpawnDirector.deniedAtJoin(mob, direct)) {
+                event.setCanceled(true);
+                return;
+            }
+        }
+        final String spawnReason = reason;
         server.execute(() -> {
-            // Strip third-party roll abilities (Monster Expansion's Rakoth) before RotasUtils
-            // hands the mob to the kernel; no-op for mobs from any other mod.
             MonsterRollCompat.stripRollGoals(mob);
             var data = RotasData.instance();
             if (data != null && data.kernel() != null && !mob.isRemoved()) {
-                data.kernel().monsters().enqueue(mob, reason == null ? "UNKNOWN" : reason, event.loadedFromDisk());
+                data.kernel().monsters().enqueue(mob, spawnReason == null ? "UNKNOWN" : spawnReason, event.loadedFromDisk());
             }
         });
     }
@@ -45,14 +52,6 @@ public final class MonsterForgeEvents {
             var data = RotasData.instance(); if (data != null && data.kernel() != null) { data.kernel().monsters().forget(mob); }
         });
     }
-    /**
-     * Feeds the {@code event.amount} fact used by monster HURT/ATTACK conditions.
-     *
-     * <p>{@code LivingHurtEvent}, not {@code LivingDamageEvent}: Fabric reports this through
-     * Architectury's {@code LIVING_HURT}, which fires before armour and absorption. Reading the
-     * post-mitigation number here made identical hits produce different facts per loader, so the
-     * same ability threshold fired on one loader and not the other.</p>
-     */
     @SubscribeEvent(priority = EventPriority.LOWEST) public static void damaged(LivingHurtEvent event) {
         if (event.getEntity().level().isClientSide || event.getAmount() <= 0) { return; }
         var data = RotasData.instance(); if (data == null || data.kernel() == null) { return; }
@@ -66,15 +65,6 @@ public final class MonsterForgeEvents {
             service.trigger(attacker, event.getEntity(), MonsterDefinitions.Trigger.ATTACK, facts);
         }
     }
-    /**
-     * Confirms a kernel monster's death.
-     *
-     * <p>This used to listen to {@code LivingDropsEvent}, which only fires when the mob actually
-     * drops something: with {@code doMobLoot} off, or drops cancelled by another mod, the kill was
-     * never confirmed and the monster's rewards, quest KILL_ENTITY credit and combat XP were all
-     * skipped. Fabric confirms from {@code AFTER_DEATH} and always fired, so the two loaders
-     * disagreed. {@code LivingDeathEvent} is the Forge equivalent and fires on every death.</p>
-     */
     @SubscribeEvent(priority = EventPriority.LOWEST) public static void died(LivingDeathEvent event) {
         if (event.getEntity().level().isClientSide || !(event.getEntity() instanceof Mob mob)) { return; }
         var data = RotasData.instance(); if (data == null || data.kernel() == null) { return; }

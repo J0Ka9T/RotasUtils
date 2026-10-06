@@ -19,16 +19,6 @@ import net.schwarz.rotasutils.Rotasutils;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
-/**
- * The herald sky: a colossal hooded figure caught half-way through the tear, fighting to get out.
- *
- * <p>Only the head, torso and arms are through; the waist is held in the tear, wrapped in its light.
- * The struggle is a slow keyframed loop, because something this big moves heavily: brace with both
- * hands on the tear's edges, gather, heave forward with the head thrown back, strain there
- * trembling, then one hand slips and it slides back before grabbing hold again. Every other loop the
- * other hand slips. Poses ease into each other, so nothing snaps. As the sky closes it is dragged
- * back through, reaching out. It is only a picture in the sky - no entity, no collision.</p>
- */
 @Environment(EnvType.CLIENT)
 final class EldritchSkyHeraldRenderer {
     private static final ResourceLocation VIOLET_SKIN = new ResourceLocation(Rotasutils.MOD_ID, "textures/entity/rift_wanderer.png");
@@ -37,44 +27,27 @@ final class EldritchSkyHeraldRenderer {
     private static final ResourceLocation CRIMSON_GLOW = new ResourceLocation(Rotasutils.MOD_ID, "textures/entity/herald_crimson_glow.png");
     private static final ResourceLocation GOLD_SKIN = new ResourceLocation(Rotasutils.MOD_ID, "textures/entity/herald_gold.png");
     private static final ResourceLocation GOLD_GLOW = new ResourceLocation(Rotasutils.MOD_ID, "textures/entity/herald_gold_glow.png");
-    /** Blocks per model unit: the upper body alone is about 27 blocks tall. */
     private static final float SCALE = 22f;
-    /** Distance of the waist from the viewer: deep in the tear, and as far out as it gets. */
     private static final float FAR = 94f;
     private static final float NEAR = 76f;
-    /** Model-space height of the waist (the torso is 12 pixels below the neck). */
     private static final float WAIST = 0.75f;
     private static final int SEGMENTS = 32;
 
-    // Pose channels.
     private static final int LEAN = 0, TWIST = 1, HEAD_X = 2, HEAD_Y = 3, HEAD_Z = 4;
     private static final int R_X = 5, R_Y = 6, R_Z = 7, L_X = 8, L_Y = 9, L_Z = 10, DIST = 11, BURN = 12;
     private static final int CHANNELS = 13;
 
-    /** Loop length in seconds. */
     private static final float LOOP = 6.4f;
     private static final float[] KEY_TIMES = {0f, 1.4f, 2.2f, 3.4f, 4.5f, 5.5f, LOOP};
-    /**
-     * {lean, twist, headX, headY, headZ, rArmX, rArmY, rArmZ, lArmX, lArmY, lArmZ, dist, burn}.
-     * Arms at x -0.5 / z +-1.25 are hands planted out on the tear's edges.
-     */
     private static final float[][] KEYS = {
-            // Brace: hands on the edges, head bowed.
             {0.15f, 0f, 0.35f, 0f, 0f, -0.50f, 0f, 1.25f, -0.50f, 0f, -1.25f, 0f, 0.6f},
-            // Gather: sinks back a little, head lower, arms bend for the push.
             {0.04f, 0f, 0.50f, 0f, 0f, -0.42f, 0f, 1.38f, -0.42f, 0f, -1.38f, 1.8f, 0.5f},
-            // Heave: shoves forward on the edges, head thrown back.
             {0.48f, 0f, -0.30f, 0f, 0f, -0.95f, 0f, 1.02f, -0.95f, 0f, -1.02f, -4.5f, 1.0f},
-            // Strain: held there, trembling.
             {0.42f, 0.04f, -0.18f, 0.08f, 0.03f, -0.88f, 0f, 1.08f, -0.88f, 0f, -1.08f, -4.8f, 1.0f},
-            // Slip: the right hand loses the edge and reaches out; it slides back and twists.
             {0.20f, 0.16f, 0.25f, -0.22f, -0.06f, -1.55f, -0.15f, 0.35f, -0.62f, 0f, -1.30f, -0.8f, 0.7f},
-            // Re-grab: the hand finds the edge again.
             {0.16f, 0.03f, 0.32f, -0.05f, 0f, -0.55f, 0f, 1.22f, -0.52f, 0f, -1.26f, 0.2f, 0.6f},
-            // Back to brace (same as the first key, so the loop is seamless).
             {0.15f, 0f, 0.35f, 0f, 0f, -0.50f, 0f, 1.25f, -0.50f, 0f, -1.25f, 0f, 0.6f},
     };
-    /** Pulled back through the closing tear: arms stretched at the world, head up. */
     private static final float[] DRAGGED =
             {-0.10f, 0f, -0.35f, 0f, 0f, -1.70f, -0.10f, 0.40f, -1.70f, 0.10f, -0.40f, 12f, 0.9f};
 
@@ -92,7 +65,6 @@ final class EldritchSkyHeraldRenderer {
         render(pose, env, palette, scale, 0f);
     }
 
-    /** {@code timeOffset} shifts the pose loop, so several heralds in one sky do not move in lockstep. */
     static void render(PoseStack pose, EldritchSkyEnvironment env, int palette, float scale, float timeOffset) {
         boolean crimson = palette == net.schwarz.rotasutils.sky.EldritchSkyTransition.PALETTE_RED;
         boolean gold = palette == net.schwarz.rotasutils.sky.EldritchSkyTransition.PALETTE_GOLD;
@@ -106,12 +78,10 @@ final class EldritchSkyHeraldRenderer {
         }
         float t = env.seconds() + timeOffset;
         float eased = e * e * (3f - 2f * e);
-        // How hard the closing sky is dragging it back: 0 while open, 1 as it vanishes.
         float dragged = 1f - env.retreat();
         float strain = sample(t, dragged);
         apply();
 
-        // Slow breathing under everything, and a fine tremble only while it strains.
         float breath = 0.025f * (float) Math.sin(t * 1.1f);
         float tremble = 0.014f * strain * (float) (Math.sin(t * 38.0) * 0.6 + Math.sin(t * 29.0) * 0.4);
 
@@ -124,7 +94,6 @@ final class EldritchSkyHeraldRenderer {
         pose.translate(dir[0] * distance, dir[1] * distance, dir[2] * distance);
         pose.mulPose(Axis.YP.rotationDegrees(180f - faceYaw));
         pose.scale(-SCALE * scale, -SCALE * scale, SCALE * scale);
-        // Everything below turns about the waist, where the tear holds it.
         pose.mulPose(Axis.XP.rotation((POSE[LEAN] + breath + tremble) * eased));
         pose.mulPose(Axis.YP.rotation(POSE[TWIST] * eased));
         Matrix4f waist = new Matrix4f(pose.last().pose());
@@ -132,12 +101,10 @@ final class EldritchSkyHeraldRenderer {
 
         float fogStart = RenderSystem.getShaderFogStart();
         float fogEnd = RenderSystem.getShaderFogEnd();
-        // The figure is part of the sky, not the world: no distance fog on it.
         RenderSystem.setShaderFogStart(Float.MAX_VALUE);
         RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
         try {
             MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
-            // Backlit by the tear, warming to its own colours as more of it is through.
             float r = crimson ? 0.85f + 0.15f * eased : gold ? 0.95f + 0.05f * eased : 0.40f + 0.35f * eased;
             float g = crimson ? 0.28f + 0.30f * eased : gold ? 0.75f + 0.20f * eased : 0.30f + 0.30f * eased;
             float b = crimson ? 0.30f + 0.25f * eased : gold ? 0.40f + 0.40f * eased : 0.85f + 0.15f * eased;
@@ -146,11 +113,9 @@ final class EldritchSkyHeraldRenderer {
             float alpha = Math.min(1f, e * 1.3f) * env.retreat();
             model.renderToBuffer(pose, buffers.getBuffer(RenderType.entityTranslucent(skin)),
                     LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, r, g, b, alpha);
-            // Eyes, chest rune and veins burn hotter as it heaves.
             float burn = alpha * POSE[BURN];
             model.renderToBuffer(pose, buffers.getBuffer(RenderType.eyes(glow)),
                     LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, burn, burn, burn, 1f);
-            // The tear's light wrapped around the waist, hiding where the body ends.
             VertexConsumer light = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
             float cr = crimson ? 1f : gold ? 1f : 0.70f;
             float cg = crimson ? 0.30f : gold ? 0.80f : 0.45f;
@@ -164,16 +129,9 @@ final class EldritchSkyHeraldRenderer {
             RenderSystem.setShaderFogEnd(fogEnd);
             pose.popPose();
         }
-        // The model wrote depth at sky distance; clear it so the world still draws in front of the sky.
-        // Drawn over the finished frame (shader packs), the world's depth must survive for the terrain in front.
         if (!ShaderPackCompat.overlay()) RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
     }
 
-    /**
-     * Fills {@link #POSE} for time {@code t}: the loop's two surrounding keys eased together, mirrored
-     * on odd loops so the other hand slips, then blended toward the dragged pose as the sky closes.
-     * Returns how much it is straining (0..1), for the tremble and the glow at the waist.
-     */
     private static float sample(float t, float dragged) {
         long loop = (long) Math.floor(t / LOOP);
         float local = t - loop * LOOP;
@@ -193,14 +151,12 @@ final class EldritchSkyHeraldRenderer {
         for (int c = 0; c < CHANNELS; c++) {
             POSE[c] += (DRAGGED[c] - POSE[c]) * d;
         }
-        // Strain peaks between the heave and the slip.
         float strain = local < KEY_TIMES[2] ? smooth((local - KEY_TIMES[1]) / (KEY_TIMES[2] - KEY_TIMES[1]))
                 : local < KEY_TIMES[3] ? 1f
                 : 1f - smooth((local - KEY_TIMES[3]) / (KEY_TIMES[4] - KEY_TIMES[3]));
         return Math.max(0f, strain) * (1f - d);
     }
 
-    /** Channel {@code c} of a key, with left and right swapped (and turns reversed) when mirrored. */
     private static float mirrored(float[] key, int c, boolean mirror) {
         if (!mirror) {
             return key[c];
@@ -220,7 +176,6 @@ final class EldritchSkyHeraldRenderer {
     private static void apply() {
         model.young = false;
         model.crouching = false;
-        // Only what has come through: no legs.
         model.rightLeg.visible = false;
         model.leftLeg.visible = false;
         model.rightPants.visible = false;
@@ -243,7 +198,6 @@ final class EldritchSkyHeraldRenderer {
         model.leftSleeve.copyFrom(model.leftArm);
     }
 
-    /** A soft glowing oval facing the viewer at the waist, bright in the middle and fading out. */
     private static void band(VertexConsumer vc, Matrix4f m, float rx, float ry, float r, float g, float b, float alpha) {
         if (alpha <= 0.01f) {
             return;

@@ -32,7 +32,6 @@ public final class DialogueSettingsScreen extends RotasScreen {
     private boolean edited;
     private boolean giftsTab;
     private boolean romanceTab;
-    /** Section headings of the romance tab, drawn over the widgets: text, x, y. */
     private final List<Object[]> headings = new ArrayList<>();
     private int gift;
     private String message = "";
@@ -386,11 +385,6 @@ public final class DialogueSettingsScreen extends RotasScreen {
         }).bounds(rightX + rightW - 150, bodyBottom - 20, 150, 20).build());
     }
 
-    /**
-     * Romance: whether players can flirt with this NPC, how often and how it goes, what the NPC says when
-     * it lands or misses, and how it greets a player at each stage of the relationship. Two columns: the
-     * rules and greetings on the left, the lines on the right.
-     */
     private void buildRomance() {
         JsonObject romance = obj(form.document(), "romance");
         boolean on = romance.has("enabled") && romance.get("enabled").getAsBoolean();
@@ -452,7 +446,6 @@ public final class DialogueSettingsScreen extends RotasScreen {
                 value -> setNumber(lp("romance", key), value));
     }
 
-    /** An editable list of lines the NPC picks from at random; returns the y below it. */
     private int lineList(int x, int y, int w, String key, int max) {
         JsonArray lines = arr(obj(form.document(), "romance"), key);
         for (int i = 0; i < lines.size() && y + 20 < bodyBottom - 24; i++) {

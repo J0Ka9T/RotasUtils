@@ -22,12 +22,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * The forge timing game, server side. Starting one only checks that the attempt could be made; nothing
- * is spent until the last strike resolves it through {@link RefineService}, which checks everything
- * again. Each strike is graded from the server's own clock against the marker function in
- * {@link ForgeTiming}, so a client cannot claim a better strike than it made.
- */
 public final class ForgeSessions {
     private ForgeSessions() {
     }
@@ -47,7 +41,6 @@ public final class ForgeSessions {
         }
     }
 
-    /** What the last finished game did, shown once as a banner when the bench reopens. */
     private record Finished(long at, RefineService.Outcome outcome, List<ForgeTiming.Grade> grades) {
     }
 
@@ -58,7 +51,6 @@ public final class ForgeSessions {
         SESSIONS.remove(player);
     }
 
-    /** Starts a game for the held item, or tells the player why it cannot. */
     public static void begin(ServerPlayer player, RotasData data, RefineService.Options options) {
         RefineService.Quote quote = RefineService.quote(player, data, options, 0);
         String lack = quote.possible() ? RefineService.missing(player, data, options, quote) : quote.message();
@@ -71,7 +63,6 @@ public final class ForgeSessions {
         FINISHED.remove(player.getUUID());
     }
 
-    /** One strike. The last one resolves the attempt with the chance the strikes earned. */
     public static void strike(ServerPlayer player, RotasData data) {
         Session session = SESSIONS.get(player.getUUID());
         long now = player.serverLevel().getGameTime();
@@ -81,7 +72,6 @@ public final class ForgeSessions {
             return;
         }
         int index = session.grades.size();
-        // The strike reaches the server about a round trip after the player saw the marker there.
         double lag = Math.min(6.0, Math.max(0, player.latency) / 50.0);
         ForgeTiming.Grade grade = ForgeTiming.grade(ForgeTiming.marker(now - session.strikeStart - lag, index),
                 session.centers[index], index);
@@ -118,7 +108,6 @@ public final class ForgeSessions {
         }
     }
 
-    /** Everything the screen needs to draw the game, and the banner of the last finished one, once. */
     public static CompoundTag view(ServerPlayer player) {
         CompoundTag tag = new CompoundTag();
         long now = player.serverLevel().getGameTime();

@@ -15,13 +15,6 @@ import net.schwarz.rotasutils.util.Nbt;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The socket bench: the player's own gear, its sockets, and what goes into them.
- *
- * <p>The same page serves both tools. Holding a card, a click puts it into the item's first free socket;
- * holding a socket punch, a click opens one more socket in that item. Which of the two is in hand is the
- * server's word, and the server checks it again before it writes anything.</p>
- */
 @Environment(EnvType.CLIENT)
 public class SocketScreen extends RotasScreen {
     private static final int ROWS = 7;
@@ -126,7 +119,6 @@ public class SocketScreen extends RotasScreen {
         }
     }
 
-    /** {@code "[*][*][ ]"}: filled sockets first, then the empty ones. */
     private static String sockets(Target target) {
         StringBuilder marks = new StringBuilder();
         for (int index = 0; index < target.sockets(); index++) {

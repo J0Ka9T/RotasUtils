@@ -9,7 +9,6 @@ import net.schwarz.rotasutils.data.ParamSpec;
 import net.schwarz.rotasutils.data.Params;
 import java.util.List;
 
-/** Direct fields for objectives, requirements, rewards and skill effects. */
 @Environment(EnvType.CLIENT)
 public class ParamEditorScreen extends SimpleFieldScreen {
     private final Params params;
@@ -63,7 +62,6 @@ public class ParamEditorScreen extends SimpleFieldScreen {
         };
     }
 
-    /** "Zombie (minecraft:zombie)" instead of a bare id, for fields picked from a browser. */
     public static String readable(ParamSpec.ParamKind kind, String value) {
         if (value == null || value.isEmpty()) {
             return "";
@@ -91,7 +89,6 @@ public class ParamEditorScreen extends SimpleFieldScreen {
         return name == null ? value : name + "  (" + value + ")";
     }
 
-    /** Picture for a picked item, block or mob. */
     public static net.minecraft.world.item.ItemStack icon(ParamSpec.ParamKind kind, String value) {
         net.minecraft.resources.ResourceLocation id = value == null ? null : net.minecraft.resources.ResourceLocation.tryParse(value);
         if (id == null) {

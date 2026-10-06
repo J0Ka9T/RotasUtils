@@ -34,11 +34,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Easy editor for one mob setup: which mobs, what name, what level, how strong and what they give.
- * The left side shows the mob and what it will be like at an example level, so every change is
- * visible before saving.
- */
 @Environment(EnvType.CLIENT)
 public class MobSetupEditScreen extends RotasScreen {
     private static final int SIDE_W = 200;
@@ -48,7 +43,9 @@ public class MobSetupEditScreen extends RotasScreen {
         LEVEL("2  Level"),
         STRENGTH("3  Strength"),
         REWARDS("4  Rewards"),
-        SPAWN("5  Spawning");
+        SPAWN("5  Spawning"),
+        DEFEAT("6  Defeat"),
+        BODY("7  Body");
 
         final String label;
 
@@ -81,7 +78,6 @@ public class MobSetupEditScreen extends RotasScreen {
     private int mainW;
     private int mainH;
 
-    /** True while "Only in chosen zones" is selected, even before a zone is ticked. */
     private boolean zoneScope;
 
     public MobSetupEditScreen(String id, MobSetupForm form, Screen parent) {
@@ -101,7 +97,6 @@ public class MobSetupEditScreen extends RotasScreen {
                 .filter(entry -> entry.id().equals(id)).map(ClientKernelState.MonsterEntry::body).findFirst().orElse(null);
     }
 
-    /** An open draft is never rebuilt; the admin is told when someone else saved or deleted this setup. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
@@ -151,6 +146,8 @@ public class MobSetupEditScreen extends RotasScreen {
             case STRENGTH -> buildStrength();
             case REWARDS -> buildRewards();
             case SPAWN -> buildSpawn();
+            case DEFEAT -> buildDefeat();
+            case BODY -> buildBody();
         }
 
         addBackButton();
@@ -168,7 +165,6 @@ public class MobSetupEditScreen extends RotasScreen {
             }, net.schwarz.rotasutils.client.screen.Ui.text("Delete this mob setup?"),
                     net.schwarz.rotasutils.client.screen.Ui.text("New mobs spawn as normal again. Mobs already changed keep their level.")))).bounds(guiLeft + 64, footerY, 70, 22).build());
             if (!form.zoneScoped()) {
-                // A zone version starts as a copy of this global setup, so only the differences need editing.
                 addRenderableWidget(Ui.button(Ui.text("Copy for a zone"), button -> {
                     ClientState.feedback(true, "Copied. Pick the zones for this version, then save.");
                     minecraft.setScreen(new MobSetupEditScreen(null, form.copyForZone(), parentScreen(), true));
@@ -224,15 +220,11 @@ public class MobSetupEditScreen extends RotasScreen {
         setHeader("Mob Setup: " + title());
     }
 
-    // Pages ----------------------------------------------------------------
-
-    private void buildMobs() {
+private void buildMobs() {
         int x = mainX + 12;
         int w = mainW - 24;
         int y = mainY + 10;
         labels.add(new Label("Which mobs use this setup (" + form.entities().size() + ")", x, y + 4, Ui.TEXT_BRIGHT));
-        // One multi-select trip: mobs already here start ticked, so the same picker adds and removes,
-        // and "Select all shown" takes every mob a search matches (e.g. all zombie kinds) at once.
         addRenderableWidget(Ui.primaryButton(Ui.text("+ Add or remove mobs"), button ->
                 minecraft.setScreen(EntityPickerScreen.many(this, form.entities(), ids -> {
                     form.setEntities(ids);
@@ -259,7 +251,6 @@ public class MobSetupEditScreen extends RotasScreen {
                 x, y + listH + 3, form.usesOtherSelectors() ? Ui.WARN : Ui.TEXT_MUTED));
         y += listH + 18;
 
-        // Scope: the whole setup (level, strength, rewards, spawning) is global or zone-only.
         labels.add(new Label("Where these settings apply", x, y, Ui.TEXT_BRIGHT));
         int half = (w - Ui.GAP) / 2;
         spawnChoice(x, y + 12, half, "Everywhere (global)", zoneScope ? "zone" : "global", "global", value -> {
@@ -361,7 +352,6 @@ public class MobSetupEditScreen extends RotasScreen {
                 .bounds(x, y, w, 22).build());
     }
 
-    /** One row of the strength table: a mob attribute and how it scales. */
     private record StatRow(String name, String attribute, Attribute vanilla, boolean percentAdd) {
     }
 
@@ -385,14 +375,8 @@ public class MobSetupEditScreen extends RotasScreen {
     private int strengthX;
     private boolean compactStrength;
     private int strengthTop;
-    /** Where the help lines go, under the table and the reset button, clear of the column headers. */
     private int strengthHelpY;
 
-    /**
-     * Strength as a table: every stat has a multiplier, a share gained each level and a flat bonus, all typed
-     * in directly. The right side shows what the mob really gets at its lowest, middle and highest level, so
-     * the numbers mean something before saving.
-     */
     private void buildStrength() {
         int availableWidth = mainW - 24;
         compactStrength = availableWidth < 500 || mainH < 250;
@@ -443,7 +427,6 @@ public class MobSetupEditScreen extends RotasScreen {
         rebuild();
     }
 
-    /** A typed number with visible bounds; invalid text never leaves Save enabled. */
     private void numberBox(String fieldKey, int x, int y, int w, String value, double min, double max,
                            java.util.function.DoubleConsumer onChange) {
         EditBox box = new EditBox(font, x, y, w, 16, net.schwarz.rotasutils.client.screen.Ui.text(""));
@@ -476,7 +459,6 @@ public class MobSetupEditScreen extends RotasScreen {
         addRenderableWidget(box);
     }
 
-    /** Header and live values for the strength table, drawn every frame so typing updates them at once. */
     private void renderStrengthTable(GuiGraphics graphics) {
         int x = strengthX;
         int availableWidth = mainW - 24;
@@ -489,7 +471,6 @@ public class MobSetupEditScreen extends RotasScreen {
         Ui.label(graphics, Ui.truncate("Flat", strengthInputWidth), strengthAddX, head, Ui.TEXT_MUTED);
         int[] levels = previewLevels();
         int col = strengthPreviewX;
-        // One column for vanilla plus one per distinct preview level, sized to fit inside the panel.
         int colW = Math.max(1, (availableWidth - (col - x)) / (levels.length + 1));
         Ui.label(graphics, Ui.truncate("Base", colW - 2), col, head, Ui.TEXT_MUTED);
         for (int i = 0; i < levels.length; i++) {
@@ -504,19 +485,15 @@ public class MobSetupEditScreen extends RotasScreen {
             Ui.label(graphics, Ui.truncate(row.name(), strengthNameWidth - 4), x, textY, Ui.TEXT_BRIGHT);
             var instance = living == null ? null : living.getAttribute(row.vanilla());
             if (instance == null) {
-                // This mob type has no such stat at all (a sheep has no attack damage), so nothing applies.
                 Ui.label(graphics, Ui.truncate(living == null ? "?" : "none", colW - 2), col, textY, Ui.WARN);
             } else {
                 double base = instance.getBaseValue();
-                // Times and +% multiply the mob's own value, so on a stat it has none of they do nothing.
                 boolean scaledNothing = Math.abs(base) < 1e-9 && Math.abs(form.add(row.attribute())) < 1e-9
                         && (Math.abs(form.multiplier(row.attribute()) - 1) > 1e-9 || Math.abs(form.perLevel(row.attribute())) > 1e-9);
                 Ui.label(graphics, Ui.truncate(MobStatFormat.fmt(base), colW - 2), col, textY,
                         scaledNothing ? Ui.WARN : Ui.TEXT_MUTED);
                 for (int i = 0; i < levels.length; i++) {
                     double raw = form.valueAt(row.attribute(), base, levels[i]);
-                    // What the mob really gets: Minecraft clamps every attribute to its own range
-                    // (knockback resist 0-1, armor 0-30, toughness 0-20), so show the clamped value.
                     double value = row.vanilla().sanitizeValue(raw);
                     boolean capped = Math.abs(value - raw) > 1e-6;
                     anyCapped |= capped;
@@ -543,7 +520,6 @@ public class MobSetupEditScreen extends RotasScreen {
         }
     }
 
-    /** Lowest, middle and highest level this setup can roll, without repeats (a fixed level is one column). */
     int[] previewLevels() {
         int low = Math.max(1, form.strategy().equals("FIXED") ? form.fixedLevel() : form.min());
         int high = Math.max(low, form.strategy().equals("FIXED") ? form.fixedLevel() : form.max());
@@ -583,10 +559,163 @@ public class MobSetupEditScreen extends RotasScreen {
                 () -> form.setManualOnly(!form.manualOnly()));
     }
 
-    /**
-     * Where and when these mobs spawn. Left column: normal spawning, zones and time of day. Right
-     * column: dimension, height, crowd limit and the optional extra spawns near players.
-     */
+    private static final String[][] DAMAGE_PRESETS = {
+            {"Fire", "#minecraft:is_fire"}, {"Explosion", "#minecraft:is_explosion"},
+            {"Lightning", "#minecraft:is_lightning"}, {"Freezing", "#minecraft:is_freezing"},
+            {"Projectile", "#minecraft:is_projectile"}, {"Magic", "minecraft:magic"}};
+
+    private void buildDefeat() {
+        int x = mainX + 12;
+        int w = mainW - 24;
+        int y = mainY + 10;
+        labels.add(new Label("Leave a part empty to allow anything. Every filled part must be met.", x, y, Ui.TEXT_MUTED));
+        y += 16;
+
+        labels.add(new Label("Attack type (any of)", x, y, Ui.TEXT_BRIGHT));
+        int third = (w - Ui.GAP * 2) / 3;
+        String[][] attacks = {{"Melee", "MELEE"}, {"Ranged", "RANGED"}, {"Magic", "MAGIC"}};
+        for (int i = 0; i < attacks.length; i++) {
+            defeatChip(x + i * (third + Ui.GAP), y + 12, third, attacks[i][0], "attacks", attacks[i][1]);
+        }
+        y += 40;
+
+        labels.add(new Label("Weapon held (any of)  -  click one to remove", x, y, Ui.TEXT_BRIGHT));
+        y += 12;
+        int half = (w - Ui.GAP) / 2;
+        addRenderableWidget(Ui.button(net.schwarz.rotasutils.client.screen.Ui.text("+ Item"), button -> minecraft.setScreen(
+                new PickerScreen(net.schwarz.rotasutils.data.ParamSpec.ParamKind.ITEM, this, picked -> addDefeat("items", picked, false))))
+                .bounds(x, y, half, 20).build());
+        addRenderableWidget(Ui.button(net.schwarz.rotasutils.client.screen.Ui.text("+ Item tag (e.g. all swords)"), button -> minecraft.setScreen(
+                new PickerScreen(net.schwarz.rotasutils.data.ParamSpec.ParamKind.ITEM_TAG, this, picked -> addDefeat("items", picked, true))))
+                .bounds(x + half + Ui.GAP, y, half, 20).build());
+        y += 24;
+        y = defeatEntries(x, y, w, "items");
+
+        labels.add(new Label("Damage type (any of)", x, y, Ui.TEXT_BRIGHT));
+        y += 12;
+        int sixth = (w - Ui.GAP * 2) / 3;
+        for (int i = 0; i < DAMAGE_PRESETS.length; i++) {
+            defeatChip(x + (i % 3) * (sixth + Ui.GAP), y + (i / 3) * 22, sixth, DAMAGE_PRESETS[i][0], "damage_types", DAMAGE_PRESETS[i][1]);
+        }
+        y += 46;
+        java.util.List<String> customDamage = form.defeatList("damage_types").stream()
+                .filter(id -> java.util.Arrays.stream(DAMAGE_PRESETS).noneMatch(preset -> preset[1].equals(id))).toList();
+        if (!customDamage.isEmpty()) {
+            labels.add(new Label("Also: " + String.join(", ", customDamage) + "  (edit in Content Studio)", x, y, Ui.TEXT_MUTED));
+            y += 14;
+        }
+
+        int colW = (w - 16) / 2;
+        stepper(x, y, colW, "Minimum player level", form.defeatMinLevel() == 0 ? "Any" : String.valueOf(form.defeatMinLevel()),
+                () -> form.setDefeatMinLevel(form.defeatMinLevel() - (hasShiftDown() ? 10 : 1)),
+                () -> form.setDefeatMinLevel(form.defeatMinLevel() + (hasShiftDown() ? 10 : 1)));
+        stepper(x + colW + 16, y, colW, "Damage when not met", Math.round(form.defeatResisted() * 100) + "%",
+                () -> form.setDefeatResisted(form.defeatResisted() - (hasShiftDown() ? 0.25 : 0.05)),
+                () -> form.setDefeatResisted(form.defeatResisted() + (hasShiftDown() ? 0.25 : 0.05)));
+        y += 40;
+
+        labels.add(new Label("Message shown to the player (empty = says what is needed)", x, y, Ui.TEXT_BRIGHT));
+        EditBox hint = new EditBox(font, x, y + 12, w, 18, Component.empty());
+        hint.setMaxLength(128);
+        hint.setValue(form.defeatHint());
+        hint.setResponder(value -> {
+            form.setDefeatHint(value);
+            changed();
+        });
+        addRenderableWidget(hint);
+    }
+
+    private static final String[][] IMMUNE_PRESETS = {
+            {"Fire & lava", "#minecraft:is_fire"}, {"Explosions", "#minecraft:is_explosion"},
+            {"Projectiles", "#minecraft:is_projectile"}, {"Fall", "#minecraft:is_fall"},
+            {"Drowning", "#minecraft:is_drowning"}, {"Freezing", "#minecraft:is_freezing"},
+            {"Lightning", "#minecraft:is_lightning"}, {"Magic & poison", "minecraft:magic"},
+            {"Wither effect", "minecraft:wither"}, {"Suffocation", "minecraft:in_wall"},
+            {"Cactus & berries", "minecraft:cactus"}, {"Thorns", "minecraft:thorns"}};
+
+    private void buildBody() {
+        int x = mainX + 12;
+        int w = mainW - 24;
+        int y = mainY + 10;
+        int colW = (w - 16) / 2;
+        stepper(x, y, colW, "Size", "x" + MobSetupScreen.trim(form.size()),
+                () -> form.setSize(form.size() - (hasShiftDown() ? 0.5 : 0.1)),
+                () -> form.setSize(form.size() + (hasShiftDown() ? 0.5 : 0.1)));
+        stepper(x + colW + 16, y, colW, "Random size difference", "+-" + Math.round(form.sizeVariance() * 100) + "%",
+                () -> form.setSizeVariance(form.sizeVariance() - 0.05),
+                () -> form.setSizeVariance(form.sizeVariance() + 0.05));
+        y += 34;
+        double low = form.size() * (1 - form.sizeVariance()), high = form.size() * (1 + form.sizeVariance());
+        labels.add(new Label(form.sizeVariance() == 0 ? "Every mob is x" + MobSetupScreen.trim(form.size()) + " size (hitbox too)."
+                : "Each mob is between x" + MobSetupScreen.trim(Math.round(low * 100) / 100.0) + " and x"
+                + MobSetupScreen.trim(Math.round(high * 100) / 100.0) + " size (hitbox too).", x, y, Ui.TEXT_MUTED));
+        if (!net.schwarz.rotasutils.compat.PehkuiCompat.loaded()) {
+            labels.add(new Label("Install Pehkui to apply size; without it mobs stay normal size.", x, y + 12, Ui.WARN));
+        } else if (form.size() >= 2.5) {
+            labels.add(new Label("Big mobs need room: they cannot fit through doors or caves.", x, y + 12, Ui.WARN));
+        }
+        y += 30;
+        int third = (w - Ui.GAP * 2) / 3;
+        int quarter = (w - Ui.GAP * 3) / 4;
+        String[][] sizes = {{"Tiny x0.5", "0.5"}, {"Normal", "1"}, {"Big x2", "2"}, {"Giant x4", "4"}};
+        for (int i = 0; i < sizes.length; i++) {
+            double value = Double.parseDouble(sizes[i][1]);
+            addRenderableWidget(Ui.button(net.schwarz.rotasutils.client.screen.Ui.text(sizes[i][0]), button -> {
+                form.setSize(value);
+                changed();
+                rebuild();
+            }).style(form.size() == value ? RotasButton.Style.PRIMARY : RotasButton.Style.DEFAULT)
+                    .bounds(x + i * (quarter + Ui.GAP), y, quarter, 20).build());
+        }
+        y += 34;
+
+        labels.add(new Label("Immune to (takes no damage from these, from anyone)", x, y, Ui.TEXT_BRIGHT));
+        y += 12;
+        for (int i = 0; i < IMMUNE_PRESETS.length; i++) {
+            defeatChip(x + (i % 3) * (third + Ui.GAP), y + (i / 3) * 22, third, IMMUNE_PRESETS[i][0], "immune", IMMUNE_PRESETS[i][1]);
+        }
+        y += ((IMMUNE_PRESETS.length + 2) / 3) * 22 + 4;
+        java.util.List<String> custom = form.defeatList("immune").stream()
+                .filter(id -> java.util.Arrays.stream(IMMUNE_PRESETS).noneMatch(preset -> preset[1].equals(id))).toList();
+        if (!custom.isEmpty()) {
+            labels.add(new Label("Also: " + String.join(", ", custom) + "  (edit in Content Studio)", x, y, Ui.TEXT_MUTED));
+        }
+    }
+
+    private void defeatChip(int x, int y, int w, String title, String list, String value) {
+        boolean on = form.defeatList(list).contains(value);
+        addRenderableWidget(Ui.button(net.schwarz.rotasutils.client.screen.Ui.text((on ? "[x] " : "[ ] ") + title), button -> {
+            form.toggleDefeat(list, value);
+            changed();
+            rebuild();
+        }).style(on ? RotasButton.Style.PRIMARY : RotasButton.Style.DEFAULT).bounds(x, y, w, 20).build());
+    }
+
+    private void addDefeat(String list, String picked, boolean tag) {
+        if (picked == null || picked.isBlank()) {
+            return;
+        }
+        String value = tag && !picked.startsWith("#") ? "#" + picked : picked;
+        if (!form.defeatList(list).contains(value)) {
+            form.toggleDefeat(list, value);
+            changed();
+        }
+    }
+
+    private int defeatEntries(int x, int y, int w, String list) {
+        java.util.List<String> values = form.defeatList(list);
+        int third = (w - Ui.GAP * 2) / 3;
+        for (int i = 0; i < values.size(); i++) {
+            String value = values.get(i);
+            addRenderableWidget(Ui.button(net.schwarz.rotasutils.client.screen.Ui.text(Ui.truncate("x " + value, third - 10)), button -> {
+                form.toggleDefeat(list, value);
+                changed();
+                rebuild();
+            }).bounds(x + (i % 3) * (third + Ui.GAP), y + (i / 3) * 22, third, 20).build());
+        }
+        return y + ((values.size() + 2) / 3) * 22 + 6;
+    }
+
     private void buildSpawn() {
         int x = mainX + 12;
         int w = mainW - 24;
@@ -686,7 +815,6 @@ public class MobSetupEditScreen extends RotasScreen {
         drawZoneRow(graphics, zoneRows.get(index), form.scopeZones().contains(zoneRows.get(index)), x, y, rowWidth, rowHeight, hovered);
     }
 
-    /** One tickable zone row: check box, zone name and its level band. */
     private void drawZoneRow(GuiGraphics graphics, String id, boolean ticked, int x, int y, int rowWidth, int rowHeight,
                              boolean hovered) {
         var zone = ClientState.zones().get(id);
@@ -709,7 +837,6 @@ public class MobSetupEditScreen extends RotasScreen {
         return y <= MobSpawnRules.LOWEST_Y || y >= MobSpawnRules.HIGHEST_Y ? "Any" : String.valueOf(y);
     }
 
-    /** Steps the lowest height; "Any" sits below the world floor, so the first step up lands on -64. */
     private static int stepLowest(int value, int direction) {
         int step = hasShiftDown() ? 16 : 1;
         if (value <= MobSpawnRules.LOWEST_Y) {
@@ -719,7 +846,6 @@ public class MobSetupEditScreen extends RotasScreen {
         return next < -64 ? MobSpawnRules.LOWEST_Y : next;
     }
 
-    /** Steps the highest height; "Any" sits above the build limit, so the first step down lands on 320. */
     private static int stepHighest(int value, int direction) {
         int step = hasShiftDown() ? 16 : 1;
         if (value >= MobSpawnRules.HIGHEST_Y) {
@@ -729,9 +855,7 @@ public class MobSetupEditScreen extends RotasScreen {
         return next > 320 ? MobSpawnRules.HIGHEST_Y : next;
     }
 
-    // Widgets --------------------------------------------------------------
-
-    private void intStepper(int x, int y, int w, String title, int value, int step, int bigStep,
+private void intStepper(int x, int y, int w, String title, int value, int step, int bigStep,
                             java.util.function.IntConsumer setter) {
         stepper(x, y, w, title, String.valueOf(value),
                 () -> setter.accept(value - (hasShiftDown() ? bigStep : step)),
@@ -778,7 +902,6 @@ public class MobSetupEditScreen extends RotasScreen {
             int nameW = Math.min(nameRoom, font.width(Ui.truncate(name, nameRoom)));
             Ui.label(graphics, Ui.truncate(mob, Math.max(0, nameRoom - nameW - 10)), x + 36 + nameW, y + 8, Ui.TEXT_MUTED);
         }
-        // A button-like Remove chip on the right; the click handler uses the same strip.
         int chipX = x + w - REMOVE_W - 4;
         Ui.roundedSurface(graphics, chipX, y + 3, REMOVE_W, rowHeight - 9, 3,
                 hovered ? 0xC75A2A22 : 0x80382C1F, hovered ? Ui.BAD : 0x70BE9E68);
@@ -788,7 +911,6 @@ public class MobSetupEditScreen extends RotasScreen {
     private static final int REMOVE_W = 64;
 
     private void clickMobRow(int index, int button) {
-        // Right-click anywhere on the row removes; a left click only on the Remove chip.
         boolean onChip = mobList != null && lastClickX >= mobList.x() + mobList.width() - REMOVE_W - 12;
         if (mobList == null || !(button == 1 || (button == 0 && onChip))) {
             return;
@@ -800,9 +922,7 @@ public class MobSetupEditScreen extends RotasScreen {
         rebuild();
     }
 
-    // Actions --------------------------------------------------------------
-
-    private void save() {
+private void save() {
         if (!invalidStrengthFields.isEmpty()) {
             ClientState.feedback(false, "Fix or reset invalid stat values before saving.");
             return;
@@ -854,13 +974,7 @@ public class MobSetupEditScreen extends RotasScreen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    // Rendering ------------------------------------------------------------
-
-    /**
-     * The main panel is drawn with the window frame, before the scroll panels. Drawn in renderContent
-     * it painted over the mob list, which hid every row's name and left only the spawn eggs showing.
-     */
-    @Override
+@Override
     protected void renderFrame(GuiGraphics graphics) {
         super.renderFrame(graphics);
         Ui.panel(graphics, mainX, mainY, mainW, mainH);
@@ -927,7 +1041,6 @@ public class MobSetupEditScreen extends RotasScreen {
             Ui.label(graphics, Ui.truncate(form.eliteChance() + "% are Elite (tougher)", previewW), previewX, y, Ui.WARN);
             y += 14;
         }
-        // Spawning summary, one short line per rule, so the side panel says where these mobs appear.
         List<String> spawning = new ArrayList<>();
         spawning.add(form.naturalSpawning() ? "Spawns naturally" : "No natural spawns");
         switch (form.spawnWhere()) {

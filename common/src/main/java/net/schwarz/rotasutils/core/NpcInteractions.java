@@ -4,15 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.*;
 
-/** Bounded, code-free conversation and gift configuration. */
 public final class NpcInteractions {
     public record Definition(String start, Map<String, Node> nodes, List<Gift> gifts,
                              boolean dialogue, boolean quests, boolean shop, boolean acceptsGifts,
                              String invalidGift, Behavior behavior, Romance romance) {}
-    /**
-     * Flirting with this NPC. {@code greetings} maps an {@link Affection.Tier} key to the line the NPC
-     * opens with at that stage; lines may use {player} and {npc}.
-     */
     public record Romance(boolean enabled, int flirtsPerDay, int successGain, int failLoss, int baseChancePercent,
                           List<String> success, List<String> fail, String tired, Map<String, String> greetings) {
         public static final Romance OFF = new Romance(false, 3, 6, 2, 40, List.of(), List.of(), "", Map.of());
@@ -165,7 +160,6 @@ public final class NpcInteractions {
             if (Set.of("item", "currency", "reputation").contains(type)) new ContentId(id);
             if (type.equals("quest_unlock") && (id.isBlank() || id.length() > 128)) throw new IllegalArgumentException("Quest unlock needs a quest id");
             if (type.equals("flag") && !id.matches("rpg\\.[a-z0-9_.-]{1,120}")) throw new IllegalArgumentException("Flags must use rpg.* keys");
-            // Affection can go down as well as up: a rude choice or an unwanted gift costs fondness.
             int amount = type.equals("affection") ? integer(grant, "amount", -Affection.MAX, Affection.MAX, 1)
                     : integer(grant, "amount", 1, type.equals("item") ? 64 : 100_000, 1);
             if (type.equals("affection") && amount == 0) throw new IllegalArgumentException("Affection change cannot be 0");

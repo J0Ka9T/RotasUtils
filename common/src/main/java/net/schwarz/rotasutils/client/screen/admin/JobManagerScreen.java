@@ -24,7 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.LinkedHashMap;
 
-/** Creating, editing and removing jobs. */
 @Environment(EnvType.CLIENT)
 public class JobManagerScreen extends RotasScreen {
     private List<JobDef> jobs = List.of();
@@ -123,7 +122,6 @@ public class JobManagerScreen extends RotasScreen {
         }
     }
 
-    /** Field editor for one job; changes are sent only when Save is pressed. */
     static final class JobEditScreen extends SimpleFieldScreen {
         private final JobDef job;
         private final CompoundTag baseline;
@@ -168,7 +166,6 @@ public class JobManagerScreen extends RotasScreen {
             fields.add(number("Mastery max level", () -> Integer.toString(job.masteryCurve().maxLevel()), value -> rebuildCurve(value,2)));
             fields.add(number("Mastery exponent (0 = use growth)", () -> Double.toString(job.masteryCurve().exponent()), value -> rebuildCurve(value,3)));
             fields.add(text("Item list (ids or #tags, comma separated)", () -> join(job.itemSelectors()), value -> replace(job.itemSelectors(), value)));
-            fields.add(text("Mastery activities (comma separated)", () -> join(job.masteryActivities()), value -> replace(job.masteryActivities(), value)));
             fields.add(text("Good / bad modifiers (label|attribute|amount|operation; ...)",
                     () -> encodeModifiers(job), value -> replaceModifiers(job, value)));
         }

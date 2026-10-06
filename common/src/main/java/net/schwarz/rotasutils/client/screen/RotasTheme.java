@@ -4,10 +4,8 @@ import com.schwarz.lenlorui.ui.UiTheme;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
-/** Dark leather, copper selection and cream text for the pixel RPG interface. */
 @Environment(EnvType.CLIENT)
 public final class RotasTheme {
-    /** Polished copper. Reserved for selection and the primary action. */
     public static final int ACCENT = 0xFFC5A175;
     public static final int ACCENT_STRONG = 0xFFD2B184;
     public static final int ACCENT_WASH = 0xFFD6C09A;
@@ -32,24 +30,18 @@ public final class RotasTheme {
     public static final int WARN = 0xFFB48A4C;
     public static final int BAD = 0xFFA35F52;
 
-    /** Corner cuts for window, card and control frames. */
     public static final int RADIUS_WINDOW = 1;
     public static final int RADIUS_CARD = 1;
     public static final int RADIUS_CONTROL = 1;
     public static final int SHADOW = 0x66000000;
 
-    /* ---- HUD tokens (dark modern RPG panel) ------------------------------------------
-     * Dark slate shell with gold trim so vitals stay legible over any terrain.
-     */
     public static final int HUD_TEXT = 0xFFF5E6C8;
     public static final int HUD_TEXT_MUTED = 0xFFC9B895;
-    /** Bright gold for level, XP and selection accents over dark. */
     public static final int HUD_ACCENT = 0xFFFFC25E;
     public static final int HUD_ACCENT_DIM = 0xFFC08A3C;
     public static final int HUD_PANEL = 0xE6161D29;
     public static final int HUD_PANEL_EDGE = 0xFF8A6220;
     public static final int HUD_PANEL_EDGE_HI = 0xFFFFC25E;
-    /** Dark recessed track behind HUD bars. */
     public static final int HUD_TRACK = 0xFF2A3340;
     public static final int HUD_TRACK_EDGE = 0xFF0D1117;
 

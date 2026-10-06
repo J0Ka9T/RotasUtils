@@ -12,22 +12,14 @@ import net.schwarz.rotasutils.network.RotasNetwork;
 
 import java.util.function.Consumer;
 
-/**
- * One-click saving for the Mob Setup screens.
- *
- * <p>Monster profiles are kernel content with a draft, validate and apply workflow. This service runs
- * that whole workflow on the server in one step, so the easy editor has a single Save button while
- * still getting the same validation, revision history and rollback as the Content Studio.</p>
- */
 public final class MobSetupService {
     private MobSetupService() {
     }
 
     public static void save(ServerPlayer player, String id, String bodyJson) {
-        run(player, "save:" + id, "Mob setup saved. New mobs of this kind use it now.", (kernel, actor) -> {
+        run(player, "save:" + id, "Mob setup saved. Mobs in the world update now.", (kernel, actor) -> {
             ContentId contentId = new ContentId(id);
             JsonObject body = JsonParser.parseString(bodyJson).getAsJsonObject();
-            // Parse locally first so a mistake gets a plain message before touching the draft.
             MonsterDefinitions.profile(contentId, body);
             kernel.history().begin(actor);
             for (String tier : new MobSetupForm(body).tierIds()) {
@@ -40,11 +32,6 @@ public final class MobSetupService {
         });
     }
 
-    /**
-     * Saves a category and moves its mobs into it: any other setup with the same scope (global, or the same
-     * zones) that still lists one of these mobs loses it, and a setup left with no mobs is deleted. All of
-     * it is one content change, so a move never leaves a mob in two places or in none.
-     */
     public static void saveCategory(ServerPlayer player, String id, String bodyJson) {
         run(player, "Category saved.", (kernel, actor) -> {
             ContentId contentId = new ContentId(id);
@@ -83,10 +70,6 @@ public final class MobSetupService {
         });
     }
 
-    /**
-     * Puts setups in a folder ({@code folder} empty = no folder). Only the {@code category} label changes;
-     * each setup keeps its own settings. Many setups are one content change, so renaming a folder is atomic.
-     */
     public static void setFolder(ServerPlayer player, java.util.List<String> ids, String folder) {
         run(player, folder.isBlank() ? "Removed from folder." : "Moved to " + folder + ".", (kernel, actor) -> {
             kernel.history().begin(actor);
@@ -114,14 +97,9 @@ public final class MobSetupService {
         void apply(RpgKernel kernel, String actor);
     }
 
-    /** A save waiting for the content system to be free. */
     private record Pending(java.util.UUID player, String success, Stage stage) {
     }
 
-    /**
-     * Saves wait here instead of failing while another content change is validating. Keyed by what they
-     * change, so pressing Save twice on one mob keeps only the newest version.
-     */
     private static final java.util.LinkedHashMap<String, Pending> QUEUE = new java.util.LinkedHashMap<>();
     private static boolean running;
 
@@ -147,7 +125,6 @@ public final class MobSetupService {
         drain(player.server);
     }
 
-    /** Called every server tick: starts the next waiting save once the content system is free. */
     public static void tick(net.minecraft.server.MinecraftServer server) {
         if (!QUEUE.isEmpty()) {
             drain(server);
@@ -168,8 +145,6 @@ public final class MobSetupService {
         }
         String actor = player.getUUID().toString();
         if (kernel.history().draft(actor) != null) {
-            // A leftover draft from this screen (a save that failed half-way) is ours to clear; a real
-            // Content Studio draft is the admin's, so that one blocks with a clear message.
             RotasNetwork.feedback(player, false,
                     "You have an unfinished draft in the Content Studio. Apply or discard it there first.");
             return;
@@ -190,7 +165,9 @@ public final class MobSetupService {
             return;
         }
         running = true;
-        boolean started = kernel.validateDraft(actor, true, () -> allowed(player), result -> {
+        boolean started;
+        try {
+            started = kernel.validateDraft(actor, true, () -> allowed(player), result -> {
             running = false;
             if (!result.valid()) {
                 fail.accept(result.issues().isEmpty() ? "validation failed" : result.issues().get(0).message());
@@ -200,17 +177,19 @@ public final class MobSetupService {
                 }
                 RotasNetwork.feedback(player, true, pending.success());
             }
-            // Everyone with the editor open sees the saved version, not just the one who saved.
             for (ServerPlayer online : server.getPlayerList().getPlayers()) {
                 net.schwarz.rotasutils.network.SyncQueue.kernel(online);
             }
-        });
+            });
+        } catch (RuntimeException error) {
+            fail.accept(error.getMessage() == null ? "could not start validation" : error.getMessage());
+            return;
+        }
         if (!started) {
             running = false;
             if (kernel.history().draft(actor) != null) {
                 kernel.history().discard(actor);
             }
-            // Busy after all: put it back at the front and try again next tick.
             java.util.LinkedHashMap<String, Pending> rest = new java.util.LinkedHashMap<>(QUEUE);
             QUEUE.clear();
             QUEUE.put(first.getKey(), pending);

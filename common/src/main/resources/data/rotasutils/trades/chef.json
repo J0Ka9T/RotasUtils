@@ -1,0 +1,533 @@
+{
+  "trade": "chef",
+  "job": "chef",
+  "station": "rotasutils:cooking_station",
+  "slotLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "recipes": [
+    {
+      "id": "mushroom_stew",
+      "level": 1,
+      "seconds": 30,
+      "ingredients": [
+        {
+          "item": "minecraft:red_mushroom",
+          "count": 1
+        },
+        {
+          "item": "minecraft:brown_mushroom",
+          "count": 1
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:mushroom_stew",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "beetroot_soup",
+      "level": 1,
+      "seconds": 30,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:beetroot|#forge:crops/beetroot",
+          "count": 6,
+          "graded": true
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:beetroot_soup",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "pumpkin_pie",
+      "level": 1,
+      "seconds": 40,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:pumpkin",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:sugar",
+          "count": 1
+        },
+        {
+          "item": "minecraft:egg|#forge:eggs",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:pumpkin_pie",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "cooked_salmon",
+      "level": 2,
+      "seconds": 45,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:salmon|#forge:raw_fishes/salmon",
+          "count": 2,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_salmon",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "cookies",
+      "level": 3,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:wheat|#forge:crops/wheat",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:cocoa_beans",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cookie",
+          "count": 8
+        }
+      ]
+    },
+    {
+      "id": "rabbit_stew",
+      "level": 4,
+      "seconds": 90,
+      "secret": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:cooked_rabbit",
+          "count": 1
+        },
+        {
+          "item": "minecraft:carrot|#forge:crops/carrot",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:baked_potato",
+          "count": 1
+        },
+        {
+          "item": "minecraft:brown_mushroom",
+          "count": 1
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:rabbit_stew",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "cake",
+      "level": 5,
+      "seconds": 120,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:wheat|#forge:crops/wheat",
+          "count": 3,
+          "graded": true
+        },
+        {
+          "item": "minecraft:sugar",
+          "count": 2
+        },
+        {
+          "item": "minecraft:egg|#forge:eggs",
+          "count": 1
+        },
+        {
+          "item": "minecraft:milk_bucket",
+          "count": 3
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cake",
+          "count": 1
+        },
+        {
+          "item": "minecraft:bucket",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "golden_carrot",
+      "level": 6,
+      "seconds": 120,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:gold_nugget",
+          "count": 8
+        },
+        {
+          "item": "minecraft:carrot|#forge:crops/carrot",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:golden_carrot",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "stuffed_roast",
+      "level": 7,
+      "seconds": 150,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:beef|#forge:raw_beef",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:carrot|#forge:crops/carrot",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:potato|#forge:crops/potato",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_beef",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "golden_apple",
+      "level": 8,
+      "seconds": 240,
+      "secret": true,
+      "ingredients": [
+        {
+          "item": "minecraft:gold_ingot",
+          "count": 8
+        },
+        {
+          "item": "minecraft:apple",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:golden_apple",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "sea_stew",
+      "level": 9,
+      "seconds": 120,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:salmon|#forge:raw_fishes/salmon",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:cod|#forge:raw_fishes/cod",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:potato|#forge:crops/potato",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:suspicious_stew",
+          "count": 1,
+          "nbt": "{Effects:[{EffectId:10b,EffectDuration:300}]}"
+        }
+      ]
+    },
+    {
+      "id": "harvest_pies",
+      "level": 10,
+      "seconds": 150,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:pumpkin",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:sugar",
+          "count": 2
+        },
+        {
+          "item": "minecraft:egg|#forge:eggs",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:pumpkin_pie",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "cookie_box",
+      "level": 12,
+      "seconds": 180,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:wheat|#forge:crops/wheat",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:cocoa_beans",
+          "count": 2,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cookie",
+          "count": 32
+        }
+      ]
+    },
+    {
+      "id": "fried_rice",
+      "level": 3,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "requires": [
+        "farmersdelight"
+      ],
+      "ingredients": [
+        {
+          "item": "farmersdelight:cooked_rice",
+          "count": 1
+        },
+        {
+          "item": "minecraft:egg|#forge:eggs",
+          "count": 1
+        },
+        {
+          "item": "minecraft:carrot|#forge:crops/carrot",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "farmersdelight:fried_rice",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "onion_soup",
+      "level": 4,
+      "seconds": 70,
+      "open": true,
+      "quality": true,
+      "requires": [
+        "farmersdelight"
+      ],
+      "ingredients": [
+        {
+          "item": "farmersdelight:onion",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "farmersdelight:onion_soup",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "vegetable_soup",
+      "level": 5,
+      "seconds": 80,
+      "open": true,
+      "quality": true,
+      "requires": [
+        "farmersdelight"
+      ],
+      "ingredients": [
+        {
+          "item": "farmersdelight:cabbage",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:carrot|#forge:crops/carrot",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:potato|#forge:crops/potato",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "farmersdelight:vegetable_soup",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "somtam",
+      "level": 5,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "requires": [
+        "muffins_thaidelight"
+      ],
+      "ingredients": [
+        {
+          "item": "muffins_thaidelight:raw_papaya",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "muffins_thaidelight:pepper",
+          "count": 1
+        },
+        {
+          "item": "muffins_thaidelight:lime",
+          "count": 1
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "muffins_thaidelight:somtam",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "crab_fried_rice",
+      "level": 8,
+      "seconds": 120,
+      "open": true,
+      "requires": [
+        "muffins_thaidelight",
+        "farmersdelight"
+      ],
+      "ingredients": [
+        {
+          "item": "muffins_thaidelight:cooked_flower_crab",
+          "count": 1
+        },
+        {
+          "item": "farmersdelight:cooked_rice",
+          "count": 1
+        },
+        {
+          "item": "minecraft:egg|#forge:eggs",
+          "count": 1
+        },
+        {
+          "item": "minecraft:bowl",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "muffins_thaidelight:crab_fried_rice",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

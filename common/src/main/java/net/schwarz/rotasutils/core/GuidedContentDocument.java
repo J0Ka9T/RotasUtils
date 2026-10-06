@@ -4,7 +4,6 @@ import com.google.gson.*;
 import java.math.BigDecimal;
 import java.util.*;
 
-/** Mutable local draft. Changes touch only the requested node, including unknown future fields. */
 public final class GuidedContentDocument {
     private JsonObject document;
     public GuidedContentDocument(JsonObject document) { this.document = document.deepCopy(); }

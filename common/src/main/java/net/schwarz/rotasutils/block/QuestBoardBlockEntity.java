@@ -11,17 +11,8 @@ import net.schwarz.rotasutils.board.BoardStyle;
 import net.schwarz.rotasutils.registry.RotasRegistry;
 import net.schwarz.rotasutils.util.Nbt;
 
-/**
- * Placed billboard.
- *
- * <p>The block entity only stores the board id plus the handful of fields the
- * renderer needs. All authoritative board configuration lives in
- * {@link net.schwarz.rotasutils.data.RotasData}, so a board keeps working after a
- * chunk reload and cannot be edited by touching the block's NBT client side.
- */
 public class QuestBoardBlockEntity extends BlockEntity {
     private String boardId = "";
-    // Render-only mirror of the board config, pushed by the server on change.
     private String displayName = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.board.default_name");
     private BoardStyle style = BoardStyle.WOODEN_VILLAGE;
     private int questCount;
@@ -72,7 +63,6 @@ public class QuestBoardBlockEntity extends BlockEntity {
         return particles;
     }
 
-    /** Refreshes the render mirror from the authoritative board config. */
     public void refreshDisplay(String name, BoardStyle style, int questCount, int screenColor,
                                boolean emergency, boolean glow, boolean particles) {
         this.displayName = name;

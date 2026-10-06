@@ -6,13 +6,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-/**
- * Deflates a large text for a client-to-server packet. A vanilla serverbound custom payload is
- * capped at 32 KiB and an NBT string at 64 KiB, and a season file with a few added events or
- * cards outgrows both; compressed it is roughly a fifth of the size.
- */
 public final class CompressedText {
-    /** Most bytes a payload may inflate to, so a crafted packet cannot balloon on the server. */
     public static final int MAX_TEXT_BYTES = 1 << 20;
 
     private CompressedText() {
@@ -35,7 +29,6 @@ public final class CompressedText {
         }
     }
 
-    /** @throws IllegalArgumentException when the bytes are not a deflated text or inflate past the limit */
     public static String decompress(byte[] data) {
         Inflater inflater = new Inflater();
         try {

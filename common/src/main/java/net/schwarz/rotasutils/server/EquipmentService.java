@@ -23,27 +23,16 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
-/**
- * Enforces item requirements and applies set bonuses plus Curios item modifiers.
- *
- * <p>Vanilla equipment modifiers are carried by the stacks themselves. Curios slots and set bonuses
- * have no vanilla equivalent, so they are applied here as transient, mod-owned attribute modifiers
- * that are removed on logout, reload and shutdown exactly like the stat modifiers.
- */
 public final class EquipmentService {
-    /** How often equipped items are re-checked; requirements are enforced within one second. */
     public static final int INTERVAL_TICKS = 20;
     private record Applied(ServerPlayer player, String signature, Map<Attribute, List<UUID>> modifiers) { }
     private final Map<UUID, Applied> applied = new HashMap<>();
-    /** The stack each player was last seen holding, so a weapon swap is noticed the tick it happens. */
     private final Map<UUID, ItemStack> heldWeapon = new HashMap<>();
     private long tick;
 
     public void tick(net.minecraft.server.MinecraftServer server, RotasData data) {
         boolean scheduled = ++tick % INTERVAL_TICKS == 0;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            // A card in a weapon has to count from the swing it is swung with, not up to a second later,
-            // so a changed main hand refreshes at once and everything else waits for the interval.
             ItemStack held = player.getMainHandItem();
             boolean swapped = heldWeapon.get(player.getUUID()) != held;
             heldWeapon.put(player.getUUID(), held);
@@ -55,12 +44,10 @@ public final class EquipmentService {
         }
     }
 
-    /** Re-evaluates one player; returns the number of items removed for unmet requirements. */
     public int refresh(ServerPlayer player, RotasData data) {
         if (!player.server.isSameThread()) { throw new IllegalStateException("Equipment updates require the server thread"); }
         Map<String, Map<ItemDefinitions.Operation, Double>> pending = new LinkedHashMap<>();
         int removed = 0;
-        // Item profiles, sets and Curios need the kernel; cards do not, so they are collected either way.
         if (data.kernel() != null) {
             var catalog = data.kernel().content().items();
             removed = enforce(player, data, catalog);
@@ -82,19 +69,19 @@ public final class EquipmentService {
         }
         collectCards(player, pending);
         apply(player, pending);
+        CharacterStatService.apply(player, data);
         return removed;
     }
 
-    /**
-     * The cards in the player's worn armour and the weapon in their hand. A card only ever moves a plain
-     * Minecraft attribute, so it joins the same pass the set bonuses use.
-     */
     private static void collectCards(ServerPlayer player, Map<String, Map<ItemDefinitions.Operation, Double>> pending) {
         List<ItemStack> socketed = new ArrayList<>(equipped(player));
         socketed.add(player.getMainHandItem());
         for (ItemStack stack : socketed) {
             if (stack.isEmpty()) { continue; }
             for (var effect : net.schwarz.rotasutils.server.CardService.effects(stack)) {
+                if (CombatStats.logical(effect.attribute())) {
+                    continue;
+                }
                 ItemDefinitions.Operation operation = effect.operation() == net.schwarz.rotasutils.stat.CharacterStat.Operation.ADD
                         ? ItemDefinitions.Operation.ADDITION
                         : effect.operation() == net.schwarz.rotasutils.stat.CharacterStat.Operation.MULTIPLY_BASE
@@ -136,7 +123,6 @@ public final class EquipmentService {
         ItemStack copy = stack.copy();
         if (player.getInventory().add(copy) && copy.isEmpty()) { return; }
         var progress = RotasData.get(player.server).progress(player.getUUID());
-        // The slot is already cleared, so a full mailbox must not throw here and destroy the item.
         if (progress.mailbox().size() < net.schwarz.rotasutils.progress.PlayerProgress.MAILBOX_LIMIT) {
             progress.addMail(copy.save(new net.minecraft.nbt.CompoundTag()));
         } else {
@@ -148,8 +134,7 @@ public final class EquipmentService {
         player.sendSystemMessage(net.schwarz.rotasutils.util.ThaiText.c("rotasutils.msg.equip.requires", stack.getHoverName().getString(), unmet));
     }
 
-    /** Equipped stacks that can carry RPG data: armour, off-hand and every Curios slot. */
-    private static List<ItemStack> equipped(ServerPlayer player) {
+    public static List<ItemStack> equipped(ServerPlayer player) {
         List<ItemStack> stacks = new ArrayList<>();
         for (EquipmentSlot slot : EquipmentSlot.values()) {
             if (slot != EquipmentSlot.MAINHAND) { stacks.add(player.getItemBySlot(slot)); }
@@ -184,7 +169,6 @@ public final class EquipmentService {
 
     public void forget(UUID id) { remove(applied.remove(id)); heldWeapon.remove(id); }
     public void clear() { applied.values().forEach(EquipmentService::remove); applied.clear(); heldWeapon.clear(); }
-    /** Content changes can retire attributes, so the next tick rebuilds every player's modifiers. */
     public void contentReloaded() { clear(); }
 
     private static void remove(Applied entry) {

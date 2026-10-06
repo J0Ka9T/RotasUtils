@@ -16,10 +16,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/**
- * Operator-only: binds the open eldritch rift in a golden seal and shatters it, closing the sky - the
- * {@link SkySunder}. Works on any sigil's rift, the four skies included.
- */
 public final class SunderingSigilItem extends Item {
     public SunderingSigilItem(Properties properties) {
         super(properties);

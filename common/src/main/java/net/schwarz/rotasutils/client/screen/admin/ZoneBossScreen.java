@@ -21,11 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Miniboss and boss spawn points of one zone. Each point keeps one mob of a Mob Setup alive: it wakes when
- * a player comes within its radius and returns after its respawn time. Edits go to the zone editor's unsaved
- * copy and are saved with the zone.
- */
 @Environment(EnvType.CLIENT)
 public class ZoneBossScreen extends RotasScreen {
     private static final int ROW = 30;
@@ -188,7 +183,6 @@ public class ZoneBossScreen extends RotasScreen {
         }
     }
 
-    /** Writes the typed respawn time and radius to the selected point; false (with feedback) when invalid. */
     private boolean applyNumbers() {
         if (selected < 0 || respawnBox == null || radiusBox == null) {
             return true;
@@ -240,7 +234,6 @@ public class ZoneBossScreen extends RotasScreen {
         }
     }
 
-    /** A setup scoped to this zone, else any setup, else null. */
     private String defaultProfile() {
         String any = null;
         for (ClientKernelState.MonsterEntry entry : ClientKernelState.monsters()) {
@@ -252,7 +245,6 @@ public class ZoneBossScreen extends RotasScreen {
                     return entry.id();
                 }
             } catch (RuntimeException ignored) {
-                // Unreadable setups can still be chosen by hand.
             }
         }
         return any;
@@ -305,7 +297,6 @@ public class ZoneBossScreen extends RotasScreen {
                 rebuild(true);
             }
         } catch (NumberFormatException ignored) {
-            // A malformed pick changes nothing.
         }
     }
 

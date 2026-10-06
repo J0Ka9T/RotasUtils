@@ -7,7 +7,6 @@ import net.schwarz.rotasutils.compat.CuriosServerCompat;
 import java.util.List;
 import java.util.Map;
 
-/** Fabric has no Curios, so the bridge is always unavailable and every call is a no-op. */
 public final class CuriosServerCompatImpl {
     private CuriosServerCompatImpl() {
     }

@@ -11,19 +11,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * Server-side mutations for administrator-authored housing content.
- *
- * <p>The service owns validation and revision checks, while {@link Store} owns the
- * world-attached data and the server-held wand. Requests never contain authoritative
- * coordinates; creation and bounds replacement read them from the store.</p>
- */
 public final class HouseAdminService {
     private static final String ADMIN_ONLY = "rotasutils.msg.item.not_admin";
     private static final String STALE = "house.stale";
     private static final String HOUSE_LIMIT = "House limit reached";
 
-    /** The first persisted revision assigned to a newly-created definition. */
     private static final long FIRST_DEFINITION_REVISION = 1L;
 
     public interface Store {
@@ -45,7 +37,6 @@ public final class HouseAdminService {
 
         HouseTenancy tenancy(String id);
 
-        /** RotasData mutators already dirty the store; the adapter still reports the completed action. */
         void markDirty();
 
         void rebuildHousing();
@@ -58,10 +49,8 @@ public final class HouseAdminService {
             Map<String, HouseDefinition> definitions = houses();
             return definitions == null ? null : definitions.get(id);
         }
-
     }
 
-    /** A complete server-held two-corner selection. */
     public record Selection(String dimension, BlockPos first, BlockPos second) {
     }
 
@@ -78,7 +67,6 @@ public final class HouseAdminService {
     public record RemoveRequest(String id, long expectedDefinitionRevision) {
     }
 
-    /** A complete replacement draft for the global housing configuration. */
     public record ConfigRequest(String currency, long paymentIntervalMillis, long reminderLeadMillis,
                                 long graceMillis, int buyoutMultiplier, int baseMemberLimit,
                                 long memberSlotPrice, int maxPurchasedMemberSlots,
@@ -90,7 +78,6 @@ public final class HouseAdminService {
         }
     }
 
-    /** Immutable, user-facing outcome. A failed action has no persisted side effects. */
     public record Action(boolean success, String message) {
         public Action {
             Objects.requireNonNull(message, "message");
@@ -146,9 +133,6 @@ public final class HouseAdminService {
         try {
             store.putHouse(candidate);
         } catch (IllegalStateException limit) {
-            // RotasData rejects a new definition before touching either map when its
-            // fixed house cap is reached. Convert that domain rejection into the
-            // same side-effect-free action result as the other validation failures.
             if (HOUSE_LIMIT.equals(limit.getMessage())) {
                 return failure("house.limit_reached");
             }

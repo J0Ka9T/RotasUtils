@@ -9,6 +9,10 @@
     "client.GuiExperienceMixin",
     "client.EntityRendererMarkerMixin",
     "client.EntityNameplateMixin",
+    "client.EntityPurpleDissolveMixin",
+    "client.EntityProjectionMixin",
+    "client.EntityStargunMixin",
+    "client.LivingEntityTumbleMixin",
     "client.LevelRendererOutlineMixin",
     "client.LevelRendererSkyMixin",
     "client.GameRendererEldritchShakeMixin",
@@ -22,6 +26,7 @@
     "client.GameRendererOverlayMixin",
     "client.ClientLevelSkyMixin",
     "client.FogRendererEldritchMixin",
+    "client.FogRendererStargunMixin",
     "client.GuiHudMixin",
     "client.InventoryScreenMixin",
     "client.CoinCountMixin",
@@ -51,7 +56,8 @@
     "ServerPlayerTitleMixin",
     "LivingEntityDropMarkMixin",
     "EntityDropFilterMixin",
-    "ThrownEnderpearlMixin"
+    "ThrownEnderpearlMixin",
+    "MobFinalizeSpawnMixin"
   ],
   "injectors": {
     "defaultRequire": 1

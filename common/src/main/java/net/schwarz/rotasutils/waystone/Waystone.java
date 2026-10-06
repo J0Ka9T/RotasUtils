@@ -5,15 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
-/**
- * One warp pillar in the world.
- *
- * <p>The id is the world position itself ("dimension|x|y|z"), so a pillar cannot be duplicated and a
- * broken pillar is found again without a side table. Discovery is stored per player on
- * {@link net.schwarz.rotasutils.progress.PlayerProgress}; this record is only the shared half.
- */
 public record Waystone(String id, String name, String dimension, BlockPos pos) {
-    /** Longest name an administrator may give a pillar; long enough for Thai place names. */
     public static final int MAX_NAME = 32;
 
     public Waystone {
@@ -40,7 +32,6 @@ public record Waystone(String id, String name, String dimension, BlockPos pos) {
         return new Waystone(id, newName, dimension, pos);
     }
 
-    /** The dimension key, or null when the stored dimension is not a valid id any more. */
     public ResourceLocation dimensionId() {
         return ResourceLocation.tryParse(dimension);
     }

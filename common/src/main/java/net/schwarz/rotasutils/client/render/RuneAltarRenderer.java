@@ -17,12 +17,6 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * The Rune Altar's animation, laid over its solid model: a cut gem of light turns above the plate with
- * three small gems circling it, a thin thread of light rising and motes lifting off. Kept small and
- * sharp on purpose, with no rune circles. The glow layers are additive (see {@link VfxRenderTypes}) and driven by game
- * time, so every client sees the same phase.
- */
 @Environment(EnvType.CLIENT)
 public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEntity> {
             private static final ResourceLocation GLOW = tex("glow");
@@ -65,11 +59,9 @@ public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEnti
         float cy = CORE_HEIGHT + bob;
         Matrix4f block = new Matrix4f(pose.last().pose());
 
-        // A thin violet thread of light rising off the crystal.
         TetrarchVfx.beam(buffers, block, new Vector3f(0.5f, cy, 0.5f), new Vector3f(0.5f, cy + 4f, 0.5f), camera, 0.05f,
                 VIOLET, 0.28f * pulse);
 
-        // The crystal, and three small gems circling it.
         gem(buffers, camera, block, 0.5f, cy, 0.5f, 0.2f, 0.36f, time * 0.05f, 1f);
         for (int i = 0; i < 3; i++) {
             double a = -time * 0.06 + i * Math.PI * 2 / 3;
@@ -80,12 +72,10 @@ public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEnti
 
         pose.pushPose();
         pose.translate(0.5, 0, 0.5);
-        // Small, sharp: a soft glow behind the gem and one flare at its heart.
         Vector3f core = new Vector3f(0, cy, 0);
         TetrarchVfx.billboard(buffers, GLOW, pose, camRot, core, 0.75f, 0f, VIOLET, 0.3f * pulse);
         TetrarchVfx.billboard(buffers, FLARE, pose, camRot, core, 0.42f, time * 0.04f, WHITE, 0.7f * pulse);
 
-        // Motes lifting off the plate, thinning as they climb.
         for (int i = 0; i < 10; i++) {
             float phase = (time * 0.012f + i / 10f) % 1f;
             double a = i * 2.4 + time * 0.03;
@@ -97,10 +87,6 @@ public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEnti
         pose.popPose();
     }
 
-    /**
-     * A cut gem of light: eight flat-shaded facets that read as solid against any sky, lit from one side,
-     * with white edges. Positions are in block space so the edges can be drawn as camera-facing lines.
-     */
     private static void gem(MultiBufferSource buffers, Vec3 camera, Matrix4f m, float cx, float cy, float cz,
                             float radius, float half, float spin, float strength) {
         float[][] eq = new float[4][];
@@ -114,7 +100,6 @@ public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEnti
             float[] tip = apex > 0 ? top : bottom;
             for (int i = 0; i < 4; i++) {
                 float[] a = eq[i], b = eq[(i + 1) % 4];
-                // Lit from one side: facets turned to the light are pale, the far ones deep violet.
                 double mid = spin + Math.PI / 2 * (i + 0.5);
                 float lit = 0.5f + 0.5f * (float) Math.cos(mid - 0.8);
                 float k = (0.35f + 0.65f * lit) * (apex > 0 ? 1f : 0.7f);
@@ -145,7 +130,6 @@ public class RuneAltarRenderer implements BlockEntityRenderer<RuneAltarBlockEnti
         vc.vertex(m, x, y, z).color(r, g, b, Math.min(1f, a)).endVertex();
     }
 
-    /** The light rises past the block, so never cull it with the block. */
     @Override
     public boolean shouldRenderOffScreen(RuneAltarBlockEntity altar) {
         return true;

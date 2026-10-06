@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The rebuilt level and stat system: four fixed stats, flat points per level, one EXP formula. */
 class CoreStatsTest {
     @BeforeAll
     static void bootstrap() {
@@ -59,7 +58,6 @@ class CoreStatsTest {
         assertEquals("+10% ความเร็วโจมตี, +4% โอกาสหลบ", CoreStat.AGI.describe(rules, 20));
     }
 
-    /** At the cap every stat roughly doubles what it governs, so no single stat is the only right answer. */
     @Test
     void everyStatIsWorthAboutTheSameAtTheCap() {
         StatRules rules = new StatRules();
@@ -67,7 +65,6 @@ class CoreStatsTest {
         double str = 1 + rules.strAttack * cap;
         double vit = 1 + rules.vitHealth * cap;
         double intel = 1 + rules.intMagic * cap;
-        // Attack speed is damage over time; dodge is hits that never land.
         double agi = (1 + rules.agiAttackSpeed * cap) / (1 - rules.agiDodge * cap);
         double best = Math.max(Math.max(str, vit), Math.max(intel, agi));
         double worst = Math.min(Math.min(str, vit), Math.min(intel, agi));
@@ -118,7 +115,6 @@ class CoreStatsTest {
     @Test
     void theCurveComesFromTheSeasonRulesOnly() {
         LevelConfig config = new LevelConfig();
-        // Pacing: the first level costs 8 kills of a level-1 monster (20 EXP, +15% per level).
         assertEquals(184, config.curve().xpToNext(1));
         long toMax = config.curve().totalXpTo(100);
         assertTrue(toMax > 1_000_000 && toMax < 1_300_000, "about 1.2M EXP to level 100: " + toMax);
@@ -146,9 +142,60 @@ class CoreStatsTest {
     }
 
     @Test
-    void onlyTheFourStatsExist() {
-        assertEquals(4, CoreStat.ALL.size());
+    void onlyTheSixStatsExist() {
+        assertEquals(6, CoreStat.ALL.size());
+        assertEquals(CoreStat.DEX, CoreStat.byId("rotas:dex"));
         assertEquals(CoreStat.INT, CoreStat.byId("rotas:int"));
         assertNull(CoreStat.byId("rotas:strength"));
+    }
+
+    @Test
+    void dexAndLukFeedCritAndLuck() {
+        StatRules rules = new StatRules();
+        assertEquals("+0.4% โอกาสคริติคอล, +2% ดาเมจคริติคอล, +0.3% เจาะเกราะ", CoreStat.DEX.describe(rules, 1));
+        assertEquals("+5 โชค, +30% โอกาสคริติคอล, +50% อัตราดรอป", CoreStat.LUK.describe(rules, 100));
+        assertEquals("+1% พลังเวทย์, +0.2% ลดคูลดาวน์", CoreStat.INT.describe(rules, 1));
+        double ceiling = rules.maxCritChance;
+        assertTrue(rules.dexCrit * rules.maxPerStat < ceiling);
+        assertTrue(rules.lukCrit * rules.maxPerStat < ceiling);
+    }
+
+    @Test
+    void configurableCapsRoundTripAndSanitize() {
+        StatRules rules = new StatRules();
+        assertEquals(0.50, rules.maxDodge);
+        assertEquals(0.60, rules.maxCritChance);
+        assertEquals(3.00, rules.maxCritDamage);
+        assertEquals(0.05, rules.maxRegen);
+        assertEquals(0.40, rules.maxArmorPen);
+        assertEquals(0.35, rules.maxCdr);
+        assertEquals(1.00, rules.maxDropRate);
+        assertEquals(0.10, rules.maxLifeSteal);
+        assertEquals(0.30, rules.maxDamageReduction);
+        assertEquals(0.50, rules.maxStaminaRegen);
+
+        rules.maxArmorPen = 0.80;
+        rules.maxCdr = 0.50;
+        rules.sanitize();
+        assertEquals(0.80, rules.maxArmorPen);
+        assertEquals(0.50, rules.maxCdr);
+    }
+
+    @Test
+    void fiveCombatStatsAreWorthAboutTheSameAndLukTrails() {
+        StatRules rules = new StatRules();
+        int cap = rules.maxPerStat;
+        double base = net.schwarz.rotasutils.server.CombatStats.CRIT_BASE;
+        double str = 1 + rules.strAttack * cap;
+        double vit = (1 + rules.vitHealth * cap)
+                / net.schwarz.rotasutils.level.SeasonMath.defenseMultiplier(rules.vitDefense * cap, new net.schwarz.rotasutils.level.SeasonRules().defenseScale) ;
+        double intel = 1 + rules.intMagic * cap;
+        double agi = (1 + rules.agiAttackSpeed * cap) / (1 - rules.agiDodge * cap);
+        double dex = 1 + rules.dexCrit * cap * (base + rules.dexCritDamage * cap - 1);
+        double luk = 1 + rules.lukCrit * cap * (base - 1);
+        double best = Math.max(Math.max(str, vit), Math.max(Math.max(intel, agi), dex));
+        double worst = Math.min(Math.min(str, vit), Math.min(Math.min(intel, agi), dex));
+        assertTrue(best / worst < 1.1, "combat stats " + str + " " + vit + " " + intel + " " + agi + " " + dex);
+        assertTrue(luk < worst, "LUK is the utility stat and must stay below the combat ones in damage");
     }
 }

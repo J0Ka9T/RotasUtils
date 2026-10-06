@@ -18,14 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Every player's stable, kept in its own save file so horse snapshots (a SWEM horse with tack and saddlebags
- * is several kilobytes) never bloat the progress record that syncs to clients.
- *
- * <p>Each horse has exactly one record and one live generation. A summoned horse carries a scoreboard tag
- * naming its record and generation; any copy with an older generation is refused when its chunk loads, which
- * is what makes summon, store, death and trade immune to duplication.</p>
- */
 public final class StableData extends SavedData {
     public static final String FILE_ID = Rotasutils.MOD_ID + "_stables";
     public static final int MAX_HORSES_PER_PLAYER = 1000;
@@ -37,35 +29,26 @@ public final class StableData extends SavedData {
         public UUID owner;
         public String name = "";
         public Origin origin = Origin.GACHA;
-        /** Birth rarity from the draw; null for bred, wild and admin horses. */
         public HorseGacha.Rarity rarity;
         public int[] startLevels = {1, 1, 1, 1};
         public String coat = "";
         public boolean secretCoat;
         public boolean rareCoat;
         public CompoundTag snapshot = new CompoundTag();
-        /** The entity currently in the world, or null while the horse is in the stable. */
         public UUID active;
         public int generation;
-        /** Market price; 0 when not listed. */
         public long listedPrice;
         public long recoverUntil;
         public long created;
         public long potionDay;
         public int potionUses;
-        /** Pedigree: parent record ids and names (names survive a parent's release or sale). */
         public String sire = "", dam = "", sireName = "", damName = "";
-        /** 0 for founders (draw, wild, admin); a foal is one more than its older parent. */
         public int lineage;
         public List<HorseTrait> traits = new ArrayList<>();
-        /** Breedings left; -1 until the rules first assign it. */
         public int breedsLeft = -1;
         public long breedReadyAt;
-        /** Epoch seconds a foal is born; until then it waits in its slot, unknown. 0 = born. */
         public long bornAt;
-        /** Fee other players pay to breed with this horse; 0 = not offered at stud. */
         public long studFee;
-        /** Legacy draw horses get their traits rolled once, on first sight. */
         public boolean traitsRolled;
 
         public boolean unborn(long nowSeconds) {
@@ -80,7 +63,6 @@ public final class StableData extends SavedData {
             return SwemCompat.levels(snapshot);
         }
 
-        /** Levels trained since the horse joined the stable, for the leaderboard. */
         public int trainedLevels() {
             int[] now = levels();
             int trained = 0;

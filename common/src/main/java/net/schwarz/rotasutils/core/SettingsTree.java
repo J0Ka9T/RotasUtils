@@ -10,19 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Walks a settings document into editable rows, so an editor lists every value the document has
- * instead of a hand-kept list that silently misses whatever was added after it.
- *
- * <p>Objects and arrays of objects become group rows and are walked into; numbers, switches and
- * text become value rows; arrays of plain values become one list row. A path is a list of keys
- * (array positions as their index), never a dotted string, because keys such as {@code rotas:str}
- * or entity ids may hold any character.</p>
- */
 public final class SettingsTree {
     public enum Kind { GROUP, BOOL, INT, DECIMAL, TEXT, LIST, JSON }
 
-    /** One row: its path from the root, how deep it sits, and how it is edited. */
     public record Row(List<String> path, Kind kind) {
         public Row {
             path = List.copyOf(path);
@@ -44,7 +34,6 @@ public final class SettingsTree {
     private SettingsTree() {
     }
 
-    /** Every row under {@code root}, groups first and then their children, in document order. */
     public static List<Row> rows(JsonObject root) {
         List<Row> out = new ArrayList<>();
         walk(root, new ArrayList<>(), out);
@@ -94,10 +83,6 @@ public final class SettingsTree {
         return Kind.TEXT;
     }
 
-    /**
-     * Gson writes a Java double as {@code 1.0} and a long as {@code 1}, so the written form says
-     * which it was; a whole-number double must stay editable as a decimal.
-     */
     private static boolean isWhole(JsonPrimitive primitive) {
         String text = primitive.getAsString();
         return !text.contains(".") && !text.contains("e") && !text.contains("E");
@@ -120,7 +105,6 @@ public final class SettingsTree {
         return current;
     }
 
-    /** Replaces the value at {@code path}; returns false when the path does not exist. */
     public static boolean set(JsonElement root, List<String> path, JsonElement value) {
         if (path.isEmpty()) return false;
         JsonElement owner = get(root, path.subList(0, path.size() - 1));
@@ -148,7 +132,6 @@ public final class SettingsTree {
         }
     }
 
-    /** A list shown as comma-separated values; strings are left bare unless they hold a comma. */
     public static String listText(JsonElement value) {
         if (value == null || !value.isJsonArray()) return "";
         StringBuilder out = new StringBuilder();
@@ -160,12 +143,6 @@ public final class SettingsTree {
         return out.toString();
     }
 
-    /**
-     * Reads a list back. Numbers stay numbers when the current list holds numbers; a text that starts
-     * with {@code [} is read as JSON so a value holding a comma can still be written.
-     *
-     * @throws IllegalArgumentException with a short reason when the text does not fit
-     */
     public static JsonArray parseList(String text, JsonElement current) {
         String trimmed = text.trim();
         if (trimmed.startsWith("[")) {
@@ -210,11 +187,6 @@ public final class SettingsTree {
         return out;
     }
 
-    /**
-     * Reads one typed value back from what was typed.
-     *
-     * @throws IllegalArgumentException with a short reason when the text does not fit the kind
-     */
     public static JsonElement parse(Kind kind, String text, JsonElement current) {
         String trimmed = text.trim();
         switch (kind) {
@@ -259,7 +231,6 @@ public final class SettingsTree {
         }
     }
 
-    /** What a value row shows in its box. */
     public static String display(Kind kind, JsonElement value) {
         if (value == null || value.isJsonNull()) return "";
         return switch (kind) {

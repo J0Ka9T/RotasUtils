@@ -16,17 +16,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/**
- * The ExoElectric Disintegrator: a channelled beam gun. Holding use gathers charge at the muzzle
- * for {@link ExoBeamEntity#CHARGE} ticks, then looses a continuous exo-electric beam that pierces
- * every creature along it and unmakes whatever it kills. Sneaking while it is used fires the
- * Annihilation Lance instead: a single overcharged discharge, twice as wide and far heavier, that
- * runs its own length whether the trigger is held or not and leaves the gun cooling. Sneaking and
- * left-clicking instead looses the Cero Metralleta, a chained torrent of azure aim-tracking bolts
- * that saturates an area, which the client asks for and the server starts in {@link ExoBeamEntity}
- * and {@link net.schwarz.rotasutils.entity.ExoCeroMuzzleEntity}. The rays themselves (charge,
- * damage, overheat, all visuals) live in those entities; the item only starts them.
- */
 public class ExoDisintegratorItem extends Item {
     public ExoDisintegratorItem(Properties properties) {
         super(properties);

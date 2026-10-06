@@ -12,7 +12,6 @@ import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.server.QuestKernelService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/** Player-facing kernel quest commands; the legacy board quest commands are untouched. */
 final class QuestKernelCommands {
     private QuestKernelCommands() { }
 
@@ -66,7 +65,6 @@ final class QuestKernelCommands {
         }
     }
 
-    /** The same Thai wording the RPG console uses for each outcome. */
     private static String describe(QuestKernelService.Result result) {
         return ThaiText.t(switch (result) {
             case ACCEPTED -> "rotasutils.msg.kernel.quest.accepted";

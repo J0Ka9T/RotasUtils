@@ -1,0 +1,4 @@
+{
+  "vertex": "rotasutils:cinematic/blit",
+  "fragment": "rotasutils:cinematic/prefilter"
+}

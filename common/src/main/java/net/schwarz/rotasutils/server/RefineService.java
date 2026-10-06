@@ -21,33 +21,20 @@ import net.schwarz.rotasutils.util.ThaiText;
 
 import java.util.Locale;
 
-/**
- * One refinement attempt on the item in the player's hand.
- *
- * <p>The server owns every step: it re-reads the held stack, the ore, the scrolls and the wallet, so a
- * screen or a command only ever asks for an attempt and is told what happened. Materials are taken only
- * once the attempt is certain to run, and a scroll is consumed only when it actually did something.</p>
- */
 public final class RefineService {
     private RefineService() {
     }
 
-    /** What the player chose to spend on this attempt, besides the plain ore. */
     public record Options(boolean enriched, boolean protection, boolean blessing, boolean certificate) {
         public static final Options PLAIN = new Options(false, false, false, false);
     }
 
-    /**
-     * The outcome of an attempt. {@code started} is false when nothing was spent because the attempt
-     * could not be made at all, and {@code message} is then the reason the player is shown.
-     */
     public record Outcome(boolean started, RefineMath.Result result, int level, long cost, String message) {
         static Outcome refused(String message) {
             return new Outcome(false, RefineMath.Result.UNCHANGED, 0, 0, message);
         }
     }
 
-    /** Everything a screen needs to show before the player commits: chance, cost and what is missing. */
     public record Quote(boolean possible, ItemRefine.Category category, int level, int target, double chance,
                         long cost, String ore, String message) {
         static Quote no(String message) {
@@ -55,12 +42,10 @@ public final class RefineService {
         }
     }
 
-    /** What an attempt on the held item would cost and how likely it is, without spending anything. */
     public static Quote quote(ServerPlayer player, RotasData data, Options options) {
         return quote(player, data, options, 0);
     }
 
-    /** As {@link #quote(ServerPlayer, RotasData, Options)}, with the chance the forge timing game earned added. */
     public static Quote quote(ServerPlayer player, RotasData data, Options options, double extraChance) {
         SeasonRules rules = SeasonService.rules(data);
         SeasonRules.RefineRules refine = rules.refine;
@@ -87,15 +72,10 @@ public final class RefineService {
                 RefineMath.cost(refine.goldPerAttempt, refine.goldGrowth, target), ore, "");
     }
 
-    /**
-     * Runs one attempt. Returns what happened; the player is told and the item is written back here, so
-     * the caller only has to report the outcome.
-     */
     public static Outcome refine(ServerPlayer player, RotasData data, Options options) {
         return refine(player, data, options, 0);
     }
 
-    /** One attempt with {@code extraChance} added to the odds (the forge timing game's bonus). */
     public static Outcome refine(ServerPlayer player, RotasData data, Options options, double extraChance) {
         Quote quote = quote(player, data, options, extraChance);
         if (!quote.possible()) {
@@ -116,7 +96,6 @@ public final class RefineService {
         Item certificate = options.certificate() ? RotasRegistry.CERTIFICATE_SCROLL.get() : null;
         long cost = quote.cost();
         net.minecraft.core.BlockPos forge = StationService.find(player, RotasRegistry.REFINE_FORGE.get());
-        // Everything is in hand: take the price, then roll. Nothing above this line has changed the world.
         if (cost > 0) {
             progress.rpg().currency(rules.currency, -cost);
         }
@@ -145,7 +124,6 @@ public final class RefineService {
                 ? net.schwarz.rotasutils.event.EventType.REFINE_SUCCESS
                 : net.schwarz.rotasutils.event.EventType.REFINE_FAIL, refinedId);
         if (result.success()) {
-            // The best refine anyone has reached is a title condition, including the unique first +10.
             TitleService.onRefine(player, data, next);
         }
         announce(player, data, refine, result, next, itemName);
@@ -157,7 +135,6 @@ public final class RefineService {
         return new Outcome(true, result, next, cost, ThaiText.t(result.messageKey(), itemName, next));
     }
 
-    /** What is missing for an attempt (ore, scrolls, gold), or an empty string when everything is in hand. */
     public static String missing(ServerPlayer player, RotasData data, Options options, Quote quote) {
         SeasonRules rules = SeasonService.rules(data);
         Item ore = item(quote.ore());
@@ -180,7 +157,6 @@ public final class RefineService {
         return "";
     }
 
-    /** The strike at the anvil: a bright hit when it holds, a red one when it fails, a blast when the item shatters. */
     private static void forgeEffects(ServerPlayer player, net.minecraft.core.BlockPos forge, RefineMath.Result result,
                                      int level, SeasonRules.RefineRules refine) {
         if (forge == null) {
@@ -205,7 +181,6 @@ public final class RefineService {
         }
     }
 
-    /** The extra success chance the enriched ore and a blessing scroll are worth together. */
     private static double bonus(SeasonRules.RefineRules refine, Options options) {
         double bonus = 0;
         if (options.enriched()) {
@@ -243,7 +218,6 @@ public final class RefineService {
         return total;
     }
 
-    /** Takes items out of the main inventory only, so nothing is quietly pulled from an armour slot. */
     private static void take(ServerPlayer player, Item item, int amount) {
         int left = amount;
         for (ItemStack stack : player.getInventory().items) {
@@ -258,7 +232,6 @@ public final class RefineService {
         }
     }
 
-    /** A high refine is a server event in Ragnarok; the same line is what makes players chase one here. */
     private static void announce(ServerPlayer player, RotasData data, SeasonRules.RefineRules refine,
                                  RefineMath.Result result, int level, String itemName) {
         if (!result.success() || refine.announceFrom <= 0 || level < refine.announceFrom) {

@@ -15,10 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Nemeses, world events and weapon memory: the promises each makes, without a world. */
 class NemesisAndWorldSystemsTest {
-    // Nemesis maths -------------------------------------------------------------------------------
-
     @Test void aNemesisGrowsWithItsRankButStaysAValidMonsterScale() {
         assertEquals(1.0, NemesisMath.scale(0, 0.5), 1e-9);
         assertEquals(1.5, NemesisMath.scale(1, 0.5), 1e-9);
@@ -78,9 +75,7 @@ class NemesisAndWorldSystemsTest {
         assertEquals(40, NemesisMath.roughDistance(37));
     }
 
-    // Nemesis record ---------------------------------------------------------------------------------
-
-    @Test void aNemesisRecordRoundTripsAndForgetsItsOldestVictimFirst() {
+@Test void aNemesisRecordRoundTripsAndForgetsItsOldestVictimFirst() {
         Nemesis nemesis = new Nemesis(7, "minecraft:zombie", "Grukk", NemesisMath.Style.MELEE, 1000);
         UUID first = UUID.randomUUID();
         nemesis.recordVictim(first, "Alice");
@@ -113,9 +108,7 @@ class NemesisAndWorldSystemsTest {
         assertTrue(loaded.displayName().startsWith("Grukk "));
     }
 
-    // World events --------------------------------------------------------------------------------
-
-    @Test void aWildernessEventIsACylinderInItsOwnDimension() {
+@Test void aWildernessEventIsACylinderInItsOwnDimension() {
         WorldEvent event = new WorldEvent(1, "overrun", "minecraft:overworld", "", 100, 100, 50, 0, 1200);
         assertTrue(event.contains(null, "minecraft:overworld", 130, 5, 130));
         assertTrue(event.contains(null, "minecraft:overworld", 100, 300, 100), "height does not matter");
@@ -178,9 +171,7 @@ class NemesisAndWorldSystemsTest {
         assertNull(rules.worldEvents.types.get("bad id!"));
     }
 
-    // Weapon memory -------------------------------------------------------------------------------
-
-    @Test void aWeaponRanksUpAtEachMilestone() {
+@Test void aWeaponRanksUpAtEachMilestone() {
         long[] milestones = {2, 4};
         CompoundTag memory = new CompoundTag();
         assertFalse(WeaponMemoryMath.record(memory, "minecraft:zombie", false, false, milestones, 8).rankedUp());

@@ -2,10 +2,6 @@ package net.schwarz.rotasutils.core;
 
 import java.util.Locale;
 
-/**
- * What a zone is for. The type is a label plus a one-click preset ({@link ZonePresets}); every setting a
- * preset fills in stays editable afterwards, so a type never locks a zone's behaviour.
- */
 public enum ZoneType {
     CUSTOM("Custom", "Your own settings."),
     TOWN("Town", "Safe hub: no hostile spawns and new mobs are not leveled."),

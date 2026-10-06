@@ -14,20 +14,8 @@ import net.schwarz.rotasutils.progress.PlayerProgress;
 import net.schwarz.rotasutils.quest.QuestDef;
 import org.joml.Matrix4f;
 
-/**
- * The "!" and "?" floating over a configured NPC.
- *
- * <p>This is a display-only mirror of the state the server resolves in {@code NpcService}:
- * the marker can be optimistic or stale for a frame, and nothing depends on it, because the
- * dialogue itself is built from the server's answer when the player actually clicks.</p>
- *
- * <p>Cost matters here - this runs for every rendered entity - so the uuid lookup is the
- * first thing that happens and returns immediately for the overwhelmingly common case of an
- * entity that is not an NPC at all.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class NpcMarkerRenderer {
-    /** Beyond this the marker is unreadable anyway, so it is not drawn. */
     private static final double MAX_DISTANCE = 32.0;
     private static final double MAX_DISTANCE_SQ = MAX_DISTANCE * MAX_DISTANCE;
 
@@ -44,14 +32,19 @@ public final class NpcMarkerRenderer {
             return;
         }
         NpcDef npc = byEntity(entity);
-        if (npc == null || !npc.showMarker() || !npc.enabled()) {
-            return;
-        }
-        // Artisans are meant to be found, not pointed at.
-        if (npc.role() == NpcDef.Role.CRAFTER && ClientState.levelConfig().season().crafterHideMarker) {
+        if (npc == null || !npc.enabled()) {
             return;
         }
         if (minecraft.player.distanceToSqr(entity) > MAX_DISTANCE_SQ) {
+            return;
+        }
+        if (npc.showName() && !npc.name().isBlank() && !npc.title().isBlank()) {
+            drawLine(minecraft.font, npc.title(), 0xFFE8C872, 0.27, 0.02f, entity, poseStack, buffer, packedLight);
+        }
+        if (!npc.showMarker()) {
+            return;
+        }
+        if (npc.role() == NpcDef.Role.CRAFTER && ClientState.levelConfig().season().crafterHideMarker) {
             return;
         }
         String marker = stateFor(npc).marker();
@@ -59,32 +52,25 @@ public final class NpcMarkerRenderer {
             return;
         }
 
-        Font font = minecraft.font;
+        drawLine(minecraft.font, marker, stateFor(npc).markerColor(), 0.85, 0.03f, entity, poseStack, buffer, packedLight);
+    }
+
+    private static void drawLine(Font font, String text, int color, double above, float scale, Entity entity,
+                                 PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
         poseStack.pushPose();
-        poseStack.translate(0.0, entity.getBbHeight() + 0.85, 0.0);
-        poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
-        poseStack.scale(-0.03f, -0.03f, 0.03f);
+        poseStack.translate(0.0, entity.getBbHeight() + above, 0.0);
+        poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+        poseStack.scale(-scale, -scale, scale);
         Matrix4f matrix = poseStack.last().pose();
-        font.drawInBatch(marker, -font.width(marker) / 2f, 0f, stateFor(npc).markerColor(), true,
+        font.drawInBatch(text, -font.width(text) / 2f, 0f, color, true,
                 matrix, buffer, Font.DisplayMode.NORMAL, 0, packedLight);
         poseStack.popPose();
     }
 
     private static NpcDef byEntity(Entity entity) {
-        String uuid = entity.getUUID().toString();
-        for (NpcDef npc : ClientState.npcs().values()) {
-            if (uuid.equals(npc.entityUuid())) {
-                return npc;
-            }
-        }
-        return null;
+        return ClientState.npcByEntity(entity.getUUID());
     }
 
-    /**
-     * Client-side estimate of what this NPC has to offer, from the progress the player
-     * already has. Requirements the client cannot see are treated as met; the server
-     * refuses those on accept, with its own message.
-     */
     private static NpcState stateFor(NpcDef npc) {
         PlayerProgress progress = ClientState.progress();
         if (npc.requiredLevel() > 0 && progress.level() < npc.requiredLevel()) {

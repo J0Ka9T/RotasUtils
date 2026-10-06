@@ -27,7 +27,6 @@ class BossDefinitionsTest {
         assertEquals(1, boss.phaseAt(0.26));
         assertEquals(2, boss.phaseAt(0.25));
         assertEquals(2, boss.phaseAt(0.0));
-        // Healing back above a threshold returns the boss to the earlier phase rather than skipping.
         assertEquals(0, boss.phaseAt(0.9));
         assertThrows(IllegalArgumentException.class, () -> boss.phaseAt(Double.NaN));
         assertThrows(IllegalArgumentException.class, () -> parse("{\"phases\":[{\"threshold\":0.5},{\"threshold\":0.8}]}"));

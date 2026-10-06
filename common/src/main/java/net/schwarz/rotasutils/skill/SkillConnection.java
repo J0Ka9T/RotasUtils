@@ -3,11 +3,9 @@ package net.schwarz.rotasutils.skill;
 import net.minecraft.nbt.CompoundTag;
 import net.schwarz.rotasutils.util.Nbt;
 
-/** A directed link from a prerequisite node to this node. */
 public final class SkillConnection {
     private String fromId;
     private Type type = Type.NORMAL;
-    /** Minimum rank the prerequisite must hold for a {@link Type#NORMAL} link. */
     private int requiredRank = 1;
 
     public SkillConnection(String fromId) {
@@ -54,17 +52,11 @@ public final class SkillConnection {
     }
 
     public enum Type {
-        /** Prerequisite must be unlocked. Drawn as a solid line. */
         NORMAL("Normal prerequisite", 0xFFFFFFFF),
-        /** Every NORMAL/ALL link into the node must be satisfied. Drawn as a double line. */
         REQUIRE_ALL("Require all connected", 0xFF66CCFF),
-        /** Any one of the ANY links is enough. Drawn as a dashed line. */
         REQUIRE_ANY("Require any connected", 0xFF88FF88),
-        /** Taking this node locks the source node's branch. Drawn as a red dotted line. */
         EXCLUSIVE("Exclusive branch", 0xFFFF5555),
-        /** Cosmetic only, imposes no requirement. Drawn faint. */
         VISUAL_ONLY("Visual only", 0x66FFFFFF),
-        /** Hidden from players until the source node is unlocked. */
         HIDDEN("Hidden connection", 0xFFAA88FF);
 
         public static final Type[] VALUES = values();

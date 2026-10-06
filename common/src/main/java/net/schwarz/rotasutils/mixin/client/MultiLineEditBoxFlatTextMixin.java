@@ -11,7 +11,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Same as {@link EditBoxFlatTextMixin} for the multi-line editors used by the admin studios. */
 @Mixin(MultiLineEditBox.class)
 public abstract class MultiLineEditBoxFlatTextMixin {
     @Redirect(method = "renderContents", require = 0, at = @At(value = "INVOKE",
@@ -20,7 +19,6 @@ public abstract class MultiLineEditBoxFlatTextMixin {
         return graphics.drawString(font, text, x, y, color, !rotasutils$flat());
     }
 
-    /** The character counter under the editor is drawn from renderDecorations, not renderContents. */
     @Redirect(method = "renderDecorations", require = 0, at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I"))
     private int rotasutils$flatComponent(GuiGraphics graphics, Font font, Component text, int x, int y, int color) {

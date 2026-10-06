@@ -13,21 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Keeps every open screen on every client in step with the server, cheaply.
- *
- * <p>Content is shared, so a request to refresh it refreshes every online player: an admin edit reaches
- * other admins and players without each edit path having to remember to broadcast. Three things keep
- * that cheap. Requests are coalesced, so any number of edits in a tick cost one snapshot per player.
- * A snapshot identical to the last one a player received is not sent, so players whose view did not
- * change get nothing and rebuild nothing. And at most {@link #BUILDS_PER_TICK} snapshots are built per
- * tick; the rest wait for the next tick, so a big server never pays for everyone in one tick.</p>
- *
- * <p>Kernel content (Mob Setups, Content Studio applies, rollbacks, reloads) is watched by revision:
- * when it moves, every player's kernel snapshot is refreshed, whichever path changed it.</p>
- */
 public final class SyncQueue {
-    /** Snapshot builds per server tick, content and kernel together. */
     private static final int BUILDS_PER_TICK = 8;
 
     private static final Set<UUID> CONTENT = new LinkedHashSet<>();
@@ -39,7 +25,6 @@ public final class SyncQueue {
     private SyncQueue() {
     }
 
-    /** Refreshes content for everyone online; {@code first} (the one who asked) goes first. */
     public static synchronized void content(MinecraftServer server, ServerPlayer first) {
         if (first != null) {
             CONTENT.add(first.getUUID());
@@ -63,14 +48,12 @@ public final class SyncQueue {
         }
     }
 
-    /** True when {@code tag} differs from the last snapshot of this kind sent to the player; records it. */
     static synchronized boolean changed(boolean kernel, UUID player, CompoundTag tag) {
         Integer hash = tag.hashCode();
         Map<UUID, Integer> sent = kernel ? SENT_KERNEL : SENT_CONTENT;
         return !hash.equals(sent.put(player, hash));
     }
 
-    /** Next login or reconnect must receive everything again. */
     public static synchronized void forget(UUID player) {
         CONTENT.remove(player);
         KERNEL.remove(player);
@@ -86,7 +69,6 @@ public final class SyncQueue {
         kernelRevision = Long.MIN_VALUE;
     }
 
-    /** Sends the snapshots asked for, within this tick's build budget. Called once per server tick. */
     public static void flush(MinecraftServer server) {
         watchKernel(server);
         Set<UUID> content = new LinkedHashSet<>();
@@ -135,7 +117,6 @@ public final class SyncQueue {
         }
         boolean first = kernelRevision == Long.MIN_VALUE;
         kernelRevision = revision;
-        // The first look only records where we start: players get their kernel snapshot on login.
         if (!first) {
             kernelAll(server);
         }

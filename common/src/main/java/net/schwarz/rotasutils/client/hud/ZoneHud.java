@@ -12,22 +12,6 @@ import net.schwarz.rotasutils.client.screen.RotasTheme;
 import net.schwarz.rotasutils.core.ZoneDef;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * Where the player is, at a glance.
- *
- * <p><b>Zone chip</b>: a slim panel on the right edge, just above the quest tracker, naming the zone the
- * player stands in with its level band and danger. A spine down the leading edge carries the danger
- * colour, so Safe/Normal/Dangerous/Deadly read without the words. Nothing is shown in the wilderness or
- * for zones that switched their chip off.</p>
- *
- * <p><b>Entry banner</b>: crossing into a zone fades in its name in the upper third of the screen, flanked
- * by danger-coloured rules, with the band and recommended level beneath; leaving a zone for the wilderness
- * shows a quieter one-line "Leaving" note. Zones with their own admin-written enter title keep that title
- * (sent by the server as a vanilla title) and skip the banner, so the player never sees both.</p>
- *
- * <p>Both draw inside the RPG HUD's locked-scale pose, beside the quest tracker, so they keep the HUD's
- * size at any GUI scale.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class ZoneHud {
     private static final int MARGIN = 8;
@@ -45,7 +29,6 @@ public final class ZoneHud {
     private ZoneHud() {
     }
 
-    /** Danger colour shared with the approach borders. */
     public static int dangerColor(ZoneDef.Danger danger) {
         return switch (danger) {
             case SAFE -> 0xFF7BD88F;
@@ -57,7 +40,6 @@ public final class ZoneHud {
 
     public static final int LOCKED_COLOR = 0xFFFF4D6A;
 
-    /** Called by {@link ClientZoneView} when the player crosses from one zone (or the wilderness) to another. */
     public static void onZoneChanged(ZoneDef previous, ZoneDef current) {
         if (current != null) {
             if (current.features().display().banner() && !current.features().messages().hasEnter()) {
@@ -78,7 +60,6 @@ public final class ZoneHud {
         bannerStart = Long.MIN_VALUE;
     }
 
-    /** Draws inside the locked HUD pose; {@code width}/{@code height} are the locked grid size. */
     public static void render(GuiGraphics graphics, Minecraft minecraft, int width, int height) {
         if (minecraft.player == null || minecraft.options.hideGui) {
             return;
@@ -95,7 +76,6 @@ public final class ZoneHud {
 
     private static void chip(UiCanvas ui, Font font, ZoneDef zone, int width, int height) {
         int x = width - MARGIN - CHIP_W;
-        // Hang just above the quest tracker, which starts a quarter of the way down the right edge.
         int y = Math.max(MARGIN, height / 4 - CHIP_H - 4);
         int color = dangerColor(zone.danger());
         ui.shadow(x, y, CHIP_W, CHIP_H, 4, 0x602A2015);

@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.core;
 
 import net.minecraft.nbt.CompoundTag;
 
-/** Local combat/death overrides. Every absent override inherits through the matching zone stack. */
 public record ZoneCombatRules(RuleBool pvpEnabled, RuleBool hostileSpawningEnabled,
                               RuleDouble playerDamageTakenMultiplier, RuleDouble playerDamageDealtMultiplier,
                               RuleDouble healingMultiplier, RuleBool keepInventory,

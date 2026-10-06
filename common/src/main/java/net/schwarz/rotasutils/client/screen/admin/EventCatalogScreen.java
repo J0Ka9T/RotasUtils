@@ -16,13 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Every event this server can react to, and what it does about each one.
- *
- * <p>One line per rule: the plain entry a type starts with, plus any line an administrator added for
- * one mod or one id. A line says whether the server reacts at all, what it multiplies the experience
- * by, what it pays on top, and who hears about it.</p>
- */
 @Environment(EnvType.CLIENT)
 public class EventCatalogScreen extends RotasScreen {
     private static final int ROWS = 9;
@@ -80,7 +73,6 @@ public class EventCatalogScreen extends RotasScreen {
         });
         addRenderableWidget(search);
 
-        // Category tabs: "all" plus one per group, so a long catalogue is still readable.
         int tabX = guiLeft + 16;
         tabX += tab(L.t("rotasutils.event.all"), category == null, tabX, () -> category = null);
         for (EventType.Category value : EventType.Category.values()) {
@@ -161,7 +153,6 @@ public class EventCatalogScreen extends RotasScreen {
                 guiLeft + guiWidth - 16, guiTop + guiHeight - 50, Ui.TEXT_MUTED);
     }
 
-    /** {@code "x1.5  +20 xp  500g  server"}, trimmed to what the rule actually does. */
     static String summary(ClientState.EventRuleView rule) {
         if (!rule.enabled()) {
             return L.t("rotasutils.event.off");

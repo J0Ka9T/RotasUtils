@@ -101,14 +101,12 @@ def seal():
         a = 2 * math.pi * (i + 0.5) / 48
         x, y = polar(0.868, a)
         glyph(cv, x, y, a, 0.030, rng, W * 0.75)
-    # Octagram {8/3} on the 0.80 ring, with small circles on each point.
     for i in range(8):
         a0, a1 = 2 * math.pi * i / 8, 2 * math.pi * (i + 3) / 8
         cv.seg(polar(0.80, a0), polar(0.80, a1), W)
         x, y = polar(0.80, a0)
         cv.circle(x, y, 0.045, W * 0.8)
         cv.circle(x, y, 0.022, W * 0.6, 0.8)
-    # Inner hexagram and spokes.
     for k in range(2):
         for i in range(3):
             a0 = 2 * math.pi * i / 3 + k * math.pi / 3 - math.pi / 2
@@ -258,13 +256,11 @@ def blade():
     """A feathered wing blade: root at the bottom, tip at the top, white spine, soft vaned edges."""
     w, h = 128, 512
     ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
-    u = (xs + 0.5) / w * 2 - 1          # across, -1..1
-    v = 1 - (ys + 0.5) / h              # along, 0 root .. 1 tip
-    # Widest a third of the way out, tapering to a fine point.
+    u = (xs + 0.5) / w * 2 - 1
+    v = 1 - (ys + 0.5) / h
     half = np.clip(np.sin(np.pi * np.clip(v, 0, 1) ** 0.75), 0, 1) * (1 - v ** 3) * 0.95 + 1e-3
     x = u / half
     vane = np.clip(1 - np.abs(x), 0, 1) ** 1.6
-    # Barbs: fine diagonal streaks running out from the spine.
     barbs = 0.75 + 0.25 * np.sin((v * 60 - np.abs(u) * 18) * np.pi)
     spine = np.exp(-(u / 0.035) ** 2) * np.clip(1 - v * 0.8, 0, 1)
     fade = np.clip(v / 0.06, 0, 1) * np.clip((1 - v) / 0.04, 0, 1)

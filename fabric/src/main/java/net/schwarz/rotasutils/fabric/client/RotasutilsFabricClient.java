@@ -10,7 +10,6 @@ public final class RotasutilsFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         RotasClient.init();
-        // Fabric fills its registries before the client initializer runs, so renderers are safe here.
         RotasClient.initRenderers();
         BlockRenderLayerMap.INSTANCE.putBlock(RotasRegistry.QUEST_BOARD.get(), RenderType.cutout());
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register(

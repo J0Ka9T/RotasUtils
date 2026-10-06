@@ -10,13 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Plain-language view of a monster profile body, used by the Mob Setup screens.
- *
- * <p>It edits only the fields the easy editor shows and leaves everything else in the body alone
- * (affixes, rewards, bosses, other selectors), so an admin can switch between the easy editor and
- * the advanced JSON editor without losing work.</p>
- */
 public final class MobSetupForm {
     public static final String HEALTH = "minecraft:generic.max_health";
     public static final String DAMAGE = "minecraft:generic.attack_damage";
@@ -42,7 +35,6 @@ public final class MobSetupForm {
         return new MobSetupForm(JsonParser.parseString(json).getAsJsonObject());
     }
 
-    /** A sensible starting point for one mob: scales with the nearest player, gently tougher per level. */
     public static MobSetupForm create(String entityId) {
         JsonObject body = new JsonObject();
         body.addProperty("priority", 10);
@@ -67,9 +59,7 @@ public final class MobSetupForm {
         return body.toString();
     }
 
-    // Mobs -----------------------------------------------------------------
-
-    public List<String> entities() {
+public List<String> entities() {
         return strings(selector(), "entities");
     }
 
@@ -83,18 +73,12 @@ public final class MobSetupForm {
         }
     }
 
-    /** True when the profile also matches by tags, mods, biomes or other rules the easy editor does not show. */
     public boolean usesOtherSelectors() {
         return selector().keySet().stream().anyMatch(key -> !key.equals("entities") && !key.equals("regions")
                 && selector().get(key).isJsonArray() && !selector().getAsJsonArray(key).isEmpty());
     }
 
-    // Scope ----------------------------------------------------------------
-    // A setup is global (no zones) or applies only inside chosen level zones. A zone version always
-    // outranks the global setup for the same mob, so inside its zones its level, strength, rewards and
-    // spawn rules are the ones used, and everywhere else the global setup still applies.
-
-    public static final int GLOBAL_PRIORITY = 10;
+public static final int GLOBAL_PRIORITY = 10;
     public static final int ZONE_PRIORITY = 50;
 
     public List<String> scopeZones() {
@@ -135,7 +119,6 @@ public final class MobSetupForm {
         body.addProperty("priority", clamp(value, -10_000, 10_000));
     }
 
-    /** A copy of this setup ready to become a zone version: same settings, no zones chosen yet. */
     public MobSetupForm copyForZone() {
         MobSetupForm copy = new MobSetupForm(body);
         copy.setScopeZones(List.of());
@@ -155,7 +138,6 @@ public final class MobSetupForm {
         }
     }
 
-    /** The category's name in the Mob Setup screen; empty for a setup made before categories. */
     public String category() {
         return text(body, "category", "");
     }
@@ -169,7 +151,6 @@ public final class MobSetupForm {
         }
     }
 
-    /** What the Mob Setup screen calls this setup: its category name, or its first mob's id. */
     public String label() {
         if (!category().isEmpty()) {
             return category();
@@ -177,9 +158,7 @@ public final class MobSetupForm {
         return entities().isEmpty() ? "(no mobs)" : entities().get(0);
     }
 
-    // Level ----------------------------------------------------------------
-
-    public String strategy() {
+public String strategy() {
         return text(level(), "strategy", "FIXED");
     }
 
@@ -209,7 +188,6 @@ public final class MobSetupForm {
     public void setMin(int value) {
         int clamped = clamp(value, 1, 10_000);
         level().addProperty("min", clamped);
-        // Compare the stored max: max() already floors at min(), so it can never be below it.
         if (integer(level(), "max", clamped) < clamped) {
             level().addProperty("max", clamped);
         }
@@ -226,7 +204,6 @@ public final class MobSetupForm {
         level().addProperty("offset", clamp(value, -10_000, 10_000));
     }
 
-    /** Every mob gets exactly this level. */
     public void setFixed(int value) {
         int clamped = clamp(value, 1, 10_000);
         setStrategy("FIXED");
@@ -235,9 +212,7 @@ public final class MobSetupForm {
         level().addProperty("value", clamped);
     }
 
-    // Strength ---------------------------------------------------------------
-
-    public double multiplier(String attribute) {
+public double multiplier(String attribute) {
         return scale(attribute, "multiplier", 1);
     }
 
@@ -268,13 +243,11 @@ public final class MobSetupForm {
         }
     }
 
-    /** Value of an attribute at {@code level} for a mob whose unmodified value is {@code base}. */
     public double valueAt(String attribute, double base, int level) {
         double factor = Math.max(0, Math.min(10_000, multiplier(attribute) + perLevel(attribute) * (level - 1)));
         return base * factor + add(attribute);
     }
 
-    /** True when the profile uses tiers other than the standard Common and Elite ones. */
     public boolean customTiers() {
         return tiers().keySet().stream().anyMatch(key -> !key.equals(NORMAL_TIER) && !key.equals(ELITE_TIER));
     }
@@ -292,7 +265,6 @@ public final class MobSetupForm {
         return total <= 0 ? 0 : (int) Math.round(elite * 100 / total);
     }
 
-    /** Percent of mobs that roll the Elite tier; ignored for profiles with custom tiers. */
     public void setEliteChance(int percent) {
         if (customTiers()) {
             return;
@@ -310,9 +282,7 @@ public final class MobSetupForm {
         return new ArrayList<>(tiers().keySet());
     }
 
-    // Rewards --------------------------------------------------------------
-
-    public long baseXp() {
+public long baseXp() {
         return body.has("base_xp") ? body.get("base_xp").getAsLong() : 0;
     }
 
@@ -356,11 +326,7 @@ public final class MobSetupForm {
         body.addProperty("manual_only", value);
     }
 
-    // Spawning -------------------------------------------------------------
-    // Reads never create the "spawning" object (that would mark an untouched setup as changed), and
-    // every write prunes values back to their defaults, so a setup with vanilla spawning has no block.
-
-    public boolean naturalSpawning() {
+public boolean naturalSpawning() {
         JsonObject spawning = spawningRead();
         return !spawning.has("natural") || spawning.get("natural").getAsBoolean();
     }
@@ -401,7 +367,6 @@ public final class MobSetupForm {
         editSpawning(spawning -> spawning.addProperty("time", MobSpawnRules.Time.valueOf(time).name()));
     }
 
-    /** The one dimension these mobs are limited to, or empty for any dimension. */
     public String spawnDimension() {
         List<String> dimensions = strings(spawningRead(), "dimensions");
         return dimensions.isEmpty() ? "" : dimensions.get(0);
@@ -476,6 +441,83 @@ public final class MobSetupForm {
         editExtra(extra -> extra.addProperty("vanilla_rules", value));
     }
 
+public double size() {
+        return body.has("size") ? body.get("size").getAsDouble() : 1.0;
+    }
+
+    public void setSize(double value) {
+        double size = Math.max(0.1, Math.min(8.0, Math.round(value * 100) / 100.0));
+        if (size == 1.0) { body.remove("size"); } else { body.addProperty("size", size); }
+    }
+
+    public double sizeVariance() {
+        return body.has("size_variance") ? body.get("size_variance").getAsDouble() : 0.0;
+    }
+
+    public void setSizeVariance(double value) {
+        double variance = Math.max(0, Math.min(0.5, Math.round(value * 100) / 100.0));
+        if (variance == 0) { body.remove("size_variance"); } else { body.addProperty("size_variance", variance); }
+    }
+
+public List<String> defeatList(String key) {
+        return strings(defeatRead(), key);
+    }
+
+    public void toggleDefeat(String key, String value) {
+        editDefeat(defeat -> {
+            List<String> values = strings(defeat, key);
+            if (!values.remove(value)) { values.add(value); }
+            JsonArray array = new JsonArray();
+            values.forEach(array::add);
+            defeat.add(key, array);
+        });
+    }
+
+    public int defeatMinLevel() {
+        return integer(defeatRead(), "min_level", 0);
+    }
+
+    public void setDefeatMinLevel(int value) {
+        editDefeat(defeat -> defeat.addProperty("min_level", Math.max(0, Math.min(MonsterLevels.ABSOLUTE_MAX, value))));
+    }
+
+    public double defeatResisted() {
+        JsonObject defeat = defeatRead();
+        return defeat.has("resisted") ? defeat.get("resisted").getAsDouble() : 0.0;
+    }
+
+    public void setDefeatResisted(double value) {
+        editDefeat(defeat -> defeat.addProperty("resisted", Math.max(0, Math.min(1, Math.round(value * 100) / 100.0))));
+    }
+
+    public String defeatHint() {
+        return text(defeatRead(), "hint", "");
+    }
+
+    public void setDefeatHint(String hint) {
+        editDefeat(defeat -> defeat.addProperty("hint", hint.length() > 128 ? hint.substring(0, 128) : hint));
+    }
+
+    private JsonObject defeatRead() {
+        return body.has("defeat") && body.get("defeat").isJsonObject() ? body.getAsJsonObject("defeat") : new JsonObject();
+    }
+
+    private void editDefeat(java.util.function.Consumer<JsonObject> change) {
+        JsonObject defeat = object(body, "defeat");
+        change.accept(defeat);
+        removeIf(defeat, "min_level", 0);
+        if (defeat.has("resisted") && defeat.get("resisted").getAsDouble() == 0) { defeat.remove("resisted"); }
+        removeIf(defeat, "hint", "");
+        for (String list : List.of("attacks", "items", "damage_types", "immune")) {
+            if (defeat.has(list) && defeat.get(list).isJsonArray() && defeat.getAsJsonArray(list).isEmpty()) {
+                defeat.remove(list);
+            }
+        }
+        if (defeat.size() == 0) {
+            body.remove("defeat");
+        }
+    }
+
     private JsonObject spawningRead() {
         return body.has("spawning") && body.get("spawning").isJsonObject() ? body.getAsJsonObject("spawning") : new JsonObject();
     }
@@ -497,7 +539,6 @@ public final class MobSetupForm {
         pruneSpawning();
     }
 
-    /** Drops every spawning value that equals its default, and the whole block when nothing is left. */
     private void pruneSpawning() {
         JsonObject spawning = object(body, "spawning");
         removeIf(spawning, "natural", true);
@@ -539,9 +580,7 @@ public final class MobSetupForm {
         }
     }
 
-    // Documents ------------------------------------------------------------
-
-    public static JsonObject document(String id, JsonObject body) {
+public static JsonObject document(String id, JsonObject body) {
         JsonObject document = new JsonObject();
         document.addProperty("schema", 1);
         document.addProperty("id", id);
@@ -550,7 +589,6 @@ public final class MobSetupForm {
         return document;
     }
 
-    /** Definitions for the standard tiers, so a first mob setup works without any other content. */
     public static JsonObject tierDefinition(String id) {
         JsonObject body = new JsonObject();
         switch (id) {
@@ -584,7 +622,6 @@ public final class MobSetupForm {
         return document;
     }
 
-    /** A readable id such as {@code rotas:monster/zombie}, unique among {@code taken}. */
     public static String newId(String entityId, Set<String> taken) {
         String path = entityId.contains(":") ? entityId.substring(entityId.indexOf(':') + 1) : entityId;
         String base = "rotas:monster/" + Ids.slug(path);
@@ -595,9 +632,7 @@ public final class MobSetupForm {
         return id;
     }
 
-    // Helpers --------------------------------------------------------------
-
-    private JsonObject selector() {
+private JsonObject selector() {
         return object(body, "selector");
     }
 

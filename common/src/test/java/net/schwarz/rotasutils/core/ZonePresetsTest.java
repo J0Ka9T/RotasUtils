@@ -20,7 +20,6 @@ class ZonePresetsTest {
         assertTrue(town.safe());
         assertEquals(RuleBool.of(false), town.combatRules().hostileSpawningEnabled());
         assertFalse(town.features().isolateMobs());
-        // The owner asked for no PvP, keep-inventory or respawn changes in towns.
         assertEquals(RuleBool.inherit(), town.combatRules().pvpEnabled());
         assertEquals(RuleBool.inherit(), town.combatRules().keepInventory());
         assertNull(town.combatRules().respawnTarget());

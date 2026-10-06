@@ -17,22 +17,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.schwarz.rotasutils.registry.RotasRegistry;
 
-/**
- * The robed traveller who steps out of a {@link RiftPortalEntity}.
- *
- * <p>For the arrival it walks on rails: no goals yet, a steady stride straight out of the portal while its
- * body fades in from the swirl (see {@code RiftWandererRenderer}). Once clear it turns into an
- * ordinary, patient figure that watches whoever comes near. It never despawns and cannot be hurt,
- * so an administrator can make it an NPC with the NPC Wand like any other entity.</p>
- */
 public class RiftWandererEntity extends PathfinderMob {
-    /** Ticks from first appearing inside the portal to standing clear of it. */
     public static final int WALK_TICKS = 50;
-    /** Ticks over which the body fades in from nothing. */
     public static final int FADE_TICKS = 34;
     private static final double STRIDE = 0.085;
 
-    /** Ticks since the arrival began; {@link #WALK_TICKS} and above means arrived. */
     private static final EntityDataAccessor<Integer> EMERGE =
             SynchedEntityData.defineId(RiftWandererEntity.class, EntityDataSerializers.INT);
 
@@ -52,7 +41,6 @@ public class RiftWandererEntity extends PathfinderMob {
                 .add(Attributes.KNOCKBACK_RESISTANCE, 1.0);
     }
 
-    /** Places a traveller just inside the portal, facing out, and starts the walk. */
     static void arrive(ServerLevel level, RiftPortalEntity portal) {
         RiftWandererEntity wanderer = new RiftWandererEntity(RotasRegistry.RIFT_WANDERER.get(), level);
         float yaw = portal.getYRot();
@@ -68,16 +56,13 @@ public class RiftWandererEntity extends PathfinderMob {
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
-        // New travellers start inside the swirl; loaded ones are set to arrived in readAdditionalSaveData.
         entityData.define(EMERGE, 0);
     }
 
-    /** No goals during the arrival, so nothing steers or turns it; see {@link #settle()}. */
     @Override
     protected void registerGoals() {
     }
 
-    /** Once clear of the portal: watch whoever comes near. */
     private void settle() {
         if (settled) {
             return;
@@ -87,7 +72,6 @@ public class RiftWandererEntity extends PathfinderMob {
         goalSelector.addGoal(2, new RandomLookAroundGoal(this));
     }
 
-    /** 0 while still inside the swirl, 1 once fully solid. */
     public float emergence(float partialTick) {
         int emerge = entityData.get(EMERGE);
         if (emerge >= WALK_TICKS) {
@@ -105,10 +89,8 @@ public class RiftWandererEntity extends PathfinderMob {
         if (!level().isClientSide && arriving()) {
             int emerge = entityData.get(EMERGE);
             if (emerge == 0) {
-                // Walk straight out along the way it was placed facing.
                 walkYaw = getYRot();
             }
-            // Measured stride out of the portal, slowing for the last few steps.
             double pace = emerge > WALK_TICKS - 10 ? STRIDE * (WALK_TICKS - emerge) / 10.0 : STRIDE;
             Vec3 forward = Vec3.directionFromRotation(0f, walkYaw);
             setDeltaMovement(forward.x * pace, getDeltaMovement().y, forward.z * pace);
@@ -124,7 +106,6 @@ public class RiftWandererEntity extends PathfinderMob {
             settle();
         }
         if (level().isClientSide && arriving()) {
-            // Wisps of the rift still clinging to the body as it forms.
             for (int i = 0; i < 2; i++) {
                 level().addParticle(net.minecraft.core.particles.ParticleTypes.REVERSE_PORTAL,
                         getRandomX(0.6), getRandomY(), getRandomZ(0.6), 0, 0.02, 0);
@@ -142,7 +123,6 @@ public class RiftWandererEntity extends PathfinderMob {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
-        // Saved mid-walk: skip straight to standing, never replay the arrival.
         entityData.set(EMERGE, WALK_TICKS);
     }
 

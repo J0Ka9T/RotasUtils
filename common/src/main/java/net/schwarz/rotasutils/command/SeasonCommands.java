@@ -20,7 +20,6 @@ import net.schwarz.rotasutils.server.SeasonConfigFile;
 import net.schwarz.rotasutils.server.SeasonService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/** {@code /rotas season}: the season rules at a glance, reload of season.json, presets and a pacing check. */
 final class SeasonCommands {
     private SeasonCommands() {
     }
@@ -76,7 +75,6 @@ final class SeasonCommands {
                     context.getSource().sendSuccess(() -> Component.literal(ThaiText.t("rotasutils.cmd.season.jobs_applied", total)), true);
                     return 1;
                 }))
-                // Every season.json value from the console or RCON, with its path tab-completed.
                 .then(Commands.literal("find").requires(SeasonCommands::editor)
                         .then(Commands.argument("text", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
                                 .executes(context -> find(context.getSource(),
@@ -153,7 +151,6 @@ final class SeasonCommands {
         return String.join(".", path) + " (" + label + ") = " + (value == null ? "-" : value.toString());
     }
 
-    /** Finds settings whose path, name or hint contains the text. */
     private static int find(CommandSourceStack source, String text) {
         String needle = text.toLowerCase(java.util.Locale.ROOT).trim();
         var root = current(source);
@@ -191,7 +188,6 @@ final class SeasonCommands {
         return 1;
     }
 
-    /** Sets (or resets to the mod default) one value, validates the whole file, saves and applies it. */
     private static int set(CommandSourceStack source, String dotted, String text, boolean reset) {
         var server = source.getServer();
         RotasData data = RotasData.get(server);
@@ -241,7 +237,6 @@ final class SeasonCommands {
         return 1;
     }
 
-    /** Every value that differs from the mod's default. */
     private static int changed(CommandSourceStack source) {
         var root = current(source);
         var defaults = com.google.gson.JsonParser.parseString(new SeasonRules().toJson());
@@ -286,11 +281,6 @@ final class SeasonCommands {
         return 1;
     }
 
-    /**
-     * Shows the drop rules as they are loaded right now: one line per monster rank, one per box
-     * grade. An administrator edits these in {@code season.json} and sees the result here after
-     * {@code /rotas season reload}, without having to kill anything to find out.
-     */
     private static int drops(CommandSourceStack source) {
         RotasData data = RotasData.get(source.getServer());
         SeasonRules.DropRules rules = SeasonService.rules(data).drops;
@@ -311,7 +301,6 @@ final class SeasonCommands {
         return 1;
     }
 
-    /** Admin sanity check: levels in each sub job's unlock table that unlock nothing. */
     private static int check(CommandSourceStack source) {
         RotasData data = RotasData.get(source.getServer());
         int problems = 0;
@@ -334,10 +323,6 @@ final class SeasonCommands {
         return 1;
     }
 
-    /**
-     * Week-by-week rank a normal and a dedicated player reach, from the quest counts in the brief. Rank gates
-     * on main quest chapters should sit below these lines, or players stall waiting for points.
-     */
     private static int pacing(CommandSourceStack source) {
         SeasonRules rules = SeasonService.rules(RotasData.get(source.getServer()));
         int weeks = 9;

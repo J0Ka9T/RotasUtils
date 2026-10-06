@@ -26,17 +26,8 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-/**
- * What the built-in {@link MobAffix affixes} do in a fight, plus the rank aura.
- *
- * <p>Everything here is server-side and reads the mob's stored {@link MonsterState}; a mob without one
- * (unleveled, or leveled before this existed) is untouched. Hooks are called from the combat mixin and
- * the death event, and stay cheap: one state lookup, then a few enum checks.</p>
- */
 public final class MobAffixService {
-    /** Set once a summoner has called for help, so it only does it once per life. */
     public static final String CALLED_TAG = "rotas_affix_called";
-    /** Carried by the helpers a summoner calls; they never roll a rank or call help of their own. */
     public static final String MINION_TAG = "rotas_minion";
 
     private MobAffixService() {
@@ -47,7 +38,6 @@ public final class MobAffixService {
         return data == null ? null : SeasonService.rules(data).farming;
     }
 
-    /** Affixes for a freshly ranked natural mob: none for veterans, a few for elites and champions. */
     public static List<MobAffix> roll(Mob mob, MonsterRank rank, int level, SeasonRules.FarmingRules farming) {
         if (farming == null || !farming.affixesEnabled || mob.getTags().contains(MINION_TAG)) {
             return List.of();
@@ -60,7 +50,6 @@ public final class MobAffixService {
         List<MobAffix> pool = new ArrayList<>();
         for (MobAffix affix : MobAffix.values()) {
             if (level < affix.minLevel()) continue;
-            // A creeper already explodes, and a summoning creeper is a crater.
             if (mob instanceof Creeper && (affix == MobAffix.VOLATILE || affix == MobAffix.SUMMONER)) continue;
             pool.add(affix);
         }
@@ -77,15 +66,11 @@ public final class MobAffixService {
         return state == null ? List.of() : MobAffix.of(state.affixes());
     }
 
-    /** True when the attacker struck with its own body, not an arrow or a spell. */
     private static boolean melee(DamageSource source, LivingEntity attacker) {
         return source.getDirectEntity() == attacker && !source.is(DamageTypeTags.IS_PROJECTILE);
     }
 
-    // Combat -----------------------------------------------------------------------------------------
-
-    /** Damage scaling before the hit lands: berserk rage and the ranked one-shot cap. */
-    public static float modifyIncoming(LivingEntity victim, DamageSource source, float amount) {
+public static float modifyIncoming(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide || !(source.getEntity() instanceof Mob attacker)) {
             return amount;
         }
@@ -99,7 +84,6 @@ public final class MobAffixService {
         }
         MonsterRank rank = state.rank() == null ? MonsterRank.NORMAL : state.rank();
         SeasonRules.FarmingRules farming = rules(victim);
-        // Bosses keep their big hits on purpose; only the promoted ranks are capped.
         boolean promoted = rank == MonsterRank.VETERAN || rank == MonsterRank.ELITE || rank == MonsterRank.CHAMPION;
         if (victim instanceof ServerPlayer && promoted && farming != null && farming.rankedHitCap > 0) {
             amount = Math.min(amount, (float) (victim.getMaxHealth() * farming.rankedHitCap));
@@ -107,7 +91,6 @@ public final class MobAffixService {
         return amount;
     }
 
-    /** Effects of a hit that landed: drain, poison, chill, thorns, and a summoner's call for help. */
     public static void afterHurt(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide || amount <= 0 || source.is(DamageTypes.THORNS)) {
             return;
@@ -159,7 +142,6 @@ public final class MobAffixService {
         }
     }
 
-    /** A volatile mob's last act. No block damage: it is a fight mechanic, not griefing. */
     public static void onDeath(LivingEntity entity) {
         if (entity.level().isClientSide || !affixes(entity).contains(MobAffix.VOLATILE)) {
             return;
@@ -167,10 +149,7 @@ public final class MobAffixService {
         entity.level().explode(entity, entity.getX(), entity.getY() + 0.5, entity.getZ(), 2.5f, Level.ExplosionInteraction.NONE);
     }
 
-    // Once-every-ten-ticks pass ----------------------------------------------------------------------
-
-    /** Aura, regeneration and the volatile fuse warning for one loaded, ranked or affixed mob. */
-    static void tick(Mob mob, MonsterState state, SeasonRules.FarmingRules farming) {
+static void tick(Mob mob, MonsterState state, SeasonRules.FarmingRules farming) {
         if (!(mob.level() instanceof ServerLevel level) || !mob.isAlive()) {
             return;
         }

@@ -27,13 +27,6 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Shows house areas while the House Wand is held: every house in this dimension within render distance is a
- * translucent box with bright edges (edges also show faintly through blocks), coloured by rental status and
- * labelled with its name, status, tier and size. The corners picked with the wand are marked, and the box
- * they make (up to the aimed block while only corner 1 is set) is previewed in yellow, or red when it
- * would overlap a house or is too large.
- */
 @Environment(EnvType.CLIENT)
 public final class HouseOutlineRenderer {
     private static final int[] AVAILABLE = {96, 224, 140};

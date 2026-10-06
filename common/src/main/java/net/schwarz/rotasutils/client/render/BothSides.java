@@ -5,11 +5,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import org.joml.Matrix4f;
 
-/**
- * Collects POSITION_COLOR quad vertices four at a time and emits each quad once, with alpha clamped.
- * VFX draw through {@link VfxRenderTypes#ADDITIVE}, which does not cull, so both windings already
- * show; emitting a quad twice would double its brightness.
- */
 @Environment(EnvType.CLIENT)
 final class BothSides {
     private final float[] buf = new float[4 * 7];

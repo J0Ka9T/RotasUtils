@@ -69,7 +69,6 @@ class HorseSystemTest {
         long trainedCommon = HorsePricing.npcPrice(rules, HorseGacha.Rarity.COMMON, false, 5, 5, 5, 10, false, false);
         long untrainedCommon = HorsePricing.npcPrice(rules, HorseGacha.Rarity.COMMON, false, 1, 1, 1, 1, false, false);
         assertTrue(trainedCommon > untrainedCommon * 10, "training must raise the price");
-        // Same skill levels: the gap is only the secret coat and the collector bonus.
         assertEquals(rules.sellSecretCoat + rules.sellRarityBonus[4] - 5 * rules.sellPerAffinityLevel,
                 untrainedLegendary - trainedCommon);
         assertEquals(0, HorsePricing.npcPrice(rules, null, false, 5, 5, 5, 10, false, false));

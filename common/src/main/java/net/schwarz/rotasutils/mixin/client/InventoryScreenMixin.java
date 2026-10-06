@@ -25,9 +25,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
-/**
- * Turns the vanilla survival inventory into the Rotas Character Hub while preserving InventoryMenu authority.
- */
 @Mixin(InventoryScreen.class)
 public abstract class InventoryScreenMixin {
     private static final int HIDDEN_SLOT = -10000;
@@ -51,18 +48,13 @@ public abstract class InventoryScreenMixin {
     private void rotasutils$finishCharacterHub(CallbackInfo ci) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.gameMode == null || minecraft.gameMode.hasInfiniteItems()) return;
-        // InventoryScreen's own init resets imageWidth/imageHeight to the vanilla texture size.
-        // Reapply the responsive hub dimensions after vanilla has finished so rendering, slots and
-        // hit testing all share the same actual viewport on every loader.
         AbstractContainerScreenAccessor screen = (AbstractContainerScreenAccessor) this;
         screen.rotasutils$setImageWidth(RotasInventoryRenderer.targetWidth(minecraft.getWindow().getGuiScaledWidth()));
         screen.rotasutils$setImageHeight(RotasInventoryRenderer.targetHeight(minecraft.getWindow().getGuiScaledHeight()));
         RotasInventoryRenderer.resetScrolls();
         rotasutils$applySlotLayout();
-        // Refresh Rotas/Pufferfish/party snapshots when the hub opens so JOB, PARTY and QUEST are current.
         RotasNetwork.sendAction("request_sync");
 
-        // Rotas owns this presentation. Keep the stale vanilla recipe-book layout out of the hub.
         if (recipeBookComponent.isVisible()) recipeBookComponent.toggleVisibility();
         rotasutils$hideForeignWidgets();
     }
@@ -74,8 +66,6 @@ public abstract class InventoryScreenMixin {
         if ((button != 0 && button != 1) || minecraft.gameMode == null || minecraft.gameMode.hasInfiniteItems()) return;
         AbstractContainerScreenAccessor screen = (AbstractContainerScreenAccessor) this;
 
-        // Curios are drawn around the portrait but remain real Curios slots. The click is sent
-        // to the server bridge so item validation, cursor contents and synchronization stay authoritative.
         var curio = RotasInventoryRenderer.curioAt(
                 screen.rotasutils$getLeftPos(), screen.rotasutils$getTopPos(),
                 screen.rotasutils$getImageWidth(), screen.rotasutils$getImageHeight(), mouseX, mouseY);
@@ -106,8 +96,6 @@ public abstract class InventoryScreenMixin {
                 Sfx.page();
             }
             case OPEN_STATS -> {
-                // Reuse the tested plan-then-Confirm stats screen; the inventory stays its parent, so
-                // closing stats returns to the Character Hub instead of the world.
                 minecraft.setScreen(new StatsScreen((InventoryScreen) (Object) this));
                 Sfx.page();
             }
@@ -140,8 +128,6 @@ public abstract class InventoryScreenMixin {
                                                int mouseX, int mouseY, CallbackInfo ci) {
         rotasutils$hideForeignWidgets();
         AbstractContainerScreenAccessor screen = (AbstractContainerScreenAccessor) this;
-        // A Curios count change (e.g. an item granting ring slots) resizes the disc; re-place the
-        // vanilla slots so they stay under their painted sockets.
         if (RotasInventoryRenderer.currentLayout(screen.rotasutils$getImageWidth(),
                 screen.rotasutils$getImageHeight()) != rotasutils$appliedLayout) {
             rotasutils$applySlotLayout();
@@ -159,16 +145,7 @@ public abstract class InventoryScreenMixin {
         ci.cancel();
     }
 
-    // The hub's inspection layer is drawn from InventorySlotHitboxMixin's renderTooltip
-    // injection on AbstractContainerScreen, which owns that method, at the correct z-order.
-
-    /**
-     * Buttons other mods add to the inventory (Curios' toggle, the recipe book) are placed for the
-     * vanilla 176px texture and end up floating over the hub. The hub has no widgets of its own, so
-     * every child widget is hidden; re-applied each frame because some mods restore visibility
-     * while rendering.
-     */
-    @Unique
+@Unique
     private void rotasutils$hideForeignWidgets() {
         for (var child : ((InventoryScreen) (Object) this).children()) {
             if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget) {
@@ -188,8 +165,6 @@ public abstract class InventoryScreenMixin {
         List<Slot> slots = inventory.getMenu().slots;
         if (slots.size() < 46) return;
 
-        // Armor and offhand sockets are persistent character context on every tab; socket
-        // coordinates are centres, so the 16px item sits 8px up and left of them.
         setSlot(slots.get(5), l.headX() - 8, l.headY() - 8);
         setSlot(slots.get(6), l.chestX() - 8, l.chestY() - 8);
         setSlot(slots.get(7), l.legsX() - 8, l.legsY() - 8);

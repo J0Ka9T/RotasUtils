@@ -7,10 +7,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Copies a kept inventory and experience onto the respawned player, the same way vanilla does for the
- * keepInventory game rule, when the player died in a zone that keeps inventory.
- */
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerRestoreMixin {
     @Inject(method = "restoreFrom", at = @At("TAIL"))

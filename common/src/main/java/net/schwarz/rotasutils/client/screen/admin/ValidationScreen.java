@@ -15,7 +15,6 @@ import net.schwarz.rotasutils.server.Validation;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Validation report. Clicking an issue opens the editor it belongs to. */
 @Environment(EnvType.CLIENT)
 public class ValidationScreen extends RotasScreen {
     private final List<Validation.Issue> issues = new ArrayList<>();

@@ -16,19 +16,19 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 public final class RotasutilsForge {
     public RotasutilsForge(FMLJavaModLoadingContext context) {
         IEventBus modEventBus = context.getModEventBus();
-        // Submit our event bus to let Architectury API register our content on the right time.
         EventBuses.registerModEventBus(Rotasutils.MOD_ID, modEventBus);
 
         net.schwarz.rotasutils.server.forge.MonsterStorageImpl.init(modEventBus);
         Rotasutils.init();
         MonsterForgeEvents.init();
-        // The Celestial spell school needs Iron's Spells; its classes are never touched without it.
+        HouseForgeEvents.init();
+        TradeForgeEvents.init();
         if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
             net.schwarz.rotasutils.forge.magic.CelestialMagic.init(modEventBus);
             net.schwarz.rotasutils.forge.magic.AbyssMagic.init(modEventBus);
+            net.schwarz.rotasutils.forge.magic.HealingMagic.init(modEventBus);
             net.schwarz.rotasutils.forge.magic.VfxDemo.init();
         }
-        // Extra skill-book skills; their classes are never touched without Epic Fight.
         if (net.minecraftforge.fml.ModList.get().isLoaded("epicfight")) {
             net.schwarz.rotasutils.forge.epicfight.RotasEpicFight.init(modEventBus);
         }
@@ -36,19 +36,21 @@ public final class RotasutilsForge {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientOnly.init(modEventBus));
     }
 
-    /**
-     * Isolates physical-client class references so a dedicated server never loads
-     * Minecraft client classes while verifying this entrypoint.
-     */
     private static final class ClientOnly {
         private ClientOnly() {
         }
 
         private static void init(IEventBus modEventBus) {
-            // Architectury collects key mappings before Forge fires its registration
-            // event, so this bootstrap must not be deferred to FMLClientSetupEvent.
             net.schwarz.rotasutils.client.RotasClient.init();
             net.schwarz.rotasutils.forge.client.RotasForgeHudEvents.register();
+            if (net.minecraftforge.fml.ModList.get().isLoaded("epicfight")) {
+                net.schwarz.rotasutils.forge.epicfight.MyriadSwordsClient.init(modEventBus);
+                net.schwarz.rotasutils.forge.epicfight.DharmakayaClient.init(modEventBus);
+                net.schwarz.rotasutils.forge.epicfight.WanJianClient.init(modEventBus);
+            }
+            if (net.minecraftforge.fml.ModList.get().isLoaded("veil")) {
+                net.schwarz.rotasutils.forge.client.VeilCinematics.init();
+            }
             if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
                 net.schwarz.rotasutils.forge.client.VfxDemoClient.init();
             }
@@ -58,14 +60,13 @@ public final class RotasutilsForge {
             modEventBus.addListener(ClientOnly::onClientSetup);
         }
 
-        // Forge 1.20.1 has no non-deprecated replacement for ItemBlockRenderTypes.setRenderLayer.
         @SuppressWarnings("removal")
         private static void onClientSetup(FMLClientSetupEvent event) {
             event.enqueueWork(() -> {
                 ItemBlockRenderTypes.setRenderLayer(RotasRegistry.QUEST_BOARD.get(), RenderType.cutout());
-                // Registries are only populated by now; RotasClient.init runs far earlier than this.
                 net.schwarz.rotasutils.client.RotasClient.initRenderers();
             });
         }
     }
 }
+

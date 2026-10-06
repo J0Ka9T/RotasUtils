@@ -2,9 +2,7 @@ package net.schwarz.rotasutils.data;
 
 import net.minecraft.nbt.CompoundTag;
 
-/** Global server toggles exposed under Administrator -> Server Settings. */
 public final class ServerSettings {
-    /** Op level treated as "RotasUtils administrator" when no permission mod is present. */
     private int adminOpLevel = 2;
     private boolean allowQuestCommands = true;
     private boolean requireBoardForAccept = true;
@@ -14,27 +12,16 @@ public final class ServerSettings {
     private double partyNearbyRadius = 64.0;
     private boolean pvpQuestsEnabled = true;
     private boolean antiFarmEnabled = true;
-    /** How long anti-farm records are kept before expiring, in seconds. */
     private int antiFarmMemorySeconds = 3600;
-    /** Minimum milliseconds between two client requests of the same kind. */
     private int clientRequestCooldownMillis = 200;
     private int autosaveIntervalSeconds = 120;
     private boolean auditLogEnabled = true;
     private boolean validateOnPublish = true;
-    /** Seconds a player must wait between job changes; 0 allows changing at any time. */
     private long jobChangeCooldownSeconds = 86_400;
-    /** Warp pillars. Off leaves the block placeable but inert, so a server can retire the system. */
     private boolean waystonesEnabled = true;
-    /** Gold taken the first time a player records a pillar. */
     private long waystoneDiscoverCost = 100;
-    /** Gold taken per warp, on top of the distance charge. */
     private long waystoneWarpCost = 50;
-    /** Extra gold per 1,000 blocks travelled; a warp between dimensions pays the flat cost only. */
     private long waystoneWarpCostPerThousandBlocks = 25;
-    /**
-     * Master switch for rank drops. The drop numbers themselves live in {@code season.json} under
-     * {@code drops}, so they reload without a restart; this only turns the whole system off.
-     */
     private boolean monsterDropsEnabled = true;
 
     public long jobChangeCooldownSeconds() {
@@ -85,7 +72,6 @@ public final class ServerSettings {
         this.monsterDropsEnabled = value;
     }
 
-    /** Free is allowed; the ceiling keeps a mistyped price from emptying a wallet. */
     private static long clampCost(long value) {
         return Math.max(0, Math.min(1_000_000, value));
     }

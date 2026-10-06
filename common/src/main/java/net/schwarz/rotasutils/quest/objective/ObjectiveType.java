@@ -5,12 +5,6 @@ import net.schwarz.rotasutils.data.ParamSpec.ParamKind;
 
 import java.util.List;
 
-/**
- * Every supported objective kind together with the fields the editor should render.
- *
- * <p>Adding an objective type means adding a constant here and a case in
- * {@link net.schwarz.rotasutils.quest.ObjectiveEngine}; no screen code changes.
- */
 public enum ObjectiveType {
     KILL_MOB("Kill Mobs", EventKind.KILL_ENTITY, List.of(
             new ParamSpec("entity", ParamKind.ENTITY, "Mob", "minecraft:zombie"),
@@ -146,7 +140,8 @@ public enum ObjectiveType {
 
     DIALOGUE_CHOICE("Complete Dialogue Choice", EventKind.DIALOGUE_CHOICE, List.of(
             new ParamSpec("dialogue", ParamKind.STRING, "Dialogue Id", ""),
-            new ParamSpec("choice", ParamKind.STRING, "Choice Id", ""))),
+            new ParamSpec("choice", ParamKind.STRING, "Choice Id", ""),
+            new ParamSpec("npc_uuid", ParamKind.NPC, "Only With NPC (optional)", ""))),
 
     COMPLETE_QUEST("Complete Another Quest", EventKind.QUEST_COMPLETE, List.of(
             new ParamSpec("quest", ParamKind.QUEST, "Quest", ""),
@@ -156,7 +151,6 @@ public enum ObjectiveType {
             new ParamSpec("event", ParamKind.STRING, "Event Id", "mymod:my_event"),
             new ParamSpec("amount", ParamKind.INT, "Times", "1"))),
 
-    /** Serialized legacy name; {@link Objective#load} migrates it to {@link #CUSTOM}. */
     CUSTOM_EVENT("Trigger Custom Event", EventKind.CUSTOM, List.of(
             new ParamSpec("event", ParamKind.STRING, "Event Id", "mymod:my_event"),
             new ParamSpec("amount", ParamKind.INT, "Times", "1")));

@@ -1,0 +1,270 @@
+{
+  "trade": "miner",
+  "job": "miner",
+  "station": "rotasutils:smeltery",
+  "slotLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "recipes": [
+    {
+      "id": "iron_ingots",
+      "level": 1,
+      "seconds": 40,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:raw_iron",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "copper_ingots",
+      "level": 1,
+      "seconds": 30,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:raw_copper",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:copper_ingot",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "gold_ingots",
+      "level": 3,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:raw_gold",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:gold_ingot",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "zinc_ingots",
+      "level": 4,
+      "seconds": 45,
+      "open": true,
+      "quality": true,
+      "requires": [
+        "create"
+      ],
+      "ingredients": [
+        {
+          "item": "create:raw_zinc",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "create:zinc_ingot",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "lapis_crystals",
+      "level": 5,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:lapis_lazuli",
+          "count": 8,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:lapis_block",
+          "count": 1
+        },
+        {
+          "item": "minecraft:lapis_lazuli",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "redstone_blocks",
+      "level": 6,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:redstone",
+          "count": 8,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:redstone_block",
+          "count": 1
+        },
+        {
+          "item": "minecraft:redstone",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "diamond_refining",
+      "level": 8,
+      "seconds": 120,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:diamond",
+          "count": 3,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:diamond",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "emerald_refining",
+      "level": 9,
+      "seconds": 120,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:emerald",
+          "count": 3,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:emerald",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "quartz_cutting",
+      "level": 10,
+      "seconds": 90,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:quartz",
+          "count": 6,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:quartz_block",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "ancient_forging",
+      "level": 14,
+      "seconds": 600,
+      "secret": true,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:ancient_debris",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:gold_ingot",
+          "count": 4
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 4
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:netherite_ingot",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

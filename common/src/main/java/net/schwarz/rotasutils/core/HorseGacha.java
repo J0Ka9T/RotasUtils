@@ -4,11 +4,6 @@ import net.schwarz.rotasutils.level.SeasonRules;
 
 import java.util.random.RandomGenerator;
 
-/**
- * The horse draw. A pull decides a birth rarity, the starting skill levels that rarity grants and
- * which coat pool the horse draws from. It never grants power a trained horse cannot reach: every
- * SWEM horse trains to Speed/Jump/Health V, so rarity only sells a head start and a rare coat.
- */
 public final class HorseGacha {
     private HorseGacha() {
     }
@@ -17,7 +12,6 @@ public final class HorseGacha {
 
     public enum CoatPool { NORMAL, RARE, SECRET }
 
-    /** Pulls since the last Rare-or-better, Epic-or-better and Legendary. */
     public record Pity(int sinceRare, int sinceEpic, int sinceLegendary) {
         public static final Pity ZERO = new Pity(0, 0, 0);
 
@@ -28,7 +22,6 @@ public final class HorseGacha {
         }
     }
 
-    /** Skill levels are SWEM's display levels: 1 is "I", 5 is "V", affinity runs to 10. */
     public record Pull(Rarity rarity, int speed, int jump, int health, int affinity, CoatPool coat,
                        boolean guaranteed, Pity pity) {
     }
@@ -76,7 +69,6 @@ public final class HorseGacha {
         return new Pull(rolled, speed, jump, health, affinity, coat, minimum != Rarity.COMMON, next);
     }
 
-    /** Weighted pick among the rarities at or above {@code minimum}; the rates are renormalised. */
     static Rarity roll(RandomGenerator random, double[] rates, Rarity minimum) {
         Rarity[] values = Rarity.values();
         double total = 0;

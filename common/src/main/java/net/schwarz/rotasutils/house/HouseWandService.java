@@ -9,11 +9,6 @@ import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.item.HouseWandItem;
 import net.schwarz.rotasutils.server.BoardService;
 
-/**
- * House Wand clicks: left-click picks corner 1, right-click picks corner 2, sneak + right-click the air
- * clears. Once both corners are set the admin is told the size and whether it overlaps a house, so a
- * mistake is seen before {@code /rotas house create}. The client draws the same selection in the world.
- */
 public final class HouseWandService {
     private HouseWandService() {}
 
@@ -47,10 +42,6 @@ public final class HouseWandService {
         player.displayClientMessage(Component.translatable("rotasutils.msg.house.cleared").withStyle(ChatFormatting.GRAY), true);
     }
 
-    /**
-     * Copies the area of the house the admin stands in into the wand, so it can be reshaped with
-     * {@link #pushFace} and saved with "Replace area" in the house editor. False when not in a house.
-     */
     public static boolean loadHouse(ServerPlayer player, ItemStack wand) {
         if (!authorized(player)) return false;
         RotasData data = RotasData.get(player.server);
@@ -65,11 +56,6 @@ public final class HouseWandService {
         return true;
     }
 
-    /**
-     * Reshapes the selection toward a clicked block: a block outside the box grows it to include the
-     * block, a block inside pulls the nearest face in to it. One click moves one face, so an area is
-     * adjusted by pointing at where its wall should be.
-     */
     public static void pushFace(ServerPlayer player, ItemStack wand, BlockPos pos) {
         if (!authorized(player)) return;
         BlockPos first = HouseWandItem.first(wand);
@@ -84,7 +70,6 @@ public final class HouseWandService {
         net.schwarz.rotasutils.network.RotasNetwork.syncContent(player);
     }
 
-    /** {@code {minX, minY, minZ, maxX, maxY, maxZ}} after pushing toward {@code pos}; pure, for tests. */
     static int[] pushed(int[] box, BlockPos pos) {
         int[] p = {pos.getX(), pos.getY(), pos.getZ()};
         int[] out = box.clone();
@@ -94,7 +79,6 @@ public final class HouseWandService {
             if (p[axis] > out[axis + 3]) { out[axis + 3] = p[axis]; outside = true; }
         }
         if (outside) return out;
-        // Inside: move the nearest face onto the block, never past the opposite face.
         int bestFace = 0;
         int bestDistance = Integer.MAX_VALUE;
         for (int face = 0; face < 6; face++) {
@@ -106,7 +90,6 @@ public final class HouseWandService {
         return out;
     }
 
-    /** Opens the house screen on the house the admin stands in; it carries the per-house settings. */
     public static boolean openHouseHere(ServerPlayer player) {
         if (!authorized(player)) return false;
         RotasData data = RotasData.get(player.server);
@@ -116,14 +99,14 @@ public final class HouseWandService {
         return true;
     }
 
-    /**
-     * Opens the admin create form on the held selection. Content is synced first so the form reads
-     * the selection just made, not the one from the last sync.
-     */
     public static void openCreate(ServerPlayer player) {
         if (!authorized(player)) return;
         net.schwarz.rotasutils.network.RotasNetwork.syncContent(player);
         net.schwarz.rotasutils.network.RotasNetwork.openScreen(player, "house_create", new net.minecraft.nbt.CompoundTag());
+    }
+
+    public static void report(ServerPlayer player, String dimension, int[] box) {
+        describe(player, dimension, new BlockPos(box[0], box[1], box[2]), new BlockPos(box[3], box[4], box[5]));
     }
 
     private static void describe(ServerPlayer player, String dimension, BlockPos a, BlockPos b) {

@@ -33,7 +33,6 @@ class ItemDefinitionsTest {
         assertEquals("minecraft:iron_sword", profile.item());
         assertEquals(10, profile.requirement().minLevel());
         assertEquals(2, prepared.snapshot().items().rarities().size());
-        // Item levels always clamp into the profile band, whatever the source level is.
         assertEquals(1, profile.level(-5));
         assertEquals(50, profile.level(9999));
         assertEquals(24, profile.level(24));
@@ -73,7 +72,6 @@ class ItemDefinitionsTest {
         assertTrue(rare > 850 && rare < 1150, Integer.toString(rare));
         assertEquals(ItemDefinitions.rarity(profile, catalog.rarities(), new SplittableRandom(3)),
                 ItemDefinitions.rarity(profile, catalog.rarities(), new SplittableRandom(3)));
-        // Only the surviving rarity can be rolled once the pack drops the other one.
         var reduced = Map.of(new ContentId("rotas:rarity/rare"), catalog.rarities().get(new ContentId("rotas:rarity/rare")));
         assertEquals("rotas:rarity/rare", ItemDefinitions.rarity(profile, reduced, new SplittableRandom(1)).value());
         assertThrows(IllegalArgumentException.class, () -> ItemDefinitions.rarity(profile, Map.of(), new SplittableRandom(1)));
@@ -99,7 +97,6 @@ class ItemDefinitionsTest {
         sources.add(source("item/shield", "item", "{\"item\":\"minecraft:shield\",\"set\":\"rotas:set/iron\",\"rarities\":{\"rotas:rarity/common\":1}}"));
         sources.add(source("set/iron", "set", "{\"label\":\"Iron\",\"pieces\":[\"rotas:item/shield\"],"
                 + "\"bonuses\":[{\"pieces\":2,\"modifiers\":[{\"attribute\":\"minecraft:generic.armor\",\"base\":2}]}]}"));
-        // A two-piece bonus cannot be earned by a one-piece set.
         assertFalse(registry.prepare(sources).valid());
 
         var set = ItemDefinitions.set(new ContentId("rotas:set/iron"),

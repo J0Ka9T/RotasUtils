@@ -18,31 +18,18 @@ import net.schwarz.rotasutils.server.QuestService;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Right-edge quest tracker: the contract the player is working on, without opening a screen.
- *
- * <p>It answers the two questions a player asks mid-fight, "what am I doing" and "how far in
- * am I", and nothing else. Hidden objectives stay hidden, optional ones are marked, and a
- * quest with more steps than fit is summarised rather than clipped.</p>
- *
- * <p>The panel reuses the HUD palette (dark slate, gold accent) rather than the screen
- * palette, because it sits over open terrain the way the vitals panel does.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class QuestTrackerHud {
-    /** Fixed width so the panel reads as one stable block as objectives tick over. */
-    private static final int WIDTH = 168;
+    private static final int WIDTH = 184;
     private static final int PAD = 8;
-    private static final int LINE = 11;
+    private static final int LINE = 13;
     private static final int RADIUS = 8;
-    /** Objectives drawn in full before the panel falls back to a summary line. */
     private static final int MAX_ROWS = 5;
     private static final int MARGIN = 8;
-    /** Deadline turns amber here, red at a fifth of it. */
     private static final long DEADLINE_WARN_SECONDS = 300L;
 
-    /** One rendered objective row. */
-    private record Row(String text, boolean done, boolean optional, float fraction, String counter) {
+    private record Row(String text, boolean done, boolean optional, float fraction, String counter,
+                       boolean current, boolean locked, boolean choice) {
     }
 
     private QuestTrackerHud() {
@@ -62,100 +49,146 @@ public final class QuestTrackerHud {
             return;
         }
 
-        List<Row> rows = rows(quest, active);
+        List<Row> all = rows(quest, active);
+        List<Row> rows = new ArrayList<>(all);
+        while (rows.size() > MAX_ROWS && rows.get(0).done()) {
+            rows.remove(0);
+        }
         int hiddenRows = Math.max(0, rows.size() - MAX_ROWS);
         int shown = Math.min(rows.size(), MAX_ROWS);
+        int required = 0;
+        int done = 0;
+        for (Row row : all) {
+            if (!row.optional() && !row.choice()) {
+                required++;
+                if (row.done()) {
+                    done++;
+                }
+            }
+        }
         long remaining = active.deadline() <= 0 ? -1L
                 : active.deadline() - System.currentTimeMillis() / 1000L;
         boolean footer = remaining >= 0 || active.turnInReady() || hiddenRows > 0;
+        net.schwarz.rotasutils.client.QuestNavigator.Target nav = net.schwarz.rotasutils.client.QuestNavigator.target();
 
         Font font = minecraft.font;
-        int height = PAD + 10 + 6 + shown * LINE + (footer ? LINE + 2 : 0) + PAD - 4;
-        // Locked grid, matching RotasHudRenderer's pose (see HudLayout.LOCKED_GUI_SCALE): the
-        // tracker is drawn inside that scaled pose, so it stays the same size at any GUI scale.
+        int headerHeight = 12 + 4 + 3 + 6;
+        int height = PAD + headerHeight + shown * LINE + (footer ? LINE + 3 : 0) + (nav != null ? LINE : 0) + PAD - 4;
         int hudScale = HudLayout.hudScale(minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight());
         int screenWidth = HudLayout.gridSize(minecraft.getWindow().getWidth(), hudScale);
         int screenHeight = HudLayout.gridSize(minecraft.getWindow().getHeight(), hudScale);
         int x = Math.max(0, screenWidth - MARGIN - WIDTH);
-        // Upper quarter of the right edge: clear of the vitals panel and the hotbar below,
-        // and low enough not to fight the vanilla effect icons in the corner.
         int y = Math.max(MARGIN, Math.min(screenHeight / 4, screenHeight - MARGIN - height));
+        int rankColor = quest.rank().argb();
 
         try (UiCanvas ui = UiCanvas.begin(graphics, RotasTheme.HUD)) {
             ui.shadow(x, y, WIDTH, height, RADIUS, 0x802A2015);
             ui.borderedRoundedRect(x, y, WIDTH, height, RADIUS,
                     RotasTheme.HUD_PANEL_EDGE, RotasTheme.HUD_PANEL);
             ui.roundedRect(x + 6, y + 1, WIDTH - 12, 1, 1, 0x22FFFFFF);
-            // Rank stripe on the leading edge, coloured by danger rank.
-            ui.roundedRect(x + 2, y + 6, 2, height - 12, 1, quest.rank().argb());
 
             int textX = x + PAD;
             int textWidth = WIDTH - PAD * 2;
             int rowY = y + PAD;
-            String rank = quest.rank().display();
-            text(ui, font, trim(font, quest.name(), textWidth - font.width(rank) - 6),
-                    textX, rowY, RotasTheme.HUD_ACCENT);
-            text(ui, font, rank, x + WIDTH - PAD - font.width(rank), rowY, quest.rank().argb());
-            rowY += 12;
 
-            ui.rect(textX, rowY, textWidth, 1, 0x40FFC25E);
-            rowY += 5;
+            String rank = quest.rank().display();
+            int badgeWidth = font.width(rank) + 8;
+            ui.roundedRect(textX, rowY - 2, badgeWidth, 12, 3, rankColor);
+            text(ui, font, rank, textX + 4, rowY, 0xFF1A140E, false);
+            text(ui, font, trim(font, quest.name(), textWidth - badgeWidth - 6),
+                    textX + badgeWidth + 5, rowY, RotasTheme.HUD_ACCENT, true);
+            rowY += 14;
+
+            String tally = done + "/" + Math.max(1, required);
+            int barWidth = textWidth - font.width(tally) - 6;
+            ui.roundedRect(textX, rowY + 1, barWidth, 3, 1, RotasTheme.HUD_TRACK);
+            if (done > 0) {
+                ui.roundedRect(textX, rowY + 1, Math.max(3, Math.round(barWidth * done / (float) Math.max(1, required))), 3, 1,
+                        active.turnInReady() ? RotasTheme.GOOD : RotasTheme.HUD_ACCENT);
+            }
+            text(ui, font, tally, x + WIDTH - PAD - font.width(tally), rowY - 2, RotasTheme.HUD_TEXT_MUTED, true);
+            rowY += 11;
 
             for (int i = 0; i < shown; i++) {
                 Row row = rows.get(i);
-                int color = row.done() || row.optional()
-                        ? RotasTheme.HUD_TEXT_MUTED : RotasTheme.HUD_TEXT;
-                text(ui, font, row.done() ? "x" : "-", textX, rowY,
-                        row.done() ? RotasTheme.GOOD : RotasTheme.HUD_ACCENT_DIM);
+                if (row.choice() && i > 0 && rows.get(i - 1).choice()) {
+                    text(ui, font, "or", textX + 12, rowY - 5, RotasTheme.HUD_TEXT_MUTED, true);
+                }
+                int color = row.done() || row.locked() ? RotasTheme.HUD_TEXT_MUTED
+                        : row.current() ? RotasTheme.HUD_ACCENT : RotasTheme.HUD_TEXT;
+                int box = row.done() ? RotasTheme.GOOD : row.current() ? RotasTheme.HUD_ACCENT : RotasTheme.HUD_TRACK;
+                if (row.done()) {
+                    ui.roundedRect(textX, rowY, 7, 7, 2, box);
+                } else {
+                    ui.roundedRect(textX, rowY, 7, 7, 2, box);
+                    ui.roundedRect(textX + 1, rowY + 1, 5, 5, 1, RotasTheme.HUD_PANEL);
+                }
                 int counterWidth = row.counter().isEmpty() ? 0 : font.width(row.counter()) + 4;
-                text(ui, font, trim(font, row.text(), textWidth - 10 - counterWidth),
-                        textX + 8, rowY, color);
+                String label = trim(font, row.text(), textWidth - 12 - counterWidth);
+                text(ui, font, label, textX + 11, rowY, color, true);
+                if (row.done()) {
+                    ui.rect(textX + 11, rowY + 4, font.width(label), 1, 0x88FFFFFF & RotasTheme.HUD_TEXT_MUTED);
+                }
                 if (!row.counter().isEmpty()) {
                     text(ui, font, row.counter(), x + WIDTH - PAD - font.width(row.counter()), rowY,
-                            row.done() ? RotasTheme.GOOD : RotasTheme.HUD_TEXT_MUTED);
+                            row.done() ? RotasTheme.GOOD : RotasTheme.HUD_TEXT_MUTED, true);
                 }
-                // Amount objectives get a hairline bar so partial progress is visible.
                 if (!row.done() && row.fraction() > 0f) {
-                    int barWidth = textWidth - 8;
-                    ui.rect(textX + 8, rowY + 9, barWidth, 1, RotasTheme.HUD_TRACK);
-                    ui.rect(textX + 8, rowY + 9,
-                            Math.max(1, Math.round(barWidth * row.fraction())), 1,
+                    int width = textWidth - 11;
+                    ui.roundedRect(textX + 11, rowY + 10, width, 2, 1, RotasTheme.HUD_TRACK);
+                    ui.roundedRect(textX + 11, rowY + 10, Math.max(2, Math.round(width * row.fraction())), 2, 1,
                             RotasTheme.HUD_ACCENT);
                 }
                 rowY += LINE;
             }
 
+            if (nav != null) {
+                String where = net.schwarz.rotasutils.client.QuestNavigator.hudLine(nav);
+                text(ui, font, where, textX, rowY + 1, RotasTheme.HUD_ACCENT, true);
+                text(ui, font, trim(font, nav.label(), textWidth - font.width(where) - 8),
+                        textX + font.width(where) + 6, rowY + 1, RotasTheme.HUD_TEXT_MUTED, true);
+                rowY += LINE;
+            }
+
             if (footer) {
-                rowY += 2;
-                String left = active.turnInReady()
-                        ? L.t("rotasutils.hud.tracker.ready")
-                        : hiddenRows > 0 ? L.t("rotasutils.hud.tracker.more", hiddenRows) : "";
-                if (!left.isEmpty()) {
-                    text(ui, font, left, textX, rowY,
-                            active.turnInReady() ? RotasTheme.GOOD : RotasTheme.HUD_TEXT_MUTED);
+                rowY += 3;
+                if (active.turnInReady()) {
+                    String ready = L.t("rotasutils.hud.tracker.ready");
+                    int pill = font.width(ready) + 10;
+                    ui.roundedRect(textX, rowY - 2, pill, 12, 4, 0x553FBF6A);
+                    text(ui, font, ready, textX + 5, rowY, RotasTheme.GOOD, true);
+                } else if (hiddenRows > 0) {
+                    text(ui, font, L.t("rotasutils.hud.tracker.more", hiddenRows), textX, rowY,
+                            RotasTheme.HUD_TEXT_MUTED, true);
                 }
                 if (remaining >= 0) {
                     String clock = QuestService.formatDuration(Math.max(0L, remaining));
                     int color = remaining <= DEADLINE_WARN_SECONDS / 5 ? RotasTheme.BAD
                             : remaining <= DEADLINE_WARN_SECONDS ? RotasTheme.WARN
                             : RotasTheme.HUD_TEXT_MUTED;
-                    text(ui, font, clock, x + WIDTH - PAD - font.width(clock), rowY, color);
+                    text(ui, font, clock, x + WIDTH - PAD - font.width(clock), rowY, color, true);
                 }
             }
         }
     }
 
-    /**
-     * Objective rows in quest order, with completed ones kept in place so the list does not
-     * reshuffle while the player is reading it. A hidden objective shows as one blind marker.
-     */
     private static List<Row> rows(QuestDef quest, ActiveQuest active) {
         List<Row> rows = new ArrayList<>();
+        boolean currentTaken = false;
         for (int i = 0; i < quest.objectives().size(); i++) {
             Objective objective = quest.objectives().get(i);
             boolean done = active.isComplete(i);
+            if (!QuestService.onPath(quest, active, i) && !done) {
+                continue;
+            }
+            boolean unlocked = net.schwarz.rotasutils.server.ObjectiveEngine.stepUnlocked(quest, active, objective, i);
+            boolean choice = !objective.opens().isEmpty() && !QuestService.decided(quest, active, objective.step());
+            boolean current = !done && unlocked && (!currentTaken || choice);
+            if (current && !objective.optional()) {
+                currentTaken = true;
+            }
             if (objective.hidden() && !done) {
-                rows.add(new Row(L.t("rotasutils.quest.objectives.hidden"), false, false, 0f, ""));
+                rows.add(new Row(L.t("rotasutils.quest.objectives.hidden"), false, false, 0f, "", current, !unlocked, false));
                 continue;
             }
             int required = Math.max(1, objective.requiredAmount());
@@ -165,7 +198,7 @@ public final class QuestTrackerHud {
             String text = objective.optional()
                     ? L.t("rotasutils.quest.optional") + " " + objective.displayText()
                     : objective.displayText();
-            rows.add(new Row(text, done, objective.optional(), fraction, counter));
+            rows.add(new Row(text, done, objective.optional(), fraction, counter, current, !unlocked && !done, choice));
         }
         return rows;
     }
@@ -181,8 +214,8 @@ public final class QuestTrackerHud {
         return cut + "...";
     }
 
-    private static void text(UiCanvas ui, Font font, String text, int x, int y, int color) {
+    private static void text(UiCanvas ui, Font font, String text, int x, int y, int color, boolean shadow) {
         ui.flush();
-        ui.graphics().drawString(font, text, x, y, color, true);
+        ui.graphics().drawString(font, text, x, y, color, shadow);
     }
 }

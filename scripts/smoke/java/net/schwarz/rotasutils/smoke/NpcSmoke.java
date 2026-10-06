@@ -12,7 +12,6 @@ import net.schwarz.rotasutils.server.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Exercises live conversation services on an isolated dedicated server. */
 final class NpcSmoke {
     private static final net.minecraftforge.registries.DeferredRegister<EntityType<?>> TYPES =
             net.minecraftforge.registries.DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES, "rotasutils_smoke");

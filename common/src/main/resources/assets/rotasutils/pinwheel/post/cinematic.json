@@ -1,0 +1,16 @@
+{
+  "stages": [
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/prefilter", "in": "veil:post", "out": "rotasutils:bloom_a" },
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/blur_h", "in": "rotasutils:bloom_a", "out": "rotasutils:bloom_b" },
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/blur_v", "in": "rotasutils:bloom_b", "out": "rotasutils:bloom_a" },
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/down", "in": "rotasutils:bloom_a", "out": "rotasutils:bloom_c" },
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/blur_h", "in": "rotasutils:bloom_c", "out": "rotasutils:bloom_d" },
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/blur_v", "in": "rotasutils:bloom_d", "out": "rotasutils:bloom_c" },
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/streak", "in": "rotasutils:bloom_c", "out": "rotasutils:bloom_d" },
+    { "type": "veil:blit", "shader": "rotasutils:cinematic/composite", "in": "veil:post", "out": "swap" },
+    { "type": "veil:copy", "in": "swap", "out": "veil:post" }
+  ],
+  "framebuffers": {
+    "swap": { "depth": true, "format": "RGBA16F" }
+  }
+}

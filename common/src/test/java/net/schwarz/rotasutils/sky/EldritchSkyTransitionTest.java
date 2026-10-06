@@ -44,7 +44,6 @@ class EldritchSkyTransitionTest {
         EldritchSkyTransition.Snapshot reversed = EldritchSkyTransition.toggle(opening, mid, 0L);
         assertEquals(EldritchSkyTransition.State.CLOSING, reversed.state);
         assertEquals(midOpenness, reversed.opennessAt(mid, 0f), 1e-4);
-        // Immediately reversing again preserves openness too.
         EldritchSkyTransition.Snapshot reversedAgain = EldritchSkyTransition.toggle(reversed, mid, 0L);
         assertEquals(EldritchSkyTransition.State.OPENING, reversedAgain.state);
         assertEquals(midOpenness, reversedAgain.opennessAt(mid, 0f), 1e-4);

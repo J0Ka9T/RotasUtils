@@ -4,10 +4,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.schwarz.rotasutils.job.JobSlot;
 import net.schwarz.rotasutils.util.Nbt;
 
-/**
- * One progression service offered by an NPC in addition to its presentation role. A CRAFTER stands in for
- * {@code jobId} and makes its unlocks up to {@code level} (0 means every level).
- */
 public record NpcServiceDef(Type type, String jobId, String targetId, JobSlot slot, int level) {
     public enum Type { TRAINER, JOB_MASTER, RESPEC, STAT_TRAINER, CRAFTER }
     public NpcServiceDef {

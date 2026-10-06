@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/** Inventory-backed collection counters and an all-or-nothing turn-in debit. */
 final class QuestInventory {
     private QuestInventory() {}
 
@@ -21,6 +20,9 @@ final class QuestInventory {
         boolean changed = false;
         for (int index : collectionOrder(quest)) {
             Objective objective = quest.objectives().get(index);
+            if (alternativeDone(quest, active, index)) {
+                continue;
+            }
             int amount = 0;
             if (ObjectiveEngine.stepUnlocked(quest, active, objective, index)) {
                 amount = allocate(objective, stacks, remaining, objective.params().getBool("consume", true));
@@ -44,7 +46,7 @@ final class QuestInventory {
         int[] remaining = counts(stacks);
         for (int index : collectionOrder(quest)) {
             Objective objective = quest.objectives().get(index);
-            if (objective.optional() && !active.isComplete(index)) {
+            if ((objective.optional() && !active.isComplete(index)) || !QuestService.onPath(quest, active, index)) {
                 continue;
             }
             int amount = allocate(objective, stacks, remaining, objective.params().getBool("consume", true));
@@ -52,12 +54,24 @@ final class QuestInventory {
                 return false;
             }
         }
-        // No stack is touched until every requested quantity can be paid.
         for (int slot = 0; slot < stacks.size(); slot++) {
             ItemStack stack = stacks.get(slot);
             stack.shrink(stack.getCount() - remaining[slot]);
         }
         return true;
+    }
+
+    private static boolean alternativeDone(QuestDef quest, ActiveQuest active, int index) {
+        String group = quest.objectives().get(index).alternativeGroup();
+        if (group.isBlank()) return false;
+        for (int i = 0; i < quest.objectives().size(); i++) {
+            Objective other = quest.objectives().get(i);
+            if (i != index && group.equals(other.alternativeGroup()) && active.isComplete(i)
+                    && other.type() != ObjectiveType.COLLECT_ITEM) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int[] counts(List<ItemStack> stacks) {
@@ -82,6 +96,9 @@ final class QuestInventory {
     }
 
     private static int allocate(Objective objective, List<ItemStack> stacks, int[] remaining, boolean consume) {
+        if (objective.params().getId("item") == null && objective.params().getString("item_tag", "").isEmpty()) {
+            return 0;
+        }
         int needed = objective.requiredAmount();
         int amount = 0;
         for (int slot = 0; slot < stacks.size() && amount < needed; slot++) {

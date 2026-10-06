@@ -6,10 +6,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
-/**
- * Subtle ambient visual effects layered on top of Rotas screens:
- * grain/noise overlay, vignette, and XP-close-to-level glow.
- */
 @Environment(EnvType.CLIENT)
 public final class AmbientFx {
     private static final int[][] noisePattern = new int[16][16];
@@ -21,9 +17,6 @@ public final class AmbientFx {
     private AmbientFx() {
     }
 
-    /**
-     * Draws a very subtle grain overlay at 3% opacity over the entire screen.
-     */
     public static void renderGrain(GuiGraphics graphics, int x, int y, int width, int height) {
         if (!noiseInitialized) {
             initNoise();
@@ -37,7 +30,6 @@ public final class AmbientFx {
             lastNoiseUpdate = now;
         }
 
-        // Only draw grain sparsely to keep performance acceptable
         for (int gy = y; gy < y + height; gy += 4) {
             for (int gx = x; gx < x + width; gx += 4) {
                 int noiseVal = noisePattern[(gx + noiseOffsetX) & 15][(gy + noiseOffsetY) & 15];
@@ -48,19 +40,14 @@ public final class AmbientFx {
         }
     }
 
-    /**
-     * Draws a subtle vignette around the edges of a panel.
-     */
     public static void renderVignette(GuiGraphics graphics, int x, int y, int width, int height, int alpha) {
         int edgeSize = Math.min(20, Math.min(width, height) / 4);
-        // Top edge
         for (int i = 0; i < edgeSize; i++) {
             int a = (int) (alpha * (1f - i / (float) edgeSize));
             if (a > 0) {
                 graphics.fill(x, y + i, x + width, y + i + 1, (a << 24));
             }
         }
-        // Bottom edge
         for (int i = 0; i < edgeSize; i++) {
             int a = (int) (alpha * (1f - i / (float) edgeSize));
             if (a > 0) {
@@ -69,9 +56,6 @@ public final class AmbientFx {
         }
     }
 
-    /**
-     * Draws a soft glow pulse when XP is close to the next level (80%+).
-     */
     public static void renderXpGlow(GuiGraphics graphics, int x, int y, int width, int height,
                                      float xpFraction, int accentColor) {
         if (xpFraction < 0.8f || xpFraction >= 1f) {
@@ -79,11 +63,10 @@ public final class AmbientFx {
         }
 
         long now = System.currentTimeMillis();
-        float pulse = (float) (Math.sin(now * 0.005) * 0.5 + 0.5); // 0..1 oscillation
+        float pulse = (float) (Math.sin(now * 0.005) * 0.5 + 0.5);
         int glowAlpha = (int) (30 * pulse * ((xpFraction - 0.8f) / 0.2f));
 
         if (glowAlpha > 0) {
-            // Outer glow
             ModernUiRenderer.softShadow(graphics, x - 2, y - 2, width + 4, height + 4, 6,
                     (glowAlpha << 24) | (accentColor & 0x00FFFFFF));
         }

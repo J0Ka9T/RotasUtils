@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "BSB",
+    "III"
+  ],
+  "key": {
+    "P": {
+      "item": "minecraft:prismarine_bricks"
+    },
+    "B": {
+      "item": "minecraft:barrel"
+    },
+    "S": {
+      "item": "minecraft:smoker"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "result": {
+    "item": "rotasutils:fishmonger"
+  }
+}

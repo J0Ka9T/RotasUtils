@@ -4,7 +4,6 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-/** Loader-neutral access to container layout coordinates used by the inventory skin. */
 @Mixin(AbstractContainerScreen.class)
 public interface AbstractContainerScreenAccessor {
     @Accessor("leftPos")

@@ -22,6 +22,26 @@ Admin > Progression > **Skills and stats > Skill system** switches between:
 Admins can set a job without the cooldown from Player Records > **Set job**, or with
 `/rotas job set <player> <job>` and `/rotas job clear <player>`.
 
+## Base skill trees
+
+Every job template ships a base tree, created once per world as the category `job_<id>` (limited to that job).
+Admins edit them in the skill editor like any other tree; `/rotas job tree <job>` puts a job's base tree back.
+
+- **Main jobs** (archer, fighter, tank, brawler, rogue, wizard): a root, three 7-node branches and a capstone,
+  23 nodes. A full tree costs about 117 points against the 99 a main job earns, so players choose.
+- **Sub jobs** (miner, farmer, fisher, chef, alchemy, blacksmith, rancher): a root, two 4-node branches and a
+  capstone, 10 nodes. A full tree costs about 34 points against the 19 a sub job earns.
+- Skills can feed the combat stats the character screen uses: crit chance and damage, defense, dodge, magic power
+  and health regeneration (effect types of the same names).
+
+## Job screen
+
+The job screen has three tabs: **Overview** (role badges, mastery level and XP bar, strengths and trade-offs),
+**Skills** (each tree drawn as a map, lit where the player holds nodes, click to open it) and **Unlocks** (a sub
+job's table grouped into Starter / Skilled / Expert / Master with item icons and activity chips; for the equipped
+sub job it marks what is already unlocked). Admin > Settings > Unlocks edits the same table: one line per item with
+level -/+, an activity button that cycles and a remove button.
+
 ## Sub-roles and artisans
 
 A sub job's unlock table also decides who can make things (Admin > Progression > Season rules).
@@ -45,8 +65,10 @@ jobs and races needs both. Without Origins, race-limited trees stay closed.
 
 ## Character stats
 
-Four fixed stats: STR (+1% attack), VIT (+1% max health), INT (+1% magic), AGI (+0.5% attack speed,
-+0.2% dodge). Every point is worth the same; there are no diminishing returns or job multipliers.
+Six fixed stats: STR (+1% attack), VIT (+1% max health, +0.02 defense, +0.005% regen per second), INT (+1% magic),
+AGI (+0.5% attack speed, +0.2% dodge), DEX (+0.4% crit chance, +2% crit damage) and LUK (+0.05 luck, +0.3% crit
+chance). Every point is worth the same; the five combat stats are worth about double at the cap and LUK trails on
+purpose. There are no diminishing returns or job multipliers.
 
 - Players start with 3 points and earn 2 per level (201 at level 100). A stat holds at most 100 points, so a
   level 100 character fills two and has to choose.

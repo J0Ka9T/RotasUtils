@@ -21,11 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * EXP for seeing the world rather than grinding one spot: the first step into each zone, each waystone, each new
- * kind of monster, vanilla advancements, and distance travelled. Also keeps the variety bonus, which rewards a
- * player for mixing activities: fighting, gathering, crafting, exploring, questing and trading.
- */
 public final class ExplorationService {
     private static final String VARIETY = "rpg.variety.";
     private static final String TRAVEL = "rpg.travel";
@@ -33,7 +28,6 @@ public final class ExplorationService {
     private record Spot(String dimension, Vec3 pos) {
     }
 
-    /** Where each online player stood a second ago; rebuilt from the online list so it never outlives a logout. */
     private static final Map<UUID, Spot> LAST = new HashMap<>();
 
     private ExplorationService() {
@@ -51,7 +45,6 @@ public final class ExplorationService {
         player.displayClientMessage(Component.literal("✦ " + what + "  +" + amount + " EXP").withStyle(ChatFormatting.AQUA), true);
     }
 
-    /** First time a player sets foot in a zone. */
     public static void onZoneEntered(ServerPlayer player, RotasData data, ZoneDef zone) {
         PlayerProgress progress = data.progress(player.getUUID());
         String key = "rpg.discover.zone." + zone.id();
@@ -74,14 +67,12 @@ public final class ExplorationService {
 
     public static void onAdvancement(ServerPlayer player, Advancement advancement) {
         DisplayInfo display = advancement.getDisplay();
-        // Recipe unlocks and hidden bookkeeping advancements have no display and pay nothing.
         if (display == null || !display.shouldAnnounceChat() && !display.shouldShowToast()) return;
         RotasData data = RotasData.get(player.server);
         long base = rules(data).advancementXp[Math.min(2, display.getFrame().ordinal())];
         award(player, data, XpSource.ADVANCEMENT, advancement.getId().toString(), base, display.getTitle().getString());
     }
 
-    /** Once a second: distance travelled, in any way but teleporting. */
     public static void tick(MinecraftServer server, RotasData data) {
         SeasonRules.ExplorationRules rules = rules(data);
         Set<UUID> online = new HashSet<>();
@@ -93,7 +84,6 @@ public final class ExplorationService {
             double dx = now.pos().x - before.pos().x;
             double dz = now.pos().z - before.pos().z;
             double moved = Math.sqrt(dx * dx + dz * dz);
-            // Faster than an elytra dive is a teleport, a warp or a respawn: not travel.
             if (moved < 0.5 || moved > 60) continue;
             PlayerProgress progress = data.progress(player.getUUID());
             long total = TitleCounters.add(progress.questVariables(), TRAVEL, Math.round(moved));
@@ -106,9 +96,7 @@ public final class ExplorationService {
         LAST.keySet().retainAll(online);
     }
 
-    // Variety --------------------------------------------------------------------------------------
-
-    enum Kind { FIGHT, GATHER, CRAFT, EXPLORE, QUEST, TRADE }
+enum Kind { FIGHT, GATHER, CRAFT, EXPLORE, QUEST, TRADE }
 
     static Kind kind(XpSource source) {
         return switch (source) {
@@ -122,7 +110,6 @@ public final class ExplorationService {
         };
     }
 
-    /** Records this activity and returns the variety multiplier for it. */
     public static double variety(ServerPlayer player, RotasData data, XpSource source) {
         SeasonRules.ExplorationRules rules = rules(data);
         Kind kind = kind(source);
@@ -143,7 +130,6 @@ public final class ExplorationService {
         return kinds;
     }
 
-    /** "Variety +15% (4 activities)" for the service screens and the character sheet, or null. */
     public static String describe(RotasData data, PlayerProgress progress) {
         SeasonRules.ExplorationRules rules = rules(data);
         int kinds = recentKinds(progress, rules, System.currentTimeMillis() / 1000L);

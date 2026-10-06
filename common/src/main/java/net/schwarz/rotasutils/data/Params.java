@@ -5,7 +5,6 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
-/** Typed accessor over the parameter bag carried by objectives, rewards and effects. */
 public final class Params {
     private final CompoundTag tag;
 
@@ -58,7 +57,6 @@ public final class Params {
         tag.putBoolean(key, value);
     }
 
-    /** Fills any spec-declared key that is missing so editors never see a null field. */
     public void applyDefaults(List<ParamSpec> specs) {
         for (ParamSpec spec : specs) {
             if (tag.contains(spec.key())) {

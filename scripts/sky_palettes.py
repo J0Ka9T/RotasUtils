@@ -38,7 +38,6 @@ def rainbow(r, g, b, v, w):
 
 PALETTES = {"red": red, "gold": gold, "void": void, "rainbow": rainbow}
 
-#: Entity textures of the prism rift, neutralised the same way and for the same reason.
 ENTITY = os.path.join(os.path.dirname(__file__), "..", "common", "src", "main", "resources",
                       "assets", "rotasutils", "textures", "entity")
 PRISM_RIFT = {"rift_portal_violet.png": "rift_portal_prism.png",

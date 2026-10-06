@@ -26,19 +26,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Editor for one level zone: what it means for play (level band, danger, recommended player range,
- * XP multiplier, edge blend) and the shapes that make it up.
- *
- * <p>Left column: labelled fields at a pitch that shrinks on small GUI scales, then a one-line
- * preview of what the saved zone will do. Right column: the shapes, each with a remove button, and
- * the entry lock that gates who may walk in. Shapes are traced against the live world through the
- * world picker or the Zone Wand, so no coordinates are typed. A zone with no areas covers the whole
- * dimension.</p>
- *
- * <p>Typed values survive a rebuild (toggling danger, removing a shape, a content resync), so an
- * admin never loses unsaved edits to a button press.</p>
- */
 @Environment(EnvType.CLIENT)
 public class ZoneEditScreen extends RotasScreen {
     private static final int FORM_ROWS = 6;
@@ -50,18 +37,13 @@ public class ZoneEditScreen extends RotasScreen {
 
     private final String zoneId;
     private final Map<String, EditBox> fields = new HashMap<>();
-    /** Unsaved text per field key, carried across rebuilds. */
     private final Map<String, String> typed = new HashMap<>();
     private boolean initialized;
     private boolean enabled = true;
     private ZoneDef.Danger danger = ZoneDef.Danger.NORMAL;
-    /** Entry gate edited on the lock screen and saved with the rest of the zone. */
     private final List<Requirement> entryRequirements = new ArrayList<>();
-    /** Type, mob isolation, spawn points, titles, effects and movement; edited on sub-screens, saved with Save. */
     private ZoneFeatures features = ZoneFeatures.DEFAULT;
-    /** PvP, spawning, damage, healing, keep inventory and XP loss overrides; saved with Save. */
     private ZoneCombatRules rules = ZoneCombatRules.inherit();
-    /** First corner of a box selection in progress, or null. */
     private int[] pendingCorner;
     private long pendingSaveRevision = -1;
 
@@ -227,7 +209,6 @@ public class ZoneEditScreen extends RotasScreen {
         fields.put(key, box);
     }
 
-    /** Remembers what is typed so the next rebuild shows it instead of the saved value. */
     private void capture() {
         fields.forEach((key, box) -> typed.put(key, box.getValue()));
     }
@@ -273,7 +254,6 @@ public class ZoneEditScreen extends RotasScreen {
         return contentTop() + 140;
     }
 
-    /** Opens a sub-screen, keeping what is typed here for when it comes back. */
     private void open(Screen screen) {
         capture();
         minecraft.setScreen(screen);
@@ -299,7 +279,6 @@ public class ZoneEditScreen extends RotasScreen {
         rules = next;
     }
 
-    /** Fills in a zone type's preset over the unsaved editor state; nothing is sent until Save. */
     public void applyType(ZoneType type) {
         capture();
         ZoneDef live = ClientState.zone(zoneId);
@@ -372,7 +351,6 @@ public class ZoneEditScreen extends RotasScreen {
     private void saveZone() {
         String error = settingsError();
         if (error != null) {
-            // Name the field and its range, and tint it, instead of a generic "check the numbers".
             ClientState.feedback(false, ThaiText.phrase(error));
             Sfx.error();
             return;
@@ -387,10 +365,6 @@ public class ZoneEditScreen extends RotasScreen {
     private static final int FIELD_ERROR = 0xFFFF6B6B;
     private String firstError;
 
-    /**
-     * The first invalid setting as a sentence naming the field and its allowed range, or null when every
-     * field is valid. Every invalid field is tinted red, not only the first, so all fixes are visible at once.
-     */
     private String settingsError() {
         firstError = null;
         fields.values().forEach(box -> box.setTextColor(FIELD_TEXT));
@@ -431,7 +405,6 @@ public class ZoneEditScreen extends RotasScreen {
                 return value;
             }
         } catch (NumberFormatException invalid) {
-            // falls through to the message below
         }
         fail(key, label + " must be a whole number from " + lo + " to " + hi);
         return null;
@@ -584,7 +557,6 @@ public class ZoneEditScreen extends RotasScreen {
         }
     }
 
-    /** What the zone will do once saved, from the values currently typed. */
     private String preview() {
         CompoundTag values = payload();
         String lock = entryRequirements.isEmpty() ? "" : "  |  " + ThaiText.phrase("entry locked");

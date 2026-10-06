@@ -15,19 +15,6 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * The Tetrarch's majesty, drawn from painted light textures rather than flat polygons.
- *
- * <p>A rune seal turns on the ground beneath it and flares in the colour of whatever rift it is
- * drawing on; a crowned halo of seal and runes turns behind its head; wings of feathered light beat
- * at its shoulders; four rift-orbs circle it trailing comets; the aegis is a sphere of light burning
- * at its rim. It arrives down a pillar of light while its seal writes itself on the ground, and ends
- * the forming in a burst; each new phase is an ascension of rays, shockwaves and a column from the
- * heavens; and it dies rising into a swelling star that bursts.</p>
- *
- * <p>Every layer is additive and soft (see {@link VfxRenderTypes#lightTextured}), never writes depth,
- * and is driven only by synced state, so all players see the same thing.</p>
- */
 @Environment(EnvType.CLIENT)
 final class TetrarchVfx {
     private static final ResourceLocation SEAL = tex("environment/sunder/seal");
@@ -51,14 +38,12 @@ final class TetrarchVfx {
         return Rotasutils.id("textures/" + path + ".png");
     }
 
-    /** Everything that rides with or lies under the Tetrarch. {@code pose} is at its feet. */
     static void render(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers, Quaternionf camRot,
                        Vec3 cameraRel, float scale, float lift, float solid) {
         float age = e.tickCount + pt;
         TetrarchPower power = e.casting();
         float castTime = e.castTime(pt);
         float[] castColour = power == null ? PRISM : colour(power);
-        // How hard it is drawing on a rift right now: builds through the windup, holds, then lets go.
         float cast = 0f;
         if (power != null) {
             cast = smooth(castTime / Math.max(6f, power.windup)) * (1f - smooth((castTime - power.length()) / 8f));
@@ -70,14 +55,12 @@ final class TetrarchVfx {
         arrival(e, pt, pose, buffers, camRot, cameraRel, scale);
         phaseShift(e, pt, pose, buffers, camRot, cameraRel, scale);
 
-        // The seal under it: turning slowly, flaring with each cast, shattering away as it dies.
         float groundAlpha = (0.32f + 0.55f * cast + (enraged ? 0.15f : 0f)) * solid;
         float r = 3.2f * scale / 1.45f;
         flat(buffers, SEAL, pose.last().pose(), 0.08f, r * (1f + 0.12f * cast), age * 0.012f, 1f,
                 sigilColour, groundAlpha);
         flat(buffers, RUNES, pose.last().pose(), 0.09f, r * 1.35f, -age * 0.02f, 1f, sigilColour, groundAlpha * 0.8f);
         flat(buffers, GLOW, pose.last().pose(), 0.07f, r * 1.6f, 0f, 1f, sigilColour, groundAlpha * 0.35f);
-        // The casting rune ring rising up its body as the power builds.
         if (cast > 0.02f) {
             float rise = (0.3f + 2.4f * smooth(castTime / Math.max(6f, power.windup))) * scale / 1.45f;
             flat(buffers, RUNES, pose.last().pose(), rise, r * (0.55f - 0.1f * cast), age * 0.08f, 1f, castColour,
@@ -93,7 +76,6 @@ final class TetrarchVfx {
             if (e.shield() > 0f) {
                 aegis(pose, buffers, cameraRel.subtract(0, lift, 0), scale, age, 0.4f + 0.3f * (e.shield() / 80f));
             }
-            // The charge gathering in its chest while it winds a power up.
             if (power != null && castTime < power.windup + 4) {
                 float charge = smooth(castTime / Math.max(6f, power.windup));
                 Vector3f chest = new Vector3f(0, 1.75f * scale, 0);
@@ -107,10 +89,7 @@ final class TetrarchVfx {
         pose.popPose();
     }
 
-    // Moments --------------------------------------------------------------------------------------
-
-    /** Down a pillar of light while its seal writes itself on the ground; a burst as it takes form. */
-    private static void arrival(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers,
+private static void arrival(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers,
                                 Quaternionf camRot, Vec3 cameraRel, float scale) {
         float a = e.arrival(pt);
         Matrix4f m = pose.last().pose();
@@ -139,7 +118,6 @@ final class TetrarchVfx {
         }
     }
 
-    /** A new phase: a column from the heavens, a crown of rays, two shockwaves, its seal thrown wide. */
     private static void phaseShift(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers,
                                    Quaternionf camRot, Vec3 cameraRel, float scale) {
         float t = e.sincePhaseShift(pt);
@@ -170,7 +148,6 @@ final class TetrarchVfx {
         flat(buffers, SEAL, m, 0.1f, 4f + 6f * smooth(t / 14f), t * 0.03f, 1f, c, 0.8f * wide);
     }
 
-    /** Rising, it burns into a star that swells, flickers, and bursts at the end. */
     private static void death(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers,
                               Quaternionf camRot, float scale) {
         if (e.deathTime <= 0) {
@@ -184,7 +161,6 @@ final class TetrarchVfx {
         billboard(buffers, RAYS, pose, camRot, chest, (2f + 9f * d) * s, d * 3f, PRISM, (0.3f + 0.9f * d) * flick);
         billboard(buffers, GLOW, pose, camRot, chest, (1.5f + 5f * d) * s, 0f, GOLD, 0.6f * d);
         billboard(buffers, FLARE, pose, camRot, chest, (1f + 6f * d * d) * s, d * 2f, WHITE, (0.4f + 1.2f * d) * flick);
-        // The last instant: a burst to fill the arena.
         float burst = smooth((d - 0.9f) / 0.1f);
         if (burst > 0f) {
             billboard(buffers, FLARE, pose, camRot, chest, 18f * s * burst, 0.3f, WHITE, 2f * burst);
@@ -192,10 +168,7 @@ final class TetrarchVfx {
         }
     }
 
-    // Regalia --------------------------------------------------------------------------------------
-
-    /** A seal behind its head with a band of runes turning the other way and a jewel for each rift. */
-    private static void halo(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers, float scale,
+private static void halo(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers, float scale,
                              float age, float solid, float[] castColour, float cast, boolean enraged) {
         pose.pushPose();
         float bodyYaw = e.yBodyRotO + (e.yBodyRot - e.yBodyRotO) * pt;
@@ -218,10 +191,6 @@ final class TetrarchVfx {
         pose.popPose();
     }
 
-    /**
-     * Two fans of feathered light at its shoulders, five blades a side, each a rift's colour over a
-     * white spine; they beat slowly, flare open while it casts, and burn crimson when it is enraged.
-     */
     private static void wings(TetrarchEntity e, float pt, PoseStack pose, MultiBufferSource buffers, float scale,
                               float age, float solid, float cast, boolean enraged) {
         pose.pushPose();
@@ -256,7 +225,6 @@ final class TetrarchVfx {
         pose.popPose();
     }
 
-    /** Four rift-orbs circling it, each a star with a comet's tail of fading light. */
     private static void orbs(PoseStack pose, MultiBufferSource buffers, Quaternionf camRot, float scale, float age,
                              float solid, float cast) {
         for (int i = 0; i < 4; i++) {
@@ -278,7 +246,6 @@ final class TetrarchVfx {
         }
     }
 
-    /** The aegis: a sphere of gold light, burning at its rim and rippling with bands, clear at its heart. */
     private static void aegis(PoseStack pose, MultiBufferSource buffers, Vec3 camera, float scale, float age,
                               float alpha) {
         VertexConsumer vc = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
@@ -315,10 +282,7 @@ final class TetrarchVfx {
         vc.vertex(m, x, y, z).color(1f, 0.82f, 0.4f, clamp01(a)).endVertex();
     }
 
-    // Primitives -----------------------------------------------------------------------------------
-
-    /** A texture lying flat at height {@code y}, turned by {@code spin}; {@code sweep} writes it in round. */
-    static void flat(MultiBufferSource buffers, ResourceLocation texture, Matrix4f m, float y, float radius,
+static void flat(MultiBufferSource buffers, ResourceLocation texture, Matrix4f m, float y, float radius,
                      float spin, float sweep, float[] c, float alpha) {
         if (alpha <= 0.004f || radius <= 0.01f || sweep <= 0f) {
             return;
@@ -343,7 +307,6 @@ final class TetrarchVfx {
         }
     }
 
-    /** A texture standing upright in the local XY plane, centred, turned by {@code spin}. */
     private static void upright(MultiBufferSource buffers, ResourceLocation texture, Matrix4f m, float radius,
                                 float spin, float[] c, float alpha) {
         uprightAt(buffers, texture, m, 0f, 0f, radius, spin, c, alpha);
@@ -362,7 +325,6 @@ final class TetrarchVfx {
         vt(vc, m, x - cs - sn, y - sn + cs, 0f, 0f, 0f, c, alpha);
     }
 
-    /** A camera-facing texture at {@code at}, rolled by {@code roll}. */
     static void billboard(MultiBufferSource buffers, ResourceLocation texture, PoseStack pose, Quaternionf camRot,
                           Vector3f at, float radius, float roll, float[] c, float alpha) {
         if (alpha <= 0.004f || radius <= 0.001f) {
@@ -387,7 +349,6 @@ final class TetrarchVfx {
         vt(vc, m, tip.x - ax, tip.y - ay, tip.z - az, 0f, 0f, c, alpha);
     }
 
-    /** A soft camera-facing beam: the glow texture's middle band stretched from {@code a} to {@code b}. */
     static void beam(MultiBufferSource buffers, Matrix4f m, Vector3f a, Vector3f b, Vec3 camera, float width,
                      float[] c, float alpha) {
         if (alpha <= 0.004f || width <= 0.001f) {
@@ -408,19 +369,16 @@ final class TetrarchVfx {
         vt(vc, m, b.x - side.x, b.y - side.y, b.z - side.z, 0.5f, 0f, c, alpha);
     }
 
-    /** A soft flare at a point, for the power effects drawn in {@link TetrarchRenderer}. */
     static void flare(MultiBufferSource buffers, PoseStack pose, Quaternionf camRot, Vector3f at, float size,
                       float roll, float[] c, float alpha) {
         billboard(buffers, GLOW, pose, camRot, at, size * 1.6f, 0f, c, alpha * 0.5f);
         billboard(buffers, FLARE, pose, camRot, at, size, roll, WHITE, alpha);
     }
 
-    /** A shockwave ring on the ground, for the power effects drawn in {@link TetrarchRenderer}. */
     static void shock(MultiBufferSource buffers, Matrix4f m, float radius, float[] c, float alpha) {
         flat(buffers, SHOCK, m, 0.1f, radius, 0f, 1f, c, alpha);
     }
 
-    /** A rune seal on the ground, for the power effects drawn in {@link TetrarchRenderer}. */
     static void seal(MultiBufferSource buffers, Matrix4f m, float radius, float spin, float[] c, float alpha) {
         flat(buffers, SEAL, m, 0.09f, radius, spin, 1f, c, alpha);
     }
@@ -430,9 +388,7 @@ final class TetrarchVfx {
         vc.vertex(m, x, y, z).uv(u, v).color(c[0], c[1], c[2], clamp01(a)).endVertex();
     }
 
-    // Maths ----------------------------------------------------------------------------------------
-
-    static float[] colour(TetrarchPower power) {
+static float[] colour(TetrarchPower power) {
         return switch (power.rift) {
             case VIOLET -> TetrarchRenderer.RIFT_COLOURS[0];
             case GOLD -> TetrarchRenderer.RIFT_COLOURS[1];

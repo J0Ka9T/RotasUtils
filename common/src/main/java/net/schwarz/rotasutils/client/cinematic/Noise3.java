@@ -1,10 +1,5 @@
 package net.schwarz.rotasutils.client.cinematic;
 
-/**
- * Smooth 3D value noise and its layered form, for the Red plasma: the shells sample it on the sphere
- * so their surface is never one repeating texture, and two shells sampled at different scales and turned
- * in opposite directions never line up long enough for the eye to find the loop.
- */
 public final class Noise3 {
     private Noise3() {
     }
@@ -20,7 +15,6 @@ public final class Noise3 {
         return t * t * (3 - 2 * t);
     }
 
-    /** Value noise in 0..1. */
     public static double value(double x, double y, double z) {
         int xi = (int) Math.floor(x), yi = (int) Math.floor(y), zi = (int) Math.floor(z);
         double xf = fade(x - xi), yf = fade(y - yi), zf = fade(z - zi);
@@ -32,13 +26,11 @@ public final class Noise3 {
         return y0 + (y1 - y0) * zf;
     }
 
-    /** Three octaves, 0..1. */
     public static double fbm(double x, double y, double z) {
         return value(x, y, z) * 0.55 + value(x * 2.07 + 5.2, y * 2.07 + 1.3, z * 2.07 + 8.7) * 0.3
                 + value(x * 4.13 + 2.9, y * 4.13 + 7.1, z * 4.13 + 3.3) * 0.15;
     }
 
-    /** Ridged noise, 0..1, bright along thin winding lines: what unstable filaments in a plasma look like. */
     public static double ridged(double x, double y, double z) {
         double n = fbm(x, y, z);
         return 1 - Math.abs(2 * n - 1);

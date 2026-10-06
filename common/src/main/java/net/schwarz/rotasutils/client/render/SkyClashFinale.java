@@ -6,24 +6,13 @@ import net.fabricmc.api.Environment;
 import net.schwarz.rotasutils.sky.SkyClash;
 import org.joml.Matrix4f;
 
-/**
- * Painted light over the Clash of Heavens ({@link SkyClashRenderer} draws the rifts and beams): each
- * rift tears open with a flare and a shockwave and wears a turning rune ring; the beam heads burn as
- * they climb; over the meeting point a crown of seal and runes forms and spins up with the struggle,
- * a heart of light swelling at its centre; at the crescendo a crown of rays; at the detonation a flare
- * that fills the sky, rays to every horizon, three shockwaves in the rifts' colours, a ghost seal
- * thrown across the heavens and a rain of light falling away to the horizon; and each rift seals with
- * a last flash.
- */
 @Environment(EnvType.CLIENT)
 final class SkyClashFinale {
-    /** Violet, gold, crimson, the dark rift's pale fire. */
     private static final float[][] COLOURS = {
             {0.66f, 0.5f, 1f}, {1f, 0.82f, 0.38f}, {1f, 0.34f, 0.2f}, {0.72f, 0.58f, 1f}};
     private static final float[] WHITE = {1f, 0.97f, 0.9f};
     private static final float[] GOLD = {1f, 0.8f, 0.42f};
 
-    // Dome radii: in front of the clash's own layers (rifts 94, beams 91, core 88).
     private static final float R_BACK = 90f;
     private static final float R_MID = 87.5f;
     private static final float R_FRONT = 86.5f;
@@ -38,7 +27,6 @@ final class SkyClashFinale {
         detonation(m, t, clash);
     }
 
-    /** Each rift: a flare and a shockwave as it tears, a rune ring while open, a last flash as it seals. */
     private static void rifts(Matrix4f m, float t) {
         BufferBuilder b = SkyPaint.begin(SkyPaint.RUNES);
         for (int i = 0; i < 4; i++) {
@@ -71,7 +59,6 @@ final class SkyClashFinale {
         SkyPaint.end(b);
     }
 
-    /** The head of each beam burning as it climbs, and a flash where it arrives. */
     private static void beamHeads(Matrix4f m, float t, float[] clash) {
         BufferBuilder b = SkyPaint.begin(SkyPaint.FLARE);
         for (int i = 0; i < 4; i++) {
@@ -95,7 +82,6 @@ final class SkyClashFinale {
         SkyPaint.end(b);
     }
 
-    /** Over the meeting point: a seal and a rune band spinning up with the struggle, a heart of light. */
     private static void crown(Matrix4f m, float t, float[] clash) {
         int detonate = SkyClash.DETONATE;
         float life = smooth((t - SkyClash.CLASH + 10) / 40f) * (1f - smooth((t - detonate + 2) / 3f));
@@ -103,7 +89,6 @@ final class SkyClashFinale {
             return;
         }
         float heat = SkyClashRenderer.heat(t);
-        // It draws in on itself in the last breath before the detonation.
         float gasp = 1f - 0.45f * smooth((t - detonate + 10) / 9f);
         float spin = t * (0.4f + 2.6f * heat * heat);
         float pulse = 0.85f + 0.15f * (float) Math.sin(t * (0.3f + heat));
@@ -120,7 +105,6 @@ final class SkyClashFinale {
         SkyPaint.end(b);
 
         b = SkyPaint.begin(SkyPaint.RUNES);
-        // The rune band slowly cycles through the four rifts' colours.
         SkyPaint.tint(cycle(t * 0.01f));
         SkyPaint.disc(b, m, (29f + 8f * heat) * gasp, -spin * 1.5f, life * 0.85f, R_MID - 0.1f);
         SkyPaint.tint(GOLD);
@@ -143,7 +127,6 @@ final class SkyClashFinale {
         SkyPaint.end(b);
     }
 
-    /** The detonation: a flare over the sky, rays, three shockwaves, a ghost seal, a rain of light. */
     private static void detonation(Matrix4f m, float t, float[] clash) {
         float a = t - SkyClash.DETONATE;
         if (a < 0f || a > 170f) {
@@ -182,7 +165,6 @@ final class SkyClashFinale {
         SkyPaint.sprite(b, m, 0f, 0f, 30f + 80f * easeOut(Math.min(1f, a / 8f)), -a * 0.45f, rays, R_MID - 0.2f);
         SkyPaint.end(b);
 
-        // The rain of light: sparks falling away from the zenith to every horizon, each with a short tail.
         b = SkyPaint.begin(SkyPaint.MOTE);
         for (int i = 0; i < 70; i++) {
             long h = SkyClashRenderer.seed ^ (i * 0x9E3779B97F4A7C15L);
@@ -213,10 +195,7 @@ final class SkyClashFinale {
         SkyPaint.end(b);
     }
 
-    // Pieces -------------------------------------------------------------------------------------------
-
-    /** A shockwave ring rolling out from the centre, {@code since} ticks after its moment. */
-    private static void pulseRing(BufferBuilder b, Matrix4f m, float since, float reach, float strength) {
+private static void pulseRing(BufferBuilder b, Matrix4f m, float since, float reach, float strength) {
         if (since < 0f || since > 50f) {
             return;
         }
@@ -224,7 +203,6 @@ final class SkyClashFinale {
         SkyPaint.disc(b, m, 3f + reach * grow, since, (1f - grow) * strength, R_MID);
     }
 
-    /** A flare that pops at its moment and dies away. */
     private static void pop(BufferBuilder b, Matrix4f m, float since, float size, float roll) {
         if (since < 0f || since > 40f) {
             return;

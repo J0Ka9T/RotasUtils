@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Compiles kernel quest definitions into the canonical, serializable quest model. */
 public final class KernelQuestAdapter {
     public record Projection(QuestDef quest, QuestDefinitions.Quest source) {
         public Projection {

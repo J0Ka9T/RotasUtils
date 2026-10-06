@@ -17,13 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Optional Curios client bridge for the Character Hub.
- *
- * <p>Curios remains the owner of accessory storage and validation. Rotas only reads the real
- * equipped slot handlers for presentation and delegates editing back to Curios' own container.
- * Reflection keeps the common/Fabric build free of Forge-only Curios classes.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class CuriosClientCompat {
     public static final String MOD_ID = "curios";
@@ -68,7 +61,6 @@ public final class CuriosClientCompat {
         return prepare();
     }
 
-    /** Returns every real visible Curios slot, including empty slots, in Curios' own order. */
     public static List<Entry> entries(LocalPlayer player) {
         if (player == null || !prepare()) return List.of();
         UUID id = player.getUUID();
@@ -108,7 +100,6 @@ public final class CuriosClientCompat {
         return cachedEntries;
     }
 
-    /** Sends a click on a Character Hub Curios slot to the authoritative server handler. */
     public static boolean click(String slotType, int slotIndex, int button) {
         if (slotType == null || slotType.isBlank() || slotIndex < 0 || (button != 0 && button != 1)
                 || !prepare()) {

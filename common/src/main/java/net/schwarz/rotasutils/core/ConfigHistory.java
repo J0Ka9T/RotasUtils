@@ -5,7 +5,6 @@ import net.minecraft.nbt.ListTag;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Private configuration drafts and bounded rollback records, separate from player progress. */
 public final class ConfigHistory {
     private static final int MAX_BYTES = 8 * 1024 * 1024;
     private CompoundTag state = new CompoundTag();
@@ -42,8 +41,6 @@ public final class ConfigHistory {
         var next = state.copy(); var drafts = next.getCompound("drafts");
         if (previous == null && drafts.size() >= 64) { throw new IllegalStateException("Configuration draft limit reached"); }
         var tag = new CompoundTag(); tag.putLong("generation", Math.addExact(expected, 1));
-        // Re-base on the caller's verified live snapshot, so a draft edited across live
-        // changes (an immediate binding, for one) still matches its base at apply time.
         tag.put("base", baseline.copy()); tag.put("value", value.copy());
         drafts.put(key(actor, domain), tag); next.put("drafts", drafts); install(next);
     }
@@ -63,7 +60,6 @@ public final class ConfigHistory {
         var next = state.copy(); next.getCompound("drafts").remove(key(actor, domain)); install(next);
     }
 
-    /** Removes a retained draft regardless of generation, for live edits that supersede it. */
     public void discard(String actor, String domain) {
         var next = state.copy();
         var drafts = next.getCompound("drafts");

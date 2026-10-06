@@ -42,18 +42,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * World events (เหตุการณ์โลก): a zone or a patch of wilderness changes for a while, and players have a
- * reason to go there.
- *
- * <p>Everything an event does rides systems that already exist: mobs levelled inside it get its level
- * bonus and elite chances in {@link MonsterService}, kills inside it pay its experience and loot
- * multipliers through the normal kill path, and its reward is a {@link SeasonRules.TrackReward} paid
- * like a track rung. This class only decides when and where events run, keeps their boss bars, brings
- * their waves and counts their goals. It runs once a second and does nothing while no event runs.</p>
- */
 public final class WorldEventService {
-    /** Marks a mob brought by an event wave. It is promoted like a wild mob, and does not burn. */
     public static final String WAVE_TAG = "rotas_event_wave";
     private static final String EVENT_TAG_PREFIX = "rotas_event:";
     private static final TagKey<net.minecraft.world.level.block.Block> ORES_C =
@@ -88,10 +77,7 @@ public final class WorldEventService {
         return System.currentTimeMillis() / 1000L;
     }
 
-    // Lookups used by the kill, drop, spawn and heal paths ---------------------------------------
-
-    /** The kind of the event running where this entity stands, or null. Cheap when nothing runs. */
-    public static SeasonRules.WorldEventDef at(LivingEntity entity) {
+public static SeasonRules.WorldEventDef at(LivingEntity entity) {
         RotasData data = RotasData.instance();
         if (data == null || data.worldEvents().isEmpty() || entity.level().isClientSide()) {
             return null;
@@ -125,10 +111,7 @@ public final class WorldEventService {
         return def == null ? 1.0 : def.healingMultiplier;
     }
 
-    // Goals -----------------------------------------------------------------------------------
-
-    /** A hostile kill inside an event with a kill goal counts toward it. */
-    public static void onKill(ServerPlayer killer, LivingEntity victim) {
+public static void onKill(ServerPlayer killer, LivingEntity victim) {
         RotasData data = RotasData.get(killer.server);
         if (data.worldEvents().isEmpty() || !BestiaryService.recordable(victim)) {
             return;
@@ -142,10 +125,6 @@ public final class WorldEventService {
         advance(killer.server, data, event, def, killer.getUUID());
     }
 
-    /**
-     * An ore broken inside an event. The drops are worked out now, with the player's tool, and paid a
-     * second later only if the block is really gone - another mod's protection may still cancel it.
-     */
     public static void onBlockBreak(ServerPlayer player, Level level, BlockPos pos, BlockState state) {
         RotasData data = RotasData.get(player.server);
         if (data.worldEvents().isEmpty() || player.isCreative() || !(level instanceof ServerLevel server)
@@ -202,7 +181,6 @@ public final class WorldEventService {
         }
     }
 
-    /** The goal is met: everyone who did enough is paid once, and the event ends. */
     private static void complete(MinecraftServer server, RotasData data, WorldEvent event, SeasonRules.WorldEventDef def) {
         int paid = 0;
         for (var entry : event.contributors().entrySet()) {
@@ -229,14 +207,7 @@ public final class WorldEventService {
         end(data, event);
     }
 
-    // Starting and ending ----------------------------------------------------------------------
-
-    /**
-     * Starts an event. {@code typeId} null picks a kind by weight; {@code anchor} with {@code here}
-     * puts it around that player, otherwise it goes to a random open zone or, lacking one, into the
-     * wilderness near a random player. Returns null with nowhere or nothing to start.
-     */
-    public static WorldEvent start(MinecraftServer server, RotasData data, String typeId, ServerPlayer anchor, boolean here) {
+public static WorldEvent start(MinecraftServer server, RotasData data, String typeId, ServerPlayer anchor, boolean here) {
         SeasonRules.WorldEventRules rules = rules(data);
         if (rules == null || rules.types.isEmpty()) {
             return null;
@@ -343,7 +314,6 @@ public final class WorldEventService {
         return null;
     }
 
-    /** The place name players read: the zone's name, or the coordinates of a wilderness event. */
     public static String placeName(RotasData data, WorldEvent event) {
         if (event.inZone()) {
             ZoneDef zone = data.zone(event.zoneId());
@@ -352,7 +322,6 @@ public final class WorldEventService {
         return ThaiText.t("rotasutils.worldevent.place_wild", event.centerX(), event.centerZ());
     }
 
-    /** "about 250 blocks to the north-east", or "in another dimension", for one player. */
     public static String directionFor(ServerPlayer player, WorldEvent event) {
         if (!player.level().dimension().location().toString().equals(event.dimension())) {
             return ThaiText.t("rotasutils.worldevent.elsewhere");
@@ -386,7 +355,6 @@ public final class WorldEventService {
         }
     }
 
-    /** Ends an event without paying anything: its time ran out, dawn came, or an admin stopped it. */
     public static void expire(MinecraftServer server, RotasData data, WorldEvent event, String reasonKey) {
         SeasonRules.WorldEventDef def = def(data, event);
         String name = def == null ? event.type() : def.name;
@@ -403,9 +371,7 @@ public final class WorldEventService {
         LAST_WAVE.remove(event.id());
     }
 
-    // The once-a-second pass ------------------------------------------------------------------
-
-    public static void tick(MinecraftServer server, RotasData data) {
+public static void tick(MinecraftServer server, RotasData data) {
         SeasonRules.WorldEventRules rules = rules(data);
         long now = now();
         settleMined(server, data);
@@ -528,7 +494,6 @@ public final class WorldEventService {
         return new ParsedEffect(effect, Math.max(1, Math.min(5, level)) - 1);
     }
 
-    /** Brings a wave around up to four players inside, keeping at most {@code maxAlive} wave mobs near each. */
     private static void waves(ServerLevel level, WorldEvent event, SeasonRules.WorldEventDef def,
                               List<ServerPlayer> inside, long now) {
         if (def.spawns.length == 0 || def.waveSize <= 0 || inside.isEmpty()
@@ -572,7 +537,6 @@ public final class WorldEventService {
         }
     }
 
-    /** One line per running event for {@code /rotas worldevent}. */
     public static List<Component> describe(ServerPlayer viewer, RotasData data) {
         List<Component> lines = new ArrayList<>();
         long now = now();
@@ -589,7 +553,6 @@ public final class WorldEventService {
         return lines;
     }
 
-    /** Everything the admin world-event screen shows: the switch, each type, and each running event. */
     public static net.minecraft.nbt.CompoundTag adminState(ServerPlayer viewer, RotasData data) {
         SeasonRules.WorldEventRules rules = rules(data);
         net.minecraft.nbt.CompoundTag tag = new net.minecraft.nbt.CompoundTag();
@@ -608,11 +571,9 @@ public final class WorldEventService {
             });
         }
         tag.put("types", types);
-        // The whole block (schedule + every kind in full) for the admin form editors.
         var season = com.google.gson.JsonParser.parseString(SeasonService.rules(data).toJson()).getAsJsonObject();
         if (season.has("worldEvents")) {
             String rulesJson = season.get("worldEvents").toString();
-            // NBT strings are length-prefixed UTF; a block over the limit falls back to the JSON editor.
             if (rulesJson.getBytes(java.nio.charset.StandardCharsets.UTF_8).length < 60_000) {
                 tag.putString("rules_json", rulesJson);
             }
@@ -634,7 +595,6 @@ public final class WorldEventService {
         return tag;
     }
 
-    /** Turns automatic world events on or off and writes the season file so it survives a restart. */
     public static void setEnabled(MinecraftServer server, RotasData data, boolean on) {
         SeasonRules.WorldEventRules rules = rules(data);
         if (rules == null) {
@@ -645,11 +605,9 @@ public final class WorldEventService {
         try {
             SeasonConfigFile.write(server, SeasonService.rules(data));
         } catch (java.io.IOException ignored) {
-            // The in-memory switch still applies until the next restart.
         }
     }
 
-    /** Removes an event by id, as an administrator's stop. */
     public static boolean stop(MinecraftServer server, RotasData data, int id) {
         WorldEvent event = data.worldEvents().get(id);
         if (event == null) {
@@ -659,7 +617,6 @@ public final class WorldEventService {
         return true;
     }
 
-    /** Drops a leaving player from every bar; the next pass would, but a bar should not hold a stale player. */
     public static void forget(ServerPlayer player) {
         for (Iterator<ServerBossEvent> it = BARS.values().iterator(); it.hasNext(); ) {
             it.next().removePlayer(player);

@@ -26,11 +26,6 @@ import net.minecraftforge.registries.RegistryObject;
 import net.schwarz.rotasutils.Rotasutils;
 import net.schwarz.rotasutils.entity.CelestialFxEntity;
 
-/**
- * The Celestial school (ดวงดาว) for Iron's Spells 'n Spellbooks: its own spell power and resistance
- * attributes, a damage type, a focus (amethyst shard) and eight spells whose visuals are drawn by
- * CelestialFxRenderer. Only loaded when Iron's Spells is present - see RotasutilsForge.
- */
 public final class CelestialMagic {
     public static final ResourceLocation SCHOOL_ID = new ResourceLocation(Rotasutils.MOD_ID, "celestial");
     public static final ResourceKey<DamageType> DAMAGE_TYPE =
@@ -72,7 +67,6 @@ public final class CelestialMagic {
         CelestialFxEntity.behaviour = new CelestialBehaviour();
     }
 
-    /** Every living entity can resist Celestial magic; everything that casts can have Celestial power. */
     private static void addAttributes(EntityAttributeModificationEvent event) {
         for (var type : event.getTypes()) {
             event.add(type, POWER.get());

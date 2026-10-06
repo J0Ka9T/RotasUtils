@@ -11,15 +11,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Server-wide level, rank and experience settings, all editable from the level manager UI. */
 public final class LevelConfig {
     public enum FirstJoinMode { NONE, CHOOSE, ASSIGN }
-    /** Increment when defaults/semantics change so old development worlds can migrate safely. */
-    public static final int CURRENT_PROGRESSION_VERSION = 5;
+    public static final int CURRENT_PROGRESSION_VERSION = 6;
 
-    /** Built from the season rules' main curve; never stored on its own. */
     private final LevelCurve curve = new LevelCurve();
-    /** Season design numbers; also mirrored to config/rotasutils/season.json for hand editing. */
     private SeasonRules season = new SeasonRules();
 
     public SeasonRules season() { return season; }
@@ -29,31 +25,24 @@ public final class LevelConfig {
         curve.set(season);
     }
     private int startingLevel = 1;
-    /** Amount granted each time the configured interval is reached. */
     private int skillPointsPerLevel = 1;
-    /** Sends Rotas skill points to Pufferfish Skills instead of the built-in job and race trees. */
     private boolean pufferfishSkills;
 
     public boolean pufferfishSkills() { return pufferfishSkills; }
     public void setPufferfishSkills(boolean value) { pufferfishSkills = value; }
 
-    /** 2 means one point grant every two Rotas levels. */
     private int skillPointInterval = 2;
 
-    /** Dynamic monster XP tuning. The entity's live combat attributes are the source of truth. */
     private double monsterXpScale = 0.65;
     private double bossXpMultiplier = 3.0;
     private double moddedMobXpMultiplier = 1.15;
     private int minimumMonsterXp = 2;
     private int maximumMonsterXp = 5000;
-    /** Exact entity-id overrides, e.g. cataclysm:ender_guardian -> 1800. */
     private final Map<String, Integer> monsterXpOverrides = new LinkedHashMap<>();
     private boolean rankRequirementsEnabled = true;
     private boolean announceLevelUp = true;
     private boolean showLevelUpToast = true;
-    /** Point mode: global pool, category pools, or both. */
     private PointMode pointMode = PointMode.GLOBAL;
-    /** Universal per-mob leveling plus the zone/spawn ramp band it reads. */
     private MobLevelConfig mobLevel = new MobLevelConfig();
     private MonsterXpWeights monsterXpWeights = new MonsterXpWeights();
     private AdventureXpConfig adventureXp = new AdventureXpConfig();
@@ -69,21 +58,17 @@ public final class LevelConfig {
     private static String jobId(String value){value=value==null?"":value.trim();if(!value.isEmpty()&&!value.matches("[a-z0-9_]{1,32}"))throw new IllegalArgumentException("Invalid first-join job id");return value;}
 
     private final EnumMap<DangerRank, Integer> rankLevel = new EnumMap<>(DangerRank.class);
-    private final EnumMap<DangerRank, Float> rankMultiplier = new EnumMap<>(DangerRank.class);
-    /** How many quests of the rank below must be cleared before clearance unlocks. */
     private final EnumMap<DangerRank, Integer> rankQuestsRequired = new EnumMap<>(DangerRank.class);
     private final EnumMap<DangerRank, String> rankPromotionQuest = new EnumMap<>(DangerRank.class);
     private final EnumMap<DangerRank, Boolean> rankAutoGrant = new EnumMap<>(DangerRank.class);
 
     private final Map<XpSource, XpSourceConfig> sources = new LinkedHashMap<>();
-    /** level -> rewards granted on reaching it. */
     private final Map<Integer, List<Reward>> levelRewards = new LinkedHashMap<>();
 
     public LevelConfig() {
         curve.set(season);
         for (DangerRank rank : DangerRank.VALUES) {
             rankLevel.put(rank, rank.defaultLevel());
-            rankMultiplier.put(rank, rank.defaultMultiplier());
             rankQuestsRequired.put(rank, rank.ordinal() == 0 ? 0 : 3);
             rankPromotionQuest.put(rank, "");
             rankAutoGrant.put(rank, true);
@@ -145,10 +130,6 @@ public final class LevelConfig {
         this.moddedMobXpMultiplier = clampFinite(value, 0.1, 20.0, 1.15);
     }
 
-    /**
-     * Clamps into a range, falling back for a non-finite value. Plain {@code Math.max/min} passes
-     * NaN straight through, so a NaN in a save file or a save packet would poison every XP payout.
-     */
     private static double clampFinite(double value, double min, double max, double fallback) {
         if (!Double.isFinite(value)) { return fallback; }
         return Math.max(min, Math.min(max, value));
@@ -253,14 +234,6 @@ public final class LevelConfig {
         rankLevel.put(rank, Math.max(1, level));
     }
 
-    public float rankMultiplier(DangerRank rank) {
-        return rankMultiplier.getOrDefault(rank, rank.defaultMultiplier());
-    }
-
-    public void setRankMultiplier(DangerRank rank, float multiplier) {
-        rankMultiplier.put(rank, Math.max(0f, multiplier));
-    }
-
     public int rankQuestsRequired(DangerRank rank) {
         return rankQuestsRequired.getOrDefault(rank, 0);
     }
@@ -334,7 +307,6 @@ public final class LevelConfig {
         for (DangerRank rank : DangerRank.VALUES) {
             CompoundTag entry = new CompoundTag();
             entry.putInt("level", rankLevel(rank));
-            entry.putFloat("mult", rankMultiplier(rank));
             entry.putInt("quests", rankQuestsRequired(rank));
             entry.putString("promotion", rankPromotionQuest(rank));
             entry.putBoolean("auto", rankAutoGrant(rank));
@@ -365,7 +337,6 @@ public final class LevelConfig {
             try {
                 config.season = SeasonRules.fromJson(tag.getString("season"));
             } catch (RuntimeException malformed) {
-                // A broken stored copy falls back to the defaults instead of blocking the world load.
                 config.season = new SeasonRules();
             }
         }
@@ -373,9 +344,6 @@ public final class LevelConfig {
         config.startingLevel = Math.max(1, tag.contains("starting_level") ? tag.getInt("starting_level") : 1);
         config.skillPointsPerLevel = tag.contains("points_per_level") ? Math.max(0, tag.getInt("points_per_level")) : 1;
         config.skillPointInterval = tag.contains("point_interval") ? Math.max(1, tag.getInt("point_interval")) : 2;
-        // Through the setters, not the fields: this tag also arrives straight from the admin screen's
-        // save packet, so reading it raw let a value outside the setters' range - including a
-        // negative one or a NaN - into the live XP economy and back out to disk.
         config.setMonsterXpScale(tag.contains("monster_xp_scale") ? tag.getDouble("monster_xp_scale") : 0.65);
         config.setBossXpMultiplier(tag.contains("boss_xp_mult") ? tag.getDouble("boss_xp_mult") : 3.0);
         config.setModdedMobXpMultiplier(tag.contains("modded_mob_xp_mult")
@@ -408,7 +376,6 @@ public final class LevelConfig {
             }
             CompoundTag entry = ranks.getCompound(rank.name());
             config.rankLevel.put(rank, entry.getInt("level"));
-            config.rankMultiplier.put(rank, entry.getFloat("mult"));
             config.rankQuestsRequired.put(rank, entry.getInt("quests"));
             config.rankPromotionQuest.put(rank, entry.getString("promotion"));
             config.rankAutoGrant.put(rank, entry.getBoolean("auto"));
@@ -421,14 +388,11 @@ public final class LevelConfig {
             config.sources.put(loaded.source(), loaded);
         }
         if (legacyEverythingEnabled) {
-            // Old builds exposed many XP sources that had no event hook. Migrate the old
-            // all-enabled default into the combat-only policy instead of pretending they work.
             for (XpSource source : XpSource.VALUES) {
                 config.source(source).setEnabled(source.enabledByDefault());
             }
         }
         if (storedVersion < 5) {
-            // Version 5 hooked discovery and advancements up; turn them on in worlds made before they worked.
             config.source(XpSource.DISCOVERY).setEnabled(true);
             config.source(XpSource.ADVANCEMENT).setEnabled(true);
         }
@@ -438,7 +402,6 @@ public final class LevelConfig {
                 int level = Integer.parseInt(key);
                 config.levelRewards.put(level, Nbt.loadList(rewards.getCompound(key), "rewards", Reward::load));
             } catch (NumberFormatException ignored) {
-                // Stale key from an older format; drop it rather than failing the world load.
             }
         }
         return config;

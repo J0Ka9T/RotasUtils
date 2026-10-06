@@ -10,7 +10,6 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 import net.schwarz.rotasutils.server.horse.HorseService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/** {@code /horse} (and {@code /rotas horse}): open the stable, the draw, the leaderboard, or get a whistle. */
 final class HorseCommands {
     private HorseCommands() {
     }

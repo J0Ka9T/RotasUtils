@@ -23,16 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Draws every {@link RiftFx} effect: beams, columns, rune circles, slits, crescents and rings built
- * from our own geometry, and a pool of glowing motes simulated here - drag, lift, swirl, colour cooling
- * from white-hot to its rift - instead of vanilla particles. Light is added (it blooms where effects
- * overlap); the dark rift's cores are painted over with ordinary blending first, so darkness reads as
- * darkness under the light.
- */
 @Environment(EnvType.CLIENT)
 public final class RiftFxRenderer {
-    /** Violet, gold, crimson, dark (its pale edge light), white-hot. */
     private static final float[][] COLOURS = {
             {0.62f, 0.40f, 1f}, {1f, 0.80f, 0.32f}, {1f, 0.22f, 0.12f}, {0.52f, 0.38f, 0.80f}, {1f, 1f, 1f}, {1f, 0.97f, 0.9f}};
     private static final int MAX_MOTES = 2400;
@@ -43,7 +35,6 @@ public final class RiftFxRenderer {
     private static final List<Effect> PENDING = new ArrayList<>();
     private static ClientLevel lastLevel;
 
-    // Mote pool, as parallel arrays so thousands cost nothing to keep.
     private static int moteCount;
     private static final float[] PX = new float[MAX_MOTES], PY = new float[MAX_MOTES], PZ = new float[MAX_MOTES];
     private static final double[] X = new double[MAX_MOTES], Y = new double[MAX_MOTES], Z = new double[MAX_MOTES];
@@ -56,7 +47,6 @@ public final class RiftFxRenderer {
     private RiftFxRenderer() {
     }
 
-    /** Wires the effect sink; called once from client setup. */
     public static void install() {
         RiftFx.install((kind, colour, ax, ay, az, bx, by, bz, size, life) ->
                 PENDING.add(create(kind, colour, new Vec3(ax, ay, az), new Vec3(bx, by, bz), size, life)));
@@ -80,9 +70,7 @@ public final class RiftFxRenderer {
         };
     }
 
-    // Tick -----------------------------------------------------------------------------------------
-
-    public static void tick(Minecraft minecraft) {
+public static void tick(Minecraft minecraft) {
         if (minecraft.level != lastLevel) {
             lastLevel = minecraft.level;
             EFFECTS.clear();
@@ -125,7 +113,6 @@ public final class RiftFxRenderer {
             VY[i] = VY[i] * DRAG[i] + LIFT[i];
             VZ[i] *= DRAG[i];
             if (SWIRL[i] != 0f) {
-                // A slow turn about the vertical: motes curl instead of flying straight.
                 float c = (float) Math.cos(SWIRL[i]), s = (float) Math.sin(SWIRL[i]);
                 float vx = VX[i] * c - VZ[i] * s;
                 VZ[i] = VX[i] * s + VZ[i] * c;
@@ -156,7 +143,6 @@ public final class RiftFxRenderer {
         STREAK[i] = STREAK[last];
     }
 
-    /** Adds a mote; {@code colour} indexes {@link #COLOURS}, a prism colour is resolved to one of the four. */
     static void mote(double x, double y, double z, double vx, double vy, double vz, int colour, float size, float life,
                      float drag, float lift, float swirl, boolean streak) {
         if (moteCount >= MAX_MOTES) {
@@ -194,9 +180,7 @@ public final class RiftFxRenderer {
         }
     }
 
-    // Render ---------------------------------------------------------------------------------------
-
-    public static void render(PoseStack poseStack, Camera camera, float partialTick) {
+public static void render(PoseStack poseStack, Camera camera, float partialTick) {
         if ((EFFECTS.isEmpty() && moteCount == 0) || Minecraft.getInstance().level == null) {
             return;
         }
@@ -208,7 +192,6 @@ public final class RiftFxRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         try {
-            // Darkness first, painted over the world; then light, added on top.
             RenderSystem.defaultBlendFunc();
             batch.begin();
             for (Effect effect : EFFECTS) {
@@ -240,7 +223,6 @@ public final class RiftFxRenderer {
             double y = PY[i] + (Y[i] - PY[i]) * partialTick;
             double z = PZ[i] + (Z[i] - PZ[i]) * partialTick;
             float[] c = COLOURS[Math.min(COLOURS.length - 1, Math.max(0, COLOUR[i]))];
-            // Born white-hot, cooling into its rift's colour; flickers and fades at the end.
             float heat = Math.max(0f, 1f - life * 3.5f);
             float r = c[0] + (1f - c[0]) * heat, g = c[1] + (1f - c[1]) * heat, b = c[2] + (1f - c[2]) * heat;
             float alpha = Math.min(1f, (AGE[i] + partialTick) / 3f) * (1f - life * life)
@@ -258,9 +240,7 @@ public final class RiftFxRenderer {
         }
     }
 
-    // Effects --------------------------------------------------------------------------------------
-
-    private abstract static class Effect {
+private abstract static class Effect {
         final int colour;
         final Vec3 a;
         final float size;
@@ -290,7 +270,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A flare, a ring on the ground and a sphere of motes. */
     private static final class Burst extends Effect {
         Burst(int colour, Vec3 a, float size, int life) {
             super(colour, a, size, life);
@@ -308,7 +287,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A rift slit, opening then snapping shut; dark inside, burning at the lips. */
     private static final class Tear extends Effect {
         Tear(int colour, Vec3 a, float size, int life) {
             super(colour, a, size, life);
@@ -321,7 +299,6 @@ public final class RiftFxRenderer {
 
         @Override
         void tick() {
-            // Light drawn into the slit while it is open.
             for (int n = 0; n < 4; n++) {
                 double ang = RANDOM.nextDouble() * Math.PI * 2;
                 double d = 1.5 + RANDOM.nextDouble() * 1.5;
@@ -351,7 +328,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A beam of light down a line, a spiral round it, the flare where it strikes. */
     private static final class Lance extends Effect {
         final Vec3 b;
 
@@ -391,7 +367,6 @@ public final class RiftFxRenderer {
             if (colour != RiftFx.DARK) {
                 batch.ribbon(a.x, a.y, a.z, b.x, b.y, b.z, 0.22f * w * fade, 1f, 1f, 1f, fade, fade);
             }
-            // A spiral wound round the beam, turning as it fades.
             Vec3 axis = b.subtract(a);
             double length = axis.length();
             Vec3 dir = axis.normalize();
@@ -416,7 +391,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A column of light out of the sky, a ring rolling out at its foot. */
     private static final class Pillar extends Effect {
         Pillar(int colour, Vec3 a, float size, int life) {
             super(colour, a, size, life);
@@ -447,7 +421,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A rune circle on the ground: two rings, turning ticks, a four-pointed star; flares as it ends. */
     private static final class Sigil extends Effect {
         Sigil(int colour, Vec3 a, float size, int life) {
             super(colour, a, size, life);
@@ -482,7 +455,6 @@ public final class RiftFxRenderer {
                 double x1 = a.x + Math.cos(ang) * r * 0.96, z1 = a.z + Math.sin(ang) * r * 0.96;
                 batch.flatLine(x0, y, z0, x1, y, z1, 0.08f, c, alpha);
             }
-            // The star: each point joined to the one two along, counter-turning.
             for (int i = 0; i < 4; i++) {
                 double a0 = -spin * 1.5 + Math.PI / 2 * i;
                 double a1 = -spin * 1.5 + Math.PI / 2 * (i + 1) + Math.PI / 4;
@@ -496,7 +468,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A ring of force rolling out, a low wall of light riding it. */
     private static final class Shockwave extends Effect {
         Shockwave(int colour, Vec3 a, float size, int life) {
             super(colour, a, size, life);
@@ -516,7 +487,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A crescent of light cut in front of {@code a}, towards {@code b}. */
     private static final class Slash extends Effect {
         final Vec3 b;
 
@@ -531,7 +501,6 @@ public final class RiftFxRenderer {
             Vec3 fwd = b.subtract(a).multiply(1, 0, 1);
             fwd = fwd.lengthSqr() < 1.0e-4 ? new Vec3(0, 0, 1) : fwd.normalize();
             Vec3 side = new Vec3(-fwd.z, 0, fwd.x);
-            // Tilted a little, like a real cut.
             Vec3 tilt = side.scale(Math.cos(0.5)).add(0, Math.sin(0.5), 0);
             double radius = 2.0 * size;
             float sweep = ease(Math.min(1f, k * 2.5f));
@@ -547,7 +516,6 @@ public final class RiftFxRenderer {
                 double ang = -1.3 + 2.6 * f;
                 Vec3 p = a.add(fwd.scale(Math.cos(ang) * radius)).add(tilt.scale(Math.sin(ang) * radius));
                 if (prev != null) {
-                    // Cel-shaded: a flat colour band with a flat white core, hard edges, pointed tips.
                     float thick = (float) Math.sin(Math.PI * f) * 0.28f * size;
                     batch.hardRibbon(prev.x, prev.y, prev.z, p.x, p.y, p.z, thick * 1.7f, c[0], c[1], c[2], 0.75f * fade);
                     batch.hardRibbon(prev.x, prev.y, prev.z, p.x, p.y, p.z, thick * 0.6f, 1f, 1f, 1f, fade);
@@ -557,7 +525,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** Sparks and a hexagon flash off the aegis. */
     private static final class ShieldSpark extends Effect {
         ShieldSpark(Vec3 a, int life) {
             super(RiftFx.GOLD, a, 1f, life);
@@ -573,7 +540,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** A shard falling from the sky and bursting where it lands. */
     private static final class Meteor extends Effect {
         final Vec3 b;
 
@@ -616,7 +582,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** Motes drawn in from all round towards a point. */
     private static final class Gather extends Effect {
         Gather(int colour, Vec3 a, float size, int life) {
             super(colour, a, size, life);
@@ -644,7 +609,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /** The last light: a column of all four rifts into the sky, rings climbing it, motes everywhere. */
     private static final class Apotheosis extends Effect {
         Apotheosis(Vec3 a, float size, int life) {
             super(RiftFx.PRISM, a, size, life);
@@ -690,11 +654,6 @@ public final class RiftFxRenderer {
         }
     }
 
-    /**
-     * A refinement holding at the forge, built from real 3D shapes rather than screen-facing sprites: a
-     * crown of slag spikes thrown out and up from the anvil, a tapering column of molten light, a ring
-     * rolling out along the ground, and sparks that arc up and fall back.
-     */
     private static final class ForgeSuccess extends Effect {
         private final float[] spin = new float[14];
 
@@ -720,11 +679,9 @@ public final class RiftFxRenderer {
             float[] hot = {1f, 0.97f, 0.85f};
             float[] ember = {1f, 0.55f, 0.14f};
             float[] c = colour == RiftFx.PRISM ? colour(t * 0.05f) : ember;
-            // A flash where the hammer lands.
             if (t < 4f) {
                 batch.glow(a.x, a.y + 0.3, a.z, size * 1.6f, 1f, 0.8f, 0.4f, 1f - t / 4f);
             }
-            // Slag crown: spikes thrown outward and up, fanning out as they age.
             for (int i = 0; i < spin.length; i++) {
                 double ang = Math.PI * 2 * i / spin.length + spin[i] * t * 0.1;
                 double tilt = 0.55 + 0.25 * ((i & 1) == 0 ? 1 : 0);
@@ -733,22 +690,15 @@ public final class RiftFxRenderer {
                 batch.spike(a.x, a.y + 0.05, a.z, dx, tilt, dz, len, 0.11f * size * (1f - 0.5f * k), c, 0.85f * fade, 0f);
                 batch.spike(a.x, a.y + 0.05, a.z, dx, tilt, dz, len * 0.7f, 0.05f * size, hot, 0.95f * fade, 0f);
             }
-            // The molten column.
             float height = (1.2f + 3.2f * rise) * size;
             float radius = (0.22f + 0.18f * (1f - k)) * size;
             batch.prism(a.x, a.y, a.z, radius, radius * 0.25f, height, 10, c, 0.6f * fade, 0f);
             batch.prism(a.x, a.y, a.z, radius * 0.4f, radius * 0.08f, height * 1.15f, 8, hot, 0.9f * fade, 0f);
-            // Ring rolling out on the ground.
             batch.flatRing(a.x, a.y + 0.03, a.z, size * (0.5f + 3.2f * ease(k)), 0.18f * size * (1f - k * 0.6f), RiftFx.GOLD,
                     0.85f * fade, t);
         }
     }
 
-    /**
-     * An inscription or fusion taking at the altar, again in 3D: a cut gem grows over the plate and
-     * spins, then bursts into shards that tumble outward, with a helix of light climbing past it and a
-     * tapering beam that swells and thins. No flat circles.
-     */
     private static final class AltarSuccess extends Effect {
         private static final int SHARDS = 9;
         private final float[] shardYaw = new float[SHARDS];
@@ -775,7 +725,6 @@ public final class RiftFxRenderer {
         @Override
         void tick() {
             Vec3 c = centre();
-            // A helix of light climbing round the gem.
             if (age < burstAt) {
                 for (int n = 0; n < 2; n++) {
                     double ang = age * 0.55 + n * Math.PI;
@@ -795,7 +744,6 @@ public final class RiftFxRenderer {
             float[] c = colour(t * 0.04f);
             float[] hot = {1f, 0.97f, 0.9f};
             Vec3 ctr = centre();
-            // Beam: swells while the gem forms, thins after it bursts.
             float beam = (float) Math.sin(Math.PI * Math.min(1f, k * 1.1f));
             batch.prism(a.x, a.y, a.z, 0.16f * size * beam, 0.04f * size, 7f, 8, c, 0.35f * beam, 0f);
             if (t < burstAt) {
@@ -826,10 +774,7 @@ public final class RiftFxRenderer {
         }
     }
 
-    // Colour and easing --------------------------------------------------------------------------------
-
-    /** The colour of {@code index}; a prism turns through all four with {@code phase}. */
-    static float[] tint(int index, float phase) {
+static float[] tint(int index, float phase) {
         if (index != RiftFx.PRISM) {
             return COLOURS[Math.min(COLOURS.length - 1, Math.max(0, index))];
         }
@@ -845,10 +790,7 @@ public final class RiftFxRenderer {
         return 1f - (1f - t) * (1f - t) * (1f - t);
     }
 
-    // Geometry -----------------------------------------------------------------------------------------
-
-    /** Triangles in camera-relative space, one draw per pass. */
-    private static final class Batch {
+private static final class Batch {
         private final Matrix4f m;
         private final Vec3 cam;
         private final Vector3f left;
@@ -876,7 +818,6 @@ public final class RiftFxRenderer {
                     .color(r, g, b, Math.max(0f, Math.min(1f, a))).endVertex();
         }
 
-        /** A soft round glow facing the camera. */
         void glow(double x, double y, double z, float radius, float r, float g, float b, float a) {
             if (a <= 0.01f || radius <= 0.001f) {
                 return;
@@ -892,7 +833,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** A camera-facing ribbon from a to b, bright along its axis and soft at its sides. */
         void ribbon(double ax, double ay, double az, double bx, double by, double bz, float width,
                     float r, float g, float b, float alphaA, float alphaB) {
             if (width <= 0.001f || (alphaA <= 0.01f && alphaB <= 0.01f)) {
@@ -912,7 +852,6 @@ public final class RiftFxRenderer {
             quad(ax, ay, az, alphaA, ax + sx, ay + sy, az + sz, 0f, bx + sx, by + sy, bz + sz, 0f, bx, by, bz, alphaB, r, g, b);
         }
 
-        /** A ribbon with hard edges: the same alpha across its whole width, no soft falloff. */
         void hardRibbon(double ax, double ay, double az, double bx, double by, double bz, float width,
                         float r, float g, float b, float alpha) {
             if (width <= 0.001f || alpha <= 0.01f) {
@@ -932,7 +871,6 @@ public final class RiftFxRenderer {
                     bx + sx, by + sy, bz + sz, alpha, bx - sx, by - sy, bz - sz, alpha, r, g, b);
         }
 
-        /** A tapered tube of {@code sides} faces standing on (x, y, z): base radius r0, top radius r1, alpha fading a0 to a1. */
         void prism(double x, double y, double z, float r0, float r1, float h, int sides, float[] c, float a0, float a1) {
             if (h <= 0.01f || (a0 <= 0.01f && a1 <= 0.01f)) {
                 return;
@@ -945,7 +883,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** A four-sided cone from (bx, by, bz) along (dx, dy, dz), {@code len} long, {@code w} wide at the base. */
         void spike(double bx, double by, double bz, double dx, double dy, double dz, float len, float w, float[] c,
                    float aBase, float aTip) {
             if (len <= 0.01f || w <= 0.001f || (aBase <= 0.01f && aTip <= 0.01f)) {
@@ -972,10 +909,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /**
-         * A cut gem in world space: eight facets lit from one side, tumbling by {@code yaw} and {@code pitch},
-         * with white edges. {@code hot} is the colour the lit facets and edges lean toward.
-         */
         void gem(double cx, double cy, double cz, float radius, float half, float yaw, float pitch, float[] c, float[] hot,
                  float alpha) {
             if (alpha <= 0.01f || radius <= 0.001f) {
@@ -1021,7 +954,6 @@ public final class RiftFxRenderer {
             v(x3, y3, z3, r, g, b, a3);
         }
 
-        /** A soft ring lying flat; a prism ring carries each rift's colour in its own quarter. */
         void flatRing(double x, double y, double z, float radius, float width, int colour, float alpha, float t) {
             if (alpha <= 0.01f || radius <= 0.01f) {
                 return;
@@ -1039,7 +971,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** A flat disc, bright at the rim and faint in the middle. */
         void flatDisc(double x, double y, double z, float radius, float[] c, float alpha) {
             if (alpha <= 0.01f) {
                 return;
@@ -1052,7 +983,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** A thin line lying on the ground. */
         void flatLine(double x0, double y, double z0, double x1, double y1, double z1, float width, float[] c, float alpha) {
             double dx = x1 - x0, dz = z1 - z0;
             double len = Math.sqrt(dx * dx + dz * dz);
@@ -1064,7 +994,6 @@ public final class RiftFxRenderer {
             quad(x0, y, z0, alpha, x0 + nx, y, z0 + nz, 0f, x1 + nx, y1, z1 + nz, 0f, x1, y1, z1, alpha, c[0], c[1], c[2]);
         }
 
-        /** A low wall of light standing on a ring, brightest at its foot, ragged at its crest. */
         void wall(double x, double y, double z, float radius, float height, int colour, float alpha, float t) {
             if (alpha <= 0.01f) {
                 return;
@@ -1080,7 +1009,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** A pointed-oval slit standing upright and turned to the camera. */
         void lens(double x, double y, double z, float halfWidth, float halfHeight, float r, float g, float b, float alpha,
                   boolean solid) {
             if (alpha <= 0.01f || halfWidth <= 0.001f) {
@@ -1100,7 +1028,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** The burning lips of a slit. */
         void lensRim(double x, double y, double z, float halfWidth, float halfHeight, float thickness, float[] c, float alpha) {
             if (alpha <= 0.01f || halfWidth <= 0.001f) {
                 return;
@@ -1119,7 +1046,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** A hexagon outline facing the camera. */
         void hexagon(double x, double y, double z, float radius, float thickness, float[] c, float alpha) {
             for (int i = 0; i < 6; i++) {
                 double a0 = Math.PI * 2 * i / 6, a1 = Math.PI * 2 * (i + 1) / 6;
@@ -1131,7 +1057,6 @@ public final class RiftFxRenderer {
             }
         }
 
-        /** The horizontal unit vector across the camera's view of (x, z). */
         private double[] horizontalSide(double x, double z) {
             double dx = x - cam.x, dz = z - cam.z;
             double len = Math.sqrt(dx * dx + dz * dz);

@@ -7,12 +7,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import org.joml.Matrix4f;
 
-/**
- * With a shader pack on, the custom skies (the eldritch invasion and the sky clash) skip the sky pass -
- * the pack would recolour them, fog them or paint its own sky over them - and are drawn here instead,
- * after the pack has composited the frame. The sky pass hands over its camera pose and projection
- * unchanged; they live for one frame only.
- */
 @Environment(EnvType.CLIENT)
 public final class SkyShaderOverlay {
     private static boolean eldritch;
@@ -47,7 +41,6 @@ public final class SkyShaderOverlay {
         SkyShaderOverlay.partialTick = partialTick;
     }
 
-    /** Called right after the world (and any shader pack's composite) has been drawn, before the hand. */
     public static void render() {
         if (!eldritch && !clash && !sunder) return;
         boolean drawEldritch = eldritch;
@@ -67,7 +60,6 @@ public final class SkyShaderOverlay {
                 EldritchSkyRenderer.render(pose, partialTick, false, false);
             }
             if (drawClash) {
-                // Pushed out past the terrain and depth-tested against it, so blocks stand in front.
                 PoseStack pose = new PoseStack();
                 pose.last().pose().set(VIEW);
                 pose.scale(stretch(), stretch(), stretch());
@@ -90,7 +82,6 @@ public final class SkyShaderOverlay {
         }
     }
 
-    /** How far a sky drawn at radius ~100 is pushed out so it sits past all loaded terrain. */
     static float stretch() {
         float blocks = net.minecraft.client.Minecraft.getInstance().options.getEffectiveRenderDistance() * 16f;
         return Math.max(1f, blocks * 1.6f / 100f);

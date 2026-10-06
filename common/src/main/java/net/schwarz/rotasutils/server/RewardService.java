@@ -31,27 +31,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/** Grants rewards. Every path is guarded against duplicate claims. */
 public final class RewardService {
     private static final Random RANDOM = new Random();
 
     private RewardService() {
     }
 
-    /**
-     * What triggered a grant. The claim key derived from this is what makes a
-     * reward impossible to claim twice.
-     */
     public record Context(String claimKeyPrefix, DangerRank rank, boolean firstCompletion,
                           boolean repeatCompletion, double contributionShare, int optionalObjectivesDone,
                           double xpScale) {
-
         public Context(String claimKeyPrefix, DangerRank rank, boolean firstCompletion,
                        boolean repeatCompletion, double contributionShare, int optionalObjectivesDone) {
             this(claimKeyPrefix, rank, firstCompletion, repeatCompletion, contributionShare, optionalObjectivesDone, 1.0);
         }
 
-        /** Scales only EXP rewards, used by the season's repeatable-quest diminishing. */
         public Context withXpScale(double scale) {
             return new Context(claimKeyPrefix, rank, firstCompletion, repeatCompletion, contributionShare,
                     optionalObjectivesDone, Double.isFinite(scale) ? Math.max(0, scale) : 1.0);
@@ -72,8 +65,23 @@ public final class RewardService {
         }
     }
 
-    /** Result of a grant, used to build the "you received" summary. */
     public record Granted(List<Component> lines, List<Reward> pendingChoices) {
+    }
+
+    private static void startFollowUp(ServerPlayer player, String questId) {
+        var server = player.server;
+        server.tell(new net.minecraft.server.TickTask(server.getTickCount(), () -> {
+            if (player.isRemoved() || player.hasDisconnected()) {
+                return;
+            }
+            RotasData data = RotasData.get(server);
+            if (data.progress(player.getUUID()).active(questId) != null) {
+                return;
+            }
+            QuestService.ActionResult result = QuestService.accept(player, data, questId, "", true);
+            player.sendSystemMessage(Component.literal(result.message())
+                    .withStyle(result.success() ? ChatFormatting.YELLOW : ChatFormatting.RED));
+        }));
     }
 
     public static Granted grant(ServerPlayer player, RotasData data, List<Reward> rewards, Context context) {
@@ -117,7 +125,6 @@ public final class RewardService {
         return new Granted(lines, choices);
     }
 
-    /** Grants a single player-selected reward, refusing a second pick from the same pool. */
     public static boolean grantChoice(ServerPlayer player, RotasData data, Reward reward, Context context) {
         PlayerProgress progress = data.progress(player.getUUID());
         String key = context.claimKeyPrefix() + ":choice:" + reward.pool();
@@ -158,9 +165,6 @@ public final class RewardService {
         switch (reward.type()) {
             case ROTAS_XP -> {
                 long amount = Math.round(params.getInt("amount", 0) * scale * context.xpScale());
-                if (params.getBool("scale_with_rank", true) && context.rank() != null) {
-                    amount = Math.round(amount * data.levelConfig().rankMultiplier(context.rank()));
-                }
                 if (params.getBool("scale_with_level", false)) {
                     amount = Math.round(amount * (1.0 + progress.level() / 100.0));
                 }
@@ -198,9 +202,12 @@ public final class RewardService {
                 ResourceLocation itemId = params.getId("item");
                 if (itemId != null && BuiltInRegistries.ITEM.containsKey(itemId)) {
                     int amount = Math.max(1, (int) Math.round(params.getInt("amount", 1) * scale));
-                    ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(itemId), amount);
-                    lines.add(Component.literal(amount + "x ").append(stack.getHoverName()));
-                    give(player, stack);
+                    var item = BuiltInRegistries.ITEM.get(itemId);
+                    lines.add(Component.literal(amount + "x ").append(new ItemStack(item).getHoverName()));
+                    int max = Math.max(1, item.getMaxStackSize());
+                    for (int left = amount; left > 0; left -= max) {
+                        give(player, new ItemStack(item, Math.min(left, max)));
+                    }
                 }
             }
             case CURRENCY -> {
@@ -211,8 +218,6 @@ public final class RewardService {
                 lines.add(Component.literal("+" + amount + " " + objective).withStyle(ChatFormatting.GOLD));
             }
             case VANILLA_XP -> {
-                // Compatibility alias for old quest data. Vanilla XP no longer exists as a
-                // progression currency, so legacy rewards are migrated into Rotas XP.
                 long amount = Math.round(params.getInt("amount", 0) * scale * context.xpScale());
                 if (amount > 0) {
                     ProgressService.addExperience(player, data, amount, true);
@@ -231,10 +236,13 @@ public final class RewardService {
             }
             case UNLOCK_QUEST -> {
                 String questId = params.getString("quest", "");
+                QuestDef unlocked = data.quest(questId);
                 if (!questId.isEmpty() && progress.unlockedQuests().add(questId)) {
-                    QuestDef unlocked = data.quest(questId);
                     lines.add(ThaiText.c("rotasutils.msg.reward.new_quest",
                             unlocked == null ? questId : unlocked.name()).withStyle(ChatFormatting.YELLOW));
+                }
+                if (unlocked != null && unlocked.followUp() && unlocked.published()) {
+                    startFollowUp(player, questId);
                 }
             }
             case UNLOCK_SKILL -> {
@@ -278,8 +286,14 @@ public final class RewardService {
                 lines.add(ThaiText.c("rotasutils.msg.reward.reputation", amount, faction));
             }
             case TITLE -> {
-                progress.questVariables().put("title", params.getString("title", ""));
-                lines.add(ThaiText.c("rotasutils.msg.reward.title", params.getString("title", "")));
+                String titleId = params.getString("title", "");
+                var title = data.title(titleId);
+                if (title != null) {
+                    TitleService.award(player, data, title, true);
+                } else {
+                    progress.questVariables().put("title", titleId);
+                    lines.add(ThaiText.c("rotasutils.msg.reward.title", titleId));
+                }
             }
             case PRESTIGE -> {
                 progress.setPrestige(progress.prestige() + Math.max(1, params.getInt("amount", 1)));
@@ -301,12 +315,10 @@ public final class RewardService {
         }
     }
 
-    /** Runs a reward command as the server, with {@code @p} replaced by the player. */
     public static void runCommand(ServerPlayer player, String command) {
         if (command == null || command.isBlank()) {
             return;
         }
-        // The server setting "allow quest commands" was saved and shown but never consulted.
         if (!RotasData.get(player.server).serverSettings().allowQuestCommands()) {
             Rotasutils.LOG.info("Skipped reward command because quest commands are disabled: {}", command);
             return;
@@ -345,7 +357,6 @@ public final class RewardService {
         player.teleportTo(level, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, player.getYRot(), player.getXRot());
     }
 
-    /** Parses the "x,y,z" strings written by the world position picker. */
     public static BlockPos parsePos(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;

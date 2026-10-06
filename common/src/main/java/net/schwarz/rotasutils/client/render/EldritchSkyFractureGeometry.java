@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.client.render;
 
 import java.util.Random;
 
-/** Cached 40-100 degree celestial scars with delayed side branches. */
 public final class EldritchSkyFractureGeometry {
     public static final int MAX_FRACTURES = 8;
     public static final int MAX_POINTS = 18;

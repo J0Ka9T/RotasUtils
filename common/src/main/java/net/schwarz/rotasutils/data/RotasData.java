@@ -3,6 +3,7 @@ package net.schwarz.rotasutils.data;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.LevelResource;
@@ -20,19 +21,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
-/**
- * The single world-attached store for all RotasUtils content and player records.
- *
- * <p>Templates (quests, boards, skill categories, level config) and player progress
- * live in the same {@link SavedData} instance but in separate maps, so editing content
- * never rewrites player records. Minecraft's SavedData writes through a temp file and
- * renames, which gives the atomic save the spec asks for.
- */
 public final class RotasData extends SavedData {
     public static final String FILE_ID = Rotasutils.MOD_ID + "_data";
 
@@ -41,43 +37,35 @@ public final class RotasData extends SavedData {
     private final Map<String, net.schwarz.rotasutils.npc.NpcDef> npcs = new LinkedHashMap<>();
     private final Map<String, SkillCategory> categories = new LinkedHashMap<>();
     private final Map<String, net.schwarz.rotasutils.job.JobDef> jobs = new LinkedHashMap<>();
-    /** Admin level zones; mobs without a monster profile read their band from here. */
     private final Map<String, net.schwarz.rotasutils.core.ZoneDef> zones = new LinkedHashMap<>();
     private final Map<String, net.schwarz.rotasutils.house.HouseDefinition> houses = new LinkedHashMap<>();
     private final Map<String, net.schwarz.rotasutils.house.HouseTenancy> houseTenancies = new LinkedHashMap<>();
     private net.schwarz.rotasutils.house.HouseConfig houseConfig = net.schwarz.rotasutils.house.HouseConfig.defaults();
     private final Map<String, net.schwarz.rotasutils.house.HouseSettings> houseSettings = new LinkedHashMap<>();
-    /** Warp pillars, keyed by {@link net.schwarz.rotasutils.waystone.Waystone#id()}. */
     private final Map<String, net.schwarz.rotasutils.waystone.Waystone> waystones = new LinkedHashMap<>();
     public static final int WAYSTONE_LIMIT = 512;
-    /** Set once the starter stats were installed, so deleting them all does not bring them back. */
-    /** Mining sites, with the timers of their spent nodes. */
     private final Map<String, net.schwarz.rotasutils.mine.MiningSite> miningSites = new LinkedHashMap<>();
-    /** Title (ฉายา) definitions, and who holds each unique one. */
     private final Map<String, net.schwarz.rotasutils.title.TitleDef> titles = new LinkedHashMap<>();
     private final Map<String, UUID> uniqueTitleOwners = new LinkedHashMap<>();
     private boolean titlesSeeded;
-    /** Starter-title batches added after a world's first seeding; each is installed once, then respected. */
     private final java.util.Set<String> seededTitleBatches = new java.util.LinkedHashSet<>();
-    /** Nemeses by id, with their bodies, victims and ambush timers. */
     private final Map<Integer, net.schwarz.rotasutils.nemesis.Nemesis> nemeses = new LinkedHashMap<>();
     private int nextNemesisId;
-    /** Running world events by id. */
     private final Map<Integer, net.schwarz.rotasutils.worldevent.WorldEvent> worldEvents = new LinkedHashMap<>();
     private int nextWorldEventId;
-    /** Level/stat system revision every player record was last wiped to; see ProgressService.STAT_SYSTEM_VERSION. */
     private int statSystemVersion;
-    /** Live zone spawn point state by "zoneId#pointId"; zone content lives in {@link #zones}. */
     private final Map<String, net.schwarz.rotasutils.core.ZoneEncounterState> zoneEncounters = new java.util.LinkedHashMap<>();
     public static final int ENCOUNTER_LIMIT = 4096;
     private final Map<UUID, PlayerProgress> players = new LinkedHashMap<>();
+    private PlayerFiles playerFiles;
+    private MinecraftServer playerServer;
+    private final Set<UUID> pendingPlayers = new HashSet<>();
     private final java.util.Set<UUID> kernelTransactions = new java.util.HashSet<>();
     private net.schwarz.rotasutils.server.RpgKernel kernel;
     private LevelConfig levelConfig = new LevelConfig();
     private ServerSettings serverSettings = new ServerSettings();
     public void setServerSettings(ServerSettings settings) { this.serverSettings = settings; setDirty(); }
     private final List<String> auditLog = new ArrayList<>();
-    /** World-scoped windowed counters: bounty limits and merchant stock share this bounded store. */
     private final Map<String, long[]> counters = new LinkedHashMap<>();
     private net.schwarz.rotasutils.core.ContentHistory contentHistory = new net.schwarz.rotasutils.core.ContentHistory(this::setDirty);
     private net.schwarz.rotasutils.core.ConfigHistory configHistory = new net.schwarz.rotasutils.core.ConfigHistory(this::setDirty);
@@ -86,7 +74,6 @@ public final class RotasData extends SavedData {
 
     private static RotasData instance;
 
-    /** Set when the stored file exists but could not be read; see {@link #fresh(MinecraftServer)}. */
     private boolean saveBlocked;
 
     public static RotasData get(MinecraftServer server) {
@@ -95,20 +82,62 @@ public final class RotasData extends SavedData {
             throw new IllegalStateException("RotasUtils: overworld unavailable");
         }
         RotasData data = overworld.getDataStorage().computeIfAbsent(RotasData::load, () -> fresh(server), FILE_ID);
-        // Logout events still fire while a stopping server disconnects everyone; pinning the
-        // static then would keep the old world's store alive after clearInstance().
         if (server.isRunning()) {
             instance = data;
         }
+        data.attachPlayerFiles(server);
         return data;
     }
 
-    /**
-     * Supplier for an absent store. DimensionDataStorage logs and swallows any load exception and
-     * then asks for a new instance, which the next autosave would write over the real file, wiping
-     * every player record. An existing file at this point therefore means the load failed: keep a
-     * copy, refuse to save over it, and say so loudly.
-     */
+    private void attachPlayerFiles(MinecraftServer server) {
+        if (playerFiles != null || saveBlocked) {
+            return;
+        }
+        Path dataDir = server.getWorldPath(LevelResource.ROOT).resolve("data");
+        PlayerFiles files = new PlayerFiles(dataDir.resolve("rotasutils_players"));
+        Map<UUID, PlayerProgress> stored = files.loadAll();
+        Set<UUID> inlineOnly = new HashSet<>(players.keySet());
+        inlineOnly.removeAll(stored.keySet());
+        players.putAll(stored);
+        if (!inlineOnly.isEmpty()) {
+            Path legacy = dataDir.resolve(FILE_ID + ".dat");
+            Path backup = dataDir.resolve(FILE_ID + ".dat.pre-player-split");
+            try {
+                if (Files.exists(legacy) && !Files.exists(backup)) {
+                    Files.copy(legacy, backup);
+                }
+            } catch (IOException e) {
+                Rotasutils.LOG.error("RotasUtils could not back up {} before splitting players", legacy, e);
+            }
+            pendingPlayers.addAll(inlineOnly);
+            setDirty();
+            Rotasutils.LOG.info("RotasUtils is moving {} players into per-player files", inlineOnly.size());
+        }
+        playerFiles = files;
+        playerServer = server;
+    }
+
+    private void flushPlayers() {
+        for (ServerPlayer online : playerServer.getPlayerList().getPlayers()) {
+            if (players.containsKey(online.getUUID())) {
+                pendingPlayers.add(online.getUUID());
+            }
+        }
+        for (Iterator<UUID> it = pendingPlayers.iterator(); it.hasNext(); ) {
+            PlayerProgress progress = players.get(it.next());
+            if (progress == null) {
+                it.remove();
+                continue;
+            }
+            try {
+                playerFiles.write(progress);
+                it.remove();
+            } catch (IOException | RuntimeException e) {
+                Rotasutils.LOG.error("RotasUtils could not save player {}; will retry", progress.playerId(), e);
+            }
+        }
+    }
+
     private static RotasData fresh(MinecraftServer server) {
         RotasData data = new RotasData();
         Path file = server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(FILE_ID + ".dat");
@@ -127,7 +156,6 @@ public final class RotasData extends SavedData {
         return data;
     }
 
-    /** Stops this store from ever being written; used when the real file failed to load. */
     void blockSaves() {
         saveBlocked = true;
     }
@@ -141,7 +169,6 @@ public final class RotasData extends SavedData {
         return !saveBlocked && super.isDirty();
     }
 
-    /** Server-side convenience accessor for code that already knows a server exists. */
     public static RotasData instance() {
         return instance;
     }
@@ -160,9 +187,7 @@ public final class RotasData extends SavedData {
         this.kernel = kernel;
     }
 
-    // Quests ---------------------------------------------------------------
-
-    public Map<String, QuestDef> quests() {
+public Map<String, QuestDef> quests() {
         return quests;
     }
 
@@ -175,7 +200,6 @@ public final class RotasData extends SavedData {
         setDirty();
     }
 
-    /** Publishes kernel-owned canonical quests without replacing independently authored definitions. */
     public void reconcileKernelQuests(Map<String, KernelQuestAdapter.Projection> projections) {
         java.util.Objects.requireNonNull(projections, "projections");
         for (Map.Entry<String, KernelQuestAdapter.Projection> entry : projections.entrySet()) {
@@ -215,13 +239,14 @@ public final class RotasData extends SavedData {
                     board.setFeaturedQuestId("");
                 }
             }
+            for (var npc : npcs.values()) {
+                npc.questIds().remove(id);
+            }
             setDirty();
         }
     }
 
-    // Boards ---------------------------------------------------------------
-
-    public Map<String, BoardConfig> boards() {
+public Map<String, BoardConfig> boards() {
         return boards;
     }
 
@@ -234,7 +259,6 @@ public final class RotasData extends SavedData {
         setDirty();
     }
 
-    /** Removes a board and every quest's link to it; false when no such board existed. */
     public boolean removeBoard(String id) {
         if (boards.remove(id) == null) {
             return false;
@@ -246,9 +270,7 @@ public final class RotasData extends SavedData {
         return true;
     }
 
-    // NPCs -----------------------------------------------------------------
-
-    public Map<String, net.schwarz.rotasutils.npc.NpcDef> npcs() {
+public Map<String, net.schwarz.rotasutils.npc.NpcDef> npcs() {
         return npcs;
     }
 
@@ -267,9 +289,7 @@ public final class RotasData extends SavedData {
         }
     }
 
-    // Skill tree -----------------------------------------------------------
-
-    public Map<String, SkillCategory> categories() {
+public Map<String, SkillCategory> categories() {
         return categories;
     }
 
@@ -288,7 +308,6 @@ public final class RotasData extends SavedData {
         }
     }
 
-    /** Finds a node across every category; node ids are unique server wide. */
     public net.schwarz.rotasutils.skill.SkillNode findNode(String nodeId) {
         for (SkillCategory category : categories.values()) {
             net.schwarz.rotasutils.skill.SkillNode node = category.node(nodeId);
@@ -299,9 +318,7 @@ public final class RotasData extends SavedData {
         return null;
     }
 
-    // Jobs and character stats ---------------------------------------------
-
-    public Map<String, net.schwarz.rotasutils.job.JobDef> jobs() {
+public Map<String, net.schwarz.rotasutils.job.JobDef> jobs() {
         return jobs;
     }
 
@@ -323,10 +340,7 @@ public final class RotasData extends SavedData {
         }
     }
 
-
-    // Mining sites ---------------------------------------------------------
-
-    public Map<String, net.schwarz.rotasutils.mine.MiningSite> miningSites() {
+public Map<String, net.schwarz.rotasutils.mine.MiningSite> miningSites() {
         return miningSites;
     }
 
@@ -343,9 +357,7 @@ public final class RotasData extends SavedData {
         return removed;
     }
 
-    // Nemeses --------------------------------------------------------------
-
-    public Map<Integer, net.schwarz.rotasutils.nemesis.Nemesis> nemeses() {
+public Map<Integer, net.schwarz.rotasutils.nemesis.Nemesis> nemeses() {
         return nemeses;
     }
 
@@ -353,7 +365,6 @@ public final class RotasData extends SavedData {
         return nemeses.get(id);
     }
 
-    /** The next nemesis id; ids are never reused, so a stale body can never be mistaken for a new record. */
     public int nextNemesisId() {
         nextNemesisId = Math.max(1, nextNemesisId + 1);
         setDirty();
@@ -373,9 +384,7 @@ public final class RotasData extends SavedData {
         return removed;
     }
 
-    // World events ---------------------------------------------------------
-
-    public Map<Integer, net.schwarz.rotasutils.worldevent.WorldEvent> worldEvents() {
+public Map<Integer, net.schwarz.rotasutils.worldevent.WorldEvent> worldEvents() {
         return worldEvents;
     }
 
@@ -398,10 +407,7 @@ public final class RotasData extends SavedData {
         return removed;
     }
 
-    // Titles ---------------------------------------------------------------
-
-    /** True once a batch of starter titles added after the first seeding has been installed in this world. */
-    public boolean titleBatchSeeded(String batch) {
+public boolean titleBatchSeeded(String batch) {
         return seededTitleBatches.contains(batch);
     }
 
@@ -444,15 +450,10 @@ public final class RotasData extends SavedData {
         setDirty();
     }
 
-    /** Who holds a unique title, or null while nobody does. */
     public UUID uniqueTitleOwner(String id) {
         return id == null ? null : uniqueTitleOwners.get(id);
     }
 
-    /**
-     * Claims a unique title for one player. Returns false when somebody else already holds it, which is
-     * what makes the title unique: the claim is decided here, on the server thread, once.
-     */
     public boolean claimUniqueTitle(String id, UUID player) {
         if (id == null || player == null) {
             return false;
@@ -466,7 +467,6 @@ public final class RotasData extends SavedData {
         return true;
     }
 
-    /** Releases a unique title, so it can be earned again. Used when an admin revokes one. */
     public void releaseUniqueTitle(String id) {
         if (uniqueTitleOwners.remove(id) != null) {
             setDirty();
@@ -482,9 +482,7 @@ public final class RotasData extends SavedData {
         setDirty();
     }
 
-    // Level zones ----------------------------------------------------------
-
-    public Map<String, net.schwarz.rotasutils.core.ZoneDef> zones() {
+public Map<String, net.schwarz.rotasutils.core.ZoneDef> zones() {
         return zones;
     }
 
@@ -503,9 +501,7 @@ public final class RotasData extends SavedData {
         }
     }
 
-    // Houses ---------------------------------------------------------------
-
-    public Map<String, net.schwarz.rotasutils.house.HouseDefinition> houses() { return houses; }
+public Map<String, net.schwarz.rotasutils.house.HouseDefinition> houses() { return houses; }
     public net.schwarz.rotasutils.house.HouseDefinition house(String id) { return houses.get(id); }
     public net.schwarz.rotasutils.house.HouseTenancy houseTenancy(String id) {
         return houseTenancies.getOrDefault(id, net.schwarz.rotasutils.house.HouseTenancy.available());
@@ -521,7 +517,6 @@ public final class RotasData extends SavedData {
         houseTenancies.put(id, tenancy); setDirty();
     }
     public void removeHouse(String id) { houses.remove(id); houseTenancies.remove(id); houseSettings.remove(id); setDirty(); }
-    /** This house's own price, guest access and welcome line; the default when none were set. */
     public net.schwarz.rotasutils.house.HouseSettings houseSettings(String id) {
         return houseSettings.getOrDefault(id, net.schwarz.rotasutils.house.HouseSettings.DEFAULT);
     }
@@ -530,15 +525,12 @@ public final class RotasData extends SavedData {
         if (settings == null || settings.isDefault()) houseSettings.remove(id); else houseSettings.put(id, settings);
         setDirty();
     }
-    /** The house's tier with its own price laid over it; null when the tier is unknown. */
     public net.schwarz.rotasutils.house.HouseTier houseTier(net.schwarz.rotasutils.house.HouseDefinition house) {
         return houseSettings(house.id()).apply(houseConfig.tier(house.tier()));
     }
     public void setHouseConfig(net.schwarz.rotasutils.house.HouseConfig config) { houseConfig = config; setDirty(); }
 
-    // Waystones ------------------------------------------------------------
-
-    public Map<String, net.schwarz.rotasutils.waystone.Waystone> waystones() {
+public Map<String, net.schwarz.rotasutils.waystone.Waystone> waystones() {
         return java.util.Collections.unmodifiableMap(waystones);
     }
 
@@ -546,7 +538,6 @@ public final class RotasData extends SavedData {
         return id == null ? null : waystones.get(id);
     }
 
-    /** Adds or replaces a pillar; the world limit keeps a griefed server from growing its save. */
     public void putWaystone(net.schwarz.rotasutils.waystone.Waystone waystone) {
         java.util.Objects.requireNonNull(waystone, "waystone");
         if (!waystones.containsKey(waystone.id()) && waystones.size() >= WAYSTONE_LIMIT) {
@@ -560,7 +551,6 @@ public final class RotasData extends SavedData {
         if (waystones.remove(id) == null) {
             return false;
         }
-        // A pillar that is gone must not stay in anyone's list, or its row would warp nowhere.
         for (PlayerProgress progress : players.values()) {
             progress.forgetWaystone(id);
         }
@@ -568,9 +558,7 @@ public final class RotasData extends SavedData {
         return true;
     }
 
-    // Level ----------------------------------------------------------------
-
-    public LevelConfig levelConfig() {
+public LevelConfig levelConfig() {
         return levelConfig;
     }
 
@@ -583,19 +571,23 @@ public final class RotasData extends SavedData {
         return serverSettings;
     }
 
-    // Players --------------------------------------------------------------
-
-    public PlayerProgress progress(UUID playerId) {
-        return players.computeIfAbsent(playerId, id -> {
+public PlayerProgress progress(UUID playerId) {
+        PlayerProgress progress = players.computeIfAbsent(playerId, id -> {
             PlayerProgress created = new PlayerProgress(id);
             created.setLevel(levelConfig.startingLevel());
             setDirty();
             return created;
         });
+        pendingPlayers.add(playerId);
+        return progress;
     }
 
     public PlayerProgress peek(UUID playerId) {
-        return players.get(playerId);
+        PlayerProgress progress = players.get(playerId);
+        if (progress != null) {
+            pendingPlayers.add(playerId);
+        }
+        return progress;
     }
 
     public void beginKernelTransaction(UUID playerId) {
@@ -612,21 +604,19 @@ public final class RotasData extends SavedData {
         return players.values();
     }
 
-    // Windowed counters ------------------------------------------------------
+    public Collection<PlayerProgress> allPlayersToModify() {
+        pendingPlayers.addAll(players.keySet());
+        setDirty();
+        return players.values();
+    }
 
-    /** Bounded so packs cannot grow world data without limit. */
-    public static final int COUNTER_LIMIT = 4096;
+public static final int COUNTER_LIMIT = 4096;
 
-    /** Current value of a counter, or 0 when it is unset or its window has rolled over. */
     public long counter(String key, long window) {
         long[] entry = counters.get(key);
         return entry == null || entry[0] != window ? 0 : entry[1];
     }
 
-    /**
-     * Adds to a windowed counter without exceeding {@code limit}. Returns false and changes nothing
-     * when the limit would be passed, so callers can gate a claim on the result.
-     */
     public boolean addCounter(String key, long window, long limit, long amount) {
         if (key == null || key.isEmpty() || key.length() > 200 || amount < 0 || limit < 0) {
             throw new IllegalArgumentException("Invalid counter request");
@@ -641,7 +631,6 @@ public final class RotasData extends SavedData {
         return true;
     }
 
-    /** Writes a counter back to a lower value, used to release a reservation a failed action made. */
     public void releaseCounter(String key, long window, long value) {
         if (key == null || key.isEmpty() || key.length() > 200 || value < 0) {
             throw new IllegalArgumentException("Invalid counter release");
@@ -652,7 +641,6 @@ public final class RotasData extends SavedData {
         setDirty();
     }
 
-    /** Drops counters whose window has rolled over, keeping the store from accumulating dead keys. */
     public int pruneCounters(long window) {
         int before = counters.size();
         counters.entrySet().removeIf(entry -> entry.getValue()[0] != window);
@@ -662,9 +650,7 @@ public final class RotasData extends SavedData {
 
     public Map<String, long[]> counters() { return java.util.Collections.unmodifiableMap(counters); }
 
-    // Zone encounters ------------------------------------------------------
-
-    public Map<String, net.schwarz.rotasutils.core.ZoneEncounterState> zoneEncounters() {
+public Map<String, net.schwarz.rotasutils.core.ZoneEncounterState> zoneEncounters() {
         return java.util.Collections.unmodifiableMap(zoneEncounters);
     }
 
@@ -672,7 +658,6 @@ public final class RotasData extends SavedData {
         return zoneEncounters.get(key);
     }
 
-    /** Stores a spawn point's live state; an unchanged state does not dirty the save. */
     public void putZoneEncounter(String key, net.schwarz.rotasutils.core.ZoneEncounterState state) {
         if (key == null || key.isEmpty() || key.length() > 200 || state == null) {
             throw new IllegalArgumentException("Invalid zone encounter");
@@ -693,9 +678,7 @@ public final class RotasData extends SavedData {
         }
     }
 
-    // Audit ----------------------------------------------------------------
-
-    public List<String> auditLog() {
+public List<String> auditLog() {
         return auditLog;
     }
 
@@ -710,9 +693,7 @@ public final class RotasData extends SavedData {
         setDirty();
     }
 
-    // Persistence ----------------------------------------------------------
-
-    @Override
+@Override
     public CompoundTag save(CompoundTag tag) {
         tag.put("quests", Nbt.saveList(quests.values(), QuestDef::save));
         tag.put("boards", Nbt.saveList(boards.values(), BoardConfig::save));
@@ -741,7 +722,11 @@ public final class RotasData extends SavedData {
         tag.put("world_events", Nbt.saveList(worldEvents.values(), net.schwarz.rotasutils.worldevent.WorldEvent::save));
         tag.putInt("next_world_event_id", nextWorldEventId);
         tag.putInt("stat_system_version", statSystemVersion);
-        tag.put("players", Nbt.saveList(players.values(), PlayerProgress::save));
+        if (playerFiles == null) {
+            tag.put("players", Nbt.saveList(players.values(), PlayerProgress::save));
+        } else {
+            flushPlayers();
+        }
         tag.put("level_config", levelConfig.save());
         tag.put("server_settings", serverSettings.save());
         tag.put("audit", Nbt.saveStrings(auditLog));
@@ -790,7 +775,6 @@ public final class RotasData extends SavedData {
         }
         data.titlesSeeded = tag.getBoolean("titles_seeded");
         data.seededTitleBatches.addAll(Nbt.loadStrings(tag, "title_batches"));
-        // One unreadable nemesis or event is dropped on its own; it must never block the whole world store.
         var nemesisTags = tag.getList("nemeses", net.minecraft.nbt.Tag.TAG_COMPOUND);
         for (int index = 0; index < nemesisTags.size() && data.nemeses.size() < 1024; index++) {
             try {
@@ -832,7 +816,6 @@ public final class RotasData extends SavedData {
         for (net.minecraft.nbt.Tag raw : tag.getList("house_settings", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
             CompoundTag entry = (CompoundTag) raw;
             String id = entry.getString("house");
-            // Settings of a house that no longer exists are dropped rather than failing the load.
             if (data.houses.containsKey(id)) data.houseSettings.put(id, net.schwarz.rotasutils.house.HouseSettings.load(entry));
         }
         for (net.schwarz.rotasutils.waystone.Waystone waystone

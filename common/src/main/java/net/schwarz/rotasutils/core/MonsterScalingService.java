@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Pure ordered monster scaling. Entity mutation remains in the server-side MonsterService. */
 public final class MonsterScalingService {
     public enum Curve { LINEAR, SOFT_EXPONENTIAL, CUSTOM_CURVE }
 

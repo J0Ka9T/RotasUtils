@@ -18,7 +18,6 @@ class SeasonMathTest {
         assertEquals(25, SeasonMath.powerCost(rules.mainBaseXp, rules.mainExponent, 1));
         assertEquals(3147, SeasonMath.powerCost(rules.mainBaseXp, rules.mainExponent, 10));
         assertEquals(396_214, SeasonMath.powerCost(rules.mainBaseXp, rules.mainExponent, 100), 100);
-        // The brief's cumulative column was about 35% low; level 100 really needs about 13 million.
         long toHundred = SeasonMath.powerTotal(rules.mainBaseXp, rules.mainExponent, 101);
         assertTrue(toHundred > 12_800_000 && toHundred < 13_100_000, "total " + toHundred);
         long subTotal = SeasonMath.powerTotal(rules.subBaseXp, rules.subExponent, 20);
@@ -26,7 +25,6 @@ class SeasonMathTest {
     }
 
     @Test void pvpStatScaleKeepsOnlyTheConfiguredShareOfTheBonus() {
-        // +100% stat damage at half efficiency: a hit of 2 becomes 1.5.
         assertEquals(0.75, SeasonMath.statBonusScale(1.0, 0.5), 1e-9);
         assertEquals(1.0, SeasonMath.statBonusScale(1.0, 1.0), 1e-9);
         assertEquals(1.0, SeasonMath.statBonusScale(0, 0.5), 1e-9);
@@ -42,7 +40,6 @@ class SeasonMathTest {
     @Test void monsterPartyAndPenalties() {
         assertEquals(100 * (1 + 0.15 * 20), SeasonMath.monsterXp(100, 20, 0.15), 1e-9);
         assertEquals(1.0, SeasonMath.overLevelMultiplier(25, 20, 5, 0.1, 0.9), 1e-9);
-        // Smooth, not a cliff: each step past the grace costs a little less than the one before it.
         double a = SeasonMath.overLevelMultiplier(28, 20, 5, 0.1, 0.9);
         double b = SeasonMath.overLevelMultiplier(33, 20, 5, 0.1, 0.9);
         double c = SeasonMath.overLevelMultiplier(43, 20, 5, 0.1, 0.9);
@@ -70,7 +67,6 @@ class SeasonMathTest {
     @Test void ranksIncludeDAndTheAveragePlayerLandsOnB() {
         SeasonRules rules = new SeasonRules();
         assertEquals("D", SeasonMath.rankFor(1600, rules.seasonRankTotal, rules.rankThresholds, RANKS));
-        // Average player from the brief: main 2500 + side 750 + daily 780 + weekly 480.
         assertEquals("B", SeasonMath.rankFor(4510, rules.seasonRankTotal, rules.rankThresholds, RANKS));
         assertEquals("F", SeasonMath.rankFor(0, rules.seasonRankTotal, rules.rankThresholds, RANKS));
         assertEquals("SS", SeasonMath.rankFor(6900, rules.seasonRankTotal, rules.rankThresholds, RANKS));
@@ -116,7 +112,6 @@ class SeasonMathTest {
             assertTrue(kills >= last - 1e-9, "kills per level never fall");
             last = kills;
         }
-        // The cost is that many kills of a monster of the same level.
         long cost = LevelPacing.cost(10, 100, rules.killsAtStart, rules.killsAtMax, rules.killsCurve, rules.referenceMonsterXp, rules.monsterLevelBonus);
         double perKill = SeasonMath.monsterXp(rules.referenceMonsterXp, 10, rules.monsterLevelBonus);
         assertEquals(LevelPacing.killsFor(10, 100, rules.killsAtStart, rules.killsAtMax, rules.killsCurve) * perKill, cost, 1.0);

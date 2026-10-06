@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The event catalogue: which rule answers, what it pays, and what a hand-edited file may not break. */
 class EventCatalogTest {
     private record Rule(EventType type, String filter) {
     }

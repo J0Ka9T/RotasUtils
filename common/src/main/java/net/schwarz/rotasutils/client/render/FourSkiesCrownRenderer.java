@@ -12,7 +12,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 
-/** Four colored streams meet in a small crown at the zenith. */
 @Environment(EnvType.CLIENT)
 final class FourSkiesCrownRenderer {
     private static final float RADIUS = 91f;
@@ -115,18 +114,12 @@ final class FourSkiesCrownRenderer {
         }
     }
 
-    // Zenith nexus ---------------------------------------------------------------------------------
-
-    private static final int STRUGGLE_SECTORS = 96;
+private static final int STRUGGLE_SECTORS = 96;
     private static final float SHOCK_PERIOD = 5.5f;
     private static final int BOLT_SEGMENTS = 22;
     private static final float[] MIX = new float[3];
     private static final float[] WHITE = {1f, 0.97f, 0.92f};
 
-    /**
-     * A ring around the zenith split four ways, one colour per sky. Each sky's share surges and gives
-     * ground on its own slow rhythm, and the front where two meet burns white: the clash itself.
-     */
     private static void struggle(BufferBuilder buffer, Matrix4f matrix, float seconds, float strength) {
         float turn = seconds * 3.2f;
         for (int sector = 0; sector < STRUGGLE_SECTORS; sector++) {
@@ -134,7 +127,6 @@ final class FourSkiesCrownRenderer {
             float a1 = a0 + 360f / STRUGGLE_SECTORS;
             float contest = blend(a0 + 180f / STRUGGLE_SECTORS - turn, seconds);
             float flare = 0.75f + 0.25f * (float) Math.sin(seconds * 3.1f + sector * 0.7f);
-            // Two bands: a broad coloured one and a thin hot inner edge.
             ringQuad(buffer, matrix, a0, a1, 83.4f, 88.6f, MIX, strength * (0.30f + 0.25f * contest) * flare);
             ringQuad(buffer, matrix, a0, a1, 86.9f, 87.7f, MIX, strength * 0.55f * flare);
             if (contest > 0.05f) {
@@ -143,10 +135,6 @@ final class FourSkiesCrownRenderer {
         }
     }
 
-    /**
-     * Fills {@link #MIX} with the colour owning compass angle {@code angle} and returns how contested it
-     * is: 1 on the front between two skies, 0 deep inside one.
-     */
     private static float blend(float angle, float seconds) {
         float best = 0f;
         float second = 0f;
@@ -175,7 +163,6 @@ final class FourSkiesCrownRenderer {
         return best <= 1.0E-4f ? 0f : (float) Math.pow(second / best, 3.0);
     }
 
-    /** Every few seconds the skies strike together and a ring of force rolls down off the zenith. */
     private static void shockwaves(BufferBuilder buffer, Matrix4f matrix, float seconds, float strength) {
         for (int wave = 0; wave < 2; wave++) {
             float cycle = seconds / SHOCK_PERIOD + wave * 0.5f;
@@ -196,7 +183,6 @@ final class FourSkiesCrownRenderer {
         }
     }
 
-    /** The point where the four meet: a white-hot star inside a halo that cycles through all four colours. */
     private static void core(BufferBuilder buffer, Matrix4f matrix, float seconds, float strength) {
         float cycle = seconds / SHOCK_PERIOD;
         float strike = (float) Math.exp(-Math.pow((cycle - Math.round(cycle)) / 0.035f, 2));
@@ -208,13 +194,11 @@ final class FourSkiesCrownRenderer {
         MIX[0] = EldritchSkyCelestial.lerp(COLORS[first][0], COLORS[next][0], mix);
         MIX[1] = EldritchSkyCelestial.lerp(COLORS[first][1], COLORS[next][1], mix);
         MIX[2] = EldritchSkyCelestial.lerp(COLORS[first][2], COLORS[next][2], mix);
-        // Bloom round the meeting point; stronger over a shader pack, whose own bloom never reaches this sky.
         disc(buffer, matrix, -seconds * 3f, 30f + 10f * strike, MIX,
                 strength * 0.30f * heart * (ShaderPackCompat.overlay() ? 1f : 0.6f));
         disc(buffer, matrix, seconds * 6f, 11f + 5f * strike, MIX, strength * 0.28f * heart);
         disc(buffer, matrix, -seconds * 9f, 5.5f + 2f * strike, MIX, strength * 0.45f * heart);
         disc(buffer, matrix, seconds * 14f, 2.2f + 1.5f * strike, WHITE, strength * 0.9f * heart);
-        // Four spikes, one toward each sky, flickering as they lock.
         for (int i = 0; i < YAWS.length; i++) {
             float length = (7f + 9f * strike) * (0.8f + 0.2f * (float) Math.sin(seconds * 5.3f + i * 2.1f));
             for (int s = 0; s < 6; s++) {
@@ -227,10 +211,6 @@ final class FourSkiesCrownRenderer {
         }
     }
 
-    /**
-     * Lightning jumping between two neighbouring skies, high over the horizon where their light crosses.
-     * The path re-forks nine times a second from a hash, so nothing random is made per frame.
-     */
     private static void bolt(BufferBuilder buffer, Matrix4f matrix, int index, float seconds, float strength) {
         float window = seconds * 0.21f + index * 0.29f;
         float phase = window - (float) Math.floor(window);
@@ -259,7 +239,6 @@ final class FourSkiesCrownRenderer {
 
     private static void segment(BufferBuilder buffer, Matrix4f matrix, float yaw0, float elevation0,
                                 float yaw1, float elevation1, float width, float[] color, float alpha) {
-        // Width is split between yaw and elevation by the segment's direction, so it stays a ribbon.
         float dy = (yaw1 - yaw0) * (float) Math.cos(Math.toRadians(0.5f * (elevation0 + elevation1)));
         float de = elevation1 - elevation0;
         float length = (float) Math.sqrt(dy * dy + de * de);
@@ -267,7 +246,6 @@ final class FourSkiesCrownRenderer {
         float ny = -de / length * width;
         float ne = dy / length * width;
         float yawScale = 1f / (float) Math.cos(Math.toRadians(0.5f * (elevation0 + elevation1)));
-        // Two halves, bright on the centre line and clear at the sides: a filament of light.
         for (int side = -1; side <= 1; side += 2) {
             EldritchSkyCelestial.direction(yaw0, elevation0, A);
             EldritchSkyCelestial.direction(yaw0 + side * ny * yawScale, elevation0 + side * ne, B);
@@ -281,7 +259,6 @@ final class FourSkiesCrownRenderer {
     }
 
     private static void disc(BufferBuilder buffer, Matrix4f matrix, float turn, float radius, float[] color, float alpha) {
-        // A smooth falloff from a bright centre to a clear rim: no visible rings.
         if (alpha <= 0.002f) return;
         for (int sector = 0; sector < 32; sector++) {
             float a0 = turn + sector * 11.25f;
@@ -290,11 +267,9 @@ final class FourSkiesCrownRenderer {
         }
     }
 
-    /** A patch of the band between two elevations, between two compass angles. */
     private static void ringQuad(BufferBuilder buffer, Matrix4f matrix, float a0, float a1, float low, float high,
                                  float[] color, float alpha) {
         if (alpha <= 0.002f) return;
-        // Feathered: brightest along the middle, gone at both edges, so bands read as light, not strips.
         float mid = 0.5f * (low + high);
         band(buffer, matrix, a0, a1, low, mid, color, 0f, alpha);
         band(buffer, matrix, a0, a1, mid, high, color, alpha, 0f);

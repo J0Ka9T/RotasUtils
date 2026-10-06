@@ -10,13 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * One running world event (เหตุการณ์โลก): what kind it is, where it is, when it ends and who helped.
- *
- * <p>An event covers either a zone - it then follows the zone's own shapes - or a circle in the
- * wilderness. What the kind does is read from the season rules by {@link #type()} every time, so a
- * reload that retunes a kind retunes the running event too, and a kind that was deleted ends it.</p>
- */
 public final class WorldEvent {
     public static final int MAX_CONTRIBUTORS = 256;
 
@@ -65,10 +58,6 @@ public final class WorldEvent {
         return Math.max(0, endsAt - now);
     }
 
-    /**
-     * True when a position is inside the event. A zone event asks the zone (null when it was deleted,
-     * which the service treats as the event's end); a wilderness event is a vertical cylinder.
-     */
     public boolean contains(ZoneDef zone, String dimensionId, double x, double y, double z) {
         if (!dimension.equals(dimensionId)) {
             return false;
@@ -81,7 +70,6 @@ public final class WorldEvent {
         return dx * dx + dz * dz <= (double) radius * radius;
     }
 
-    /** One unit of the goal done by a player. Returns the event's total. */
     public int contribute(UUID player, int amount) {
         int step = Math.max(0, amount);
         progress = (int) Math.min(Integer.MAX_VALUE, (long) progress + step);

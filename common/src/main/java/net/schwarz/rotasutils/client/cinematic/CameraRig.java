@@ -5,24 +5,10 @@ import net.schwarz.rotasutils.ability.RedTimings;
 
 import java.util.Random;
 
-/**
- * The cinematic camera for Red Reversal: a keyframed director, not hard-coded wobbles. Every shot is
- * defined relative to the caster and the target (their positions and the direction between them), so
- * the same film works whichever way the player was facing. It controls position, look-at point, FOV,
- * roll and shake, on Bezier/PCHIP curves, cuts between shots on short blends, and blends in from and out
- * to the player's own camera.
- *
- * <p>The film: <b>1 Reveal</b> - a low crane that rises behind the caster as the core is born;
- * <b>2 Orbit</b> - a slow arc round them, closing in; <b>3 Macro</b> - almost on the core as it is squeezed,
- * lens tightening; <b>4 Face</b> - across the core to the caster's face, the core nearest the lens, then the fist,
- * then the eyes; <b>5 Release</b> - a whip to low behind the caster, down the line of fire, following the mass out
- * with a lens punch; <b>6 Aftermath</b> - a high wide angle taking in both the caster and the blast.</p>
- */
 public final class CameraRig {
     private CameraRig() {
     }
 
-    /** The caster and target as the camera sees them. */
     public record Frame(Vec3 feet, double yawDeg, Vec3 forward, Vec3 right, Vec3 target, Vec3 impact) {
         public static Frame of(Vec3 feet, Vec3 target, Vec3 impact) {
             double dx = target.x - feet.x, dz = target.z - feet.z;
@@ -34,7 +20,6 @@ public final class CameraRig {
         }
     }
 
-    /** One frame of camera: where it is, where it points, how wide, how rolled, and how much of the cutscene it is. */
     public record Shot(Vec3 position, double yaw, double pitch, double roll, double fov, double weight) {
     }
 
@@ -43,7 +28,6 @@ public final class CameraRig {
 
     private static final Vec3 UP = new Vec3(0, 1, 0);
 
-    /** When each shot begins, and how long its blend in from the last one takes (a whip for the release). */
     private static final double[] STARTS = {RedTimings.CAMERA_DETACH, 1.6, 3.0, 3.75, RedTimings.RELEASE_ANIM - 0.01, 5.1};
     private static final double[] BLENDS = {0.5, 0.4, 0.16, 0.12, 0.05, 0.28};
 
@@ -52,25 +36,21 @@ public final class CameraRig {
     private static final Curves.Track ROLL = Curves.Track.of(0, 0, 0.25, 0, 1.6, -1.2, 3.0, -2, 3.4, -3.5, 3.75, -4.5,
             4.0, -2.5, 4.34, -1, 4.4, 3.0, 4.7, 0.4, 5.1, 0.3, 6.2, 0);
 
-    /** How much of the view the cutscene owns at {@code t}: blends in over the detach, out over the return. */
     public static double weight(double t) {
         return Curves.smootherstep(Curves.window(t, RedTimings.CAMERA_DETACH, RedTimings.CAMERA_ARRIVE))
                 * (1 - Curves.smootherstep(Curves.window(t, RedTimings.CAMERA_RETURN, RedTimings.END)));
     }
 
-    /** Field of view in degrees at {@code t}, blending from and back to {@code baseFov}. */
     public static double fovAt(double t, double baseFov) {
         return Curves.lerp(baseFov, FOV.at(t), weight(t));
     }
 
-    /** When the pressure wave of a MAX cast lands (seconds since it began), or -1: the camera takes a kick then. */
     static double kickAt = -1;
 
     private static double kick(double t) {
         return kickAt < 0 ? 0 : RedProfile.shakeKick(t - kickAt);
     }
 
-    /** Camera roll in degrees at {@code t}, including the impact and tremor. */
     public static double rollAt(double t, int seed) {
         double weight = weight(t);
         Random r = new Random(seed);
@@ -81,9 +61,7 @@ public final class CameraRig {
         return ROLL.at(t) * weight + charge * 0.9 * Curves.fbm(t * 1.7 + 4, s3) + impulse * 2.6 * Curves.fbm(t * 30.0 + 3, s1);
     }
 
-    // The shots ---------------------------------------------------------------------------------------
-
-    private static Rig reveal(double t, Frame f) {
+private static Rig reveal(double t, Frame f) {
         double u = Curves.window(t, STARTS[0], STARTS[1]);
         double az = Math.toRadians(Curves.lerp(22, 48, Curves.smootherstep(u)));
         double radius = Curves.lerp(3.4, 3.0, u);
@@ -142,11 +120,6 @@ public final class CameraRig {
         };
     }
 
-    /**
-     * The camera at {@code t} seconds. {@code normalPos}/{@code normalLook} are the player's own camera, which the
-     * cinematic blends in from and back out to, {@code baseFov} the FOV the player normally plays at, {@code sockets}
-     * where the core and face are, and {@code follow} where the attack is (or null before it is fired).
-     */
     public static Shot shot(double t, Frame f, RedPose.Sockets sockets, Vec3 follow, Vec3 normalPos, Vec3 normalLook,
                             double baseFov, int seed) {
         int i = 0;
@@ -167,7 +140,6 @@ public final class CameraRig {
         pos = lerp(normalPos, pos, weight);
         look = lerp(normalLook, look, weight);
 
-        // Shake: layered noise (a low tremor and a high buzz that grow with the charge) plus one impact impulse.
         double charge = RedProfile.shakeCharge(t) * weight;
         double impulse = (RedProfile.shakeImpulse(t) + kick(t)) * weight;
         Random r = new Random(seed);

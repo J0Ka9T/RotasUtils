@@ -34,7 +34,6 @@ def ramp(t, stops):
     return np.stack([np.interp(t, ps, cs[:, k]) for k in range(3)], -1).astype(np.float32)
 
 
-# ---- masks --------------------------------------------------------------------------------------------
 def _mask(draw):
     im = Image.new('L', (N, N), 0)
     draw(ImageDraw.Draw(im))
@@ -122,10 +121,9 @@ def light(h, k=60.0):
     return diff, spec
 
 
-# ---- canvas -------------------------------------------------------------------------------------------
 class Canvas:
     def __init__(self):
-        self.p = np.zeros((N, N, 3), np.float32)   # premultiplied colour
+        self.p = np.zeros((N, N, 3), np.float32)
         self.a = np.zeros((N, N), np.float32)
 
     def put(self, col, alpha):
@@ -176,7 +174,6 @@ def solid(cv, mask, stops, depth=0.05, k=60.0, tex=None, texamt=0.12, spec=0.5, 
     cv.put(np.clip(col, 0, 1), mask)
 
 
-# ---- palettes -----------------------------------------------------------------------------------------
 GOLD = [(0, '#3a1f0c'), (0.35, '#a8641c'), (0.65, '#e2a736'), (0.85, '#ffdf7a'), (1, '#fff6c8')]
 STEEL = [(0, '#15161f'), (0.35, '#4a4e63'), (0.65, '#8a90aa'), (0.85, '#c9cfe4'), (1, '#f4f6ff')]
 IRON = [(0, '#101018'), (0.35, '#34364a'), (0.65, '#5d617a'), (0.85, '#9096b0'), (1, '#d8dcf0')]
@@ -188,7 +185,6 @@ VOID = [(0, '#050308'), (0.35, '#1a1424'), (0.65, '#382e4a'), (0.85, '#665a7c'),
 STONE = [(0, '#1c1a22'), (0.3, '#46414e'), (0.6, '#76707e'), (0.85, '#a8a2ae'), (1, '#dcd8de')]
 
 
-# ---- gems ---------------------------------------------------------------------------------------------
 def gem(cv, cx, cy, s, pal, seed=1, sparkle=False):
     """A cut crystal: six crown facets round a table, each lit by the way it faces."""
     O = [(0, -0.5), (0.36, -0.26), (0.36, 0.24), (0, 0.5), (-0.36, 0.24), (-0.36, -0.26)]
@@ -214,7 +210,6 @@ def gem(cv, cx, cy, s, pal, seed=1, sparkle=False):
     table = poly(T)
     t = np.clip(0.55 + 0.4 * grad + noise * 0.05, 0, 1)
     cv.put(ramp(t, stops), table)
-    # bright and dark facet edges
     for i in range(6):
         j = (i + 1) % 6
         e = stroke([O[i], T[i]], 0.0035 * s * 2)
@@ -222,7 +217,6 @@ def gem(cv, cx, cy, s, pal, seed=1, sparkle=False):
         cv.put(ramp(np.array(0.35 + 0.65 * f), stops) * (0.85 + 0.15 * f), e * 0.65)
         e2 = stroke([T[i], T[j]], 0.003 * s * 2)
         cv.put(rgb(pal['hi']), e2 * 0.55)
-    # inner glow in the table, and a specular flash on the lit crown
     core = np.exp(-(((X - cx) / (0.16 * s)) ** 2 + ((Y - cy - 0.03 * s) / (0.2 * s)) ** 2))
     cv.put(rgb(pal['hi']), core * 0.55 * table)
     flash = ellipse(cx - 0.15 * s, cy - 0.2 * s, 0.05 * s, 0.09 * s)
@@ -263,7 +257,6 @@ def gems():
         cv.save('enriched_' + name)
 
 
-# ---- glyph masks (outer, inner) -----------------------------------------------------------------------
 def flame():
     pts = chaikin([(0.5, 0.2), (0.58, 0.34), (0.56, 0.42), (0.66, 0.5), (0.68, 0.62), (0.6, 0.74), (0.5, 0.78),
                    (0.4, 0.74), (0.32, 0.62), (0.35, 0.5), (0.43, 0.42), (0.42, 0.32)], 4)
@@ -310,7 +303,6 @@ def droplet():
     for i in range(60):
         t = math.pi * 2 * i / 60
         r = 0.2 * (1 - math.sin(t) * 0.0)
-        # teardrop: pointed top, round bottom
         x = 0.5 + 0.2 * math.sin(t) * (0.5 - 0.5 * math.cos(t) * 0 + 0.5 * (1 - math.cos(t)) * 0.0)
         y = 0.6 - 0.22 * math.cos(t)
         pts.append((x, y))
@@ -334,7 +326,6 @@ def runes():
     rng = np.random.default_rng(7)
     for name, (fn, mid, deep, hot) in SIGNS.items():
         cv = Canvas()
-        # a rough slab: super-ellipse with jittered edge, one chipped corner
         pts = []
         for i in range(36):
             t = math.pi * 2 * i / 36
@@ -362,12 +353,10 @@ def runes():
         h_extra = noise * 0.05 + grain * 0.012 - blur(cracks, 1.2) * 0.1
         solid(cv, slab, STONE, depth=0.07, k=70, tex=noise, texamt=0.16, spec=0.12, extra_h=h_extra)
         cv.put(rgb('#14121a'), cracks * slab * 0.85)
-        # speckles of lighter mineral
         spk = (fbm(23, (1.6,), (1,)) > 1.7).astype(np.float32)
         cv.put(rgb('#cfc9d4'), spk * slab * 0.25)
         outer, inner = fn()
         outer = np.clip(outer * slab, 0, 1)
-        # the carved groove, then the light held in it
         groove = blur(outer, 2.4)
         cv.put(rgb('#0a0810'), np.clip(groove * 1.4, 0, 1) * slab * 0.8)
         d = edt(outer)
@@ -381,7 +370,6 @@ def runes():
         cv.save('rune_' + name)
 
 
-# ---- scrolls ------------------------------------------------------------------------------------------
 def paper(cv, x0, y0, x1, y1, seed, tone):
     m = poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
     ragged = fbm(seed, (6,), (1,))
@@ -462,7 +450,6 @@ def scrolls():
         paper(cv, x0, 0.25, x1, 0.75, 40 + i, tone)
         roll(cv, 0.11, 0.13, 0.89, 0.29, wood)
         roll(cv, 0.11, 0.71, 0.89, 0.87, wood)
-        # shadow the roll casts on the sheet
         sh = blur(poly([(x0, 0.29), (x1, 0.29), (x1, 0.33), (x0, 0.33)]), 6)
         cv.put(rgb('#3a2410'), sh * 0.28 * (cv.a > 0.5))
         ink_lines(cv, [0.36, 0.43, 0.5, 0.57], x0 + 0.07, x1 - 0.07, 60 + i, ink)
@@ -479,7 +466,6 @@ def scrolls():
         wax(cv, 0.685, 0.665, 0.085, wc, 70 + i, sym)
         cv.outline(rgb('#1c1008'), 0.008)
         cv.save(name)
-    # the two sky scrolls carry one glowing glyph instead of writing
     def abyss_glyph():
         pts = chaikin([(0.5, 0.36), (0.6, 0.44), (0.56, 0.5), (0.62, 0.62), (0.5, 0.58), (0.38, 0.62), (0.44, 0.5), (0.4, 0.44)], 3)
         return poly(pts)
@@ -505,7 +491,6 @@ def scrolls():
         cv.save(name)
 
 
-# ---- sigils -------------------------------------------------------------------------------------------
 def hexagon(r=0.46):
     return poly([(0.5 + r * math.cos(math.pi / 3 * i + math.pi / 6), 0.5 + r * math.sin(math.pi / 3 * i + math.pi / 6)) for i in range(6)])
 
@@ -586,7 +571,6 @@ def emblem_masks(name):
             pts.append((0.5 + math.cos(a) * r, 0.5 + math.sin(a) * r))
         outer = stroke(pts, 0.045, 0.012)
         return outer, stroke(pts[8:], 0.02, 0.006)
-    # maw
     outer = circle(0.5, 0.5, 0.3)
     return outer, np.zeros((N, N), np.float32)
 
@@ -596,7 +580,6 @@ def medal(name, kind, metal, field, emblem, epal, gem_col=None):
     m = medal_mask(kind).astype(np.float32)
     d = edt(m)
     rw = 0.075 * N
-    # rim: a raised band, then a recessed field
     rim = np.where(d < rw, 0.6 + 0.4 * np.sin(np.clip(d / rw, 0, 1) * math.pi), 0.42 + 0.06 * np.clip((d - rw) / (0.05 * N), 0, 1))
     brushed = fbm(12, (1.5, 40), (1, 0.6))
     h = rim + brushed * 0.007
@@ -605,20 +588,16 @@ def medal(name, kind, metal, field, emblem, epal, gem_col=None):
     col = np.clip(ramp(t, metal) + sp[..., None] * 0.55, 0, 1)
     cv.put(col, m)
     inner = (d > rw * 1.02).astype(np.float32)
-    # the field: dark, lit softly from the top left, with a faint engraved ring
     fld = np.clip(0.55 + 0.45 * ((-(X - 0.5) - (Y - 0.5)) * 0.9), 0, 1) * 0.6
     cv.put(ramp(fld, [(0, field[0]), (0.6, field[1]), (1, field[2])]), inner * m)
     engr = np.clip(1 - np.abs(d - rw * 1.9) / 2.2, 0, 1) * inner
     cv.put(rgb(field[0]) * 0.6, engr * 0.55)
     cv.put(ramp(np.array(0.75), metal), np.clip(1 - np.abs(d - rw * 1.9 - 3) / 1.5, 0, 1) * inner * 0.25)
-    # inner shadow at the field's top-left edge
     ish = np.clip(1 - (d - rw) / 14, 0, 1) * inner * np.clip(0.5 + 0.5 * ((-(X - 0.5) - (Y - 0.5))), 0, 1)
     cv.put(np.zeros(3, np.float32), ish * 0.5)
-    # studs on the rim
     ys, xs = np.nonzero((d > rw * 0.35) & (d < rw * 0.65))
     outer, inn = emblem_masks(emblem)
     outer = np.clip(outer, 0, 1) * inner
-    # the emblem, raised and lit, with a hot core
     eh = dome(outer, 0.03) + 0.1
     diff2, sp2 = light(eh, 50)
     ecol = ramp(np.clip(diff2 * 0.9, 0, 1), [(0, epal[0]), (0.55, epal[1]), (1, epal[2])])
@@ -667,7 +646,6 @@ def sigils():
     ]
     for name, shape, metal, emb, epal in specs:
         medal(name, shape, metals[metal], fields[metal], emb, epal)
-    # convergence: a gold ring round four coloured quarters
     cv = Canvas()
     m = circle(0.5, 0.5, 0.46)
     d = edt(m)
@@ -690,7 +668,6 @@ def sigils():
     cv.save('convergence_sigil')
 
 
-# ---- key and rings ------------------------------------------------------------------------------------
 def metal_shape(cv, mask, stops, depth=0.035, seed=5):
     n = fbm(seed, (1.5, 30), (1, 0.6))
     solid(cv, mask, stops, depth=depth, k=65, tex=n, texamt=0.08, spec=0.6, extra_h=n * 0.015)
@@ -722,7 +699,6 @@ def rings():
         prongs = np.maximum(poly([(0.4, 0.34), (0.46, 0.24), (0.5, 0.36)]), poly([(0.6, 0.34), (0.54, 0.24), (0.5, 0.36)]))
         base = ellipse(0.5, 0.36, 0.13, 0.055)
         metal_shape(cv, np.clip(band + prongs + base, 0, 1), metal, 0.045, 9)
-        # a sheen along the band's upper left
         sheen = blur(stroke([(0.27, 0.55), (0.34, 0.4)], 0.008), 3)
         cv.put(np.array([1, 1, 1], np.float32), sheen * 0.4 * band)
         gem(cv, 0.5, 0.27, 0.26, gpal, seed=10)
@@ -731,7 +707,6 @@ def rings():
         cv.save(name)
 
 
-# ---- Red Reversal: a dark crimson core wrapped in unstable plasma ---------------------------------------
 def red_reversal(max_=False):
     cv = Canvas()
     m = circle(0.5, 0.5, 0.36)
@@ -742,10 +717,8 @@ def red_reversal(max_=False):
     t = np.clip(diff * 0.9 + (n * 0.5 + 0.5) * 0.25 - 0.1, 0, 1)
     cv.glow(rgb('#ff2a1a') * 0.9, blur(m, 22) * 0.75)
     cv.put(np.clip(ramp(t, stops) + sp[..., None] * 0.35, 0, 1), m)
-    # a near-black heart, so the shell reads as a shell
     core = circle(0.5, 0.5, 0.17)
     cv.put(rgb('#0a0206'), blur(core, 3) * 0.85 * m)
-    # broken filaments arcing round it
     rng = np.random.default_rng(9)
     for k in range(9):
         a0 = rng.uniform(0, 6.28)
@@ -758,7 +731,6 @@ def red_reversal(max_=False):
     hot = blur(circle(0.4, 0.37, 0.05), 6)
     cv.put(rgb('#fff0d8'), hot * 0.7)
     if max_:
-        # MAX: a turning gold halo round the core, with four points like a crown
         halo = [(0.5 + math.cos(6.2832 * i / 48) * 0.44, 0.5 + math.sin(6.2832 * i / 48) * 0.44) for i in range(49)]
         cv.glow(rgb('#ffb040') * 0.8, blur(stroke(halo, 0.02), 8) * 0.6)
         cv.put(rgb('#ffc860'), blur(stroke(halo, 0.014, 0.014), 0.8))
@@ -774,12 +746,9 @@ def red_reversal_max():
     red_reversal(True)
 
 
-# ---- Hollow Purple: Blue and Red spiralling into a white-hot violet core -----------------------------------
 def hollow_purple():
     cv = Canvas()
-    # a faint cosmic halo
     cv.glow(rgb('#7a2cff') * 0.9, blur(circle(0.5, 0.5, 0.44), 20) * 0.7)
-    # blue and red lobes pulled toward each other
     for cx, cy, deep, hot in ((0.31, 0.5, '#04124a', '#5fd8ff'), (0.69, 0.5, '#3a0308', '#ff4a30')):
         m = circle(cx, cy, 0.19)
         n = fbm(21 if cx < 0.5 else 22, (30, 10, 4), (1, 0.7, 0.4))
@@ -788,7 +757,6 @@ def hollow_purple():
         t = np.clip(diff * 0.9 + (n * 0.5 + 0.5) * 0.25 - 0.1, 0, 1)
         cv.glow(rgb(hot) * 0.7, blur(m, 10) * 0.6)
         cv.put(np.clip(ramp(t, [(0, deep), (0.6, hot), (1, '#ffffff')]) + sp[..., None] * 0.3, 0, 1), m)
-    # the purple core between them
     m = circle(0.5, 0.5, 0.25)
     n = fbm(33, (24, 8, 3), (1, 0.7, 0.4))
     h = dome(m, 0.25) * 0.9 + n * 0.05
@@ -797,7 +765,6 @@ def hollow_purple():
     cv.glow(rgb('#b060ff') * 0.9, blur(m, 14) * 0.9)
     cv.put(np.clip(ramp(t, [(0, '#1a0038'), (0.4, '#5a18c8'), (0.8, '#b878ff'), (1, '#fff0ff')]) + sp[..., None] * 0.35, 0, 1), m)
     cv.put(rgb('#ffffff'), blur(circle(0.5, 0.5, 0.07), 5) * 0.95)
-    # broken ribbons orbiting
     rng = np.random.default_rng(5)
     for k in range(7):
         a0 = rng.uniform(0, 6.28)
@@ -809,7 +776,75 @@ def hollow_purple():
     cv.save('hollow_purple')
 
 
+def projection_sorcery():
+    cv = Canvas()
+    cells = ((0.34, 0.40, -0.20, 0.55), (0.50, 0.50, -0.06, 0.78), (0.66, 0.60, 0.08, 1.0))
+    for n, (cx, cy, tilt, lit) in enumerate(cells):
+        ca, sa = math.cos(tilt), math.sin(tilt)
+
+        def at(x, y):
+            return cx + x * ca - y * sa, cy + x * sa + y * ca
+
+        hw, hh = 0.17, 0.27
+        sheet = poly([at(-hw, -hh), at(hw, -hh), at(hw, hh), at(-hw, hh)])
+        inner = poly([at(-hw + 0.022, -hh + 0.022), at(hw - 0.022, -hh + 0.022), at(hw - 0.022, hh - 0.022), at(-hw + 0.022, hh - 0.022)])
+        grain = fbm(40 + n, (40, 12, 4), (1, 0.6, 0.3)) * 0.5 + 0.5
+        sheen = np.clip(1 - np.abs(np.linspace(0, 1, N)[None, :] + np.linspace(0, 1, N)[:, None] - (0.75 + 0.2 * n)) * 3, 0, 1)
+        tone = np.clip(0.18 + 0.30 * grain + 0.45 * sheen, 0, 1) * lit
+        cv.put(ramp(tone, [(0, '#0d1524'), (0.45, '#33506e'), (0.8, '#9cc4dc'), (1, '#eaf6ff')]), sheet * 0.93)
+        cv.put(rgb('#f2fbff') * lit, np.clip(sheet - inner, 0, 1) * 0.95)
+        lean = (0.10, 0.45, 0.25)[n]
+        hip = at(0.0, 0.06)
+        neck = at(0.11 * lean, -0.08)
+        body = stroke([hip, neck], 0.034, 0.030)
+        head = circle(*at(0.13 * lean + 0.01, -0.135), 0.036)
+        arm = stroke([neck, at((0.02, -0.10, 0.15)[n], (0.02, -0.02, -0.09)[n])], 0.016, 0.013)
+        leg1 = stroke([hip, at((0.03, 0.10, 0.07)[n], 0.20)], 0.018, 0.014)
+        leg2 = stroke([hip, at((-0.03, -0.11, -0.09)[n], (0.20, 0.15, 0.19)[n])], 0.018, 0.014)
+        fig = np.clip(body + head + arm + leg1 + leg2, 0, 1)
+        cv.put(rgb('#ff5a5a'), np.roll(fig, 5, 1) * 0.35 * lit)
+        cv.put(rgb('#5af0ff'), np.roll(fig, -5, 1) * 0.35 * lit)
+        cv.put(rgb('#f6fbff') * (0.55 + 0.45 * lit), fig * 0.95)
+    rng = np.random.default_rng(24)
+    ox, oy = 0.745, 0.515
+    for k in range(7):
+        ang = 6.283 * (k + rng.uniform(0, 0.7)) / 7
+        pts = [(ox, oy)]
+        for _ in range(5):
+            ang += rng.uniform(-0.45, 0.45)
+            pts.append((pts[-1][0] + math.cos(ang) * 0.035, pts[-1][1] + math.sin(ang) * 0.035))
+        cv.put(rgb('#ffffff'), stroke(pts, 0.006, 0.002) * 0.95)
+    cv.glow(rgb('#d8f2ff') * 0.9, blur(circle(ox, oy, 0.03), 8) * 0.9)
+    cv.outline(rgb('#060a12'), 0.012)
+    cv.save('projection_sorcery')
+
+
+def annihilator_stargun():
+    cv = Canvas()
+    cv.glow(rgb('#5a2cff') * 0.8, blur(circle(0.5, 0.5, 0.42), 22) * 0.55)
+    axis = [(0.10, 0.86), (0.72, 0.28)]
+    barrel = stroke(axis, 0.075, 0.055)
+    n = fbm(61, (30, 10, 4), (1, 0.6, 0.3))
+    h = dome(barrel, 0.06) * 0.9 + n * 0.05
+    diff, sp = light(h, 60)
+    t = np.clip(diff * 0.9 + (n * 0.5 + 0.5) * 0.15 - 0.05, 0, 1)
+    cv.put(np.clip(ramp(t, [(0, '#07060f'), (0.5, '#2a2760'), (1, '#8a86d8')]) + sp[..., None] * 0.3, 0, 1), barrel)
+    for k in range(4):
+        u = 0.22 + 0.15 * k
+        cx = axis[0][0] + (axis[1][0] - axis[0][0]) * u
+        cy = axis[0][1] + (axis[1][1] - axis[0][1]) * u
+        cv.put(rgb('#7ff4ff'), blur(stroke([(cx - 0.05, cy - 0.05), (cx + 0.05, cy + 0.05)], 0.011, 0.011), 0.8) * 0.9)
+    sx, sy = 0.78, 0.22
+    for ang, ln in ((0, 0.20), (math.pi / 2, 0.20), (math.pi / 4, 0.11), (3 * math.pi / 4, 0.11)):
+        dx, dy = math.cos(ang) * ln, math.sin(ang) * ln
+        cv.put(rgb('#e8fbff'), blur(stroke([(sx - dx, sy - dy), (sx + dx, sy + dy)], 0.026, 0.002), 0.8) * 0.95)
+    cv.glow(rgb('#9ff0ff') * 0.9, blur(circle(sx, sy, 0.05), 6) * 0.9)
+    cv.put(rgb('#ffffff'), blur(circle(sx, sy, 0.035), 2) * 0.98)
+    cv.outline(rgb('#07050f'), 0.012)
+    cv.save('annihilator_stargun')
+
+
 if __name__ == '__main__':
-    for f in (gems, runes, scrolls, sigils, keys, rings, red_reversal, red_reversal_max, hollow_purple):
+    for f in (gems, runes, scrolls, sigils, keys, rings, red_reversal, red_reversal_max, hollow_purple, projection_sorcery, annihilator_stargun):
         f()
         print('painted', f.__name__)

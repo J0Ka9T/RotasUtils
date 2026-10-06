@@ -13,10 +13,6 @@ import net.schwarz.rotasutils.server.DailyService;
 import net.schwarz.rotasutils.server.SeasonTrackService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * {@code /rotas daily} and {@code /rotas pass}: the journey page, a claim without it, and an
- * operator's reset for testing a track.
- */
 final class JourneyCommands {
     private JourneyCommands() {
     }

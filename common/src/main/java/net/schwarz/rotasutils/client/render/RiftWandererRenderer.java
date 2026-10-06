@@ -17,11 +17,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.schwarz.rotasutils.Rotasutils;
 import net.schwarz.rotasutils.entity.RiftWandererEntity;
 
-/**
- * The traveller: a hooded figure on the player model. While it steps out of the rift the solid body
- * is held back and a translucent copy is drawn instead, lit violet by the portal and fading to its
- * true colours as it clears the swirl. The eyes glow throughout.
- */
 @Environment(EnvType.CLIENT)
 public class RiftWandererRenderer extends LivingEntityRenderer<RiftWandererEntity, PlayerModel<RiftWandererEntity>> {
     private static final ResourceLocation SKIN = new ResourceLocation(Rotasutils.MOD_ID, "textures/entity/rift_wanderer.png");
@@ -40,11 +35,9 @@ public class RiftWandererRenderer extends LivingEntityRenderer<RiftWandererEntit
 
     @Override
     protected void scale(RiftWandererEntity entity, PoseStack pose, float partialTick) {
-        // Same as a player.
         pose.scale(0.9375f, 0.9375f, 0.9375f);
     }
 
-    /** The solid body only once it has fully arrived; the {@link Arrival} layer draws it before that. */
     @Override
     protected RenderType getRenderType(RiftWandererEntity entity, boolean visible, boolean translucent, boolean glowing) {
         if (entity.emergence(0f) < 1f && entity.arriving()) {
@@ -58,7 +51,6 @@ public class RiftWandererRenderer extends LivingEntityRenderer<RiftWandererEntit
         return entity.hasCustomName() && super.shouldShowName(entity);
     }
 
-    /** Translucent, portal-lit body while stepping out. */
     private static final class Arrival extends RenderLayer<RiftWandererEntity, PlayerModel<RiftWandererEntity>> {
         Arrival(RenderLayerParent<RiftWandererEntity, PlayerModel<RiftWandererEntity>> parent) {
             super(parent);
@@ -75,7 +67,6 @@ public class RiftWandererRenderer extends LivingEntityRenderer<RiftWandererEntit
             if (e <= 0.01f) {
                 return;
             }
-            // Violet-lit at first, true colours as it clears the swirl.
             float r = 0.55f + 0.45f * e;
             float g = 0.35f + 0.65f * e;
             float b = 1f;
@@ -86,7 +77,6 @@ public class RiftWandererRenderer extends LivingEntityRenderer<RiftWandererEntit
         }
     }
 
-    /** Emissive eyes under the hood, brightening as the body forms. */
     private static final class Eyes extends RenderLayer<RiftWandererEntity, PlayerModel<RiftWandererEntity>> {
         Eyes(RenderLayerParent<RiftWandererEntity, PlayerModel<RiftWandererEntity>> parent) {
             super(parent);

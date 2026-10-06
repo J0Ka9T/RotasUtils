@@ -7,14 +7,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Makes every RotasUtils translation key render in Thai, whatever language the game uses.
- *
- * <p>Item names, key bindings, tooltips and any {@code Component.translatable} the mod sends go
- * through the client language, so answering here covers text the mod does not draw itself. Only
- * keys present in RotasUtils' own Thai file are answered; vanilla and other mods keep the player's
- * chosen language. Signatures verified with javap against the loom-mapped 1.20.1 jar.</p>
- */
 @Mixin(ClientLanguage.class)
 public abstract class ClientLanguageThaiMixin {
     @Inject(method = "getOrDefault(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",

@@ -25,7 +25,6 @@ import net.schwarz.rotasutils.quest.reward.RewardType;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Level curve, rank requirements, experience sources and level-up rewards. */
 @Environment(EnvType.CLIENT)
 public class LevelManagerScreen extends RotasScreen {
     private CompoundTag editingBaseline;
@@ -43,7 +42,6 @@ public class LevelManagerScreen extends RotasScreen {
         }
     }
 
-    /** Text fields that accept a decimal, and whole-number fields where zero is meaningful. */
     private static final java.util.Set<String> DECIMAL_FIELDS = java.util.Set.of(
             "basexp", "exponent", "mobscale", "bossmult", "moddedmult", "mobhp", "mobdmg", "mobxpperlevel",
             "xpwhealth", "xpwdamage", "xpwarmor", "xpwtoughness", "xpwspeed", "xpwspeedbase", "xpwknockback", "xpwtier1hp", "xpwtier2hp", "xpwtier3hp");
@@ -70,7 +68,6 @@ public class LevelManagerScreen extends RotasScreen {
         super("Level System Manager", parent);
     }
 
-    /** Holds an unsaved draft of the level system: never rebuilt by a push, but warns when someone else changes it. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
@@ -162,7 +159,6 @@ public class LevelManagerScreen extends RotasScreen {
         row(label, "", "", action);
     }
 
-    /** A settings row: name on the left, current value on the right, hint underneath. */
     private void row(String label, String value, String help, String action) {
         labels.add(label);
         values.add(value);
@@ -214,7 +210,7 @@ public class LevelManagerScreen extends RotasScreen {
                 section("Per rank");
                 for (DangerRank rank : DangerRank.VALUES) {
                     row(rank.display() + "-Rank",
-                            "Lv " + draft.rankLevel(rank) + "   x" + draft.rankMultiplier(rank)
+                            "Lv " + draft.rankLevel(rank)
                                     + "   " + draft.rankQuestsRequired(rank) + " quests",
                             draft.rankAutoGrant(rank)
                                     ? "Granted automatically. Right-click to require manual granting."
@@ -450,7 +446,6 @@ public class LevelManagerScreen extends RotasScreen {
                 }
             }
         } else if (action.equals("pick:mobexclude")) {
-            // The picker starts with the current exclusions ticked, so unticking one removes it.
             minecraft.setScreen(EntityPickerScreen.many(this, draft.mobLevel().excludeEntities(), ids -> {
                 var excluded = draft.mobLevel().excludeEntities();
                 excluded.clear();
@@ -785,7 +780,6 @@ public class LevelManagerScreen extends RotasScreen {
         }
     }
 
-    /** Compact number so long experience totals stay readable in a narrow panel. */
     private static String format(long value) {
         if (value >= 1_000_000) {
             return String.format("%.1fM", value / 1_000_000.0);

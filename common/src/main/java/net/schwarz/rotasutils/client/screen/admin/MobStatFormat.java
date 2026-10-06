@@ -1,11 +1,9 @@
 package net.schwarz.rotasutils.client.screen.admin;
 
-/** Numbers for the mob stat table: pure, so it loads without Minecraft's registries. */
 final class MobStatFormat {
     private MobStatFormat() {
     }
 
-    /** Short enough to fit a column: 5000002 reads as 5M, 12345 as 12.3K. */
     static String fmt(double value) {
         double abs = Math.abs(value);
         if (abs >= 1e9) return trimFixed(value / 1e9, 2) + "B";

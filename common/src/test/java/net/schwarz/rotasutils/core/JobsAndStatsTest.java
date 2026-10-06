@@ -173,10 +173,7 @@ class JobsAndStatsTest {
             assertNotNull(job);
             assertFalse(job.mainAllowed());
             assertTrue(job.subAllowed());
-            assertFalse(job.masteryActivities().isEmpty());
         }
-        assertTrue(JobArchetypes.create("blacksmith").masteryActivities().contains("repair"));
-        assertTrue(JobArchetypes.create("rancher").masteryActivities().contains("horse_care"));
     }
 
     @Test
@@ -184,7 +181,6 @@ class JobsAndStatsTest {
         JobDef rogue = JobArchetypes.create("rogue");
         JobDef restored = JobDef.load(rogue.save());
         assertEquals(rogue.itemSelectors(), restored.itemSelectors());
-        assertEquals(rogue.masteryActivities(), restored.masteryActivities());
         assertEquals(rogue.save(), restored.save());
     }
 
@@ -209,7 +205,6 @@ class JobsAndStatsTest {
 
     @Test
     void templatesOnlyUseVanillaOrVerifiedRotasCommuAttributes() {
-        // IDs read from epic-fight-20.14.17 and irons_spellbooks-3.16.1 in the RotasCommu profile.
         java.util.Set<String> modded = java.util.Set.of(
                 "epicfight:staminar", "epicfight:stamina_regen", "epicfight:impact", "epicfight:armor_negation",
                 "epicfight:max_strikes", "epicfight:stun_armor", "epicfight:weight", "epicfight:execution_resistance",
@@ -239,5 +234,4 @@ class JobsAndStatsTest {
         assertEquals(-1.2, penalty.amount(JobSlot.SUB, 0.30), 0.0001);
         assertEquals(benefit, JobAttributeModifier.load(benefit.save()));
     }
-
 }

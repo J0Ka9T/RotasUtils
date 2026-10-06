@@ -9,15 +9,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Sweeps common small and mid-size monitors, fullscreen and windowed, at every vanilla GUI scale
- * option, through the real scale policy and layout, and checks the Character Hub fits and stays
- * readable.
- */
 class HubSmallMonitorFitTest {
     private static final int[][] MONITORS = {{1024, 768}, {1280, 720}, {1280, 800}, {1280, 1024}, {1366, 768},
             {1440, 900}, {1600, 900}, {1680, 1050}, {1920, 1080}};
-    /** Rough Windows client-area loss for a maximised window: borders, title bar and taskbar. */
     private static final int WINDOW_CHROME_W = 16;
     private static final int WINDOW_CHROME_H = 63;
 
@@ -45,7 +39,6 @@ class HubSmallMonitorFitTest {
         assertTrue(failures.isEmpty(), String.join("\n", failures));
     }
 
-    /** Vanilla Window#calculateScale without forced unicode; option 0 is auto. */
     private static int vanillaScale(int option, int w, int h) {
         int scale = 1;
         while (scale != option && scale < w && scale < h && w / (scale + 1) >= 320 && h / (scale + 1) >= 240) {

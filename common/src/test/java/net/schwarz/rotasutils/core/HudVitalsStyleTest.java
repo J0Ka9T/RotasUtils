@@ -19,7 +19,6 @@ class HudVitalsStyleTest {
         int exactlyFits = contentWidth - HudLayout.HEADER_GAP - 46;
         assertTrue(layout.headerFits(46, exactlyFits));
         assertFalse(layout.headerFits(46, exactlyFits + 1));
-        // A clearance wider than the whole content column can never fit beside the level.
         assertFalse(layout.headerFits(46, contentWidth));
         assertFalse(layout.headerFits(contentWidth, 1));
     }
@@ -50,7 +49,6 @@ class HudVitalsStyleTest {
     }
 
     @Test void everyRankLetterGetsAPlateRatherThanASliver() {
-        // A one-pixel glyph still gets the floor width; a real glyph gets its padding.
         assertEquals(HudLayout.RANK_BADGE_MIN, HudLayout.rankBadgeWidth(2));
         assertEquals(13, HudLayout.rankBadgeWidth(5));
         assertEquals(26, HudLayout.rankBadgeWidth(18));
@@ -70,7 +68,6 @@ class HudVitalsStyleTest {
     }
 
     @Test void aWideClearanceIsTheOnlyThingDroppedOnANarrowPanel() {
-        // On the narrowest GUI the level stays and the clearance is what gives way.
         HudLayout narrow = HudLayout.compute(320, 240, 2, false);
         assertTrue(HudLayout.VITALS_MIN_WIDTH <= narrow.vitalsWidth());
         assertTrue(narrow.labelWidth() >= 30);

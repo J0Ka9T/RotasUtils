@@ -7,11 +7,9 @@ import net.schwarz.rotasutils.util.Nbt;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-/** One effect attached to a skill node. */
 public final class SkillEffect {
     private EffectType type;
     private final Params params;
-    /** Optional gate, e.g. "only below 30% health"; empty means always active. */
     private String condition = "";
     private Stacking stacking = Stacking.ADD;
 
@@ -54,7 +52,6 @@ public final class SkillEffect {
         this.stacking = stacking;
     }
 
-    /** Total value contributed at the given rank, clamped by the configured maximum. */
     public double valueAt(int rank) {
         return valueAt(rank, 1);
     }
@@ -74,12 +71,6 @@ public final class SkillEffect {
         return params.getBool("percent", false);
     }
 
-    /**
-     * Stable modifier id for this effect.
-     *
-     * <p>Derived from the owning node id and effect index so a modifier is always
-     * replaced rather than stacked, even across restarts and skill tree edits.
-     */
     public static UUID modifierId(String nodeId, int effectIndex) {
         return UUID.nameUUIDFromBytes(("rotasutils:skill:" + nodeId + ":" + effectIndex).getBytes(StandardCharsets.UTF_8));
     }

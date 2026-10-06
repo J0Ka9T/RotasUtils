@@ -14,18 +14,12 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
-/**
- * What the season file's shape is at a path, read from {@link SeasonRules} itself: whether a value
- * is a list or a map whose entries an admin may add and remove, and what a fresh entry looks like.
- * The editor asks this instead of guessing from the JSON, so an empty list still knows its kind.
- */
 public final class SeasonSchema {
     private static final Gson GSON = new Gson();
 
     private SeasonSchema() {
     }
 
-    /** The Java type at {@code path}, or null when the path leaves the rules classes. */
     public static Type typeAt(List<String> path) {
         Type type = SeasonRules.class;
         for (String key : path) {
@@ -59,7 +53,6 @@ public final class SeasonSchema {
         return null;
     }
 
-    /** A list or map of structured entries (objects), where entries can be added and removed. */
     public static boolean isEntryCollection(List<String> path) {
         Type type = typeAt(path);
         Class<?> raw = raw(type);
@@ -69,13 +62,11 @@ public final class SeasonSchema {
         return false;
     }
 
-    /** True when entries are keyed by name (a map), false for a numbered list. */
     public static boolean isMap(List<String> path) {
         Class<?> raw = raw(typeAt(path));
         return raw != null && Map.class.isAssignableFrom(raw);
     }
 
-    /** True when the value at {@code path} is itself an entry of an add/remove collection. */
     public static boolean isEntry(List<String> path) {
         return path.size() > 1 && isEntryCollection(path.subList(0, path.size() - 1));
     }
@@ -84,7 +75,6 @@ public final class SeasonSchema {
         return type.isPrimitive() || type == String.class || Number.class.isAssignableFrom(type) || type == Boolean.class;
     }
 
-    /** A fresh entry for the collection at {@code path}: the entry class's own defaults. */
     public static JsonElement template(List<String> path) {
         Type type = typeAt(path);
         Class<?> raw = raw(type);
@@ -107,12 +97,6 @@ public final class SeasonSchema {
         }
     }
 
-    /**
-     * Adds an entry to the list or map at {@code path} in {@code root}. A list gets a copy of its last
-     * entry (so the admin tweaks a working example) or the template when empty; a map gets {@code key}.
-     *
-     * @return the new entry's path, or null when nothing was added
-     */
     public static List<String> add(JsonObject root, List<String> path, String key) {
         JsonElement target = SettingsTree.get(root, path);
         if (target == null) return null;
@@ -134,10 +118,6 @@ public final class SeasonSchema {
         return null;
     }
 
-    /**
-     * A copy of the last entry where every whole number that grows down the list (tier thresholds such
-     * as completions or points) grows by the same step again, so the new tier is valid as added.
-     */
     private static JsonElement nextStep(JsonArray array) {
         JsonElement last = array.get(array.size() - 1);
         JsonElement copy = last.deepCopy();
@@ -159,7 +139,6 @@ public final class SeasonSchema {
         return copy;
     }
 
-    /** Removes the entry at {@code path} from its list or map. */
     public static boolean remove(JsonObject root, List<String> path) {
         if (path.isEmpty()) return false;
         JsonElement owner = SettingsTree.get(root, path.subList(0, path.size() - 1));

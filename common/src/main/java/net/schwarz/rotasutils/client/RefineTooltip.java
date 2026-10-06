@@ -19,13 +19,6 @@ import net.schwarz.rotasutils.core.WeaponMemoryMath;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * What an item's RotasUtils marks are worth, shown wherever it is hovered.
- *
- * <p>The name already says "+7" and the card's own name says which card it is; this says what either of
- * them actually does. Every number comes from the server with the content snapshot, so a server that
- * retuned refinement or rewrote a card reads correctly here instead of showing the shipped defaults.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class RefineTooltip {
     private RefineTooltip() {
@@ -42,7 +35,6 @@ public final class RefineTooltip {
         appendMemory(stack, lines);
     }
 
-    /** Each inscribed rune in slot order, in its own colour, with what it does. */
     private static void appendRunes(ItemStack stack, List<Component> lines) {
         List<net.schwarz.rotasutils.core.RuneType> runes = net.schwarz.rotasutils.item.ItemRunes.read(stack);
         for (int i = 0; i < runes.size(); i++) {
@@ -58,7 +50,6 @@ public final class RefineTooltip {
         }
     }
 
-    /** What the weapon remembers: its rank, what it killed, and what that is worth now. */
     private static void appendMemory(ItemStack stack, List<Component> lines) {
         CompoundTag memory = WeaponMemory.read(stack);
         long kills = memory.getLong(WeaponMemoryMath.KILLS);
@@ -96,7 +87,6 @@ public final class RefineTooltip {
         }
     }
 
-    /** The refine level of a weapon or a piece of armour, and the bonus it carries. */
     private static void appendRefine(ItemStack stack, List<Component> lines) {
         int level = ItemRefine.level(stack);
         if (level <= 0) {
@@ -120,7 +110,6 @@ public final class RefineTooltip {
                 : "rotasutils.refine.tooltip.attack", amount)).withStyle(ChatFormatting.DARK_GREEN));
     }
 
-    /** Sockets and the cards in them - or, on a card itself, what that card is worth and what it fits. */
     private static void appendCards(ItemStack stack, List<Component> lines) {
         String cardId = CardItem.idOf(stack);
         if (!cardId.isBlank()) {

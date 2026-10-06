@@ -9,7 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Routes the real mouse-wheel callback to Character Hub's custom list regions. */
 @Mixin(MouseHandler.class)
 public abstract class MouseHandlerScrollMixin {
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)

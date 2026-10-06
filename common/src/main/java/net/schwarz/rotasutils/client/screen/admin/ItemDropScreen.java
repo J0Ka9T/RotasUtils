@@ -18,16 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Every item in the game, and whether mobs are allowed to drop it.
- *
- * <p>The list is the client's own item registry, so it covers the whole pack without a packet, however
- * many mods are installed. Switching an item off here stops every mob dropping it; a mob that should
- * still drop it is the other screen's job.</p>
- *
- * <p>A filter with nothing in it is shown as "on" with a hint, because an administrator who blocked
- * items and then wondered why they still drop is the failure worth designing against.</p>
- */
 @Environment(EnvType.CLIENT)
 public class ItemDropScreen extends RotasScreen {
     private static final int ROWS = 9;

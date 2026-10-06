@@ -11,7 +11,6 @@ import net.schwarz.rotasutils.progress.PlayerProgress;
 
 import java.util.Map;
 
-/** Applies location, challenge, and bounded encounter familiarity to combat XP. */
 public final class AdventureProgressService {
     private static final String FAMILIARITY_PREFIX = "rpg.adventure.kills.";
     private static final int FAMILIARITY_LIMIT = 256;
@@ -20,10 +19,6 @@ public final class AdventureProgressService {
     private AdventureProgressService() {
     }
 
-    /**
-     * Combat XP for one kill. The zone multiplier comes from where the monster died, not where the
-     * player stood, so shooting into a deadly zone from outside still pays the deadly rate.
-     */
     public static long combatXp(ServerPlayer player, RotasData data, MonsterState monster, LivingEntity victim,
                                 String identity) {
         AdventureXpConfig config = data.levelConfig().adventureXp();
@@ -42,11 +37,6 @@ public final class AdventureProgressService {
         return award;
     }
 
-    /**
-     * Season combat award for one kill: the profile's base EXP with the zone and repetition multipliers and
-     * the boss or miniboss multiplier. Level scaling, party sharing and the over-level penalty are applied per
-     * recipient in {@link ProgressService#awardCombat}.
-     */
     public static ProgressService.CombatAward seasonAward(ServerPlayer player, RotasData data, MonsterState monster,
                                                           LivingEntity victim, String identity) {
         AdventureXpConfig config = data.levelConfig().adventureXp();
@@ -76,7 +66,6 @@ public final class AdventureProgressService {
         return new ProgressService.CombatAward(Math.max(0, Math.round(base)), multiplier, monster.level());
     }
 
-    /** Kill count and the play-time tick of the latest kill, stored as {@code count:tick}. */
     record Familiarity(int count, long tick) {
         static Familiarity parse(String value) {
             if (value == null || value.isEmpty()) {
@@ -84,7 +73,6 @@ public final class AdventureProgressService {
             }
             try {
                 int split = value.indexOf(':');
-                // Legacy entries were a bare count with no time; tick 0 lets them decay away.
                 int count = Integer.parseInt(split < 0 ? value : value.substring(0, split));
                 long tick = split < 0 ? 0 : Long.parseLong(value.substring(split + 1));
                 return new Familiarity(Math.max(0, Math.min(MAX_REMEMBERED, count)), Math.max(0, tick));
@@ -116,7 +104,6 @@ public final class AdventureProgressService {
                     oldestValue = candidate;
                 }
             }
-            // Evict the least recently killed type, so the choice never depends on map order.
             if (entries >= FAMILIARITY_LIMIT && oldest != null) {
                 variables.remove(oldest);
             }

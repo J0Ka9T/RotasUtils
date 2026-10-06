@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Dedicated-server checks for kernel quests, bounty limits, merchant stock and trade atomicity. */
 public final class QuestEconomySmoke {
     private static final UUID ONE = UUID.fromString("b41a3f6c-3c9f-4c1e-8a1a-0d5a4c1f7b31");
     private static final UUID TWO = UUID.fromString("c52b4a7d-4d0a-4d2f-9b2b-1e6b5d2a8c42");
@@ -81,7 +80,6 @@ public final class QuestEconomySmoke {
         var data = RotasData.get(server);
         var service = data.kernel().quests();
         var player = new FakePlayer(server.overworld(), new GameProfile(ONE, "QuestSmokeOne"));
-        // Quest state and receipts persist, so every run starts from a clean slate for this player.
         reset(data, ONE);
         reset(data, TWO);
 
@@ -113,7 +111,6 @@ public final class QuestEconomySmoke {
         require(service.claim(player, QUEST) == QuestKernelService.Result.UNAVAILABLE, "the receipt blocks a second claim");
         require(data.progress(ONE).rpg().currency("rotas:quest_coin") == before + 50, "a blocked claim pays nothing");
 
-        // The bounty limit is world-wide for the window, so the second player is refused.
         var second = new FakePlayer(server.overworld(), new GameProfile(TWO, "QuestSmokeTwo"));
         require(service.accept(second, QUEST) == QuestKernelService.Result.ACCEPTED, "second player accepts");
         RpgKernel.emit(second, EVENT.value(), UUID.randomUUID().toString(), Map.of("event.kind", "hunt"));
@@ -136,12 +133,10 @@ public final class QuestEconomySmoke {
         one.getInventory().clearContent();
         two.getInventory().clearContent();
         var trade = service.merchant(MERCHANT).trade("bread");
-        // Stock lives in a world counter, so a fresh window is needed for a repeatable check.
         data.releaseCounter(net.schwarz.rotasutils.core.MerchantDefinitions.stockKey(MERCHANT, "bread"),
                 trade.window(System.currentTimeMillis() / 1000L), 0);
         clearLimit(data, ONE);
         clearLimit(data, TWO);
-        // The quest claim already paid this player, so the wallet is set rather than topped up.
         setBalance(data, ONE, 100);
         setBalance(data, TWO, 100);
 
@@ -158,7 +153,6 @@ public final class QuestEconomySmoke {
         require(service.buy(one, MERCHANT, "bread", 1) == MerchantService.Result.OUT_OF_STOCK, "an empty stock refuses the trade");
         require(data.progress(ONE).rpg().currency("rotas:quest_coin") == 90, "an out-of-stock trade costs nothing");
 
-        // Item costs: the ingots leave the inventory, the result arrives, and nothing partially applies.
         one.getInventory().clearContent();
         one.getInventory().add(new ItemStack(Items.IRON_INGOT, 4));
         require(service.buy(one, MERCHANT, "trade_up", 1) == MerchantService.Result.TRADED, "item cost trade");
@@ -168,7 +162,6 @@ public final class QuestEconomySmoke {
         require(service.buy(one, MERCHANT, "trade_up", 1) == MerchantService.Result.MISSING_ITEMS, "missing items refuse the trade");
         require(count(one, Items.DIAMOND) == 1, "a refused item trade delivers nothing");
 
-        // An RPG stack is not a plain ingot, so it cannot pay a vanilla item cost.
         one.getInventory().clearContent();
         var catalog = data.kernel().content().items();
         if (catalog.profiles().containsKey(new ContentId("rotas:item/smoke_sword"))) {

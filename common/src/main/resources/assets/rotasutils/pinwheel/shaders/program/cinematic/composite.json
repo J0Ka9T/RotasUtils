@@ -1,0 +1,10 @@
+{
+  "vertex": "rotasutils:cinematic/blit",
+  "fragment": "rotasutils:cinematic/composite",
+  "textures": {
+    "DepthSampler": { "type": "framebuffer", "name": "minecraft:main:depth" },
+    "BloomSampler": { "type": "framebuffer", "name": "rotasutils:bloom_a" },
+    "WideSampler": { "type": "framebuffer", "name": "rotasutils:bloom_c" },
+    "StreakSampler": { "type": "framebuffer", "name": "rotasutils:bloom_d" }
+  }
+}

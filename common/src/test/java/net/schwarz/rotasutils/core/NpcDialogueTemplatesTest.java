@@ -14,7 +14,6 @@ class NpcDialogueTemplatesTest {
     @Test void everyTemplateIsAValidStartingDocument() {
         for (NpcDialogueTemplates.Template template : NpcDialogueTemplates.Template.values()) {
             JsonObject document = NpcDialogueTemplates.of(template);
-            // Parsing is the real contract: a template must never ship as an invalid start.
             NpcInteractions.Definition definition = NpcInteractions.parse(document);
             assertFalse(definition.nodes().isEmpty(), template + " has no steps");
             assertTrue(definition.nodes().containsKey(definition.start()),

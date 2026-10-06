@@ -24,7 +24,6 @@ import net.schwarz.rotasutils.skill.EffectType;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Accepting, tracking, turning in, abandoning and failing quests. */
 public final class QuestService {
     private QuestService() {
     }
@@ -39,10 +38,7 @@ public final class QuestService {
         }
     }
 
-    // Availability ---------------------------------------------------------
-
-    /** Full requirement report for the quest detail screen and the accept check. */
-    public static List<CheckResult> report(ServerPlayer player, RotasData data, QuestDef quest) {
+public static List<CheckResult> report(ServerPlayer player, RotasData data, QuestDef quest) {
         List<CheckResult> results = new ArrayList<>();
         PlayerProgress progress = data.progress(player.getUUID());
 
@@ -82,7 +78,6 @@ public final class QuestService {
         return SkillService.hasFlag(data, progress, EffectType.REVEAL_HIDDEN_QUESTS);
     }
 
-    /** Reason the quest cannot be accepted right now, or null. */
     public static String blockedReason(ServerPlayer player, RotasData data, QuestDef quest) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (progress.active(quest.id()) != null) {
@@ -111,20 +106,10 @@ public final class QuestService {
         return null;
     }
 
-    // Accept ---------------------------------------------------------------
-
-    public static ActionResult accept(ServerPlayer player, RotasData data, String questId, String boardId) {
+public static ActionResult accept(ServerPlayer player, RotasData data, String questId, String boardId) {
         return accept(player, data, questId, boardId, false);
     }
 
-    /**
-     * Accepts a quest.
-     *
-     * @param questGiverAuthorised set when a configured NPC is handing the quest over. An NPC
-     *                             is a quest source in its own right, so it satisfies the
-     *                             "quests must come from a board" server rule the way a board
-     *                             does; every other check still applies.
-     */
     public static ActionResult accept(ServerPlayer player, RotasData data, String questId, String boardId,
                                       boolean questGiverAuthorised) {
         QuestDef quest = data.quest(questId);
@@ -135,8 +120,6 @@ public final class QuestService {
             return ActionResult.no(ThaiText.t("rotasutils.msg.quest.unavailable"));
         }
         BoardConfig board = boardId == null || boardId.isEmpty() ? null : data.board(boardId);
-        // The browser only opens when the board's own gates pass (level, clearance, dimension,
-        // schedule, availability), but the accept packet can name any board id.
         if (board != null && !questGiverAuthorised) {
             String closed = BoardService.openBlockedReason(player, data, board);
             if (closed != null) {
@@ -158,7 +141,26 @@ public final class QuestService {
         if (blocked != null) {
             return ActionResult.no(blocked);
         }
-        // Entry costs are consumed only after every other check passed.
+        java.util.Map<Item, Integer> entryCosts = new java.util.HashMap<>();
+        for (Requirement requirement : quest.requirements()) {
+            if (requirement.type() == RequirementType.HAS_ITEM && requirement.params().getBool("consume", false)) {
+                ResourceLocation itemId = requirement.params().getId("item");
+                Item item = itemId == null ? null : BuiltInRegistries.ITEM.get(itemId);
+                if (item == null) {
+                    return ActionResult.no(ThaiText.t("rotasutils.msg.quest.entry_cost"));
+                }
+                entryCosts.merge(item, Math.max(1, requirement.params().getInt("amount", 1)), Integer::sum);
+            }
+        }
+        for (var cost : entryCosts.entrySet()) {
+            int carried = 0;
+            for (net.minecraft.world.item.ItemStack stack : ObjectiveEngine.carriedStacks(player)) {
+                if (stack.is(cost.getKey())) carried += stack.getCount();
+            }
+            if (carried < cost.getValue()) {
+                return ActionResult.no(ThaiText.t("rotasutils.msg.quest.entry_cost"));
+            }
+        }
         for (Requirement requirement : quest.requirements()) {
             if (requirement.type() == RequirementType.HAS_ITEM && requirement.params().getBool("consume", false)) {
                 ResourceLocation itemId = requirement.params().getId("item");
@@ -178,13 +180,13 @@ public final class QuestService {
         }
         active.setPartyId(progress.partyId());
         progress.putActive(active);
+        progress.failedQuests().remove(quest.id());
         data.audit(player.getGameProfile().getName() + " accepted " + quest.id());
         data.setDirty();
 
         player.sendSystemMessage(ThaiText.c("rotasutils.msg.quest.accepted_named", quest.name())
                 .withStyle(quest.rank().color()));
         ObjectiveEngine.refreshInventory(player, data);
-        // A quest with no objectives is immediately ready to hand in.
         if (allRequiredComplete(quest, active) && !active.turnInReady()) {
             active.setTurnInReady(true);
             notifyReadyForTurnIn(player, quest);
@@ -193,9 +195,7 @@ public final class QuestService {
         return ActionResult.ok(ThaiText.t("rotasutils.msg.quest.accepted"));
     }
 
-    // Abandon --------------------------------------------------------------
-
-    public static ActionResult abandon(ServerPlayer player, RotasData data, String questId) {
+public static ActionResult abandon(ServerPlayer player, RotasData data, String questId) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (progress.active(questId) == null) {
             return ActionResult.no(ThaiText.t("rotasutils.msg.quest.not_accepted"));
@@ -210,9 +210,7 @@ public final class QuestService {
         return ActionResult.ok(ThaiText.t("rotasutils.msg.quest.abandoned"));
     }
 
-    // Turn in --------------------------------------------------------------
-
-    public static ActionResult turnIn(ServerPlayer player, RotasData data, String questId, String boardId) {
+public static ActionResult turnIn(ServerPlayer player, RotasData data, String questId, String boardId) {
         QuestDef quest = data.quest(questId);
         if (quest == null) {
             return ActionResult.no(ThaiText.t("rotasutils.msg.quest.gone"));
@@ -248,9 +246,19 @@ public final class QuestService {
             }
         }
         double contributionShare = 1.0;
+        java.util.Set<String> chosenPaths = chosenPaths(quest, active);
 
         progress.removeActive(questId);
         progress.recordCompletion(questId, nowSeconds());
+        String claimPrefix = "quest:" + questId + ":";
+        String current = claimPrefix + completionIndex + ":";
+        progress.claimedRewards().removeIf(key -> key.startsWith(claimPrefix) && !key.startsWith(current)
+                && key.substring(claimPrefix.length()).matches("[0-9]+:.*"));
+        if (chosenPaths.isEmpty()) {
+            progress.questVariables().remove("quest_paths." + questId);
+        } else {
+            progress.questVariables().put("quest_paths." + questId, String.join(",", chosenPaths));
+        }
         DailyService.onQuestCompleted(player, data, quest);
         TitleService.onProgress(player, data);
         progress.noteRankCompleted(quest.rank());
@@ -264,6 +272,7 @@ public final class QuestService {
         RewardService.Context context = RewardService.Context.quest(quest, completionIndex, first,
                 contributionShare, optionalDone).withXpScale(xpScale);
         List<Reward> rewards = new ArrayList<>(quest.rewards());
+        rewards.removeIf(reward -> !reward.path().isEmpty() && !chosenPaths.contains(reward.path()));
         RewardService.Granted granted = RewardService.grant(player, data, rewards, context);
         SeasonService.grantRankPoints(player, data, seasonType);
 
@@ -280,7 +289,6 @@ public final class QuestService {
         }
         playCompletionSound(player, quest);
 
-        // Feed the completion back in so "complete another quest" objectives advance.
         ObjectiveEngine.handle(player, data,
                 new QuestEvent(net.schwarz.rotasutils.quest.objective.EventKind.QUEST_COMPLETE)
                         .customId(questId));
@@ -315,9 +323,7 @@ public final class QuestService {
         }
     }
 
-    // Failure --------------------------------------------------------------
-
-    public static void fail(ServerPlayer player, RotasData data, String questId, String reason) {
+public static void fail(ServerPlayer player, RotasData data, String questId, String reason) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (progress.active(questId) == null) {
             return;
@@ -334,13 +340,8 @@ public final class QuestService {
         net.schwarz.rotasutils.network.RotasNetwork.syncProgress(player);
     }
 
-    /** How long before a deadline the one-time expiry warning fires. */
     private static final long EXPIRY_WARNING_SECONDS = 60L;
 
-    /**
-     * Expires timed quests, and warns once per quest when the deadline is a minute away.
-     * Called from the batched server tick, not per player per tick.
-     */
     public static void checkTimeLimits(ServerPlayer player, RotasData data) {
         PlayerProgress progress = data.peek(player.getUUID());
         if (progress == null || progress.activeQuests().isEmpty()) {
@@ -371,16 +372,59 @@ public final class QuestService {
         }
     }
 
-    // Helpers --------------------------------------------------------------
-
-    public static boolean allRequiredComplete(QuestDef quest, ActiveQuest active) {
+public static boolean allRequiredComplete(QuestDef quest, ActiveQuest active) {
         List<Objective> objectives = quest.objectives();
+        java.util.Set<Integer> decisions = new java.util.HashSet<>();
         for (int i = 0; i < objectives.size(); i++) {
-            if (!objectives.get(i).optional() && !active.isComplete(i)) {
+            Objective objective = objectives.get(i);
+            if (!objective.opens().isEmpty()) {
+                if (!objective.optional()) decisions.add(objective.step());
+                continue;
+            }
+            if (!objective.optional() && onPath(quest, active, i) && !active.isComplete(i)) {
                 return false;
             }
         }
+        for (int step : decisions) {
+            if (!decided(quest, active, step)) return false;
+        }
         return true;
+    }
+
+    public static boolean decided(QuestDef quest, ActiveQuest active, int step) {
+        List<Objective> objectives = quest.objectives();
+        for (int i = 0; i < objectives.size(); i++) {
+            Objective objective = objectives.get(i);
+            if (!objective.opens().isEmpty() && objective.step() == step && active.isComplete(i)) return true;
+        }
+        return false;
+    }
+
+    public static java.util.Set<String> chosenPaths(QuestDef quest, ActiveQuest active) {
+        java.util.Set<String> paths = new java.util.HashSet<>();
+        List<Objective> objectives = quest.objectives();
+        for (int i = 0; i < objectives.size(); i++) {
+            if (!objectives.get(i).opens().isEmpty() && active.isComplete(i)) paths.add(objectives.get(i).opens());
+        }
+        return paths;
+    }
+
+    public static String chosenPath(QuestDef quest, ActiveQuest active) {
+        List<Objective> objectives = quest.objectives();
+        for (int i = 0; i < objectives.size(); i++) {
+            if (!objectives.get(i).opens().isEmpty() && active.isComplete(i)) {
+                return objectives.get(i).opens();
+            }
+        }
+        return "";
+    }
+
+    public static boolean onPath(QuestDef quest, ActiveQuest active, int index) {
+        Objective objective = quest.objectives().get(index);
+        if (!objective.opens().isEmpty()) {
+            return active.isComplete(index) || !decided(quest, active, objective.step());
+        }
+        return objective.path().isEmpty() || chosenPaths(quest, active).contains(objective.path());
     }
 
     static void notifyObjectiveComplete(ServerPlayer player, QuestDef quest, Objective objective) {
@@ -389,11 +433,29 @@ public final class QuestService {
     }
 
     static void notifyReadyForTurnIn(ServerPlayer player, QuestDef quest) {
+        if (quest.autoComplete()) {
+            var server = player.server;
+            String questId = quest.id();
+            server.tell(new net.minecraft.server.TickTask(server.getTickCount(), () -> {
+                if (player.isRemoved() || player.hasDisconnected()) {
+                    return;
+                }
+                RotasData data = RotasData.get(server);
+                if (data.progress(player.getUUID()).active(questId) == null) {
+                    return;
+                }
+                ActionResult result = turnIn(player, data, questId, "");
+                if (!result.success()) {
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal(result.message())
+                            .withStyle(ChatFormatting.YELLOW));
+                }
+            }));
+            return;
+        }
         player.sendSystemMessage(ThaiText.c("rotasutils.msg.quest.ready", quest.name())
                 .withStyle(ChatFormatting.YELLOW));
     }
 
-    /** Mirrors progress onto party members according to the quest's party mode. */
     static void shareWithParty(ServerPlayer player, RotasData data, QuestDef quest, ActiveQuest source) {
         if (quest.partyProgress() == QuestDef.PartyProgress.INDIVIDUAL
                 || !data.serverSettings().partySystemEnabled()) {
@@ -451,11 +513,6 @@ public final class QuestService {
         return System.currentTimeMillis() / 1000L;
     }
 
-    /**
-     * Human-readable duration using at most the two largest units ("2d 3h", "1h 5m"),
-     * so deadline text stays short in list rows. Seconds only appear when nothing
-     * larger is left, which keeps the sub-minute expiry warning exact.
-     */
     public static String formatDuration(long seconds) {
         if (seconds <= 0) {
             return net.schwarz.rotasutils.util.ThaiText.t("rotasutils.time.seconds", 0);

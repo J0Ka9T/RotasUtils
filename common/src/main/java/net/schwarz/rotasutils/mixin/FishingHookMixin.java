@@ -11,11 +11,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
-/**
- * Fisher production. Neither loader offers a shared "fished" event, so this watches the first entity
- * {@code retrieve} spawns per loot stack, which is the caught item (the second is the experience orb). A player
- * without the Fisher role usually pulls up the fallback fish instead of a sealed catch.
- */
 @Mixin(FishingHook.class)
 public abstract class FishingHookMixin {
     @ModifyArg(method = "retrieve", at = @At(value = "INVOKE",
@@ -23,7 +18,8 @@ public abstract class FishingHookMixin {
     private Entity rotasutils$caught(Entity entity) {
         FishingHook self = (FishingHook) (Object) this;
         if (entity instanceof ItemEntity item && self.getPlayerOwner() instanceof ServerPlayer player) {
-            ItemStack caught = ProductionService.thinCatch(player, item.getItem());
+            ItemStack caught = net.schwarz.rotasutils.server.TradeService.starCatch(player,
+                    ProductionService.thinCatch(player, item.getItem()));
             if (caught != item.getItem()) {
                 item.setItem(caught);
             }

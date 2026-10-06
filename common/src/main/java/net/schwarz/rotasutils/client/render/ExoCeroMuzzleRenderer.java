@@ -19,15 +19,10 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * The Cero Metralleta muzzle: a compact cyan-white core, orbiting charge points, recoil shockwaves
- * and restrained air shimmer. Shot lances are rendered separately from server-authored CeroFx packets.
- */
 @Environment(EnvType.CLIENT)
 public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
     private static final float[] WHITE = {1f, 1f, 1f};
     private static final float[] CORE = {0.90f, 0.99f, 1f};
-    /** The Cero's cyan-blue, bright enough to read as spiritual energy rather than sky-blue paint. */
     private static final float[] CYAN = {0.25f, 0.85f, 1f};
     private static final float[] DEEP = {0.10f, 0.45f, 1f};
 
@@ -55,7 +50,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         if (owner == null) {
             return false;
         }
-        // The fused cero reaches the full range down the aim, so the mount renders while any of it is in frame.
         Vec3 eye = owner.getEyePosition();
         Vec3 far = eye.add(owner.getViewVector(1f).scale(net.schwarz.rotasutils.entity.CeroBallistics.RANGE));
         return frustum.isVisible(new AABB(eye, far).inflate(24.0));
@@ -90,7 +84,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
 
         float age = mount.tickCount + partialTick;
         float time = age / 20f;
-        // Rise over the first ticks, fall away over the fade after the last bolt.
         float rise = smooth(age / 5f);
         float fall = age <= ExoCeroMuzzleEntity.VOLLEY_TICKS
                 ? 1f : 1f - smooth((age - ExoCeroMuzzleEntity.VOLLEY_TICKS) / ExoCeroMuzzleEntity.FADE);
@@ -100,7 +93,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         }
         Matrix4f m = pose.last().pose();
         VertexConsumer vc = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
-        // Flares only on burst ticks, so the muzzle pulses with the barrage's rhythm instead of a flat strobe.
         boolean bursting = net.schwarz.rotasutils.entity.CeroBallistics.shotsAt(mount.tickCount) > 0;
         float strobe = bursting ? 1f - smooth(frac(age) * 1.65f) : 0f;
         core(vc, m, time, amp * 0.6f, strobe);
@@ -109,11 +101,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         shocks(vc, m, age, amp * strobe);
     }
 
-    /**
-     * Every live logical shot, from the mount's own trajectory math: trail, hot core, and the
-     * impact flare where the shot stopped. Returns the strongest shot-born strobe this frame.
-     */
-    /** The strobing cyan-blue core, its white heart, and the short flame it blows forward. */
     private void core(VertexConsumer vc, Matrix4f m, float time, float amp, float strobe) {
         float pulse = amp * (1f + 0.55f * strobe) * (1f + 0.05f * Mth.sin(time * 23f));
         halo(vc, m, muzzle, 2.4f * pulse, DEEP, 0.2f * amp);
@@ -125,23 +112,15 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         b.set(muzzle).add(dir.x * 3.2f, dir.y * 3.2f, dir.z * 3.2f);
         strip(vc, m, a, b, 0.4f * pulse, 0.06f, CYAN, 0.45f * amp, 0f);
         strip(vc, m, a, b, 0.16f * amp, 0.02f, CORE, 0.7f * amp, 0f);
-
     }
 
-    /**
-     * The ring of cero charge points around the barrel. They gather through the charge - swelling in
-     * from nothing, the ring tightening - then flare each time they fire. Same ring, radius and turn as
-     * {@link net.schwarz.rotasutils.entity.CeroBallistics#muzzle}, so the rounds leave from them.
-     */
     private void emitters(VertexConsumer vc, Matrix4f m, float age, float time, float amp, float strobe) {
         int charge = net.schwarz.rotasutils.entity.CeroBallistics.CHARGE_TICKS;
         int lanes = net.schwarz.rotasutils.entity.CeroBallistics.EMITTERS;
         float gathered = smooth(age / charge);
         float ring = (float) net.schwarz.rotasutils.entity.CeroBallistics.EMITTER_RING * (1.8f - 0.8f * gathered);
-        // Before the first round the ring turns slowly; firing, it follows the rounds' own turn.
         float fired = Math.max(0f, age - charge) * lanes;
         float turn = time * 0.8f + (fired / lanes) * 0.09f;
-        // A faint band joining the points, so they read as one ring, not loose sparks.
         ring(vc, m, muzzle, u, v, ring, 0.08f * amp, CYAN, 0.35f * amp * gathered, 32);
         for (int i = 0; i < lanes; i++) {
             float angle = Mth.TWO_PI * i / lanes + turn;
@@ -154,11 +133,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         }
     }
 
-    /**
-     * The fused cero. Starrk's barrage is so dense that it "fuses into one large Cero blast": a single
-     * great shaft of light enveloping the whole bundle, pushed out from the ring at the rounds' own
-     * speed while they fire and drawn in behind the last of them when the firing stops.
-     */
     private void fused(VertexConsumer vc, Matrix4f m, float age, float amp) {
         float firing = age - net.schwarz.rotasutils.entity.CeroBallistics.CHARGE_TICKS;
         if (firing <= 0f) {
@@ -181,7 +155,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         strip(vc, m, a, b, girth * 0.5f, girth * 0.5f, CORE, 0.22f * amp, 0.12f * amp);
     }
 
-    /** Expanding shockwaves out of the muzzle, two rings in flight at once. */
     private void shocks(VertexConsumer vc, Matrix4f m, float age, float amp) {
         for (int k = 0; k < 2; k++) {
             float phase = frac(age / ExoCeroMuzzleEntity.SHOCK_PERIOD + k * 0.5f);
@@ -192,10 +165,7 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         }
     }
 
-    // Primitives ---------------------------------------------------------------------------------
-
-    /** A soft annulus in the plane of {@code ax}/{@code ay}. */
-    private void ring(VertexConsumer vc, Matrix4f m, Vector3f c, Vector3f ax, Vector3f ay, float r, float w,
+private void ring(VertexConsumer vc, Matrix4f m, Vector3f c, Vector3f ax, Vector3f ay, float r, float w,
                       float[] rgb, float alpha, int segs) {
         for (int i = 0; i < segs; i++) {
             float t0 = Mth.TWO_PI * i / segs, t1 = Mth.TWO_PI * (i + 1) / segs;
@@ -230,7 +200,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
         vertex(vc, m, c.x + ax.x * x + ay.x * y, c.y + ax.y * x + ay.y * y, c.z + ax.z * x + ay.z * y, rgb, alpha);
     }
 
-    /** Camera-facing tapered light streak: bright centre, transparent edges. */
     private void strip(VertexConsumer vc, Matrix4f m, Vector3f p0, Vector3f p1, float w0, float w1,
                        float[] rgb, float a0, float a1) {
         side.set(p1).sub(p0);
@@ -250,7 +219,6 @@ public class ExoCeroMuzzleRenderer extends EntityRenderer<ExoCeroMuzzleEntity> {
     }
 
     private void halo(VertexConsumer vc, Matrix4f m, Vector3f c, float radius, float[] rgb, float alpha) {
-        // Wide halos fade as the camera nears their centre, so standing in the muzzle never whites out.
         float safe = alpha * ExoBeamRenderer.haloCameraGain(radius, c.distance(cam));
         if (radius <= 0.01f || safe <= 0.005f) {
             return;

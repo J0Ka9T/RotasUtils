@@ -8,7 +8,6 @@ import net.schwarz.rotasutils.quest.DangerRank;
 
 import java.util.List;
 
-/** Per-rank clearance requirements and experience multiplier. */
 @Environment(EnvType.CLIENT)
 public class RankSettingsScreen extends SimpleFieldScreen {
     private final LevelConfig config;
@@ -25,9 +24,6 @@ public class RankSettingsScreen extends SimpleFieldScreen {
         target.add(number("Required level",
                 () -> String.valueOf(config.rankLevel(rank)),
                 value -> config.setRankLevel(rank, parseInt(value, rank.defaultLevel()))));
-        target.add(decimal("Experience multiplier",
-                () -> String.valueOf(config.rankMultiplier(rank)),
-                value -> config.setRankMultiplier(rank, (float) parseDouble(value, rank.defaultMultiplier()))));
         target.add(number("Quests of the rank below required",
                 () -> String.valueOf(config.rankQuestsRequired(rank)),
                 value -> config.setRankQuestsRequired(rank, parseInt(value, 0))));

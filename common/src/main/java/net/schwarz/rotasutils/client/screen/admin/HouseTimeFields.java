@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.client.screen.admin;
 
-/** Checked conversion for the days/hours/minutes fields used by housing settings. */
 public final class HouseTimeFields {
     public static final long MILLIS_PER_MINUTE = 60_000L;
     public static final long MILLIS_PER_HOUR = 60L * MILLIS_PER_MINUTE;

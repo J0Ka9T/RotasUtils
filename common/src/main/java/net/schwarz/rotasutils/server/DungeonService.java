@@ -44,20 +44,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Runs dungeon zones ({@link ZoneDungeon}): the party, the waves, the final boss, the clock and the pay.
- *
- * <p>A run starts when the first player walks in. Everyone who walks in while there is room joins the
- * party and pays the key and fee on the way in; who may walk in at all is decided by
- * {@link #refusal}, which the zone gate calls, so a full or cooling-down dungeon pushes players back
- * like any locked zone. Each stage is one wave (or the boss); the next starts a few seconds after the
- * last monster of the current one dies. Clearing pays every party member still online and starts
- * their cooldown; running out of time or leaving the dungeon empty for 30 seconds ends the run with no
- * pay. A boss bar shows the stage, monsters left and time left to everyone inside.</p>
- *
- * <p>Run state lives in memory. A restart ends every run, and dungeon monsters left in the world are
- * removed as they load (they carry {@link #MOB_TAG}).</p>
- */
 public final class DungeonService {
     public static final String MOB_TAG = "rotas_dungeon";
     private static final String COOLDOWN_PREFIX = "rpg.dungeon_cd.";
@@ -65,7 +51,6 @@ public final class DungeonService {
     private static final int STAGE_GAP_SECONDS = 4;
     private static final int EMPTY_ABORT_SECONDS = 30;
     private static final int EXIT_WINDOW_SECONDS = 20;
-    /** A failed run keeps the party out this long, so it cannot restart the instant it ends. */
     private static final int FAIL_COOLDOWN_SECONDS = 60;
 
     private enum Phase { STARTING, FIGHTING, BETWEEN, CLEARED, FAILED }
@@ -93,13 +78,7 @@ public final class DungeonService {
     private DungeonService() {
     }
 
-    // Gate --------------------------------------------------------------------------------------
-
-    /**
-     * Why this player may not step into the dungeon right now, or null when they may. Party members
-     * always pass. Called by the zone gate every tick for players inside, so it only reads.
-     */
-    public static String refusal(ServerPlayer player, RotasData data, ZoneDef zone) {
+public static String refusal(ServerPlayer player, RotasData data, ZoneDef zone) {
         ZoneDungeon dungeon = zone.features().dungeon();
         if (!dungeon.enabled()) {
             return null;
@@ -129,10 +108,7 @@ public final class DungeonService {
         return null;
     }
 
-    // Tick --------------------------------------------------------------------------------------
-
-    /** Once a second on the server thread. */
-    public static void tick(MinecraftServer server) {
+public static void tick(MinecraftServer server) {
         RotasData data = RotasData.get(server);
         long now = System.currentTimeMillis();
         Set<String> seen = new HashSet<>();
@@ -167,7 +143,6 @@ public final class DungeonService {
             }
         }
         Run run = runs.get(zone.id());
-        // Join everyone inside who is not yet in the party and passes the gate.
         for (ServerPlayer player : inside) {
             if (run != null && run.party.contains(player.getUUID())) {
                 continue;
@@ -187,7 +162,6 @@ public final class DungeonService {
             return;
         }
 
-        // Boss bar follows whoever is inside.
         Set<UUID> insideIds = new HashSet<>();
         for (ServerPlayer player : inside) {
             insideIds.add(player.getUUID());
@@ -277,7 +251,6 @@ public final class DungeonService {
             }
         }
         if (run.mobs.isEmpty()) {
-            // Nothing could be spawned (unknown Mob Setup, no room): skip the stage rather than stall.
             Rotasutils.LOG.warn("Dungeon {} stage {} spawned nothing from {}", zone.id(), run.stage + 1, profile);
         }
         Component title = boss ? ThaiText.c("rotasutils.dungeon.boss").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
@@ -363,7 +336,6 @@ public final class DungeonService {
         run.mobs.clear();
     }
 
-    /** Dungeon monsters that load without a run (after a restart) are removed. */
     public static void onEntityAdd(Entity entity) {
         if (entity instanceof Mob mob && !mob.level().isClientSide && mob.getTags().contains(MOB_TAG)
                 && !tracked.contains(mob.getUUID())) {
@@ -371,17 +343,13 @@ public final class DungeonService {
         }
     }
 
-    /** Drops every run, e.g. when the server stops. */
     public static void clearAll() {
         runs.values().forEach(run -> run.bar.removeAllPlayers());
         runs.clear();
         tracked.clear();
     }
 
-    // Spawning ----------------------------------------------------------------------------------
-
-    /** Where monsters appear: the zone's spawn points (boss points first for the boss). */
-    private static List<BlockPos> anchors(ZoneDef zone, boolean boss) {
+private static List<BlockPos> anchors(ZoneDef zone, boolean boss) {
         List<BlockPos> anchors = new ArrayList<>();
         for (ZoneSpawnPoint point : zone.features().spawnPoints()) {
             if (!boss || point.kind() == ZoneSpawnPoint.Kind.BOSS) {
@@ -439,7 +407,6 @@ public final class DungeonService {
         return mob;
     }
 
-    /** A free spot with floor near an anchor (or a party member), inside the zone. */
     private static BlockPos place(ServerLevel level, ZoneDef zone, EntityType<?> type, List<BlockPos> anchors,
                                   List<ServerPlayer> inside, int index) {
         BlockPos base;
@@ -472,9 +439,7 @@ public final class DungeonService {
         return anchors.isEmpty() ? null : base;
     }
 
-    // Helpers -----------------------------------------------------------------------------------
-
-    private static void updateBar(ZoneDungeon dungeon, Run run, long now) {
+private static void updateBar(ZoneDungeon dungeon, Run run, long now) {
         long left = Math.max(0, run.deadline - now);
         String time = QuestService.formatDuration(left / 1000).trim();
         Component text = switch (run.phase) {
@@ -526,7 +491,6 @@ public final class DungeonService {
         progress.markDirty();
     }
 
-    /** Administrators outside gate testing walk through without joining, so they can inspect a run. */
     private static boolean exempt(ServerPlayer player) {
         return player.hasPermissions(2) && !ZoneGateService.adminTesting(player.getUUID());
     }
@@ -546,7 +510,6 @@ public final class DungeonService {
         return location == null || id.isBlank() ? Items.AIR : BuiltInRegistries.ITEM.get(location);
     }
 
-    /** {@code "minecraft:diamond 2"} as a stack; empty when the item is unknown. */
     static ItemStack stack(String line) {
         String[] parts = line == null ? new String[0] : line.trim().split("\\s+");
         if (parts.length == 0 || parts[0].isEmpty()) {
@@ -591,7 +554,6 @@ public final class DungeonService {
         }
     }
 
-    /** For the zone editor: whether a dungeon has a run going and how many are in it. */
     public static Map<String, Integer> activeParties() {
         Map<String, Integer> parties = new HashMap<>();
         runs.forEach((id, run) -> parties.put(id, run.party.size()));

@@ -4,12 +4,6 @@ import net.minecraft.nbt.CompoundTag;
 
 import java.util.Objects;
 
-/**
- * Pure routing and packet builders shared by the housing admin screens.
- *
- * <p>The builders deliberately contain only client-authored fields and revision
- * tokens. House bounds always come from the server-held House Wand.</p>
- */
 public final class HouseScreenActions {
     public enum OverviewTarget {
         NONE,
@@ -26,7 +20,6 @@ public final class HouseScreenActions {
         }
     }
 
-    /** Context carried back from confirmation screens so a draft is never rebuilt from stale state. */
     public record EditorContext(String houseId, HouseAdminPresentation.EditDraft draft) {
         public EditorContext {
             if (houseId == null || houseId.isBlank()) {
@@ -39,7 +32,6 @@ public final class HouseScreenActions {
         }
     }
 
-    /** A removal intent is only serializable after the confirmation surface accepts it. */
     public static final class RemovalResult {
         private final String houseId;
         private final long revision;
@@ -70,12 +62,10 @@ public final class HouseScreenActions {
     private HouseScreenActions() {
     }
 
-    /** Resolves a stable overview action id into a screen target. */
     public static Route routeOverview(String action) {
         return routeOverview(action, "");
     }
 
-    /** Resolves an overview action, retaining the selected house id for edit routes. */
     public static Route routeOverview(String action, String selectedHouseId) {
         String value = action == null ? "" : action.trim();
         if (value.equals("get_wand") || value.equals("give_house_wand")) {
@@ -99,7 +89,14 @@ public final class HouseScreenActions {
         return new Route(OverviewTarget.NONE, "");
     }
 
-    /** Builds the create intent; coordinates are intentionally not accepted by this API. */
+    public static CompoundTag createPayload(String id, String name, String tier, long configRevision, boolean configure) {
+        CompoundTag payload = createPayload(id, name, tier, configRevision);
+        if (configure) {
+            payload.putBoolean("configure", true);
+        }
+        return payload;
+    }
+
     public static CompoundTag createPayload(String id, String name, String tier, long configRevision) {
         requireRevision(configRevision);
         CompoundTag payload = new CompoundTag();
@@ -110,7 +107,6 @@ public final class HouseScreenActions {
         return payload;
     }
 
-    /** Builds the definition edit intent, including the expected definition revision. */
     public static CompoundTag editPayload(String id, String name, String tier,
                                           boolean enabled, long definitionRevision) {
         requireRevision(definitionRevision);
@@ -123,7 +119,6 @@ public final class HouseScreenActions {
         return payload;
     }
 
-    /** Builds the bounds-replacement intent; the server reads the current wand selection. */
     public static CompoundTag replaceBoundsPayload(String id, long definitionRevision) {
         requireRevision(definitionRevision);
         CompoundTag payload = new CompoundTag();
@@ -140,7 +135,6 @@ public final class HouseScreenActions {
         return new RemovalResult(id, revision, false);
     }
 
-    /** Builds a removal intent only from the confirmed result returned by the confirmation screen. */
     public static CompoundTag removePayload(RemovalResult result) {
         Objects.requireNonNull(result, "result");
         if (!result.confirmed()) {
@@ -152,7 +146,6 @@ public final class HouseScreenActions {
         return payload;
     }
 
-    /** Returns false for an occupied snapshot so destructive controls can be disabled locally. */
     public static boolean canDisableOrRemove(HouseAdminPresentation.OverviewRow row) {
         return row != null && row.memberCount() == 0
                 && row.status() == net.schwarz.rotasutils.house.HouseStatus.AVAILABLE;

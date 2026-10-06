@@ -13,11 +13,6 @@ import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.network.KernelUi;
 import java.util.UUID;
 
-/**
- * Server-side checks for the console screens. The screens themselves are not driven here: this
- * verifies the snapshot the client reads and every operation the client can send, including the
- * permission gates a modified client would try to walk past.
- */
 public final class ConsoleSmoke {
     private static final UUID ID = UUID.fromString("d7c1a8b2-5e33-4a71-9c0e-3f2b7a1d6e40");
 
@@ -53,7 +48,6 @@ public final class ConsoleSmoke {
         require(state.contains("level"), "snapshot carries the player's own state");
         require(!state.getBoolean("can_edit"), "a plain player is not offered the editing operations");
 
-        // Quest lifecycle through the same entry point the screen uses.
         String quest = firstId(catalog, "quests");
         var quests = data.kernel().quests();
         var questId = new net.schwarz.rotasutils.core.ContentId(quest);
@@ -64,13 +58,11 @@ public final class ConsoleSmoke {
         require(KernelUi.handle(player, "kernel_quest", payload("op", "abandon", "quest", quest)), "abandon handled");
         require(quests.stage(player, questId) < 0, "abandoning through the console clears the quest");
 
-        // Malformed input is refused rather than throwing into the packet handler.
         require(KernelUi.handle(player, "kernel_quest", payload("op", "accept", "quest", "not an id")),
                 "a malformed quest ID is still handled");
         require(KernelUi.handle(player, "kernel_quest", payload("op", "nonsense", "quest", quest)),
                 "an unknown quest operation is refused, not executed");
 
-        // Operator-only operations are refused for a player without the capability.
         CompoundTag give = new CompoundTag();
         give.putString("profile", firstId(catalog, "items"));
         give.putInt("level", 5);
@@ -83,7 +75,6 @@ public final class ConsoleSmoke {
         preview.putInt("level", 5);
         require(KernelUi.handle(player, "kernel_loot_preview", preview), "loot preview handled");
 
-        // Monster operations need a target; without one the console says so instead of guessing.
         require(KernelUi.lookedAt(player) == null, "a fake player is looking at nothing");
         require(KernelUi.handle(player, "kernel_monster", payload("op", "inspect", "profile", firstId(catalog, "monsters"))),
                 "monster inspect handled without a target");
@@ -93,7 +84,6 @@ public final class ConsoleSmoke {
         require(!KernelUi.handle(player, "open_menu", new CompoundTag()),
                 "legacy actions still fall through to the older handler");
 
-        // Trading through the console reaches the merchant service and its refusal paths.
         String merchant = firstId(catalog, "merchants");
         CompoundTag trade = new CompoundTag();
         trade.putString("merchant", merchant);

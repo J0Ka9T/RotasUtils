@@ -22,12 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Administrator hub listing every management section. */
 @Environment(EnvType.CLIENT)
 public class AdminMenuScreen extends RotasScreen {
     private static final int ROW_HEIGHT = 40;
 
-    /** Sidebar groups. Fourteen flat sections read as a wall; four groups read as a map. */
     private enum Group {
         NONE(""),
         CONTENT("CONTENT"),
@@ -42,10 +40,6 @@ public class AdminMenuScreen extends RotasScreen {
         }
     }
 
-    /**
-     * Order here is the order in the sidebar, and it is the order an admin actually works in:
-     * write a quest, put it somewhere players find it, then tune progression, then server rules.
-     */
     public enum Section {
         DASHBOARD("Overview", "Where things stand, and what to do first", "", Group.NONE, ""),
         QUESTS("Quests", "Write and publish contracts", "New Quest", Group.CONTENT, ""),
@@ -63,8 +57,8 @@ public class AdminMenuScreen extends RotasScreen {
                 Group.SERVER, ""),
         VALIDATION("Check Content", "Find missing settings and broken references", "Run Check", Group.SERVER, ""),
         SETTINGS("Server Rules", "Global quest and progression rules", "Open Settings", Group.SERVER, ""),
+        ECONOMY(L.t("rotasutils.econ.nav_label"), L.t("rotasutils.econ.nav_help"), L.t("rotasutils.econ.nav_action"), Group.SERVER, ""),
         ADVANCED("Advanced", "Items, bosses, merchants, files and change history", "", Group.SERVER, ""),
-        // Reached from the Advanced list, not the sidebar: most servers never need them.
         ITEMS("Items & Loot", "Items, rarities, sets and loot tables", "Open Item Editor", Group.SERVER, "ADVANCED"),
         BOSSES("Bosses", "Phases, arena settings and rewards", "Open Boss Editor", Group.SERVER, "ADVANCED"),
         MERCHANTS("Merchants", "Trades, prices, stock and limits", "Open Merchant Editor", Group.SERVER, "ADVANCED"),
@@ -72,10 +66,8 @@ public class AdminMenuScreen extends RotasScreen {
 
         final String label;
         final String help;
-        /** Label of the section's create/open button; blank hides it. */
         final String action;
         final Group group;
-        /** Name of the sidebar section this one is opened from; blank for sidebar sections. */
         final String parent;
 
         Section(String label, String help, String action, Group group, String parent) {
@@ -90,17 +82,14 @@ public class AdminMenuScreen extends RotasScreen {
             return !parent.isEmpty();
         }
 
-        /** A sidebar entry stays highlighted while one of its sub-sections is open. */
         boolean highlightedFor(Section open) {
             return this == open || name().equals(open.parent);
         }
     }
 
-    /** One sidebar line: either a group heading or a section. */
     private record NavRow(Group heading, Section section) {
     }
 
-    /** The sidebar model, headings inserted where the group changes. */
     private static List<NavRow> navigationRows() {
         List<NavRow> rows = new ArrayList<>();
         Group current = Group.NONE;
@@ -117,7 +106,6 @@ public class AdminMenuScreen extends RotasScreen {
         return rows;
     }
 
-    /** One list entry. A blank {@code id} means the row is informational. */
     private record Entry(String id, String label, String meta, String tag, int tagColor, ItemStack icon) {
     }
 
@@ -126,14 +114,22 @@ public class AdminMenuScreen extends RotasScreen {
     private EditBox search;
     private String searchText = "";
     private final List<Entry> entries = new ArrayList<>();
+    private static Section lastSection = Section.DASHBOARD;
+    private static String lastSearch = "";
+    private static int lastScroll;
+    private boolean restoreScroll = true;
 
     public AdminMenuScreen() {
         super("RotasUtils Administration", null);
+        section = lastSection;
+        searchText = lastSearch;
     }
 
-    /** Opens on {@code sectionName} (a {@link Section} name), or the overview when it is unknown. */
     public AdminMenuScreen(String sectionName) {
         this();
+        if (sectionName != null && !sectionName.isEmpty()) {
+            searchText = "";
+        }
         for (Section value : Section.values()) {
             if (value.name().equals(sectionName)) {
                 section = value;
@@ -169,7 +165,6 @@ public class AdminMenuScreen extends RotasScreen {
                 Ui.rowCard(g, x + 2, y + 1, w - 6, h - 3, hovered, selected);
             }
             String count = countSuffix(value);
-            // Through Ui so the label is shown in Thai like the rest of the screen.
             Ui.label(g, Ui.truncate(value.label, w - 30), x + 10, y + 7, selected ? Ui.ACCENT : Ui.TEXT);
             if (!count.isBlank()) {
                 Ui.labelRight(g, count.trim(), x + w - 10, y + 7, Ui.TEXT_MUTED);
@@ -177,6 +172,11 @@ public class AdminMenuScreen extends RotasScreen {
         }, (i, button) -> {
             NavRow row = navRows.get(i);
             if (row.section() == null) {
+                return;
+            }
+            if (row.section() == Section.QUESTS) {
+                Sfx.page();
+                minecraft.setScreen(new QuestCatalogScreen(this));
                 return;
             }
             section = row.section();
@@ -228,6 +228,23 @@ public class AdminMenuScreen extends RotasScreen {
                 .rowHitInsets(0, 4);
         registerPanel(list);
         refreshRows();
+        if (restoreScroll && section == lastSection) {
+            list.setScroll(lastScroll);
+        }
+        restoreScroll = false;
+        lastSection = section;
+        lastSearch = searchText;
+    }
+
+    @Override
+    public void removed() {
+        lastSection = section;
+        lastSearch = searchText;
+        if (list != null) {
+            lastScroll = list.scroll();
+        }
+        restoreScroll = true;
+        super.removed();
     }
 
     private static boolean isSearchable(Section section) {
@@ -267,7 +284,6 @@ public class AdminMenuScreen extends RotasScreen {
                 footerY - 6, 0x4DBE9E68);
     }
 
-    /** A system's master switch, when it has one: {@code farming} has three, so any of them on counts. */
     private static Boolean systemEnabled(com.google.gson.JsonObject season, String id) {
         if (id.equals("leveling")) return season.has("enabled") ? season.get("enabled").getAsBoolean() : null;
         if (!season.has(id) || !season.get(id).isJsonObject()) return null;
@@ -283,7 +299,6 @@ public class AdminMenuScreen extends RotasScreen {
         return any;
     }
 
-    /** Count badge in the sidebar so an admin sees where content lives. */
     private static String countSuffix(Section value) {
         int count = switch (value) {
             case QUESTS -> ClientState.quests().size();
@@ -320,18 +335,14 @@ public class AdminMenuScreen extends RotasScreen {
                 Sfx.add();
             }
             case BOARDS -> {
-                // A board authored here has no billboard block yet; the admin binds one
-                // by clicking a placed board, or leaves it for NPCs and commands to open.
                 send("new_board");
                 Sfx.add();
             }
             case NPCS -> {
-                // The new NPC is a draft until it is bound to an entity in the world.
                 send("new_npc");
                 Sfx.add();
             }
             case ZONES -> {
-                // Starts a zone around this admin's level at their feet and opens the editor.
                 send("new_zone");
                 Sfx.add();
             }
@@ -345,6 +356,7 @@ public class AdminMenuScreen extends RotasScreen {
                 }
             }
             case JOBS -> minecraft.setScreen(new JobManagerScreen(this));
+            case ECONOMY -> send("worth_open");
             case HOUSES -> minecraft.setScreen(new HouseManagerScreen(this));
             case LEVELS -> minecraft.setScreen(new LevelManagerScreen(this));
             case PLAYERS -> minecraft.setScreen(new PlayerManagerScreen(this));
@@ -399,6 +411,9 @@ public class AdminMenuScreen extends RotasScreen {
                 entries.add(new Entry("nemesis_admin", "Nemeses",
                         "See every nemesis, who it hunts and where; remove one or summon it to test.",
                         "WORLD", Ui.WARN, new ItemStack(net.minecraft.world.item.Items.WITHER_SKELETON_SKULL)));
+                entries.add(new Entry("block_log", "Block log",
+                        "Who broke which block, where and when, across every dimension; filter and teleport there.",
+                        "PLAYERS", Ui.WARN, new ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK)));
                 entries.add(new Entry("player_tools", "Player tools",
                         "Give a monster card, reset a player's daily missions.",
                         "PLAYERS", Ui.ACCENT, new ItemStack(net.minecraft.world.item.Items.PAPER)));
@@ -425,8 +440,6 @@ public class AdminMenuScreen extends RotasScreen {
                         "What the running server currently has loaded", "", Ui.TEXT_DIM, ItemStack.EMPTY));
             }
             case DASHBOARD -> {
-                // The overview is a running order, not a menu of everything. A new admin can
-                // follow it top to bottom and end up with a quest players can actually take.
                 int totalQuests = ClientState.quests().size();
                 long published = ClientState.quests().values().stream().filter(QuestDef::published).count();
                 int boardCount = ClientState.boards().size();
@@ -483,6 +496,8 @@ public class AdminMenuScreen extends RotasScreen {
                         ClientState.jobs().isEmpty() ? "TODO" : "", Ui.WARN, ItemStack.EMPTY));
             }
             case QUESTS -> {
+                entries.add(new Entry("quest_catalog", "Open the Quest Catalog",
+                        "Every quest as a card, grouped by story chain and category", "CARDS", Ui.GOOD, ItemStack.EMPTY));
                 for (QuestDef quest : ClientState.quests().values()) {
                     entries.add(new Entry(quest.id(), quest.name(),
                             quest.rank().display() + "-rank  -  " + quest.category() + "  -  v" + quest.version(),
@@ -517,6 +532,14 @@ public class AdminMenuScreen extends RotasScreen {
                         zone.dimension().replace("minecraft:", "") + "  -  " + zone.areaLabel()
                                 + "  -  priority " + zone.priority(),
                         zone.levelLabel(), zone.enabled() ? Ui.GOOD : Ui.TEXT_MUTED, ItemStack.EMPTY)));
+            }
+            case ECONOMY -> {
+                entries.add(new Entry("econ_worth", L.t("rotasutils.econ.worth_label"), L.t("rotasutils.econ.worth_help"),
+                        L.t("rotasutils.econ.tag"), Ui.ACCENT, new ItemStack(net.minecraft.world.item.Items.GOLD_INGOT)));
+                entries.add(new Entry("econ_mines", L.t("rotasutils.econ.mines_label"), L.t("rotasutils.econ.mines_help"),
+                        L.t("rotasutils.econ.tag"), Ui.ACCENT, new ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE)));
+                entries.add(new Entry("econ_settings", L.t("rotasutils.econ.settings_label"), L.t("rotasutils.econ.settings_help"),
+                        L.t("rotasutils.econ.tag"), Ui.ACCENT, new ItemStack(net.minecraft.world.item.Items.COMPARATOR)));
             }
             case HOUSES -> {
                 entries.add(new Entry("open_houses", L.t("rotasutils.house.admin.open_label"),
@@ -704,6 +727,7 @@ public class AdminMenuScreen extends RotasScreen {
         }
         Sfx.select();
         if (id.startsWith("studio:")) { minecraft.setScreen(new AdminStudioScreen(this,id.substring(7))); return; }
+        if (id.equals("quest_catalog")) { minecraft.setScreen(new QuestCatalogScreen(this)); return; }
         if (id.equals("files")) { minecraft.setScreen(new ConfigFilesScreen(this)); return; }
         if (id.equals("mob_setup")) { minecraft.setScreen(new MobSetupScreen(this)); return; }
         if (id.equals("mob_drops")) { minecraft.setScreen(new MobDropListScreen(this)); return; }
@@ -712,6 +736,7 @@ public class AdminMenuScreen extends RotasScreen {
         if (id.equals("titles_admin")) { minecraft.setScreen(new TitleManagerScreen(this)); return; }
         if (id.equals("mines_admin")) { send("mine_admin_open"); return; }
         if (id.equals("nemesis_admin")) { send("nemesis_admin_open"); return; }
+        if (id.equals("block_log")) { send("block_log_open"); return; }
         if (id.equals("player_tools")) { minecraft.setScreen(new PlayerToolsScreen(this)); return; }
         if (id.equals("events")) { minecraft.setScreen(new EventCatalogScreen(this)); return; }
         if (id.equals("item_drops")) { minecraft.setScreen(new ItemDropScreen(this)); return; }
@@ -752,6 +777,19 @@ public class AdminMenuScreen extends RotasScreen {
                     CompoundTag payload = new CompoundTag();
                     payload.putString("zone", id);
                     send("open_zone", payload);
+                }
+            }
+            case ECONOMY -> {
+                if (id.equals("econ_worth")) {
+                    send("worth_open");
+                } else if (id.equals("econ_mines")) {
+                    CompoundTag payload = new CompoundTag();
+                    payload.putString("scope", "mines");
+                    send("settings_open", payload);
+                } else {
+                    CompoundTag payload = new CompoundTag();
+                    payload.putString("scope", "slots");
+                    send("settings_open", payload);
                 }
             }
             case HOUSES -> {
@@ -835,7 +873,6 @@ public class AdminMenuScreen extends RotasScreen {
         }
     }
 
-    /** Convenience for screens that need to send a quest-scoped admin action. */
     public static CompoundTag questPayload(String questId) {
         CompoundTag tag = new CompoundTag();
         tag.putString("quest", questId);

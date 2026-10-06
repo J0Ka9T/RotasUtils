@@ -4,21 +4,15 @@ import net.minecraft.nbt.CompoundTag;
 import net.schwarz.rotasutils.data.ServerSettings;
 import net.schwarz.rotasutils.level.LevelConfig;
 import net.schwarz.rotasutils.level.MobLevelConfig;
+import net.schwarz.rotasutils.quest.DangerRank;
+import net.schwarz.rotasutils.quest.reward.RewardType;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Guards the save paths that used to lose settings silently.
- *
- * <p>The admin screens save by shipping a config's NBT to the server, which reloads it and stores
- * the result. Any field missing from that round trip is editable in the UI and then quietly
- * discarded - which is exactly what happened to the waystone costs and the monster-drop toggle.</p>
- */
 class ConfigRoundTripTest {
-
     @Test void everyServerSettingSurvivesTheSaveRoundTrip() {
         ServerSettings edited = new ServerSettings();
         edited.setWaystonesEnabled(false);
@@ -39,7 +33,6 @@ class ConfigRoundTripTest {
     }
 
     @Test void serverSettingsSaveAndLoadCoverTheSameKeys() {
-        // A new field added to save() but not to load() (or the reverse) loses its value on save.
         CompoundTag fresh = new ServerSettings().save();
         CompoundTag reloaded = ServerSettings.load(fresh).save();
         assertEquals(fresh.getAllKeys(), reloaded.getAllKeys());
@@ -70,8 +63,6 @@ class ConfigRoundTripTest {
 
         assertFalse(reloaded.excludeEntities().contains("minecraft:villager"),
                 "a removed default must not come back on the next load");
-        // A villager is MobCategory.MISC, so the summon/golem rule still covers it until that is
-        // turned off too - the point here is only that the entity exclusion itself stayed removed.
         reloaded.setSkipMisc(false);
         assertTrue(reloaded.shouldLevel("minecraft:villager", Set.of(), "misc", false));
     }
@@ -104,9 +95,35 @@ class ConfigRoundTripTest {
         assertEquals(weights.tierThreeMultiplier(), reloaded.tierThreeMultiplier());
     }
 
+    @Test void oldNbtWithRankMultKeyLoadsWithoutErrorAndRankLevelSurvives() {
+        CompoundTag ranks = new CompoundTag();
+        for (DangerRank rank : DangerRank.VALUES) {
+            CompoundTag entry = new CompoundTag();
+            entry.putInt("level", rank.defaultLevel() + 5);
+            entry.putFloat("mult", 999f);
+            entry.putInt("quests", 3);
+            entry.putString("promotion", "");
+            entry.putBoolean("auto", true);
+            ranks.put(rank.name(), entry);
+        }
+        CompoundTag tag = new CompoundTag();
+        tag.put("ranks", ranks);
+
+        LevelConfig config = LevelConfig.load(tag);
+
+        assertEquals(DangerRank.S.defaultLevel() + 5, config.rankLevel(DangerRank.S),
+                "rank level must survive a load from old NBT that contains a stale 'mult' key");
+    }
+
+    @Test void rotasXpRewardTypeHasNoScaleWithRankParam() {
+        boolean hasScaleWithRank = RewardType.ROTAS_XP.specs().stream()
+                .anyMatch(spec -> spec.key().equals("scale_with_rank"));
+        assertFalse(hasScaleWithRank,
+                "ROTAS_XP must not expose a scale_with_rank param — rank no longer multiplies XP");
+    }
+
     @Test void summonsAndPetsAreNeverLeveled() {
         MobLevelConfig config = new MobLevelConfig();
-        // MISC covers summoned weapons, golems and other non-creature entities.
         assertFalse(config.shouldLevel("efn:sin_summoned_sword", Set.of(), "misc", false));
         assertTrue(config.shouldLevel("minecraft:zombie", Set.of(), "monster", false));
     }

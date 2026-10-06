@@ -14,18 +14,12 @@ import net.schwarz.rotasutils.util.ThaiText;
 
 import java.util.List;
 
-/**
- * Server side of the season rules: overflow currency, repeatable-quest diminishing, rank points and
- * rank perks.
- *
- * <p>Daily counters live in the player's server-only {@code rpg.} variables, so they persist with the
- * record, never reach the client snapshot, and reset on the first award after the server's midnight.</p>
- */
 public final class SeasonService {
     public static final List<String> RANK_ORDER = List.of("F", "E", "D", "C", "B", "A", "S", "SS");
 
     private static final String DAY = "rpg.season.day";
     private static final String SUB_HELD = "rpg.season.subheld";
+    private static final String MAIN_HELD = "rpg.season.mainheld";
     private static final String REPEAT_RUNS = "rpg.season.rep";
     private static final String REPEAT_RANK = "rpg.season.reprank";
 
@@ -69,7 +63,6 @@ public final class SeasonService {
         progress.markDirty();
     }
 
-    /** EXP a maxed sub job could not use turns into overflow currency. */
     private static long overflow(SeasonRules rules, PlayerProgress progress, String key, long withheld) {
         if (withheld <= 0) {
             return 0;
@@ -81,7 +74,6 @@ public final class SeasonService {
             try {
                 progress.rpg().currency(rules.overflowCurrency, tokens);
             } catch (RuntimeException full) {
-                // A full wallet or section keeps the pool; nothing else depends on the conversion.
             }
         }
         return tokens;
@@ -91,7 +83,10 @@ public final class SeasonService {
         return active(data) && rules(data).subCapToOverflow ? overflow(rules(data), progress, SUB_HELD, withheld) : 0;
     }
 
-    /** Main quests, side quests, dailies, weeklies and repeatables, read from the quest's own settings. */
+    public static long overflowMaxLevel(RotasData data, PlayerProgress progress, long withheld) {
+        return active(data) && rules(data).maxLevelToOverflow ? overflow(rules(data), progress, MAIN_HELD, withheld) : 0;
+    }
+
     public static QuestType typeOf(QuestDef quest) {
         if (quest.mainQuest()) {
             return QuestType.MAIN;
@@ -109,7 +104,6 @@ public final class SeasonService {
             try {
                 return QuestType.valueOf(quest.type());
             } catch (IllegalArgumentException unknown) {
-                // Parsing already rejects unknown types; fall through to the reset mapping.
             }
         }
         return switch (quest.reset()) {
@@ -120,7 +114,6 @@ public final class SeasonService {
         };
     }
 
-    /** EXP multiplier for this completion: repeatables slow down after the daily full-rate runs. */
     public static double questXpMultiplier(RotasData data, PlayerProgress progress, QuestType type) {
         if (!active(data) || type != QuestType.REPEATABLE) {
             return 1.0;
@@ -136,7 +129,6 @@ public final class SeasonService {
         put(progress, REPEAT_RUNS, number(progress, REPEAT_RUNS) + 1);
     }
 
-    /** Grants the rank points one finished quest is worth, then refreshes the rank. */
     public static long grantRankPoints(ServerPlayer player, RotasData data, QuestType type) {
         if (!active(data)) {
             return 0;
@@ -168,7 +160,6 @@ public final class SeasonService {
         return DangerRank.byName(rankName(progress, rules), DangerRank.F);
     }
 
-    /** The next rank to reach and its points, or null at the top. */
     public static String nextRank(PlayerProgress progress, SeasonRules rules) {
         int index = RANK_ORDER.indexOf(rankName(progress, rules));
         for (int i = index + 1; i < RANK_ORDER.size(); i++) {
@@ -179,7 +170,6 @@ public final class SeasonService {
         return null;
     }
 
-    /** Perks of the highest rank reached. Each rank lists its full perks, so they do not stack. */
     public static SeasonRules.RankPerk perk(RotasData data, PlayerProgress progress) {
         if (!active(data)) {
             return new SeasonRules.RankPerk();
@@ -188,9 +178,7 @@ public final class SeasonService {
         return rules.perk(rankName(progress, rules));
     }
 
-
-    /** True once per player and recipe: the first craft of an item pays the first-craft bonus. */
-    public static boolean claimFirstCraft(PlayerProgress progress, String itemId) {
+public static boolean claimFirstCraft(PlayerProgress progress, String itemId) {
         return progress.claimOnce("season_first_craft|" + itemId);
     }
 }

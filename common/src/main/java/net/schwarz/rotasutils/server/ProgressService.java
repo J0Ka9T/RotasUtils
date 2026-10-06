@@ -17,41 +17,29 @@ import net.schwarz.rotasutils.quest.DangerRank;
 import net.schwarz.rotasutils.quest.QuestDef;
 import net.schwarz.rotasutils.quest.reward.Reward;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
-/** Experience, levels, skill points and rank clearance. Server side only. */
 public final class ProgressService {
     private static final int MAX_RECEIPTS_PER_PLAYER = 65_536;
+    private static final int MONSTER_RECEIPT_EVICTION_BATCH = 4_096;
     private static final String MONSTER_XP_RECEIPT_PREFIX = "monster_xp|";
 
     private ProgressService() {
     }
 
-    /**
-     * Awards the source's configured fixed amount. Dynamic combat XP uses the overload
-     * that accepts a live amount calculated from the killed monster.
-     */
     public static void awardFromSource(ServerPlayer player, RotasData data, XpSource source, String antiFarmKey) {
         awardFromSource(player, data, source, antiFarmKey, data.levelConfig().source(source).baseAmount());
     }
 
-    /**
-     * Awards a source-specific amount while still honouring the source multiplier,
-     * level/dimension gates, anti-farm policy and nearby-party sharing.
-     */
     public static void awardFromSource(ServerPlayer player, RotasData data, XpSource source,
                                        String antiFarmKey, long baseAmount) {
         awardFromSource(player, data, source, antiFarmKey, baseAmount, null);
     }
 
-    /**
-     * Awards XP for a persisted monster at most once to each recipient. The receipt is
-     * recorded before XP delivery because level-up rewards and compatibility hooks may
-     * re-enter progression code. If a downstream hook throws, the receipt remains claimed;
-     * delivery across external hooks is deliberately fail-closed rather than atomic.
-     */
     public static void awardFromSourceOnce(ServerPlayer player, RotasData data, XpSource source,
                                            String antiFarmKey, long baseAmount, UUID monsterId) {
         Objects.requireNonNull(monsterId, "monsterId");
@@ -83,8 +71,6 @@ public final class ProgressService {
             return;
         }
 
-        // The event catalogue gets the last word on the amount, and the anti-farm key is the thing the
-        // event happened to - the mob, the block, the item - so a rule can name one mod or one id.
         double eventMultiplier = EventService.multiplier(data,
                 net.schwarz.rotasutils.event.EventType.of(source), antiFarmKey);
         double combo = source == XpSource.MOB_KILL || source == XpSource.BOSS_KILL
@@ -129,22 +115,9 @@ public final class ProgressService {
         }
     }
 
-    /**
-     * One kill under the season rules, before any recipient-specific scaling.
-     *
-     * @param baseXp       the monster's base EXP
-     * @param multiplier   zone, repetition and boss/miniboss multipliers already combined
-     * @param monsterLevel the monster's level, or 0 when it has none (vanilla mob without a profile)
-     */
     public record CombatAward(long baseXp, double multiplier, int monsterLevel) {
     }
 
-    /**
-     * Season combat EXP: {@code base * (1 + bonus * level)}, shared by the killer's party in range. The pool
-     * grows by the party bonus per extra member and is split evenly. Each member earns as if the monster were
-     * at most {@code partyLevelReach} levels above them, and the over-level penalty uses their own level, so a
-     * high-level carry cannot power-level newcomers and a veteran farming weak mobs earns little.
-     */
     public static void awardCombat(ServerPlayer killer, RotasData data, XpSource source, String antiFarmKey,
                                    CombatAward award, UUID monsterId) {
         LevelConfig config = data.levelConfig();
@@ -172,7 +145,6 @@ public final class ProgressService {
             }
         }
         double share = net.schwarz.rotasutils.level.SeasonMath.partyShare(recipients.size(), rules.partyBonusPerMember);
-        // The season path pays kills too, so it answers to the event catalogue exactly like the plain path.
         double eventMultiplier = EventService.multiplier(data, net.schwarz.rotasutils.event.EventType.of(source), antiFarmKey);
         for (ServerPlayer recipient : recipients) {
             PlayerProgress progress = data.progress(recipient.getUUID());
@@ -185,7 +157,6 @@ public final class ProgressService {
                     rules.overLevelGrace, rules.overLevelPenaltyPerLevel, rules.overLevelMaxPenalty)
                     * net.schwarz.rotasutils.level.SeasonMath.catchUpMultiplier(level, rules.catchUpLevel, rules.catchUpBonus)
                     * share * sourceConfig.multiplier() * eventMultiplier
-                    // A combo is the killer's own streak; party members share the kill, not the streak.
                     * (recipient == killer ? FarmingService.comboXp(killer, data) : 1.0)
                     * net.schwarz.rotasutils.server.horse.HorseTraitEffects.xpMultiplier(recipient, source)
                     * BuffService.xpMultiplier(recipient, data, source)
@@ -205,22 +176,35 @@ public final class ProgressService {
         Objects.requireNonNull(progress, "progress");
         Objects.requireNonNull(monsterId, "monsterId");
         String receipt = MONSTER_XP_RECEIPT_PREFIX + monsterId;
-        if (progress.claimedRewards().contains(receipt)
-                || progress.claimedRewards().size() >= MAX_RECEIPTS_PER_PLAYER) {
+        Set<String> claimed = progress.claimedRewards();
+        if (claimed.contains(receipt)) {
             return false;
+        }
+        if (claimed.size() >= MAX_RECEIPTS_PER_PLAYER) {
+            evictOldestMonsterReceipts(claimed);
+            if (claimed.size() >= MAX_RECEIPTS_PER_PLAYER) {
+                return false;
+            }
         }
         return progress.claimOnce(receipt);
     }
 
-    /** Adds experience and resolves every level-up it triggers. */
+    private static void evictOldestMonsterReceipts(Set<String> claimed) {
+        int toDrop = MONSTER_RECEIPT_EVICTION_BATCH;
+        for (Iterator<String> it = claimed.iterator(); toDrop > 0 && it.hasNext(); ) {
+            if (it.next().startsWith(MONSTER_XP_RECEIPT_PREFIX)) {
+                it.remove();
+                toDrop--;
+            }
+        }
+    }
+
     public static int addExperience(ServerPlayer player, RotasData data, long amount, boolean fromQuest) {
         if (!player.server.isSameThread()) { throw new IllegalStateException("XP awards require the server thread"); }
         if (amount <= 0) {
             return 0;
         }
         PlayerProgress progress = data.progress(player.getUUID());
-        // RotasCommu uses Pufferfish Skills as the build layer. When it is present, legacy
-        // Rotas skill-tree XP multipliers must not silently influence the new level system.
         double multiplier = PuffishSkillsCompat.active(data)
                 ? 1.0
                 : SkillService.experienceMultiplier(data, progress, fromQuest);
@@ -229,9 +213,14 @@ public final class ProgressService {
         var main=data.job(progress.mainJob());
         if(main!=null&&main.enabled()) JobService.grantMastery(progress,main,net.schwarz.rotasutils.job.JobSlot.MAIN,scaled);
         var sub=data.job(progress.subJob());
-        // In a season the sub job only learns from production, never from combat or quest EXP.
         boolean subFromCombat = !SeasonService.active(data) || !SeasonService.rules(data).subJobProductionOnly;
         if(sub!=null&&sub.enabled()&&subFromCombat) JobService.grantMastery(progress,sub,net.schwarz.rotasutils.job.JobSlot.SUB,scaled);
+        if (progress.level() >= data.levelConfig().curve().maxLevel()) {
+            long tokens = SeasonService.overflowMaxLevel(data, progress, scaled);
+            if (tokens > 0) {
+                player.sendSystemMessage(Component.literal("EXP ล้นเลเวลสูงสุด → +" + tokens + " โทเคน").withStyle(ChatFormatting.AQUA));
+            }
+        }
         int levelsGained = net.schwarz.rotasutils.level.ProgressionMath.award(progress,
                 data.levelConfig().curve(), scaled, level -> onLevelReached(player, data, progress, level));
         data.setDirty();
@@ -240,13 +229,10 @@ public final class ProgressService {
             if (!PuffishSkillsCompat.active(data)) {
                 SkillService.recalculate(player, data);
             }
-            // New stat points and level-scaled job bonuses have to reach the attributes right away.
             CharacterStatService.apply(player, data);
         }
         syncVanillaLevelMirror(player, data);
         if (levelsGained > 0) {
-            // One sound per award, not per level: a multi-level grant would otherwise stack
-            // the jingle on itself for every level crossed in the same tick.
             player.level().playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP,
                     SoundSource.PLAYERS, 0.7f, 1.2f);
             RpgKernel.emit(player, "rotas:player_level_changed", java.util.UUID.randomUUID().toString(),
@@ -256,15 +242,12 @@ public final class ProgressService {
     }
 
     private static void onLevelReached(ServerPlayer player, RotasData data, PlayerProgress progress, int level) {
-        // Stat points are granted per award by CharacterStatService.grantLevelPoints.
         LevelConfig config = data.levelConfig();
         int points = level % config.skillPointInterval() == 0 ? config.skillPointsPerLevel() : 0;
         int puffishCategories = 0;
         if (points > 0) {
             if (PuffishSkillsCompat.active(data)) {
                 puffishCategories = PuffishSkillsCompat.addPointsToUnlockedCategories(player, points);
-                // Do not destroy earned progression when the server datapack has not unlocked a
-                // Puffish category yet. Legacy points act as a small compatibility escrow.
                 if (puffishCategories == 0) {
                     progress.addSkillPoints(points);
                 }
@@ -280,7 +263,6 @@ public final class ProgressService {
         refreshClearance(player, data, progress);
         MilestoneService.onLevel(player, data, progress, level);
         EventService.fire(player, data, net.schwarz.rotasutils.event.EventType.LEVEL_UP, String.valueOf(level));
-        // A level is a title condition of its own, and the level-up rewards may have moved the wallet too.
         TitleService.onProgress(player, data);
 
         if (config.announceLevelUp() && !"false".equals(progress.questVariables().get("pref.pref_toast"))) {
@@ -294,10 +276,6 @@ public final class ProgressService {
         }
     }
 
-    /**
-     * Keeps vanilla's public level fields as a read-only compatibility mirror for mods that
-     * inspect Player.experienceLevel. No vanilla XP is accumulated or spent.
-     */
     public static void syncVanillaLevelMirror(ServerPlayer player, RotasData data) {
         PlayerProgress progress = data.peek(player.getUUID());
         if (progress == null) {
@@ -310,8 +288,6 @@ public final class ProgressService {
                 : (float) Math.max(0.0, Math.min(1.0, progress.xp() / (double) needed));
         int totalMirror = (int) Math.min(Integer.MAX_VALUE, Math.max(0L, progress.totalXp()));
 
-        // These fields are compatibility projections only. PlayerExperienceMixin rejects all
-        // vanilla mutations, and the vanilla HUD is hidden by GuiExperienceMixin.
         if (player.experienceLevel != level
                 || Math.abs(player.experienceProgress - fraction) > 0.0001f
                 || player.totalExperience != totalMirror) {
@@ -321,13 +297,6 @@ public final class ProgressService {
         }
     }
 
-    /**
-     * Re-evaluates every rank clearance the player could hold.
-     *
-     * <p>A rank is auto-granted when its level requirement and its "complete N quests
-     * of the rank below" requirement are both met, and any configured promotion quest
-     * has been completed. Manually granted clearances are never revoked here.
-     */
     public static void refreshClearance(ServerPlayer player, RotasData data, PlayerProgress progress) {
         LevelConfig config = data.levelConfig();
         if (!config.rankRequirementsEnabled()) {
@@ -337,7 +306,6 @@ public final class ProgressService {
             return;
         }
         if (SeasonService.active(data)) {
-            // Season ranks come from rank points alone. SSS stays a manual, event-only grant.
             DangerRank reached = SeasonService.rank(progress, SeasonService.rules(data));
             for (DangerRank rank : DangerRank.VALUES) {
                 if (rank.ordinal() <= reached.ordinal() && progress.grantClearance(rank) && rank != DangerRank.F) {
@@ -376,7 +344,6 @@ public final class ProgressService {
         }
     }
 
-    /** Lists the outstanding requirements for the next clearance the player lacks. */
     public static String nextClearanceSummary(RotasData data, PlayerProgress progress) {
         LevelConfig config = data.levelConfig();
         if (SeasonService.active(data)) {
@@ -410,20 +377,15 @@ public final class ProgressService {
         return net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.rank.all_unlocked");
     }
 
-    /**
-     * Revision of the level and stat system. Raising it wipes every character's level, EXP, stat points and
-     * skill trees once, on the next server start. 1 = the four fixed stats (2026-09-25 rebuild).
-     */
     public static final int STAT_SYSTEM_VERSION = 1;
 
-    /** Runs once per world per {@link #STAT_SYSTEM_VERSION}, before anyone can join. */
     public static int migrateStatSystem(RotasData data) {
         if (data.statSystemVersion() >= STAT_SYSTEM_VERSION) {
             return 0;
         }
         int wiped = 0;
         int startLevel = data.levelConfig().startingLevel();
-        for (PlayerProgress progress : data.allPlayers()) {
+        for (PlayerProgress progress : data.allPlayersToModify()) {
             CharacterStatService.wipeProgression(progress, data, startLevel);
             wiped++;
         }
@@ -432,7 +394,6 @@ public final class ProgressService {
         return wiped;
     }
 
-    /** Sets a level directly, used by the admin player progress manager. */
     public static void setLevel(ServerPlayer player, RotasData data, int level) {
         PlayerProgress progress = data.progress(player.getUUID());
         int clamped = Math.max(1, Math.min(data.levelConfig().curve().maxLevel(), level));
@@ -443,7 +404,6 @@ public final class ProgressService {
         if (!PuffishSkillsCompat.active(data)) {
             SkillService.recalculate(player, data);
         }
-        // Level-scaled job bonuses have to reach the attributes, same as a natural level-up.
         CharacterStatService.apply(player, data);
         syncVanillaLevelMirror(player, data);
         data.setDirty();

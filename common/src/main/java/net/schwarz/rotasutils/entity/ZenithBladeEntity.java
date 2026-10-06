@@ -28,25 +28,10 @@ import org.joml.Vector3f;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * One spectral sword loosed by the Zenith. It flies a closed loop: out from its wielder to the
- * aimed point along one side, and back along the other, following the wielder as they move. The
- * loop is a pure function of (origin, target, seed, age), so the client draws it at sub-tick
- * precision and long smooth trails without keeping any history, and the server cuts along exactly
- * the same curve. Each blade cuts a given creature once.
- */
 public class ZenithBladeEntity extends Entity {
-    /** Longest a loop can take, out and back (a blade aimed at full reach). */
     public static final int LIFE = 34;
-    /** Shortest loop, for a target right in front of the wielder. */
     public static final int MIN_LIFE = 12;
-    /**
-     * Blocks the loop covers per tick of its life. As in Terraria the blades keep a steady pace, so a
-     * close target is cut in a snap and a far one takes longer, instead of every loop taking the
-     * same time and near blades crawling.
-     */
     private static final double PACE = 2.4;
-    /** How close to the blade's path, beyond a creature's own half-width, still cuts it. */
     private static final double CUT_RADIUS = 2.2;
 
     private static final EntityDataAccessor<ItemStack> BLADE =
@@ -81,7 +66,6 @@ public class ZenithBladeEntity extends Entity {
         level.addFreshEntity(entity);
     }
 
-    /** Where the loop starts and ends: the wielder's sword hand, roughly. */
     public static Vec3 origin(Entity owner, float partialTick) {
         return owner.getPosition(partialTick).add(0, owner.getEyeHeight() * 0.72, 0);
     }
@@ -107,13 +91,11 @@ public class ZenithBladeEntity extends Entity {
         return tickCount + partialTick;
     }
 
-    /** Ticks this blade's loop takes, from how far it was thrown. Same on both sides: both are synced. */
     public int life() {
         Vector3f o = entityData.get(ORIGIN), t = entityData.get(TARGET);
         return lifeFor(new Vector3f(t).sub(o).length());
     }
 
-    /** Loop time for a throw of {@code distance} blocks: steady pace, clamped to a snap and a sweep. */
     public static int lifeFor(double distance) {
         return (int) Math.round(Mth.clamp(MIN_LIFE + distance / PACE, MIN_LIFE, LIFE));
     }
@@ -124,7 +106,6 @@ public class ZenithBladeEntity extends Entity {
         return owner != null && owner.isAlive() ? owner : null;
     }
 
-    /** The loop's start point this frame: the live wielder if there is one, else where it was loosed. */
     public Vec3 loopOrigin(float partialTick) {
         Entity owner = owner();
         if (owner != null) {
@@ -139,10 +120,6 @@ public class ZenithBladeEntity extends Entity {
         return new Vec3(t.x, t.y, t.z);
     }
 
-    /**
-     * The loop, fixed for one frame. {@link #at(double, Vector3f)} places the blade at any
-     * fraction of its life, so trails are sampled from the true curve rather than from history.
-     */
     public static final class Loop {
         final Vector3f origin = new Vector3f();
         final Vector3f forward = new Vector3f();
@@ -162,8 +139,6 @@ public class ZenithBladeEntity extends Entity {
             }
             right.normalize();
             Vector3f up = new Vector3f(right).cross(forward).normalize();
-            // Each blade loops in its own tilted plane and to a random side, so a volley blooms
-            // into a rose of arcs around the aim line instead of stacking on one curve.
             float roll = ((seed & 0xFFFF) / 65535f * 2f - 1f) * 1.25f;
             float sign = (seed & 0x10000) != 0 ? 1f : -1f;
             side.set(right).mul(Mth.cos(roll) * sign).add(up.x * Mth.sin(roll), up.y * Mth.sin(roll), up.z * Mth.sin(roll));
@@ -174,7 +149,6 @@ public class ZenithBladeEntity extends Entity {
             return this;
         }
 
-        /** Position at life fraction {@code u} (0 = hand, 0.5 = target, 1 = hand again). */
         public Vector3f at(double u, Vector3f out) {
             double theta = Math.PI * 2.0 * Mth.clamp(u, 0.0, 1.0);
             float reach = (float) ((1.0 - Math.cos(theta)) * 0.5) * length;
@@ -183,7 +157,6 @@ public class ZenithBladeEntity extends Entity {
                     forward.z * reach + side.z * swing);
         }
 
-        /** Direction of travel at {@code u}, unit length. */
         public Vector3f tangent(double u, Vector3f out) {
             double theta = Math.PI * 2.0 * Mth.clamp(u, 0.0, 1.0);
             float dReach = (float) (Math.PI * Math.sin(theta)) * length;
@@ -238,11 +211,8 @@ public class ZenithBladeEntity extends Entity {
             DamageSource source = owner instanceof Player player ? damageSources().playerAttack(player)
                     : owner instanceof LivingEntity living ? damageSources().mobAttack(living)
                     : damageSources().magic();
-            // Every blade is its own strike, as in Terraria: a volley is not swallowed by the
-            // half-second of invulnerability one hit leaves behind.
             victim.invulnerableTime = 0;
             if (victim.hurt(source, damage)) {
-                // A bright slash mark across the victim along the blade's own path: the cut itself.
                 Vec3 dir = new Vec3(to.x - from.x, to.y - from.y, to.z - from.z);
                 Vec3 half = dir.lengthSqr() < 1.0e-6 ? new Vec3(1.2, 0, 0) : dir.normalize().scale(1.4);
                 RiftFx.send(level, RiftFx.Kind.SLASH, RiftFx.PRISM, center.subtract(half), center.add(half), 0.9f, 9);
@@ -253,10 +223,6 @@ public class ZenithBladeEntity extends Entity {
         }
     }
 
-    /**
-     * Each blade bites with a small kick as it swings through its target. Positional, so whoever is
-     * close feels it; common code must not touch client classes to single out the wielder.
-     */
     private void clientTick(int life) {
         if (tickCount == life / 2) {
             Vec3 t = target();
@@ -288,7 +254,6 @@ public class ZenithBladeEntity extends Entity {
         return distance < 128 * 128;
     }
 
-    /** Never written to disk (the type is {@code noSave}). */
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
     }

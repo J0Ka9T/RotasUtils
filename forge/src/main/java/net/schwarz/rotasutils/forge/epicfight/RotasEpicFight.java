@@ -48,24 +48,24 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Extra passive skills for Epic Fight's skill books, one signature per combat job.
- *
- * <p>All combat logic runs on the logical server. Per-player state lives in maps keyed by player UUID;
- * the skill objects themselves are singletons shared by every player. On an integrated server the
- * client patch initiates the same skill, so state is only touched when the executor is server-side.</p>
- */
 public final class RotasEpicFight {
     private RotasEpicFight() {
     }
 
     public static void init(IEventBus modBus) {
+        CombatSkillEffects.init();
+        MinecraftForge.EVENT_BUS.addListener(MyriadSwordsSkill::logout);
+        MinecraftForge.EVENT_BUS.addListener(DharmakayaSkill::logout);
+        MinecraftForge.EVENT_BUS.addListener(WanJianSkill::logout);
         modBus.addListener(RotasEpicFight::buildSkills);
         modBus.addListener(RotasEpicFight::addLoot);
-        // Arrows are vanilla damage, which Epic Fight's own deal-damage hook never sees.
         MinecraftForge.EVENT_BUS.addListener(HuntersPatience::onHurt);
+        modBus.addListener((net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent setup) -> setup.enqueueWork(FixedDamage::install));
+        MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOW, false,
+                LivingHurtEvent.class, FixedDamage::onHurt);
         ZenithMoveset.init(modBus);
         ExoMoveset.init(modBus);
+        CapoeiraMoveset.init(modBus);
     }
 
     private static void buildSkills(SkillBuildEvent event) {
@@ -76,11 +76,16 @@ public final class RotasEpicFight {
         worker.build("afterimage", Afterimage::new, PassiveSkill.createPassiveBuilder());
         worker.build("arcane_edge", ArcaneEdge::new, PassiveSkill.createPassiveBuilder());
         worker.build("hunters_patience", HuntersPatience::new, PassiveSkill.createPassiveBuilder());
+        AdditionalEpicFightSkills.build(worker);
+        MyriadSwordsSkill.build(worker);
+        DharmakayaSkill.build(worker);
+        WanJianSkill.build(worker);
         ExoMoveset.buildSkills(worker);
+        CapoeiraMoveset.buildSkills(worker);
     }
 
-    /** Books drop from mobs that fit each skill, at Epic Fight's own base rate (killed by a player). */
     private static void addLoot(SkillLootTableRegistryEvent event) {
+        AdditionalEpicFightSkills.addLoot(event);
         books(event, EntityType.VINDICATOR, 0.04f, "momentum", "last_bastion");
         books(event, EntityType.PIGLIN_BRUTE, 0.04f, "momentum", "last_bastion");
         books(event, EntityType.RAVAGER, 0.10f, "last_bastion");
@@ -89,6 +94,9 @@ public final class RotasEpicFight {
         books(event, EntityType.PHANTOM, 0.03f, "afterimage");
         books(event, EntityType.WITCH, 0.04f, "arcane_edge");
         books(event, EntityType.EVOKER, 0.15f, "arcane_edge", "afterimage");
+        books(event, EntityType.EVOKER, 0.10f, MyriadSwordsSkill.ID);
+        books(event, EntityType.WARDEN, 0.15f, DharmakayaSkill.ID);
+        books(event, EntityType.WITHER, 0.20f, WanJianSkill.ID);
         books(event, EntityType.SKELETON, 0.02f, "hunters_patience");
         books(event, EntityType.PILLAGER, 0.04f, "hunters_patience");
     }
@@ -100,10 +108,7 @@ public final class RotasEpicFight {
                 .add(LootItem.lootTableItem(EpicFightItems.SKILLBOOK.get()).apply(SetSkillFunction.builder(ids))));
     }
 
-    // Shared ---------------------------------------------------------------
-
-    /** Base for this mod's passives: a stable listener id and server-only per-player state. */
-    abstract static class RotasPassive<S> extends PassiveSkill {
+abstract static class RotasPassive<S> extends PassiveSkill {
         private final Map<UUID, S> states = new ConcurrentHashMap<>();
         private UUID listenerId;
 
@@ -136,6 +141,7 @@ public final class RotasEpicFight {
             }
             if (server(container)) {
                 states.remove(container.getExecutor().getOriginal().getUUID());
+                CombatSkillEffects.clear(container.getExecutor().getOriginal(), getRegistryName().getPath());
             }
         }
 
@@ -162,13 +168,7 @@ public final class RotasEpicFight {
         }
     }
 
-    // Fighter: Momentum ----------------------------------------------------
-
-    /**
-     * Each hit on the same enemy within 3 seconds adds a stack of damage. The hit after a full set is a
-     * Crescendo: a heavy bonus that spends the stacks and gives stamina back. Getting hurt costs two stacks.
-     */
-    static final class Momentum extends RotasPassive<Momentum.State> {
+static final class Momentum extends RotasPassive<Momentum.State> {
         static final class State {
             int target = -1;
             int stacks;
@@ -224,9 +224,11 @@ public final class RotasEpicFight {
                     state.stacks = 0;
                     addStamina(event.getPlayerPatch(), crescendoStamina);
                     burst(event.getTarget(), ParticleTypes.CRIT, 18, 0.4, SoundEvents.PLAYER_ATTACK_CRIT, 0.6f);
+                    CombatSkillEffects.emit(player, event.getTarget(), "momentum", 6, 1);
                 } else {
                     multiplier = 1 + perStack * state.stacks;
                     state.stacks++;
+                    CombatSkillEffects.emit(player, event.getTarget(), "momentum", Math.min(5, state.stacks), 1);
                 }
                 event.getDamageSource().attachDamageModifier(ValueModifier.multiplier(multiplier));
             });
@@ -246,13 +248,7 @@ public final class RotasEpicFight {
         }
     }
 
-    // Tank: Last Bastion ---------------------------------------------------
-
-    /**
-     * Below a third of health every hit is softened and pays back stamina. Once every 90 seconds a hit
-     * that would kill leaves the player standing at 1 health with absorption and resistance instead.
-     */
-    static final class LastBastion extends RotasPassive<LastBastion.State> {
+static final class LastBastion extends RotasPassive<LastBastion.State> {
         static final class State {
             long readyAt;
         }
@@ -299,12 +295,12 @@ public final class RotasEpicFight {
                 float incoming = event.getDamage() * (low ? 1 - reduction : 1);
                 long now = player.level().getGameTime();
                 if (incoming >= health && now >= state.readyAt) {
-                    // Checked before armour, so it can fire on a hit armour would have survived; it errs safe.
                     event.attachValueModifier(ValueModifier.setter(Math.max(0, health - 1)));
                     state.readyAt = now + cooldown;
                     player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 100, 1));
                     player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 60, 1));
                     burst(player, ParticleTypes.TOTEM_OF_UNDYING, 40, 0.6, SoundEvents.TOTEM_USE, 1.3f);
+                    CombatSkillEffects.emit(player, player, "last_bastion", 1, 1);
                     return;
                 }
                 if (low) {
@@ -323,13 +319,7 @@ public final class RotasEpicFight {
         }
     }
 
-    // Rogue: Predator's Mark -----------------------------------------------
-
-    /**
-     * Hits from behind, or on an enemy hunting someone else, strike harder and mark it. Killing a marked
-     * enemy makes the rogue vanish: a moment of invisibility, speed and stamina.
-     */
-    static final class PredatorsMark extends RotasPassive<PredatorsMark.State> {
+static final class PredatorsMark extends RotasPassive<PredatorsMark.State> {
         static final class State {
             int marked = -1;
             int markedAt;
@@ -382,6 +372,7 @@ public final class RotasEpicFight {
                 state.markedAt = player.tickCount;
                 event.getDamageSource().attachDamageModifier(ValueModifier.multiplier(1 + ambushBonus));
                 burst(event.getTarget(), ParticleTypes.DAMAGE_INDICATOR, 6, 0.3, SoundEvents.PLAYER_ATTACK_SWEEP, 1.6f);
+                CombatSkillEffects.emit(player, event.getTarget(), "predators_mark", 0, 1, markTicks);
             });
             listener.addEventListener(EventType.PLAYER_KILLED_EVENT, listenerId(), event -> {
                 ServerPlayer player = event.getPlayerPatch().getOriginal();
@@ -394,6 +385,7 @@ public final class RotasEpicFight {
                 player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 60, 1, false, false, true));
                 addStamina(event.getPlayerPatch(), 4);
                 burst(player, ParticleTypes.LARGE_SMOKE, 24, 0.4, SoundEvents.ILLUSIONER_MIRROR_MOVE, 1.2f);
+                CombatSkillEffects.emit(player, player, "predators_mark", 1, 1);
             });
         }
 
@@ -405,10 +397,7 @@ public final class RotasEpicFight {
         }
     }
 
-    // Any: Afterimage ------------------------------------------------------
-
-    /** A successful dodge leaves an afterimage; the next hit within 3 seconds strikes from it. */
-    static final class Afterimage extends RotasPassive<Afterimage.State> {
+static final class Afterimage extends RotasPassive<Afterimage.State> {
         static final class State {
             int readyUntil = -1;
         }
@@ -447,6 +436,7 @@ public final class RotasEpicFight {
                 ServerPlayer player = event.getPlayerPatch().getOriginal();
                 state(player).readyUntil = player.tickCount + window;
                 burst(player, ParticleTypes.CLOUD, 14, 0.35, SoundEvents.ILLUSIONER_MIRROR_MOVE, 1.4f);
+                CombatSkillEffects.emit(player, player, "afterimage", 0, 1, window);
             });
             listener.addEventListener(EventType.DEAL_DAMAGE_EVENT_HURT, listenerId(), event -> {
                 ServerPlayer player = event.getPlayerPatch().getOriginal();
@@ -458,6 +448,7 @@ public final class RotasEpicFight {
                 event.getDamageSource().attachDamageModifier(ValueModifier.multiplier(1 + bonus));
                 addStamina(event.getPlayerPatch(), stamina);
                 burst(event.getTarget(), ParticleTypes.ENCHANTED_HIT, 20, 0.4, SoundEvents.ILLUSIONER_CAST_SPELL, 1.5f);
+                CombatSkillEffects.emit(player, event.getTarget(), "afterimage", 1, 1);
             });
         }
 
@@ -470,13 +461,7 @@ public final class RotasEpicFight {
         }
     }
 
-    // Wizard: Arcane Edge --------------------------------------------------
-
-    /**
-     * Every fourth melee hit resonates: enemies around the target take a share of the hit as magic damage.
-     * With Iron's Spells the burst scales with the player's spell power.
-     */
-    static final class ArcaneEdge extends RotasPassive<ArcaneEdge.State> {
+static final class ArcaneEdge extends RotasPassive<ArcaneEdge.State> {
         static final class State {
             int hits;
         }
@@ -508,7 +493,6 @@ public final class RotasEpicFight {
             radius = param(tag, "burst_radius", radius);
         }
 
-        /** Iron's spell power (1.0 = no bonus), or 1 without the mod. */
         static double spellPower(Player player) {
             Attribute attribute = BuiltInRegistries.ATTRIBUTE.get(SPELL_POWER);
             AttributeInstance instance = attribute == null ? null : player.getAttribute(attribute);
@@ -527,7 +511,6 @@ public final class RotasEpicFight {
                 state.hits = 0;
                 LivingEntity target = event.getTarget();
                 float damage = (float) (event.getAttackDamage() * share * spellPower(player));
-                // Vanilla magic damage does not fire Epic Fight's deal-damage hook, so this cannot recurse.
                 for (LivingEntity nearby : target.level().getEntitiesOfClass(LivingEntity.class,
                         target.getBoundingBox().inflate(radius), entity -> entity != player && entity != target
                                 && entity.isAlive() && !entity.isAlliedTo(player)
@@ -535,6 +518,7 @@ public final class RotasEpicFight {
                     nearby.hurt(player.damageSources().indirectMagic(player, player), damage);
                 }
                 burst(target, ParticleTypes.WITCH, 30, radius * 0.4, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.8f);
+                CombatSkillEffects.emit(player, target, "arcane_edge", 1, radius);
             });
         }
 
@@ -547,19 +531,12 @@ public final class RotasEpicFight {
         }
     }
 
-    // Archer: Hunter's Patience --------------------------------------------
-
-    /**
-     * Standing still builds Focus; the next arrow that lands consumes it for a large bonus. Every shot also
-     * gains a little damage per block beyond ten, rewarding patient long-range play.
-     */
-    static final class HuntersPatience extends RotasPassive<HuntersPatience.State> {
+static final class HuntersPatience extends RotasPassive<HuntersPatience.State> {
         static final class State {
             Vec3 lastPos = Vec3.ZERO;
             int stillTicks;
         }
 
-        /** Server-side players who have the skill equipped; the Forge hurt hook reads it. */
         private static final Set<UUID> EQUIPPED = ConcurrentHashMap.newKeySet();
         private static HuntersPatience instance;
         private float focusBonus = 0.4f;
@@ -617,9 +594,13 @@ public final class RotasEpicFight {
             boolean still = player.onGround() && player.position().distanceToSqr(state.lastPos) < 0.0004;
             state.lastPos = player.position();
             if (!still) {
+                if (state.stillTicks >= focusTicks) CombatSkillEffects.clear(player, "hunters_patience");
                 state.stillTicks = 0;
             } else if (++state.stillTicks == focusTicks) {
                 player.playNotifySound(SoundEvents.CROSSBOW_LOADING_END, SoundSource.PLAYERS, 0.7f, 1.6f);
+                CombatSkillEffects.emit(player, player, "hunters_patience", 0, 1);
+            } else if (state.stillTicks > focusTicks && (state.stillTicks - focusTicks) % 60 == 0) {
+                CombatSkillEffects.emit(player, player, "hunters_patience", 0, 1);
             }
         }
 
@@ -636,6 +617,7 @@ public final class RotasEpicFight {
                 bonus += instance.focusBonus;
                 state.stillTicks = 0;
                 burst(event.getEntity(), ParticleTypes.CRIT, 16, 0.3, SoundEvents.ARROW_HIT_PLAYER, 0.8f);
+                CombatSkillEffects.emit(player, event.getEntity(), "hunters_patience", 1, 1);
             }
             if (bonus > 0) {
                 event.setAmount(event.getAmount() * (1 + bonus));

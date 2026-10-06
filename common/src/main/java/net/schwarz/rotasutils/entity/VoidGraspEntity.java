@@ -20,11 +20,6 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 
 import java.util.UUID;
 
-/**
- * The Tetrarch's void grasp at one spot: a dark circle on the ground for {@link #ERUPT} ticks, then
- * tentacles tear up out of it and seize whoever is still standing there. Moving out of the circle
- * is the answer. Drawn by {@code VoidGraspRenderer}; lives {@link #END} ticks.
- */
 public class VoidGraspEntity extends Entity {
     public static final int ERUPT = 24;
     public static final int END = 50;
@@ -68,7 +63,6 @@ public class VoidGraspEntity extends Entity {
         if (level().isClientSide) {
             age = smoothAge.tick(age);
             if (age == 1) {
-                // The ground it will tear up, marked while it gathers under them.
                 RiftFx.local(RiftFx.Kind.SIGIL, RiftFx.DARK, position(), (float) RADIUS, ERUPT + 2);
             }
             if (age == ERUPT) {
@@ -100,7 +94,6 @@ public class VoidGraspEntity extends Entity {
         }
     }
 
-    /** Never written to disk (the type is {@code noSave}); summoned ones start fresh. */
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
     }

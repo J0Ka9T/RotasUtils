@@ -19,13 +19,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Live mob models for admin screens.
- *
- * <p>Models are client entities that are never added to the world. Only a few are created per frame
- * so a screen full of mobs opens without a stutter, and a mob whose constructor or renderer fails
- * falls back to its spawn egg for the rest of the screen's life.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class MobModelCache {
     private final Map<EntityType<?>, Entity> models = new HashMap<>();
@@ -37,7 +30,6 @@ public final class MobModelCache {
         this.perFrame = perFrame;
     }
 
-    /** Call once at the start of each frame before drawing. */
     public void beginFrame() {
         createdThisFrame = 0;
     }
@@ -70,7 +62,6 @@ public final class MobModelCache {
         return model(type) instanceof LivingEntity living ? living : null;
     }
 
-    /** Draws the mob with its feet at {@code (centerX, feetY)}, scaled to fit {@code box} pixels. */
     public void draw(GuiGraphics graphics, EntityType<?> type, int centerX, int feetY, int box, float lookX, float lookY) {
         LivingEntity living = living(type);
         if (living != null) {
@@ -102,7 +93,6 @@ public final class MobModelCache {
                 ? BuiltInRegistries.ENTITY_TYPE.get(location) : null;
     }
 
-    /** "Zombie" for {@code minecraft:zombie}; the id itself when the mob is not installed. */
     public static String displayName(String id) {
         EntityType<?> type = type(id);
         return type == null ? id : type.getDescription().getString();

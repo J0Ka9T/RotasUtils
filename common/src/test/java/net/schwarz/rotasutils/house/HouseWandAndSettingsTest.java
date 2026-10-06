@@ -14,9 +14,7 @@ class HouseWandAndSettingsTest {
     }
 
     @Test void clickingInsidePullsTheNearestWallIn() {
-        // x=8 is one block from the east wall (9) and eight from the west wall (0).
         assertArrayEquals(new int[]{0, 60, 0, 8, 70, 9}, HouseWandService.pushed(BOX, new BlockPos(8, 65, 4)));
-        // y=61 is nearest the floor.
         assertArrayEquals(new int[]{0, 61, 0, 9, 70, 9}, HouseWandService.pushed(BOX, new BlockPos(4, 61, 4)));
     }
 

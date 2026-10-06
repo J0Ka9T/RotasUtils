@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/** Chooses the Mob Setup a spawn point spawns; setups scoped to the zone are listed first. */
 @Environment(EnvType.CLIENT)
 public class ZoneSetupChoiceScreen extends RotasScreen {
     private static final int ROW = 28;
@@ -38,7 +37,6 @@ public class ZoneSetupChoiceScreen extends RotasScreen {
         return 520;
     }
 
-    /** Built from server data with no draft of its own, so a push rebuilds it (scroll and typing kept). */
     @Override
     protected Refresh refreshMode() {
         return Refresh.REBUILD;
@@ -54,7 +52,6 @@ public class ZoneSetupChoiceScreen extends RotasScreen {
                     scoped.add(entry.id());
                 }
             } catch (RuntimeException ignored) {
-                // A setup the easy editor cannot read is still choosable by id.
             }
             rows.add(entry);
         }

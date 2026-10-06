@@ -9,7 +9,6 @@ import net.schwarz.rotasutils.network.EldritchSkyPacket;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Server-side coordinator for the eldritch sky. */
 public final class EldritchSkyService {
     private EldritchSkyService() {
     }
@@ -28,7 +27,6 @@ public final class EldritchSkyService {
         return next;
     }
 
-    /** Send the current snapshot to every player already in the given dimension. */
     public static void broadcast(ServerLevel level, EldritchSkyTransition.Snapshot snapshot) {
         ResourceKey<Level> dim = level.dimension();
         for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
@@ -38,7 +36,6 @@ public final class EldritchSkyService {
         }
     }
 
-    /** Send the snapshot for whichever dimension this player is currently in. */
     public static void syncTo(ServerPlayer player) {
         if (player == null || player.serverLevel() == null) return;
         ServerLevel level = player.serverLevel();
@@ -48,7 +45,6 @@ public final class EldritchSkyService {
         SkySunder.syncTo(player);
     }
 
-    /** On server start settle every dimension's snapshot so a mid-transition save resumes cleanly. */
     public static void settleAll(MinecraftServer server) {
         for (ServerLevel level : server.getAllLevels()) {
             EldritchSkySavedData data = EldritchSkySavedData.get(level);

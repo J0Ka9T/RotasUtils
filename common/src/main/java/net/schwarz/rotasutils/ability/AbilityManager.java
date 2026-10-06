@@ -11,18 +11,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.schwarz.rotasutils.Rotasutils;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * The one place that starts, times and ends cinematic abilities. An item only asks {@link #start}; this
- * validates (item, cooldown, caster state), locks a target, tells the clients, and then drives the
- * ability's {@link Timeline} from a single server clock until it ends or is cut short. Damage and
- * knockback happen only in timeline events the server itself fires; a client can request nothing but
- * the start, and never reports a hit.
- */
 public final class AbilityManager {
     private AbilityManager() {
     }
@@ -52,7 +44,16 @@ public final class AbilityManager {
         }
         initialised = true;
         TickEvent.SERVER_POST.register(AbilityManager::tick);
-        PlayerEvent.PLAYER_QUIT.register(player -> cancel(player.getUUID()));
+        PlayerEvent.PLAYER_QUIT.register(player -> {
+            cancel(player.getUUID());
+            COOLDOWNS.remove(player.getUUID());
+        });
+        dev.architectury.event.events.common.LifecycleEvent.SERVER_STOPPING.register(server -> {
+            for (UUID id : java.util.List.copyOf(ACTIVE.keySet())) {
+                cancel(id);
+            }
+            COOLDOWNS.clear();
+        });
         PlayerEvent.CHANGE_DIMENSION.register((player, oldWorld, newWorld) -> cancel(player.getUUID()));
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             cancel(entity.getUUID());
@@ -70,7 +71,6 @@ public final class AbilityManager {
         return until == null ? 0 : Math.max(0, until - player.serverLevel().getGameTime());
     }
 
-    /** Validates and begins {@code definition} for {@code player}. */
     public static Result start(ServerPlayer player, AbilityDefinition definition) {
         if (!player.isAlive() || player.isSpectator() || player.isPassenger() || player.isSleeping()
                 || !definition.canStart(player)) {
@@ -85,7 +85,10 @@ public final class AbilityManager {
             return Result.ON_COOLDOWN;
         }
         ServerLevel level = player.serverLevel();
-        Target target = TargetFinder.acquire(player, RedTimings.RANGE, 12.0);
+        Target target = definition.retarget(player, TargetFinder.acquire(player, RedTimings.RANGE, 12.0));
+        if (!definition.accepts(player, target)) {
+            return Result.INVALID;
+        }
         AbilityContext context = new AbilityContext(player, level, level.getGameTime(), target,
                 level.getRandom().nextLong());
         ACTIVE.put(player.getUUID(), new Active(definition, context));
@@ -98,7 +101,6 @@ public final class AbilityManager {
         return Result.STARTED;
     }
 
-    /** Cuts an ability short (caster died, left, changed world). Clients are told so they drop the cutscene. */
     public static void cancel(UUID player) {
         Active active = ACTIVE.remove(player);
         if (active != null) {
@@ -107,39 +109,52 @@ public final class AbilityManager {
     }
 
     private static void finish(Active active, boolean completed) {
-        active.definition.end(active.context, completed);
-        AbilityNet.sendEnd(active.context, completed);
+        try {
+            active.definition.end(active.context, completed);
+        } catch (RuntimeException failure) {
+            Rotasutils.LOG.error("Ability {} cleanup failed", active.definition.id(), failure);
+        } finally {
+            AbilityNet.sendEnd(active.context, completed);
+        }
     }
 
     private static void tick(MinecraftServer server) {
         if (ACTIVE.isEmpty()) {
             return;
         }
-        for (Iterator<Map.Entry<UUID, Active>> it = ACTIVE.entrySet().iterator(); it.hasNext(); ) {
-            Active active = it.next().getValue();
-            AbilityContext c = active.context;
-            ServerPlayer player = c.player;
-            if (player.isRemoved() || !player.isAlive() || player.isSpectator() || player.serverLevel() != c.level
-                    || server.getPlayerList().getPlayer(player.getUUID()) != player) {
-                it.remove();
-                finish(active, false);
-                continue;
+        for (Map.Entry<UUID, Active> entry : ACTIVE.entrySet()) {
+            Active active = entry.getValue();
+            boolean keep;
+            try {
+                keep = step(server, active);
+            } catch (RuntimeException failure) {
+                Rotasutils.LOG.error("Ability {} failed and was cancelled", active.definition.id(), failure);
+                keep = false;
             }
-            long now = c.level.getGameTime();
-            for (Iterator<AbilityContext.Delayed> d = c.delayed.iterator(); d.hasNext(); ) {
-                AbilityContext.Delayed delayed = d.next();
-                if (delayed.dueTick() <= now) {
-                    d.remove();
-                    delayed.action().run();
-                }
-            }
-            double seconds = (now - c.startTick) / 20.0;
-            active.definition.timeline().advance(active.previous, seconds, c);
-            active.previous = seconds;
-            if (now - c.startTick >= active.definition.durationTicks()) {
-                it.remove();
-                finish(active, true);
+            boolean completed = keep
+                    && active.context.level.getGameTime() - active.context.startTick >= active.definition.durationTicks();
+            if ((!keep || completed) && ACTIVE.remove(entry.getKey(), active)) {
+                finish(active, completed);
             }
         }
+    }
+
+    private static boolean step(MinecraftServer server, Active active) {
+        AbilityContext c = active.context;
+        ServerPlayer player = c.player;
+        if (player.isRemoved() || !player.isAlive() || player.isSpectator() || player.serverLevel() != c.level
+                || server.getPlayerList().getPlayer(player.getUUID()) != player) {
+            return false;
+        }
+        long now = c.level.getGameTime();
+        java.util.List<AbilityContext.Delayed> due = c.delayed.stream().filter(d -> d.dueTick() <= now).toList();
+        if (!due.isEmpty()) {
+            c.delayed.removeAll(due);
+            due.forEach(d -> d.action().run());
+        }
+        double seconds = (now - c.startTick) / 20.0;
+        active.definition.timeline().advance(active.previous, seconds, c);
+        active.previous = seconds;
+        return active.definition.tick(c);
     }
 }

@@ -1,0 +1,28 @@
+{
+  "sellPercent": 50,
+  "silverPercent": 150,
+  "goldPercent": 250,
+  "prices": {
+    "minecraft:coal": 2, "minecraft:charcoal": 2, "minecraft:copper_ingot": 4, "minecraft:raw_copper": 3,
+    "minecraft:iron_ingot": 8, "minecraft:raw_iron": 6, "minecraft:gold_ingot": 20, "minecraft:raw_gold": 15,
+    "minecraft:gold_nugget": 2, "minecraft:diamond": 80, "minecraft:emerald": 50, "minecraft:lapis_lazuli": 3,
+    "minecraft:redstone": 2, "minecraft:quartz": 4, "minecraft:amethyst_shard": 6, "minecraft:obsidian": 12,
+    "minecraft:ancient_debris": 160, "minecraft:netherite_scrap": 150, "minecraft:netherite_ingot": 700,
+    "minecraft:wheat": 2, "minecraft:carrot": 2, "minecraft:potato": 2, "minecraft:beetroot": 2,
+    "minecraft:melon_slice": 1, "minecraft:pumpkin": 3, "minecraft:sweet_berries": 2, "minecraft:cocoa_beans": 2,
+    "minecraft:sugar_cane": 1, "minecraft:sugar": 2, "minecraft:nether_wart": 4, "minecraft:egg": 1,
+    "minecraft:milk_bucket": 6, "minecraft:beef": 3, "minecraft:porkchop": 3, "minecraft:chicken": 2,
+    "minecraft:mutton": 3, "minecraft:rabbit": 3, "minecraft:leather": 4, "minecraft:feather": 1, "minecraft:string": 2,
+    "minecraft:cod": 2, "minecraft:salmon": 3, "minecraft:tropical_fish": 6, "minecraft:pufferfish": 8,
+    "minecraft:ink_sac": 3, "minecraft:nautilus_shell": 40, "minecraft:bread": 4, "minecraft:cooked_beef": 6,
+    "minecraft:cooked_porkchop": 6, "minecraft:cooked_chicken": 5, "minecraft:cooked_mutton": 6,
+    "minecraft:cooked_cod": 5, "minecraft:cooked_salmon": 6, "minecraft:baked_potato": 4, "minecraft:cookie": 2,
+    "minecraft:cake": 30, "minecraft:pumpkin_pie": 12, "minecraft:golden_carrot": 35, "minecraft:golden_apple": 150,
+    "minecraft:mushroom_stew": 10, "minecraft:beetroot_soup": 10, "minecraft:rabbit_stew": 20,
+    "minecraft:suspicious_stew": 25, "minecraft:iron_sword": 40, "minecraft:iron_pickaxe": 50, "minecraft:iron_axe": 45,
+    "minecraft:iron_helmet": 45, "minecraft:iron_chestplate": 70, "minecraft:iron_leggings": 60, "minecraft:iron_boots": 35,
+    "minecraft:diamond_sword": 280, "minecraft:diamond_pickaxe": 400, "minecraft:diamond_chestplate": 700,
+    "minecraft:glass_bottle": 2, "minecraft:blaze_powder": 8, "minecraft:ghast_tear": 60, "minecraft:ender_pearl": 15,
+    "minecraft:saddle": 40, "minecraft:fishing_rod": 12, "minecraft:conduit": 500
+  }
+}

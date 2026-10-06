@@ -17,13 +17,6 @@ import net.schwarz.rotasutils.server.WorldEventService;
 import net.schwarz.rotasutils.util.ThaiText;
 import net.schwarz.rotasutils.worldevent.WorldEvent;
 
-/**
- * {@code /rotas nemesis} and {@code /rotas worldevent}.
- *
- * <p>Players read: which nemeses hunt them and roughly where, and which events run and which way they
- * are. Operators can also list everything, end a nemesis, bring one to themselves to test it, and
- * start or stop an event.</p>
- */
 final class WorldCommands {
     private WorldCommands() {
     }
@@ -86,7 +79,6 @@ final class WorldCommands {
                         }))));
     }
 
-    /** The nemeses that have killed this player, with a rumour of where each one is. */
     private static int mine(CommandContext<CommandSourceStack> context) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         RotasData data = RotasData.get(player.server);

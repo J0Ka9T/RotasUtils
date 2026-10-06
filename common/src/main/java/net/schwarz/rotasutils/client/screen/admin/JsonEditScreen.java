@@ -14,11 +14,6 @@ import net.schwarz.rotasutils.client.screen.Ui;
 
 import java.util.function.Consumer;
 
-/**
- * A whole block of settings as JSON, for what a form cannot do: adding or removing entries of a map
- * or list, or pasting a block from another server. The value must keep its shape (an object stays
- * an object, a list a list); nothing is applied until it parses.
- */
 @Environment(EnvType.CLIENT)
 public class JsonEditScreen extends RotasScreen {
     private static final Gson PRETTY = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();

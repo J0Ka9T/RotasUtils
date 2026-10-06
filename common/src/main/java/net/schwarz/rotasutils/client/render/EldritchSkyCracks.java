@@ -11,18 +11,6 @@ import org.joml.Matrix4f;
 
 import java.util.Random;
 
-/**
- * The sky cracking around the tear, and lightning jumping between the cracks and the lips.
- *
- * <p>Cracks are a tree of jagged paths grown outward from the rift's edge, generated once per rift from
- * its seed and cached as ribbons on the celestial sphere. Every point knows how far along the tree it is
- * ("arrival"), so growing the cracks is only a matter of drawing the points that have arrived: they crawl
- * out tip-first during the crack and strain, branch, and later carry pulses of energy back into the tear.
- * On closing the same value runs backwards and the sky heals.</p>
- *
- * <p>Lightning bolts are re-shaped a few times a second from a hash of the time slot, into fixed arrays,
- * so nothing is allocated per frame.</p>
- */
 @Environment(EnvType.CLIENT)
 final class EldritchSkyCracks {
     static final int MAX_PATHS = 72;
@@ -32,7 +20,6 @@ final class EldritchSkyCracks {
     private static final float DEPTH = EldritchSkyArt.FRACTURE_RADIUS;
     private static final float BOLT_DEPTH = EldritchSkyArt.DEBRIS_RADIUS - 0.6f;
 
-    // Tree, in the tangent plane around the rift (degrees), built once per seed.
     private static final float[] PX = new float[MAX_POINTS];
     private static final float[] PY = new float[MAX_POINTS];
     private static final float[] ARRIVAL = new float[MAX_POINTS];
@@ -57,7 +44,6 @@ final class EldritchSkyCracks {
 
     private EldritchSkyCracks() { }
 
-    /** Visible reach of the tree for an openness: crawls out through the crack and strain. */
     static float growth(float openness) {
         return EldritchSkyCelestial.smoothstep(0.17f, 0.52f, openness);
     }
@@ -68,7 +54,6 @@ final class EldritchSkyCracks {
         if (grow <= 0.002f) return;
         build(geometry.seed(), geometry.focalYawDeg(), geometry.focalElevationDeg());
         float reach = grow * maxArrival;
-        // Once the tear is open the cracks cool to embers that pulse energy inward.
         float cooled = 1f - 0.55f * body;
         BufferBuilder buffer = Tesselator.getInstance().getBuilder();
         buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
@@ -108,13 +93,7 @@ final class EldritchSkyCracks {
         vertex(buffer, matrix, bx0, by0, bz0, DEPTH, ub, 0f, alphaB);
     }
 
-    // Lightning -------------------------------------------------------------------------------------
-
-    /**
-     * Bolts between the tear's lips and the cracks. {@code charge} is how much the sky is straining
-     * (0..1+): it sets how many time slots carry a bolt and how bright they are.
-     */
-    static void renderBolts(Matrix4f matrix, EldritchSkyGeometry geometry, float charge, float time,
+static void renderBolts(Matrix4f matrix, EldritchSkyGeometry geometry, float charge, float time,
                             float widthScale, float heightScale) {
         if (charge <= 0.02f) return;
         build(geometry.seed(), geometry.focalYawDeg(), geometry.focalElevationDeg());
@@ -132,11 +111,9 @@ final class EldritchSkyCracks {
                 boltSegment(buffer, matrix, geometry, i, alpha * (1f - 0.4f * i / BOLT_POINTS));
             }
         }
-        // An empty buffer is released by the uploader without a draw.
         BufferUploader.drawWithShader(buffer.end());
     }
 
-    /** A jagged path from a point on the lips to a crack point or into open sky, by midpoint displacement. */
     private static void shapeBolt(EldritchSkyGeometry geometry, long key, float widthScale, float heightScale) {
         float t = EldritchSkyCelestial.hashSigned(key ^ 0x11L) * 0.8f;
         float side = EldritchSkyCelestial.hash01(key ^ 0x22L) < 0.5f ? -1f : 1f;
@@ -190,9 +167,7 @@ final class EldritchSkyCracks {
         vertex(buffer, matrix, OUT2[0], OUT2[1], OUT2[2], BOLT_DEPTH, u0 + 0.37f, 0f, alpha);
     }
 
-    // Tree ------------------------------------------------------------------------------------------
-
-    private static void build(long seed, float yaw, float elevation) {
+private static void build(long seed, float yaw, float elevation) {
         if (seed == builtSeed && yaw == builtYaw && elevation == builtElevation) return;
         builtSeed = seed;
         builtYaw = yaw;
@@ -211,7 +186,6 @@ final class EldritchSkyCracks {
         for (int i = 0; i < points; i++) {
             maxArrival = Math.max(maxArrival, ARRIVAL[i]);
         }
-        // Ribbon edges, perpendicular to each point's direction of travel, projected onto the sphere once.
         for (int path = 0; path < paths; path++) {
             int start = PATH_START[path];
             int count = PATH_COUNT[path];
@@ -233,7 +207,6 @@ final class EldritchSkyCracks {
         }
     }
 
-    /** One jagged path; spawns thinner side branches that start growing when this path reaches them. */
     private static void grow(Random random, float x, float y, double heading, float length, float width,
                              float arrival, int level) {
         if (paths >= MAX_PATHS || points >= MAX_POINTS - 2) return;
@@ -243,7 +216,6 @@ final class EldritchSkyCracks {
         float along = random.nextFloat() * 20f;
         float travelled = 0f;
         float step = level == 0 ? 3.2f : 2.4f;
-        // Branches are grown after this path is complete, so every path's points stay contiguous.
         java.util.List<float[]> branches = new java.util.ArrayList<>();
         while (travelled < length && points < MAX_POINTS - 1) {
             int i = points++;

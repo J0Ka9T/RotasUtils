@@ -12,10 +12,6 @@ import net.minecraft.world.level.Level;
 import net.schwarz.rotasutils.network.RotasNetwork;
 import net.schwarz.rotasutils.server.horse.HorseService;
 
-/**
- * The horse whistle: use it to open the stable and call a horse, or use it on a SWEM horse you own to put that
- * horse in your stable.
- */
 public final class HorseWhistleItem extends Item {
     public HorseWhistleItem(Properties properties) {
         super(properties);

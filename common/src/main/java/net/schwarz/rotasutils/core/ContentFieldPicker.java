@@ -3,7 +3,6 @@ package net.schwarz.rotasutils.core;
 import net.schwarz.rotasutils.data.ParamSpec.ParamKind;
 import java.util.List;
 
-/** Registry fields are distinct from references to authored RPG definitions. */
 public final class ContentFieldPicker {
     private ContentFieldPicker() {}
 

@@ -84,7 +84,6 @@ final class ItemCommands {
         if (data.kernel() == null) { source.sendFailure(Component.literal(ThaiText.t("rotasutils.cmd.kernel_not_ready"))); return 0; }
         ContentId table = new ContentId(ResourceLocationArgument.getId(context, "table").toString());
         try {
-            // Previews use a stable seed so an administrator sees exactly one reproducible roll.
             List<String> lines = LootService.preview(data.kernel().content().items(), table,
                     "preview|" + table + "|" + level + "|" + multiplier, level, multiplier);
             source.sendSuccess(() -> Component.literal(ThaiText.t("rotasutils.cmd.loot.preview", table, lines.size())), false);

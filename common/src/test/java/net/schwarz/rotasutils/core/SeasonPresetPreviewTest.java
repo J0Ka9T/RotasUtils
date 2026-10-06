@@ -30,7 +30,7 @@ class SeasonPresetPreviewTest {
             for (SeasonPresets.Level level : SeasonPresets.Level.values()) {
                 JsonObject draft = defaults();
                 assertTrue(SeasonPresets.apply(draft, defaults(), section.id(), level) > 0, section.id());
-                SeasonRules.fromJson(draft.toString()); // must still parse
+                SeasonRules.fromJson(draft.toString());
             }
         }
         JsonObject easy = defaults();

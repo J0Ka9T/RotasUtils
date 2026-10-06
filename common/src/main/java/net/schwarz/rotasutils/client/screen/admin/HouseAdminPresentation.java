@@ -14,7 +14,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-/** Pure, immutable values used by the housing administration screens. */
 public final class HouseAdminPresentation {
     private static final String EMPTY_OVERVIEW =
             "No houses yet. Use the House Wand to mark two corners, then create a house.";
@@ -36,7 +35,6 @@ public final class HouseAdminPresentation {
         COMPLETE
     }
 
-    /** A row contains display data only; it never owns or mutates a house definition. */
     public record OverviewRow(String id, String name, String dimension, String size,
                               long sizeX, long sizeY, long sizeZ, long volume, String tier,
                               boolean enabled, HouseStatus status, String tag, StatusRole statusRole,
@@ -89,7 +87,6 @@ public final class HouseAdminPresentation {
         }
     }
 
-    /** Text values are intentionally retained so an edit screen can preserve typed input on failure. */
     public record CreateDraft(String id, String name, String tier, long configRevision,
                               SelectionSummary selection) {
         public CreateDraft {
@@ -118,7 +115,6 @@ public final class HouseAdminPresentation {
         public EditDraft withEnabled(boolean value) { return new EditDraft(id, name, tier, value, definitionRevision); }
     }
 
-    /** A settings screen can carry this value between synchronization attempts without losing its revision. */
     public record SettingsDraft(String currency, long paymentIntervalMillis, long reminderLeadMillis,
                                 long graceMillis, int buyoutMultiplier, int baseMemberLimit,
                                 long memberSlotPrice, int maxPurchasedMemberSlots,

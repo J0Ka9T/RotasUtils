@@ -20,13 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Pick the mob whose drops you want to look at.
- *
- * <p>The list is the client's own entity registry, so every mob in the pack is here whether or not this
- * mod has ever heard of it, and no packet is needed to browse. Choosing one asks the server for that
- * mob's real drops.</p>
- */
 @Environment(EnvType.CLIENT)
 public class MobDropListScreen extends RotasScreen {
     private static final int ROWS = 9;
@@ -52,7 +45,6 @@ public class MobDropListScreen extends RotasScreen {
             if (key == null) {
                 continue;
             }
-            // Only things that can die and leave something; a projectile or a boat never drops loot.
             if (type.getCategory() == net.minecraft.world.entity.MobCategory.MISC) {
                 continue;
             }

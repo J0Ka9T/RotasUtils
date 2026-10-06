@@ -30,25 +30,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * The player-facing skill trees.
- *
- * <p>The left rail groups the trees this character may use under General, their job and their
- * race. The canvas fits the tree on open, pans, and zooms around the cursor. The right panel says
- * what the selected skill does and exactly what is still missing before it can be learned. The
- * server re-checks every rule shown here before a purchase.</p>
- */
 @Environment(EnvType.CLIENT)
 public class SkillTreeScreen extends RotasScreen {
     private static final int RAIL_W = 156;
     private static final int DETAIL_W = 200;
-    /** Node positions are the top-left of the editor's 26px cell; larger node types grow around its centre. */
     private static final int CELL = 26;
     private static final long DOUBLE_CLICK_MS = 300;
 
     private enum State { LOCKED, AVAILABLE, AFFORDABLE, UNLOCKED, MAX, EXCLUDED, DISABLED }
 
-    /** A rail line: a heading or hint when {@code category} is null, otherwise a tree and its lock text. */
     private record RailRow(String text, SkillCategory category, String lock, boolean jobHint) {
     }
 
@@ -61,7 +51,6 @@ public class SkillTreeScreen extends RotasScreen {
     private boolean fitted;
     private boolean dragging;
     private boolean syncRequested;
-    /** A learn request is in flight; cleared when the server's progress sync lands. */
     private boolean awaiting;
     private String lastClickedNode = "";
     private long lastClickAt;
@@ -75,6 +64,11 @@ public class SkillTreeScreen extends RotasScreen {
         super(L.t("rotasutils.skills.screen_title"), parent);
     }
 
+    public SkillTreeScreen(Screen parent, String categoryId) {
+        this(parent);
+        this.categoryId = categoryId;
+    }
+
     @Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 960);
@@ -82,7 +76,6 @@ public class SkillTreeScreen extends RotasScreen {
         guiLeft = (width - guiWidth) / 2;
         guiTop = (height - guiHeight) / 2;
         if (!syncRequested) {
-            // Races come from Origins and can change outside Rotas, so refresh once on open.
             syncRequested = true;
             send("request_sync");
         }
@@ -143,9 +136,7 @@ public class SkillTreeScreen extends RotasScreen {
         rebuild();
     }
 
-    // Model ----------------------------------------------------------------
-
-    private void buildRail() {
+private void buildRail() {
         rail.clear();
         List<SkillCategory> sorted = new ArrayList<>(ClientState.categories().values());
         sorted.sort(Comparator.comparingInt(SkillCategory::order).thenComparing(SkillCategory::name));
@@ -157,7 +148,6 @@ public class SkillTreeScreen extends RotasScreen {
             if (audience != null && !ClientState.admin()) {
                 continue;
             }
-            // Admins see every tree so they can check how one looks; it reads as a preview.
             RailRow row = new RailRow(category.name(), category, audience != null ? "preview" : lockReason(category), false);
             if (!category.jobs().isEmpty()) {
                 job.add(row);
@@ -215,7 +205,6 @@ public class SkillTreeScreen extends RotasScreen {
         return category == null || selectedNodeId.isEmpty() ? null : category.node(selectedNodeId);
     }
 
-    /** Level or explicit-unlock gates on the whole tree, mirrored for display; null when open. */
     private static String lockReason(SkillCategory category) {
         PlayerProgress progress = ClientState.progress();
         if (progress.unlockedCategories().contains(category.id())) {
@@ -250,7 +239,6 @@ public class SkillTreeScreen extends RotasScreen {
         return category.nodes().keySet().stream().anyMatch(id -> ClientState.progress().skillRank(id) > 0);
     }
 
-    /** Mirrors the server's purchase rules for display only. */
     private State state(SkillCategory category, SkillNode node) {
         PlayerProgress progress = ClientState.progress();
         int rank = progress.skillRank(node.id());
@@ -328,14 +316,11 @@ public class SkillTreeScreen extends RotasScreen {
         return (int) Math.round(base * nodeScale());
     }
 
-    /** Nodes follow the zoom within limits, so zooming out never piles them on top of each other. */
     private float nodeScale() {
         return (float) Math.max(0.6, Math.min(1.4, zoom));
     }
 
-    // Geometry -------------------------------------------------------------
-
-    private int centerX(SkillNode node) {
+private int centerX(SkillNode node) {
         return canvasX + canvasW / 2 + (int) Math.round((node.x() + CELL / 2.0 + panX) * zoom);
     }
 
@@ -365,13 +350,10 @@ public class SkillTreeScreen extends RotasScreen {
         double height = Math.max(1, maxY - minY);
         zoom = Math.max(0.4, Math.min(1.6, Math.min((canvasW - 90) / width, (canvasH - 110) / height)));
         panX = -(minX + maxX) / 2.0;
-        // Nudge down so the tree clears the title strip at the top of the canvas.
         panY = -(minY + maxY) / 2.0 + 12 / zoom;
     }
 
-    // Rendering ------------------------------------------------------------
-
-    private void renderRailRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
+private void renderRailRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
         RailRow row = rail.get(index);
         if (row.category() == null) {
             if (row.text().startsWith("GENERAL") || row.text().startsWith("JOB") || row.text().startsWith("RACE")) {
@@ -398,7 +380,6 @@ public class SkillTreeScreen extends RotasScreen {
         Ui.labelRight(graphics, right, x + w - 8, y + 7, row.lock() != null ? Ui.WARN : ready > 0 ? Ui.ACCENT : Ui.TEXT_MUTED);
     }
 
-    /** Skills in the tree the player can learn right now. */
     private int readyCount(SkillCategory category) {
         boolean reveal = revealsHidden(ClientState.progress());
         return (int) category.nodes().values().stream()
@@ -451,7 +432,6 @@ public class SkillTreeScreen extends RotasScreen {
         drawCanvasOverlay(graphics, category);
         graphics.disableScissor();
 
-        // The panel describes what the Learn button buys; hovering only previews when nothing is selected.
         renderDetail(graphics, category, selected() != null ? selected() : hovered);
         if (hovered != null) {
             State state = state(category, hovered);
@@ -521,7 +501,6 @@ public class SkillTreeScreen extends RotasScreen {
         }
     }
 
-    /** Straight line from stepped squares; axis-aligned runs collapse into one fill. */
     private static void line(GuiGraphics graphics, int x1, int y1, int x2, int y2, int thickness, int color, boolean dashed) {
         int offset = thickness / 2;
         if (!dashed && (x1 == x2 || y1 == y2)) {
@@ -720,7 +699,6 @@ public class SkillTreeScreen extends RotasScreen {
         ty = check(graphics, x + 10, ty, innerW, L.t("rotasutils.skills.check_cost", cost, have), have >= cost);
         long extra = node.requirements().stream().filter(requirement -> !requirement.recommendationOnly()).count();
         if (extra > 0) {
-            // Quest, rank and item conditions are only known to the server; say so instead of promising "Ready".
             Ui.label(graphics, Ui.truncate(L.t("rotasutils.skills.check_server", extra), innerW), x + 10, ty, Ui.WARN);
         }
     }
@@ -748,9 +726,7 @@ public class SkillTreeScreen extends RotasScreen {
         return y + 14;
     }
 
-    // Actions --------------------------------------------------------------
-
-    private void unlockSelected() {
+private void unlockSelected() {
         SkillNode node = selected();
         if (node == null || awaiting) {
             return;
@@ -779,9 +755,7 @@ public class SkillTreeScreen extends RotasScreen {
                 L.c("rotasutils.skills.reset_detail")));
     }
 
-    // Input ----------------------------------------------------------------
-
-    private SkillNode nodeAt(double mouseX, double mouseY) {
+private SkillNode nodeAt(double mouseX, double mouseY) {
         SkillCategory category = category();
         if (category == null) {
             return null;
@@ -843,7 +817,6 @@ public class SkillTreeScreen extends RotasScreen {
         if (Ui.inside((int) mouseX, (int) mouseY, canvasX, canvasY, canvasW, canvasH)) {
             double previous = zoom;
             zoom = Math.max(0.4, Math.min(2.5, zoom * (delta > 0 ? 1.15 : 1 / 1.15)));
-            // Keep the point under the cursor fixed while zooming.
             double offsetX = mouseX - (canvasX + canvasW / 2.0);
             double offsetY = mouseY - (canvasY + canvasH / 2.0);
             panX += offsetX / zoom - offsetX / previous;

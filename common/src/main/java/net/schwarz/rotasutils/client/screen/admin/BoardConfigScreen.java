@@ -26,18 +26,9 @@ import net.schwarz.rotasutils.quest.requirement.RequirementType;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Billboard configuration.
- *
- * <p>Every setting is a typed row that shows its own control (switch, value, chooser,
- * option, add/remove) plus a one line explanation, so an admin can tell what a row does
- * before clicking it. Text entry happens in a labelled editor strip pinned under the
- * list rather than in a bare box at the bottom of the window.
- */
 @Environment(EnvType.CLIENT)
 public class BoardConfigScreen extends RotasScreen {
     private CompoundTag editingBaseline;
-    // Thai vowel and tone marks sit above and below the line, so label and help need real headroom.
     private static final int ROW_HEIGHT = 32;
 
     private enum Tab {
@@ -50,7 +41,6 @@ public class BoardConfigScreen extends RotasScreen {
 
         final String label;
         final String help;
-        /** Operator-only tabs; the server rejects these fields from anyone else. */
         final boolean operatorOnly;
 
         Tab(String label, String help, boolean operatorOnly) {
@@ -75,23 +65,14 @@ public class BoardConfigScreen extends RotasScreen {
     }
 
     private enum Kind {
-        /** Section divider. */
         SECTION,
-        /** On/off switch. */
         TOGGLE,
-        /** Free text or number, edited in the editor strip. */
         TEXT,
-        /** Opens a chooser screen. */
         PICK,
-        /** One of a fixed set of options; the selected one is marked. */
         CHOICE,
-        /** Adds a new entry to a list. */
         ADD,
-        /** Removes an existing list entry. */
         REMOVE,
-        /** Opens a sub editor. */
         OPEN,
-        /** Read only. */
         INFO
     }
 
@@ -118,7 +99,6 @@ public class BoardConfigScreen extends RotasScreen {
         this.boardId = boardId;
     }
 
-    /** Holds an unsaved draft of this quest board: never rebuilt by a push, but warns when someone else changes it. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
@@ -214,7 +194,6 @@ public class BoardConfigScreen extends RotasScreen {
                 send("duplicate_board", payload);
                 Sfx.add();
             };
-            // The server copies the saved board and opens the copy, so unsaved edits here would vanish.
             if (draft.save().equals(editingBaseline)) {
                 duplicate.run();
                 return;
@@ -231,8 +210,6 @@ public class BoardConfigScreen extends RotasScreen {
                 .tooltip(net.minecraft.client.gui.components.Tooltip.create(net.schwarz.rotasutils.client.screen.Ui.text(
                         "Copies this board, its pools and its rules under a new id.")))
                 .build());
-        // Deleting a board is not reversible from the UI, so it asks first and says
-        // plainly that the quests themselves survive.
         addRenderableWidget(Ui.dangerButton(net.schwarz.rotasutils.client.screen.Ui.text("Delete"), button ->
                 minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(yes -> {
                     if (!yes) {
@@ -243,11 +220,8 @@ public class BoardConfigScreen extends RotasScreen {
                     payload.putString("board", draft.id());
                     send("delete_board", payload);
                     Sfx.remove();
-                    // Drop it from the client copy now: the screen we return to rebuilds from
-                    // ClientState before the server's sync arrives, and would still list the board.
                     ClientState.boards().remove(draft.id());
                     Screen parent = parentScreen();
-                    // A board view of the deleted board has nothing left to show.
                     if (parent instanceof net.schwarz.rotasutils.client.screen.player.BoardBrowserScreen) {
                         parent = null;
                     }
@@ -277,9 +251,7 @@ public class BoardConfigScreen extends RotasScreen {
         buildContent();
     }
 
-    /* ---- row model ------------------------------------------------------------- */
-
-    private void section(String title) {
+private void section(String title) {
         rows.add(new Row(Kind.SECTION, title, "", "", "", false));
     }
 
@@ -440,9 +412,7 @@ public class BoardConfigScreen extends RotasScreen {
         list.setRows(rows.size(), this::renderRow, this::clickRow);
     }
 
-    /* ---- rendering ------------------------------------------------------------- */
-
-    private void renderRow(GuiGraphics graphics, int index, int x, int y,
+private void renderRow(GuiGraphics graphics, int index, int x, int y,
                            int rowWidth, int rowHeight, boolean hovered) {
         Row row = rows.get(index);
         int usableWidth = rowWidth - 8;
@@ -462,7 +432,6 @@ public class BoardConfigScreen extends RotasScreen {
         int labelY = y + 5;
         int helpY = y + 18;
         int controlRight = right - 6;
-        // Single-line controls are centred on the row; the original layout was drawn around y + 12.
         y += (rowHeight - 26) / 2;
 
         switch (row.kind()) {
@@ -542,9 +511,7 @@ public class BoardConfigScreen extends RotasScreen {
         }
     }
 
-    /* ---- interaction ----------------------------------------------------------- */
-
-    private void clickRow(int index, int button) {
+private void clickRow(int index, int button) {
         Row row = rows.get(index);
         String action = row.action();
         if (action.isEmpty()) {
@@ -724,7 +691,6 @@ public class BoardConfigScreen extends RotasScreen {
         return value ? "Yes" : "No";
     }
 
-    /** Short note under the editor telling the admin what a valid value looks like. */
     private static String editHint(String target) {
         return switch (target) {
             case "distance" -> "Number of blocks, e.g. 6";
@@ -881,7 +847,6 @@ public class BoardConfigScreen extends RotasScreen {
 
         int rightReserve = Math.max(dirty ? Ui.textWidth("Unsaved changes") + 20 : 0,
                 feedbackWidth() == 0 ? 0 : feedbackWidth() + 8);
-        // Header stops above the first tab (guiTop + 56), so no row of the sidebar is covered.
         Ui.scaledLabel(graphics, Ui.truncate("Board Setup", contentWidth / 2), contentX + 2, guiTop + 9, 1.0f, Ui.INK);
         Ui.label(graphics, Ui.truncate(draft == null ? "" : draft.name(), contentWidth - rightReserve - 8),
                 contentX + 2, guiTop + 24, Ui.INK_SOFT);
@@ -901,7 +866,6 @@ public class BoardConfigScreen extends RotasScreen {
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int contentX = guiLeft + 10;
 
-        // Sidebar summary under the tabs: the facts an admin checks while editing.
         int summaryY = guiTop + 56 + visibleTabCount() * 27 + 4;
         int summaryHeight = guiTop + guiHeight - 40 - summaryY;
         if (summaryHeight > 30) {
@@ -920,7 +884,6 @@ public class BoardConfigScreen extends RotasScreen {
         if (editTarget.isEmpty() || editor == null) {
             return;
         }
-        // Editor strip, drawn under the list and above the action bar.
         int stripY = listY + listHeight + 6;
         Ui.parchment(graphics, mainX, stripY, mainWidth, 36, true);
         Ui.border(graphics, mainX, stripY, mainWidth, 36, Ui.WAX);

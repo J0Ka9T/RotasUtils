@@ -14,10 +14,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Matches InventoryScreen mouse targeting and tooltip presentation to the Character Hub. */
 @Mixin(AbstractContainerScreen.class)
 public abstract class InventorySlotHitboxMixin {
-    /** Forge adds a per-slot color argument to the vanilla hover overlay. */
     @ModifyArg(
             method = "render",
             at = @At(
@@ -56,8 +54,6 @@ public abstract class InventorySlotHitboxMixin {
             return;
         }
         AbstractContainerScreenAccessor screen = (AbstractContainerScreenAccessor) this;
-        // The hub draws sockets, crafting cells and bag cells at different sizes around the item;
-        // the whole drawn cell is the target, centred on the 16px item.
         int size = RotasInventoryRenderer.slotHitSize(
                 screen.rotasutils$getImageWidth(), screen.rotasutils$getImageHeight(), slot.index);
         double x = screen.rotasutils$getLeftPos() + slot.x + 8 - size / 2;
@@ -67,10 +63,6 @@ public abstract class InventorySlotHitboxMixin {
         }
     }
 
-    /**
-     * Replaces the vanilla container tooltip with the hub's inspection panel. AbstractContainerScreen
-     * owns renderTooltip, so the injection lives here rather than on InventoryScreen itself.
-     */
     @Inject(method = "renderTooltip(Lnet/minecraft/client/gui/GuiGraphics;II)V", at = @At("HEAD"), cancellable = true)
     private void rotasutils$renderHubInspection(GuiGraphics graphics, int mouseX, int mouseY, CallbackInfo ci) {
         if (!((Object) this instanceof InventoryScreen)) {

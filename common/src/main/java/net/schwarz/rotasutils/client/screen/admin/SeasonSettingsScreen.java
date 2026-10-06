@@ -29,12 +29,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Every season number, grouped by system. Rows come from the season file itself, so a setting added
- * to {@link SeasonRules} shows up here without touching this screen. Maps and tier lists open as
- * groups; the JSON button on a group (or the whole section) adds and removes entries. Saving writes
- * the world copy and {@code config/rotasutils/season.json} together.
- */
 @Environment(EnvType.CLIENT)
 public class SeasonSettingsScreen extends RotasScreen {
     private static final int ROW_H = 22;
@@ -43,10 +37,8 @@ public class SeasonSettingsScreen extends RotasScreen {
     private final JsonObject draft;
     private JsonObject baseline;
     private final JsonObject defaults;
-    /** Text that did not parse, kept so the box still shows what was typed. */
     private final Map<String, String> pendingText = new HashMap<>();
     private final Map<String, String> errors = new HashMap<>();
-    /** Groups opened or closed by hand; everything else follows {@link #openByDefault}. */
     private final Map<String, Boolean> openGroups = new HashMap<>();
 
     private String section = SeasonSettingsCatalog.SECTIONS.get(0).id();
@@ -60,14 +52,12 @@ public class SeasonSettingsScreen extends RotasScreen {
 
     private record Visible(SettingsTree.Row row, int indent) { }
 
-    /** The draft parsed as the server would, for the live preview; null while it does not parse. */
     private SeasonRules previewRules;
 
     public SeasonSettingsScreen(Screen parent) {
         this(parent, "");
     }
 
-    /** Opens on one section, such as {@code farming}; an unknown id opens the first. */
     public SeasonSettingsScreen(Screen parent, String startSection) {
         super("ระบบเกมและกฎซีซั่น", parent);
         for (SeasonSettingsCatalog.Section entry : SeasonSettingsCatalog.SECTIONS) {
@@ -89,9 +79,7 @@ public class SeasonSettingsScreen extends RotasScreen {
         return 460;
     }
 
-    // Layout --------------------------------------------------------------------------------------
-
-    private int mainX() {
+private int mainX() {
         return guiLeft + SIDEBAR_W + Ui.PAD + 8;
     }
 
@@ -115,7 +103,6 @@ public class SeasonSettingsScreen extends RotasScreen {
         return Math.max(96, Math.min(260, mainW() * 2 / 5));
     }
 
-    /** Holds an unsaved draft of the season rules: never rebuilt by a push, but warns when someone else changes it. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
@@ -178,7 +165,6 @@ public class SeasonSettingsScreen extends RotasScreen {
         buildPresets();
     }
 
-    /** Easy / Normal / Hard for sections that have a preset, right of the section title. */
     private void buildPresets() {
         if (!query.isBlank() || changedOnly || !net.schwarz.rotasutils.core.SeasonPresets.has(section)) return;
         String[] labels = {"ง่าย", "ปกติ", "ยาก"};
@@ -253,7 +239,6 @@ public class SeasonSettingsScreen extends RotasScreen {
                 continue;
             }
             if (SeasonSchema.isEntryCollection(path)) {
-                // An empty list or map of entries: nothing to type, only something to add.
                 addRenderableWidget(Ui.primaryButton(Ui.text("+ เพิ่มรายการแรก"), button -> addEntry(path))
                         .bounds(controlX, y, controlW, 18).build());
                 continue;
@@ -363,7 +348,6 @@ public class SeasonSettingsScreen extends RotasScreen {
         buildContent();
     }
 
-    /** Rebuilds only while the search box keeps focus, so typing a query is not interrupted. */
     private void rebuildRows() {
         var focused = getFocused();
         rebuild();
@@ -378,9 +362,7 @@ public class SeasonSettingsScreen extends RotasScreen {
         }
     }
 
-    // Rows ----------------------------------------------------------------------------------------
-
-    private List<SeasonSettingsCatalog.Section> sections() {
+private List<SeasonSettingsCatalog.Section> sections() {
         List<SeasonSettingsCatalog.Section> out = new ArrayList<>();
         java.util.Set<String> used = new java.util.HashSet<>();
         for (String key : draft.keySet()) {
@@ -410,7 +392,7 @@ public class SeasonSettingsScreen extends RotasScreen {
             if (SeasonSettingsCatalog.hidden(path.subList(0, 1))) continue;
             String sectionId = SeasonSettingsCatalog.sectionOf(path);
             boolean sectionObject = path.get(0).equals(sectionId);
-            if (sectionObject && path.size() == 1) continue; // the section title already names it
+            if (sectionObject && path.size() == 1) continue;
             int indent = path.size() - 1 - (sectionObject ? 1 : 0);
             if (searching) {
                 if (row.kind() == SettingsTree.Kind.GROUP) continue;
@@ -444,14 +426,11 @@ public class SeasonSettingsScreen extends RotasScreen {
         return chosen != null ? chosen : openByDefault(indent);
     }
 
-    /** First-level groups (a map, a tier list) start open; entries inside them start closed. */
     private static boolean openByDefault(int indent) {
         return indent <= 0;
     }
 
-    // Editing -------------------------------------------------------------------------------------
-
-    private void edit(SettingsTree.Row row, String text, EditBox box) {
+private void edit(SettingsTree.Row row, String text, EditBox box) {
         String key = row.joined();
         JsonElement current = SettingsTree.get(draft, row.path());
         try {
@@ -490,7 +469,6 @@ public class SeasonSettingsScreen extends RotasScreen {
         }));
     }
 
-    /** A flat section (plain top-level numbers) is edited as one object of just its keys. */
     private void openSectionJson() {
         JsonObject block = sectionBlock(draft, section);
         String title = SeasonSettingsCatalog.section(section).title();
@@ -568,7 +546,6 @@ public class SeasonSettingsScreen extends RotasScreen {
                 Ui.text("บันทึก"), Ui.text("กลับไปแก้")));
     }
 
-    /** "label: old → new" for the first {@code max} changed values, then how many more. */
     private List<String> changeLines(int max) {
         List<String> out = new ArrayList<>();
         int total = 0;
@@ -636,9 +613,7 @@ public class SeasonSettingsScreen extends RotasScreen {
         }, Ui.text(title), Ui.text(detail)));
     }
 
-    // Input ---------------------------------------------------------------------------------------
-
-    @Override
+@Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (Ui.inside((int) mouseX, (int) mouseY, mainX(), listTop(), mainW(), listBottom() - listTop())) {
             int max = Math.max(0, visible.size() - pageRows());
@@ -694,9 +669,7 @@ public class SeasonSettingsScreen extends RotasScreen {
         goBack();
     }
 
-    // Drawing -------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int x = mainX();
         int w = mainW();
@@ -713,7 +686,6 @@ public class SeasonSettingsScreen extends RotasScreen {
             int presetW = net.schwarz.rotasutils.core.SeasonPresets.has(section) && !searching ? 3 * 38 + 6 : 0;
             Ui.label(graphics, Ui.truncate(blurb, w - Ui.textWidth(title) - 14 - presetW), textX, guiTop + 58, Ui.TEXT_DIM);
         } else {
-            // Live: recomputed from the unsaved draft on every edit, with the server's own math.
             int presetW = net.schwarz.rotasutils.core.SeasonPresets.has(section) ? 3 * 38 + 6 : 0;
             Ui.label(graphics, Ui.truncate("▶ " + preview.get(0), w - Ui.textWidth(title) - 14 - presetW), textX, guiTop + 58, Ui.GOOD);
             if (Ui.inside(mouseX, mouseY, x, guiTop + 54, w, 16)) {
@@ -765,7 +737,6 @@ public class SeasonSettingsScreen extends RotasScreen {
         renderInfoBar(graphics, hovered);
     }
 
-    /** One line under the list: the error, or what the hovered value means and its default. */
     private void renderInfoBar(GuiGraphics graphics, int hovered) {
         int x = mainX();
         int y = listBottom() + 4;
@@ -817,5 +788,4 @@ public class SeasonSettingsScreen extends RotasScreen {
         }
         return out.toString();
     }
-
 }

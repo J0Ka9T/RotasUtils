@@ -14,7 +14,6 @@ import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.server.MerchantService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/** Player-facing merchant commands. Stock and limits are enforced by the service, not the UI. */
 final class ShopCommands {
     private ShopCommands() { }
 
@@ -63,7 +62,6 @@ final class ShopCommands {
         }
     }
 
-    /** The same Thai wording the RPG console shop uses for each outcome. */
     private static String describe(MerchantService.Result result) {
         return ThaiText.t(switch (result) {
             case TRADED -> "rotasutils.msg.kernel.trade.traded";

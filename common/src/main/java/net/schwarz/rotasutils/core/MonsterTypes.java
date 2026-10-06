@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.core;
 
 import java.util.Set;
 
-/** Conservative built-in classification; authored profiles can override UNKNOWN results. */
 public final class MonsterTypes {
     private static final Set<String> UNDEAD = Set.of("zombie", "skeleton", "wither_skeleton", "drowned", "husk", "stray", "phantom", "zombified_piglin", "wither");
     private static final Set<String> BEAST = Set.of("wolf", "fox", "bear", "polar_bear", "ravager", "hoglin", "zoglin", "goat");

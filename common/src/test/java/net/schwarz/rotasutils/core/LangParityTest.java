@@ -18,17 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Guards the shipped interface languages.
- *
- * <p>The mod reads {@code assets/rotasutils/lang/*.json} at runtime, so a key that exists in one
- * language but not another silently renders its raw key (or the English default) for players on
- * the other language. These checks keep the two files in lockstep and stop a translation from
- * dropping a {@code %s} placeholder that the code fills in.</p>
- */
 class LangParityTest {
     private static final String[] LANGUAGES = {"en_us", "th_th"};
-    /** Minecraft translation placeholders: {@code %s}, {@code %d}, {@code %f} and indexed forms. */
     private static final Pattern PLACEHOLDER = Pattern.compile("%(\\d+\\$)?[sdf]");
 
     private static JsonObject load(String language) {
@@ -83,7 +74,6 @@ class LangParityTest {
         }
     }
 
-    /** {@code true} when the text uses Thai script, so an untranslated English value is caught. */
     private static boolean isThai(String text) {
         return text.codePoints().anyMatch(point -> point >= 0x0E00 && point <= 0x0E7F);
     }

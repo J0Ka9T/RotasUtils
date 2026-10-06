@@ -16,16 +16,10 @@ import net.schwarz.rotasutils.util.Ids;
 
 import java.util.Locale;
 
-/** What an NPC Wand click on a mob does. */
 public final class NpcWandService {
     private NpcWandService() {
     }
 
-    /**
-     * Opens the editor for the clicked mob, turning it into an NPC first when it is not one yet.
-     * Shift-clicking an NPC previews its conversation instead. A pending "place on a mob" request
-     * from the editor takes priority, so the wand also answers that.
-     */
     public static void use(ServerPlayer player, LivingEntity target) {
         RotasData data = RotasData.get(player.server);
         if (!BoardService.isAdmin(player, data)) {
@@ -57,7 +51,6 @@ public final class NpcWandService {
         RotasNetwork.openNpcConfig(player, npc);
     }
 
-    /** The NPC bound to this entity, including disabled ones, so the wand can switch them back on. */
     public static NpcDef boundTo(RotasData data, Entity entity) {
         String uuid = entity.getUUID().toString();
         for (NpcDef npc : data.npcs().values()) {
@@ -69,8 +62,6 @@ public final class NpcWandService {
     }
 
     private static NpcDef create(ServerPlayer player, RotasData data, LivingEntity target) {
-        // Entity type names are translation keys a dedicated server cannot resolve, so an unnamed
-        // mob is named from its id ("wandering_trader" becomes "Wandering Trader").
         String name = target.hasCustomName() ? target.getCustomName().getString()
                 : pretty(BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).getPath());
         NpcDef npc = new NpcDef(Ids.unique(name, data.npcs().keySet()));

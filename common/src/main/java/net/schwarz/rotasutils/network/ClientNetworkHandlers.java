@@ -12,7 +12,6 @@ import net.schwarz.rotasutils.client.screen.ScreenRouter;
 import net.schwarz.rotasutils.server.Validation;
 import net.schwarz.rotasutils.util.Nbt;
 
-/** Client-side receivers. Registered from the client entrypoint only. */
 @Environment(EnvType.CLIENT)
 public final class ClientNetworkHandlers {
     private ClientNetworkHandlers() {
@@ -29,9 +28,6 @@ public final class ClientNetworkHandlers {
             CompoundTag tag = buf.readNbt();
             context.queue(() -> {
                 ClientState.applyContent(tag == null ? new CompoundTag() : tag);
-                // The server sends its feedback before the content, so without this the open
-                // screen redraws from the old content and a deleted board or quest stays listed
-                // until some later packet happens to refresh it.
                 ScreenRouter.refresh(ScreenRouter.CONTENT);
             });
         });
@@ -119,6 +115,8 @@ public final class ClientNetworkHandlers {
                 net.schwarz.rotasutils.client.cinematic.ClientCasts.receiveRelease(buf, context::queue));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.ability.AbilityNet.END, (buf, context) ->
                 net.schwarz.rotasutils.client.cinematic.ClientCasts.receiveEnd(buf, context::queue));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.ability.AbilityNet.ERASE, (buf, context) ->
+                net.schwarz.rotasutils.client.cinematic.PurpleDissolve.receive(buf, context::queue));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.entity.CeroFx.ID, (buf, context) ->
                 net.schwarz.rotasutils.entity.CeroFx.receive(buf, context::queue));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, net.schwarz.rotasutils.sky.SkyClash.ID, (buf, context) -> {

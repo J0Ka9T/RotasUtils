@@ -23,13 +23,6 @@ import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-/**
- * Draws a standing rift in depth: a dark swirling mouth, a tunnel of glowing spirals receding behind
- * it (always on the far side from the viewer), a glowing swirl turning over the front, a smooth
- * burning rim with lightning crawling along it, a halo, light pooled on the ground and a flash when it
- * splits and seals. A tentacle rift also grows tentacles that lash at whatever the server strikes.
- * Everything follows {@link RiftPortalShape}, so picture and particles agree.
- */
 @Environment(EnvType.CLIENT)
 public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
     private static final int SEGMENTS = 96;
@@ -46,7 +39,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
     private static final Look CRIMSON = new Look("crimson",
             new float[]{1f, 0.18f, 0.12f}, new float[]{1f, 0.86f, 0.74f}, new float[]{1f, 0.35f, 0.18f},
             new float[]{0.9f, 0.15f, 0.08f}, 1f);
-    /** Hue-free copies, so the cycling vertex colour can paint the mouth any colour it likes. */
     private static final Look PRISM = new Look("prism",
             new float[]{0.55f, 0.85f, 1f}, new float[]{1f, 0.95f, 1f}, new float[]{0.55f, 0.30f, 1f},
             new float[]{0.60f, 0.35f, 1f}, 1f);
@@ -54,7 +46,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
             new float[]{0.14f, 0.42f, 0.24f}, new float[]{0.60f, 1f, 0.72f}, new float[]{0.22f, 0.72f, 0.38f},
             new float[]{0.10f, 0.34f, 0.18f}, 0.55f);
 
-    /** Textures and light colours of one palette. */
     private record Look(ResourceLocation base, ResourceLocation glow, float[] halo, float[] rimHot, float[] rimCool,
                         float[] ground, float glowStrength) {
         Look(String name, float[] halo, float[] rimHot, float[] rimCool, float[] ground, float glowStrength) {
@@ -78,7 +69,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
     @Override
     public void render(RiftPortalEntity portal, float yaw, float partialTick, PoseStack pose, MultiBufferSource buffers,
                        int light) {
-        // With a shader pack on, drawn after the pack's frame so it cannot fog, cut or recolour the rift.
         if (!WorldVfxOverlay.defer(pose, (p, b) -> draw(portal, partialTick, p, b, light))) {
             draw(portal, partialTick, pose, buffers, light);
         }
@@ -100,15 +90,11 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         float time = (portal.tickCount + partialTick) / 20f;
 
         if (kind == Kind.TENTACLE) {
-            // In world-aligned local space, before the portal's own turn.
             tentacles(portal, age, partialTick, pose, buffers, light);
         } else if (kind == Kind.RADIANT) {
             hand.render(portal, age, partialTick, pose, buffers);
         }
 
-        // Which side the viewer is on, so the tunnel always recedes away from them, and how squarely
-        // they face it: seen edge-on, the tunnel folds flat into the mouth instead of fanning out
-        // into a cone of rings beside it.
         Vec3 camera = entityRenderDispatcher.camera.getPosition();
         Vec3 toCamera = camera.subtract(portal.centre());
         double facingDot = toCamera.dot(portal.facing());
@@ -119,7 +105,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         pose.pushPose();
         pose.mulPose(Axis.YP.rotationDegrees(-portal.getYRot()));
 
-        // Light pooled on the ground under the rift.
         VertexConsumer additive = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
         groundPool(additive, pose.last().pose(), 2.3f * Math.max(w, 0.3f) * h, look.ground,
                 (0.30f * h + 0.35f * flash) * look.glowStrength);
@@ -128,11 +113,9 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         Matrix4f m = pose.last().pose();
         Matrix3f n = pose.last().normal();
 
-        // The mouth: a dark swirl, slowly turning.
         VertexConsumer base = buffers.getBuffer(RenderType.entityTranslucentEmissive(look.base));
         disc(base, m, n, rx, ry, 0f, time * 0.3f, 1f, 1f, 1f, 1f, 0.98f);
 
-        // The tunnel: glowing spirals receding behind the mouth, smaller, dimmer, turning faster.
         VertexConsumer glow = buffers.getBuffer(RenderType.eyes(look.glow));
         for (int layer = 1; layer <= TUNNEL_LAYERS; layer++) {
             float shrink = (float) Math.pow(0.8, layer);
@@ -142,11 +125,9 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
             disc(glow, m, n, rx * shrink, ry * shrink, -side * 0.22f * layer * depth, spin,
                     bright, bright, bright, 1f, 1f);
         }
-        // The front: a glowing swirl turning the other way over the mouth.
         float front = 0.75f * look.glowStrength * h;
         disc(glow, m, n, rx * 0.98f, ry * 0.98f, side * 0.012f, -time * 0.85f + 1.3f, front, front, front, 1f, 1f);
 
-        // Halo, rim, crawling lightning and flash are additive light.
         additive = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
         ring(additive, m, rx * 1.02f, ry * 1.02f, rx * 1.55f + 0.25f, ry * 1.35f + 0.25f,
                 look.halo, 0.5f * h * look.glowStrength, side * 0.02f);
@@ -158,7 +139,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         pose.popPose();
     }
 
-    /** The prism rift's colours are hue-turned every frame, so its whole mouth cycles the spectrum. */
     private static Look prism() {
         float phase = net.schwarz.rotasutils.sky.PrismHue.phase();
         return new Look(PRISM.base(), PRISM.glow(),
@@ -181,10 +161,7 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         };
     }
 
-    // Tentacles -----------------------------------------------------------------------------------
-
-    /** Tentacles pour out of the rift, sway, and lash at the struck monster. */
-    private void tentacles(RiftPortalEntity portal, float age, float partialTick, PoseStack pose,
+private void tentacles(RiftPortalEntity portal, float age, float partialTick, PoseStack pose,
                            MultiBufferSource buffers, int light) {
         float grown = smooth((age - RiftPortalEntity.OPEN_END + 6) / 30f) * (1f - smooth((age - portal.closeAt()) / 20f));
         if (grown <= 0.01f) {
@@ -195,7 +172,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         Vector3f right = new Vector3f(-fwd.z, 0, fwd.x);
         float time = (portal.tickCount + partialTick) / 20f;
 
-        // The strike the server has lined up: which tentacle throws it, and how far into the blow.
         int strike = portal.strikeTick();
         Entity target = portal.level().getEntity(portal.strikeTarget());
         float d = age - strike;
@@ -209,7 +185,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
 
         Matrix4f m = pose.last().pose();
         Matrix3f n = pose.last().normal();
-        // Skin for every tentacle, then glow for every tentacle: one render type at a time.
         VertexConsumer skin = buffers.getBuffer(RenderType.entityCutoutNoCull(EldritchSkyTentacleRenderer.SKIN));
         for (int i = 0; i < TENTACLES; i++) {
             shapeTentacle(i, grown, time, fwd, right, target != null && i == striker ? lash : 0f, targetLocal);
@@ -242,10 +217,7 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         shape.target.set(target);
     }
 
-    // Geometry ------------------------------------------------------------------------------------
-
-    /** Textured oval at depth {@code z}; the texture turns by {@code spin} radians. */
-    private static void disc(VertexConsumer vc, Matrix4f m, Matrix3f n, float rx, float ry, float z, float spin,
+private static void disc(VertexConsumer vc, Matrix4f m, Matrix3f n, float rx, float ry, float z, float spin,
                              float r, float g, float b, float a, float scale) {
         if (rx <= 0.001f || ry <= 0.001f) {
             return;
@@ -268,7 +240,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
                 .uv2(LightTexture.FULL_BRIGHT).normal(n, 0f, 0f, 1f).endVertex();
     }
 
-    /** Additive band between two ovals, fading from {@code alpha} at the inner edge to nothing outside. */
     private static void ring(VertexConsumer vc, Matrix4f m, float innerX, float innerY, float outerX, float outerY,
                              float[] c, float alpha, float z) {
         for (int i = 0; i < SEGMENTS; i++) {
@@ -283,12 +254,10 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         }
     }
 
-    /** The burning edge: a smooth bright core fading both ways, breathing slowly. */
     private static void rim(VertexConsumer vc, Matrix4f m, float rx, float ry, float time, float h, Look look, float z) {
         for (int i = 0; i < SEGMENTS; i++) {
             double a0 = Math.PI * 2 * i / SEGMENTS;
             double a1 = Math.PI * 2 * (i + 1) / SEGMENTS;
-            // A slow wave of brightness running round the edge, not per-segment flicker.
             float wave0 = 0.8f + 0.2f * (float) Math.sin(a0 * 3 - time * 2.2f);
             float wave1 = 0.8f + 0.2f * (float) Math.sin(a1 * 3 - time * 2.2f);
             float alpha0 = 0.9f * h * wave0 * look.glowStrength;
@@ -307,7 +276,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         }
     }
 
-    /** Short forks of lightning crawling along the rim, re-drawn every few ticks. */
     private static void arcs(VertexConsumer vc, Matrix4f m, float rx, float ry, int age, float h, Look look, float z) {
         if (h < 0.5f) {
             return;
@@ -352,7 +320,6 @@ public class RiftPortalRenderer extends EntityRenderer<RiftPortalEntity> {
         colorVertex(vc, m, x1 + nx, y1 + ny, z, c, alpha);
     }
 
-    /** A flat glow on the ground, brightest at the rift's foot. */
     private static void groundPool(VertexConsumer vc, Matrix4f m, float radius, float[] c, float alpha) {
         if (alpha <= 0.01f || radius <= 0.01f) {
             return;

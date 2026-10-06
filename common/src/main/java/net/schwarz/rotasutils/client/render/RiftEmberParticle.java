@@ -11,11 +11,6 @@ import net.minecraft.client.particle.TextureSheetParticle;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.util.Mth;
 
-/**
- * An ember shed by the cracked sky. It is born hot - near white with a cyan edge - and cools through
- * royal blue to violet as it drifts down, swaying, flickering, and fading once it has cooled or landed.
- * It is drawn at full brightness, so it still glows in the eclipse the rift casts.
- */
 @Environment(EnvType.CLIENT)
 public final class RiftEmberParticle extends TextureSheetParticle {
     private final float swayPhase;
@@ -49,13 +44,11 @@ public final class RiftEmberParticle extends TextureSheetParticle {
         xd += swirl * 0.0022;
         zd += Mth.cos(age * swaySpeed * 0.8f + swayPhase) * 0.0022;
         if (onGround && age < lifetime - 12) {
-            // A landed ember gutters out quickly instead of lying on the grass.
             age = lifetime - 12;
         }
         tint(age / (float) lifetime);
     }
 
-    /** Hot white-cyan, then royal blue, then violet; alpha flickers and falls away at the end. */
     private void tint(float life) {
         float cool = Mth.clamp(life * 1.6f, 0f, 1f);
         float late = Mth.clamp((life - 0.45f) / 0.55f, 0f, 1f);
@@ -80,7 +73,6 @@ public final class RiftEmberParticle extends TextureSheetParticle {
         return 0xF000F0;
     }
 
-    /** Creates embers with one of the ember sprites picked at random. */
     public static final class Provider implements ParticleProvider<SimpleParticleType> {
         private final SpriteSet sprites;
 

@@ -13,10 +13,6 @@ import net.schwarz.rotasutils.server.TitleService;
 import net.schwarz.rotasutils.title.TitleDef;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * {@code /rotas title}: see the titles (ฉายา) you have earned, wear one, and - for an operator -
- * hand one out or take it back.
- */
 final class TitleCommands {
     private TitleCommands() {
     }
@@ -97,7 +93,6 @@ final class TitleCommands {
                                         })))));
     }
 
-    /** Every title, with what the player has done towards it and who holds the unique ones. */
     private static int list(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         RotasData data = RotasData.get(player.server);

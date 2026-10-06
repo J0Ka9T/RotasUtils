@@ -15,29 +15,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * World-selection mode.
- *
- * <p>An admin screen asks for a position, NPC or board; the screen closes, the player
- * clicks the thing in the world with the admin tool, and the picked value is sent back
- * to the client which reopens the editor with the field filled in. This is what keeps
- * UUIDs and coordinates out of the admin's hands.
- */
 public final class WorldPicker {
     public enum Kind {
         POSITION,
         ENTITY,
         NPC,
-        /** Like NPC, but the value carries type and dimension so a binding is self-describing. */
         NPC_BIND,
         BOARD
     }
 
-    /**
-     * @param kind      what the screen asked for
-     * @param screenKey identifies the screen to reopen
-     * @param fieldKey  identifies the field to fill
-     */
     public record Request(Kind kind, String screenKey, String fieldKey, String npcId) {
     }
 
@@ -103,8 +89,6 @@ public final class WorldPicker {
                 && request.kind() != Kind.NPC_BIND)) {
             return false;
         }
-        // A binding needs three facts about the entity, and an admin should never type any
-        // of them, so they travel together in one pipe-separated value.
         String value = switch (request.kind()) {
             case NPC -> target.getUUID().toString();
             case NPC_BIND -> target.getUUID() + "|"
@@ -112,9 +96,6 @@ public final class WorldPicker {
                     + target.level().dimension().location();
             default -> String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()));
         };
-        // A binding is identity, not content: apply it to the live character as soon as
-        // the entity is clicked, so it survives a closed editor, a restart, or an admin
-        // who never reaches the Save/review flow.
         if (request.kind() == Kind.NPC_BIND && !request.npcId().isEmpty()) {
             RotasData data = RotasData.get(player.server);
             NpcDef npc = data.npc(request.npcId());
@@ -123,9 +104,6 @@ public final class WorldPicker {
                 data.audit(player.getGameProfile().getName() + " bound NPC " + npc.id()
                         + " to " + target.getUUID() + " ("
                         + BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()) + ")");
-                // The binding is live immediately: drop any staged draft for this character
-                // (its frozen baseline can no longer apply) and refresh every editor so
-                // their baselines match the new live state instead of failing Save.
                 data.configHistory().discard(player.getUUID().toString(), "npc/" + npc.id());
                 for (ServerPlayer online : player.server.getPlayerList().getPlayers()) {
                     RotasNetwork.syncContent(online);
@@ -156,7 +134,6 @@ public final class WorldPicker {
         PENDING.remove(player.getUUID());
     }
 
-    /** Drops every outstanding world pick when the server stops. */
     public static void clear() {
         PENDING.clear();
     }

@@ -10,13 +10,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * In-memory farming guard.
- *
- * <p>Records are keyed by player + source + target and expire on their own, so the
- * map stays bounded without a per-tick sweep. Nothing here is persisted: a restart
- * resets the counters, which is the conservative direction to fail in.
- */
 public final class AntiFarm {
     private record Key(UUID player, XpSource source, String target) {
     }
@@ -35,7 +28,6 @@ public final class AntiFarm {
     private AntiFarm() {
     }
 
-    /** Returns true when the award should be granted. */
     public static boolean allow(ServerPlayer player, RotasData data, XpSource source,
                                 XpSourceConfig config, String target) {
         long now = System.currentTimeMillis();
@@ -70,7 +62,6 @@ public final class AntiFarm {
             return false;
         }
 
-        // Daily limits are per player + XP source, not per entity/item target.
         Key dailyKey = new Key(player.getUUID(), source, "\u0000rotas_daily");
         Record dailyRecord = RECORDS.computeIfAbsent(dailyKey, k -> {
             Record created = new Record();
@@ -92,10 +83,6 @@ public final class AntiFarm {
         return true;
     }
 
-    /**
-     * Player-kill guard: refuses repeat kills on the same victim inside the cooldown
-     * and refuses victims below the configured minimum playtime.
-     */
     public static boolean allowPlayerKill(ServerPlayer killer, ServerPlayer victim, RotasData data,
                                           int victimCooldownSeconds, int minVictimPlaytimeMinutes) {
         if (!data.serverSettings().antiFarmEnabled()) {
@@ -130,7 +117,6 @@ public final class AntiFarm {
         return true;
     }
 
-    /** Drops expired records; runs at most once every 30 seconds. */
     private static void sweep(long now, RotasData data) {
         if (now - lastSweepMillis < 30_000L) {
             return;

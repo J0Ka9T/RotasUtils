@@ -1,0 +1,15 @@
+{
+  "bonus_damage": 0.25,
+  "health_threshold": 0.3,
+  "heal_amount": 2.0,
+  "knockback": 0.8,
+  "radius": 3.0,
+  "pull_strength": 0.35,
+  "stamina_restore": 2.0,
+  "hits_required": 3,
+  "window_ticks": 100,
+  "cooldown_ticks": 100,
+  "slow_ticks": 40,
+  "slow_amplifier": 0,
+  "fire_seconds": 2
+}

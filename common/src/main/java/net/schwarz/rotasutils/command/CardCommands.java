@@ -19,10 +19,6 @@ import net.schwarz.rotasutils.util.ThaiText;
 
 import java.util.List;
 
-/**
- * {@code /rotas card}: what cards exist, handing one out, and the two operations a player would
- * otherwise only reach through the socket bench - prising a card back out and setting sockets by hand.
- */
 final class CardCommands {
     private CardCommands() {
     }
@@ -87,8 +83,6 @@ final class CardCommands {
                             ServerPlayer player = context.getSource().getPlayerOrException();
                             int wanted = IntegerArgumentType.getInteger(context, "count");
                             ItemStack held = player.getMainHandItem();
-                            // Punch one at a time so the shared bound and the "weapon or armour only"
-                            // check stay in one place rather than being repeated here.
                             int count = ItemSockets.count(held);
                             while (count < wanted) {
                                 int after = ItemSockets.punch(held, wanted);

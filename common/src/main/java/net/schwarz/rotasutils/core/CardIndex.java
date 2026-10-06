@@ -8,16 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * What every card is called and what it does, in a form both sides can read.
- *
- * <p>The cards themselves are configuration, which lives on the server. An item stack only carries a
- * card id, so a client needs this to draw the card's name, colour and bonus; the server fills it when
- * the configuration loads and sends the same table with the content snapshot. A card a client has not
- * been told about shows its id rather than nothing at all.</p>
- */
 public final class CardIndex {
-    /** One card as far as display is concerned. */
     public record Entry(String id, String name, int color, String fits, List<CharacterStat.Effect> effects) {
         public Entry {
             id = id == null ? "" : id;
@@ -27,7 +18,6 @@ public final class CardIndex {
             effects = effects == null ? List.of() : List.copyOf(effects);
         }
 
-        /** True when this card may go into that kind of item. */
         public boolean fits(String category) {
             return "ANY".equalsIgnoreCase(fits) || fits.equalsIgnoreCase(category);
         }
@@ -38,7 +28,6 @@ public final class CardIndex {
     private CardIndex() {
     }
 
-    /** Replaces everything known about cards. */
     public static void set(Map<String, Entry> entries) {
         ENTRIES.clear();
         if (entries != null) {
@@ -54,7 +43,6 @@ public final class CardIndex {
         return Map.copyOf(ENTRIES);
     }
 
-    /** The card's name for display, falling back to its id. */
     public static String name(String id) {
         Entry entry = get(id);
         return entry == null ? (id == null ? "" : id) : entry.name();
@@ -65,10 +53,7 @@ public final class CardIndex {
         return entry == null ? 0xFFB07CE8 : entry.color();
     }
 
-    // Transport ---------------------------------------------------------------------------------
-
-    /** The whole table, small enough to ride along with the content snapshot. */
-    public static CompoundTag save() {
+public static CompoundTag save() {
         CompoundTag tag = new CompoundTag();
         ENTRIES.forEach((id, entry) -> {
             CompoundTag one = new CompoundTag();

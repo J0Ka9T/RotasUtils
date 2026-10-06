@@ -24,20 +24,9 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * A Zenith blade: the loosed sword itself, drawn spectral and see-through, with two fading
- * afterimages, a long additive smear in the blade's own colour whose white-hot core runs along
- * the curve, a soft halo, and four-point sparkles at its tip and scattered down its wake.
- * <p>
- * Everything is sampled from the blade's analytic loop ({@link ZenithBladeEntity.Loop}), so the
- * trail is perfectly smooth at any frame rate and needs no stored history. Nothing here allocates
- * per frame beyond the scratch vectors held by the renderer.
- */
 @Environment(EnvType.CLIENT)
 public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
-    /** Samples along the wake; more is smoother, each costs four quads. */
     private static final int TRAIL_SAMPLES = 40;
-    /** How much of the loop (as a life fraction) the wake covers behind the blade. */
     private static final float TRAIL_SPAN = 0.5f;
     private static final float BLADE_SCALE = 2.4f;
     private static final float GLOW_WIDTH = 2.0f;
@@ -69,7 +58,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
     }
 
-    /** The trail reaches blocks behind a half-block carrier: frustum-culling the carrier cut the trail off at screen edges. */
     @Override
     public boolean shouldRender(ZenithBladeEntity blade, net.minecraft.client.renderer.culling.Frustum frustum,
                                 double camX, double camY, double camZ) {
@@ -91,19 +79,16 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
         int seed = blade.seed();
         loop.set(blade.loopOrigin(partialTick), blade.target(), seed);
-        // Render origin is the entity's interpolated position; everything is placed relative to it.
         Vec3 at = new Vec3(Mth.lerp(partialTick, blade.xo, blade.getX()), Mth.lerp(partialTick, blade.yo, blade.getY()),
                 Mth.lerp(partialTick, blade.zo, blade.getZ()));
         float ox = (float) at.x, oy = (float) at.y, oz = (float) at.z;
         bladeColor(blade.blade(), color);
-        // One in three blades burns rainbow, so a volley reads as the Zenith's prism, not a flock.
         boolean prismatic = Math.floorMod(seed >>> 3, 3) == 0;
         camera.set(entityRenderDispatcher.cameraOrientation());
 
         Matrix4f m = pose.last().pose();
         VertexConsumer glow = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
 
-        // The wake, sampled back along the true loop.
         for (int i = 0; i <= TRAIL_SAMPLES; i++) {
             double su = Math.max(0.0, u - TRAIL_SPAN * i / TRAIL_SAMPLES);
             loop.at(su, points[i]).sub(ox, oy, oz);
@@ -115,13 +100,11 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         flatBand(glow, m, u, fade, prismatic, time);
         rims(glow, m, u, fade, prismatic, time);
 
-        // Halo around the blade itself.
         loop.at(u, bladePos).sub(ox, oy, oz);
         loop.tangent(u, tangent);
         halo(glow, m, bladePos, 2.2f, color, 0.35f * fade);
         halo(glow, m, bladePos, 0.8f, whiteHot(color, 0.8f), 0.55f * fade);
 
-        // Sparkles: one riding the tip, a few shed into the wake and twinkling out.
         scratch.set(tangent).mul(0.95f).add(bladePos);
         float twinkle = 0.75f + 0.25f * Mth.sin(age * 1.7f + seed);
         star(glow, m, scratch, 1.2f * twinkle, whiteHot(color, 0.6f), 0.95f * fade, age * 0.12f);
@@ -135,7 +118,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
                     s * 0.7f);
         }
 
-        // The sword: four afterimages fanning back along the loop, then the blade.
         ghost(blade.blade(), pose, buffers, blade, u - 0.09f, 0.10f * fade, ox, oy, oz);
         ghost(blade.blade(), pose, buffers, blade, u - 0.066f, 0.17f * fade, ox, oy, oz);
         ghost(blade.blade(), pose, buffers, blade, u - 0.044f, 0.27f * fade, ox, oy, oz);
@@ -144,11 +126,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         super.render(blade, yaw, partialTick, pose, buffers, light);
     }
 
-    /**
-     * The smear: two crossed ribbons (one in the loop's plane, one across it) so it reads from any
-     * angle, each a wide soft glow in the blade's colour with a thin white-hot core, tapering and
-     * fading toward the tail.
-     */
     private void wake(VertexConsumer vc, Matrix4f m, float u, float fade, boolean prismatic, float time) {
         Vector3f normal = loop.normal();
         for (int i = 0; i < TRAIL_SAMPLES; i++) {
@@ -162,12 +139,10 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
             float r0 = c0[0], g0 = c0[1], b0 = c0[2];
             float[] c1 = segmentColor(prismatic, t1, time, hue);
             float r1 = c1[0], g1 = c1[1], b1 = c1[2];
-            // Outer glow, in-plane and cross-plane.
             ribbon(vc, m, i, across[i], across[i + 1], GLOW_WIDTH * f0, GLOW_WIDTH * f1,
                     r0, g0, b0, 0.3f * fade * f0, r1, g1, b1, 0.3f * fade * f1);
             ribbon(vc, m, i, normal, normal, GLOW_WIDTH * 0.55f * f0, GLOW_WIDTH * 0.55f * f1,
                     r0, g0, b0, 0.35f * fade * f0, r1, g1, b1, 0.35f * fade * f1);
-            // White-hot core.
             float w0 = 0.75f, w1 = w0;
             ribbon(vc, m, i, across[i], across[i + 1], CORE_WIDTH * f0 + 0.03f, CORE_WIDTH * f1 + 0.03f,
                     lerpWhite(r0, w0), lerpWhite(g0, w0), lerpWhite(b0, w0), 0.9f * fade * f0 * f0,
@@ -178,10 +153,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
     }
 
-    /**
-     * The anime layer: a flat, hard-edged band of the blade's colour with a flat white core, plus
-     * tapered speed-line streaks trailing at either side, all crisp rather than soft.
-     */
     private void flatBand(VertexConsumer vc, Matrix4f m, float u, float fade, boolean prismatic, float time) {
         for (int i = 0; i < TRAIL_SAMPLES; i++) {
             if (u - TRAIL_SPAN * i / TRAIL_SAMPLES <= 0f) {
@@ -193,7 +164,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
             float r = c[0], g = c[1], b = c[2];
             hard(vc, m, i, GLOW_WIDTH * 0.32f * f0, GLOW_WIDTH * 0.32f * f1, r, g, b, 0.8f * fade * f0, 0.8f * fade * f1);
             hard(vc, m, i, GLOW_WIDTH * 0.12f * f0, GLOW_WIDTH * 0.12f * f1, 1f, 1f, 1f, fade * f0, fade * f1);
-            // Speed lines: three streaks off the band, each ending earlier the further out it sits.
             for (int line = 0; line < 3; line++) {
                 float reach = 0.85f - 0.2f * line;
                 if (t0 > reach) {
@@ -211,7 +181,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
     }
 
-    /** One segment of a hard-edged ribbon: constant alpha across its width. */
     private void hard(VertexConsumer vc, Matrix4f m, int i, float w0, float w1, float r, float g, float b, float a0,
                       float a1) {
         Vector3f p0 = points[i], p1 = points[i + 1], s0 = across[i], s1 = across[i + 1];
@@ -221,10 +190,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         vertex(vc, m, p1.x - s1.x * w1, p1.y - s1.y * w1, p1.z - s1.z * w1, r, g, b, a1);
     }
 
-    /**
-     * Bright hairlines along both outer edges of the smear, the crisp rim Terraria's sword trails
-     * have, so the wake reads as a cut through the air rather than a blur.
-     */
     private void rims(VertexConsumer vc, Matrix4f m, float u, float fade, boolean prismatic, float time) {
         for (int i = 0; i < TRAIL_SAMPLES; i++) {
             if (u - TRAIL_SPAN * i / TRAIL_SAMPLES <= 0f) {
@@ -248,7 +213,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
     }
 
-    /** Wake colour at trail position {@code t}: the blade's own, or a cycling rainbow for prismatic blades. */
     private float[] segmentColor(boolean prismatic, float t, float time, float[] out) {
         if (!prismatic) {
             out[0] = color[0];
@@ -260,7 +224,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         return out;
     }
 
-    /** One segment of a soft ribbon: bright on the centre line, fading to nothing at both edges. */
     private void ribbon(VertexConsumer vc, Matrix4f m, int i, Vector3f side0, Vector3f side1, float w0, float w1,
                         float r0, float g0, float b0, float a0, float r1, float g1, float b1, float a1) {
         Vector3f p0 = points[i], p1 = points[i + 1];
@@ -272,7 +235,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
     }
 
-    /** A camera-facing soft disc, bright in the middle. */
     private void halo(VertexConsumer vc, Matrix4f m, Vector3f c, float radius, float[] rgb, float alpha) {
         for (int i = 0; i < HALO_SEGMENTS; i++) {
             float a0 = Mth.TWO_PI * i / HALO_SEGMENTS;
@@ -284,7 +246,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         }
     }
 
-    /** A Terraria-style four-point sparkle, long thin arms plus a smaller diagonal cross, facing the camera. */
     private void star(VertexConsumer vc, Matrix4f m, Vector3f c, float size, float[] rgb, float alpha, float spin) {
         if (alpha <= 0.01f || size <= 0.01f) {
             return;
@@ -310,11 +271,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         vertex(vc, m, corner.x, corner.y, corner.z, rgb[0], rgb[1], rgb[2], alpha);
     }
 
-    /**
-     * The sword model at life fraction {@code su}, see-through by {@code alpha}. The sprite's
-     * diagonal (hilt bottom-left to tip top-right) is turned onto the direction of travel, and its
-     * face onto the loop's plane, so the blade always leads with its point.
-     */
     private void ghost(ItemStack stack, PoseStack pose, MultiBufferSource buffers, ZenithBladeEntity blade, float su,
                        float alpha, float ox, float oy, float oz) {
         if (su < 0f || alpha <= 0.01f) {
@@ -341,7 +297,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         pose.popPose();
     }
 
-    /** The blade's signature colour: vanilla tiers get their material's, anything else a stable hue of its own. */
     static void bladeColor(ItemStack stack, float[] out) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         String path = id.getPath();
@@ -373,7 +328,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         return c + (1f - c) * amount;
     }
 
-    /** Wake width/brightness along its length: full just behind the blade, easing to nothing at the tail. */
     private static float taper(float t) {
         float s = 1f - t;
         return s * s * (3f - 2f * s);
@@ -406,7 +360,6 @@ public class ZenithBladeRenderer extends EntityRenderer<ZenithBladeEntity> {
         return InventoryMenu.BLOCK_ATLAS;
     }
 
-    /** Passes vertices through with their alpha scaled, turning any item model into a spectral one. */
     private static final class FadingConsumer implements VertexConsumer {
         private final VertexConsumer inner;
         private final float alpha;

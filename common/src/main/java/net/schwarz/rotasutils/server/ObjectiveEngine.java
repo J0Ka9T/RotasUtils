@@ -21,15 +21,7 @@ import net.schwarz.rotasutils.quest.objective.ObjectiveType;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Routes gameplay events into objective counters.
- *
- * <p>Only the quests a player currently has accepted are visited, and inside each,
- * only the objectives whose {@link EventKind} matches. When a candidate objective
- * rejects an event the reason is recorded so the quest tester can explain it.
- */
 public final class ObjectiveEngine {
-    /** Last rejection reason per player, consumed by the admin quest tester. */
     private static final java.util.Map<java.util.UUID, String> LAST_REJECTION = new java.util.HashMap<>();
 
     private ObjectiveEngine() {
@@ -47,12 +39,10 @@ public final class ObjectiveEngine {
         LAST_REJECTION.remove(playerId);
     }
 
-    /** Drops every remembered rejection message when the server stops. */
     public static void clear() {
         LAST_REJECTION.clear();
     }
 
-    /** Tells the event catalogue what happened, with the entity, item or block it happened to. */
     private static void reportToCatalogue(ServerPlayer player, RotasData data, QuestEvent event) {
         var type = net.schwarz.rotasutils.event.EventType.of(event.kind());
         if (type == null) {
@@ -70,7 +60,6 @@ public final class ObjectiveEngine {
         }
     }
 
-    /** The id a rule's filter is matched against for this event. */
     private static String subjectOf(QuestEvent event, net.schwarz.rotasutils.event.EventType type) {
         return switch (type.subject()) {
             case ENTITY -> event.entityType() == null ? "" : event.entityType().toString();
@@ -83,11 +72,7 @@ public final class ObjectiveEngine {
 
     public static void handle(ServerPlayer player, RotasData data, QuestEvent event) {
         RpgKernel.objectiveEvent(player, event);
-        // One bridge to the event catalogue. Every objective event already passes through here with the
-        // thing it happened to, so the catalogue needs no second set of call sites to stay complete.
         reportToCatalogue(player, data, event);
-        // Pickup events may fire before insertion; the coarse inventory refresh observes
-        // the actual carried stacks, including grants, crafting and dropped items.
         if (event.kind() == EventKind.COLLECT_ITEM) {
             return;
         }
@@ -119,6 +104,9 @@ public final class ObjectiveEngine {
                 if (!unlocked[index]) {
                     continue;
                 }
+                if (!objective.opens().isEmpty() && QuestService.decided(quest, active, objective.step())) {
+                    continue;
+                }
                 String rejection = matches(player, data, objective, event);
                 if (rejection != null) {
                     reject(player, rejection);
@@ -131,9 +119,6 @@ public final class ObjectiveEngine {
                     continue;
                 }
                 active.setProgress(index, updated);
-                // Credit only the ticks the objective actually consumed: the counter caps at
-                // the required amount, so the raw event amount would over-credit
-                // contribution-based rewards on the completing blow.
                 active.addContribution(updated - previous);
                 questChanged = true;
                 if (updated >= required) {
@@ -166,12 +151,51 @@ public final class ObjectiveEngine {
         }
     }
 
+    private static final java.util.Map<String, Long> AUTO_ATTEMPTS = new java.util.HashMap<>();
+
+    public static void onPlayerTick(net.minecraft.world.entity.player.Player entity) {
+        if (!(entity instanceof ServerPlayer player) || player.level().isClientSide()
+                || player.connection == null || !player.isAlive() || player.tickCount % 20 != 0) {
+            return;
+        }
+        RotasData data = RotasData.get(player.server);
+        PlayerProgress progress = data.peek(player.getUUID());
+        if (progress == null || progress.activeQuests().isEmpty()) {
+            return;
+        }
+        if (progress.activeQuests().keySet().removeIf(id -> data.quest(id) == null)) {
+            progress.markDirty();
+            data.setDirty();
+            net.schwarz.rotasutils.network.RotasNetwork.syncProgress(player);
+            if (progress.activeQuests().isEmpty()) return;
+        }
+        refreshInventory(player, data);
+        long now = player.server.getTickCount();
+        for (ActiveQuest active : new ArrayList<>(progress.activeQuests().values())) {
+            QuestDef quest = data.quest(active.questId());
+            if (quest == null || !quest.autoComplete() || !QuestService.allRequiredComplete(quest, active)) {
+                continue;
+            }
+            String key = player.getUUID() + "|" + quest.id();
+            Long last = AUTO_ATTEMPTS.get(key);
+            if (last != null && now - last < 600) {
+                continue;
+            }
+            AUTO_ATTEMPTS.put(key, now);
+            active.setTurnInReady(true);
+            QuestService.notifyReadyForTurnIn(player, quest);
+        }
+        if (AUTO_ATTEMPTS.size() > 4096) {
+            AUTO_ATTEMPTS.clear();
+        }
+    }
+
     public static void refreshInventory(ServerPlayer player, RotasData data) {
         PlayerProgress progress = data.peek(player.getUUID());
         if (progress == null || progress.activeQuests().isEmpty()) return;
         List<ItemStack> stacks = carriedStacks(player);
         boolean changed = false;
-        for (ActiveQuest active : progress.activeQuests().values()) {
+        for (ActiveQuest active : new ArrayList<>(progress.activeQuests().values())) {
             QuestDef quest = data.quest(active.questId());
             if (quest == null) continue;
             boolean wasReady = active.turnInReady();
@@ -187,11 +211,6 @@ public final class ObjectiveEngine {
         }
     }
 
-    /**
-     * Hands carried items in against a DELIVER_ITEM objective. Stacks are matched with the same
-     * rules the objective applies to events (item or tag, name, model data, durability), and the
-     * delivery honours sequential steps, alternative groups and party sharing like an event does.
-     */
     public static QuestService.ActionResult deliver(ServerPlayer player, RotasData data, String questId, int index) {
         QuestDef quest = data.quest(questId);
         PlayerProgress progress = data.progress(player.getUUID());
@@ -211,7 +230,6 @@ public final class ObjectiveEngine {
             return QuestService.ActionResult.no(ThaiText.t("rotasutils.msg.obj.earlier"));
         }
         Params params = objective.params();
-        // Without an item or a tag the matcher would accept any stack at all.
         if (params.getId("item") == null && params.getString("item_tag", "").isEmpty()) {
             return QuestService.ActionResult.no(ThaiText.t("rotasutils.msg.obj.misconfigured"));
         }
@@ -267,10 +285,15 @@ public final class ObjectiveEngine {
         return stacks;
     }
 
-    /** Keeps a running quest usable after its template is republished. */
     public static void migrate(ActiveQuest active, QuestDef quest) {
-        if (active.objectiveCount() != quest.objectives().size()) {
-            active.resize(quest.objectives().size());
+        if (active.remap(quest.objectiveKeys())) {
+            List<Objective> objectives = quest.objectives();
+            for (int i = 0; i < objectives.size(); i++) {
+                if (active.progress(i) >= objectives.get(i).requiredAmount()) {
+                    active.setComplete(i, true);
+                }
+            }
+            active.setTurnInReady(QuestService.allRequiredComplete(quest, active));
         }
         if (active.questVersion() != quest.version()) {
             active.setQuestVersion(quest.version());
@@ -278,6 +301,9 @@ public final class ObjectiveEngine {
     }
 
     public static boolean stepUnlocked(QuestDef quest, ActiveQuest active, Objective objective, int index) {
+        if (!QuestService.onPath(quest, active, index)) {
+            return false;
+        }
         if (quest.objectiveMode() != QuestDef.ObjectiveMode.SEQUENTIAL) {
             return true;
         }
@@ -288,7 +314,7 @@ public final class ObjectiveEngine {
                 continue;
             }
             Objective other = objectives.get(i);
-            if (other.optional()) {
+            if (other.optional() || !QuestService.onPath(quest, active, i)) {
                 continue;
             }
             if (other.step() < step && !active.isComplete(i)) {
@@ -298,7 +324,6 @@ public final class ObjectiveEngine {
         return true;
     }
 
-    /** Alternative-group siblings count as done as soon as one of them completes. */
     private static void completeAlternatives(QuestDef quest, ActiveQuest active, Objective completed) {
         if (completed.alternativeGroup().isBlank()) {
             return;
@@ -313,7 +338,6 @@ public final class ObjectiveEngine {
         }
     }
 
-    /** Returns null when the event counts, otherwise a player-readable reason. */
     public static String matches(ServerPlayer player, RotasData data, Objective objective, QuestEvent event) {
         Params params = objective.params();
         return switch (objective.type()) {
@@ -329,6 +353,10 @@ public final class ObjectiveEngine {
             case DIALOGUE_CHOICE -> {
                 String dialogue = params.getString("dialogue", "");
                 String choice = params.getString("choice", "");
+                String npcIssue = params.getString("npc_uuid", "").isEmpty() ? null : matchNpc(params, event);
+                if (npcIssue != null) {
+                    yield npcIssue;
+                }
                 if (!dialogue.isEmpty() && !dialogue.equals(event.dialogueId())) {
                     yield ThaiText.t("rotasutils.msg.obj.wrong_dialogue");
                 }

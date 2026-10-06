@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Function;
 
-/** Parsing and pure math for boss encounters: phases, arenas, enrage and contribution shares. */
 public final class BossDefinitions {
     private BossDefinitions() { }
 
@@ -25,10 +24,6 @@ public final class BossDefinitions {
                        ContentId loot, double minimumShare, int resetTicks) {
         public Boss { phases = List.copyOf(phases); enrageAttributes = Map.copyOf(enrageAttributes); }
 
-        /**
-         * Phase index for a health fraction. Phases are ordered from full health downwards, so a boss
-         * healed by a mechanic steps back to the matching earlier phase instead of skipping ahead.
-         */
         public int phaseAt(double healthFraction) {
             if (!Double.isFinite(healthFraction)) { throw new IllegalArgumentException("Non-finite boss health fraction"); }
             int index = 0;
@@ -39,7 +34,6 @@ public final class BossDefinitions {
         }
     }
 
-    /** Contribution shares by player, normalised over recorded damage. */
     public static Map<String, Double> shares(Map<String, Double> damage) {
         double total = 0;
         for (double value : damage.values()) {

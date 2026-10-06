@@ -9,12 +9,6 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A job a player can take, such as Warrior or Mage.
- *
- * <p>A job is identity only: skill categories name the jobs that may use them, so the job
- * decides which trees a player sees without duplicating any tree data here.</p>
- */
 public final class JobDef {
     private String id;
     private String name = "New Job";
@@ -31,21 +25,12 @@ public final class JobDef {
     private int skillPointsPerMasteryLevel = 1;
     private JobMasteryCurve masteryCurve = JobMasteryCurve.defaults();
     private final Set<String> trainerNpcIds = new LinkedHashSet<>();
-    /** Registry ids or #tags associated with this job. Association is informational until a rule consumes it. */
     private final Set<String> itemSelectors = new LinkedHashSet<>();
-    /** Stable activity ids that may award mastery, e.g. mining, repair, or horse_care. */
-    private final Set<String> masteryActivities = new LinkedHashSet<>();
     private final List<JobAttributeModifier> attributeModifiers = new ArrayList<>();
-    /** Season sub-job EXP multiplier on the tier base (Chef 0.144, Blacksmith 1.5). 0 earns nothing. */
     private double productionXpRate;
-    /** What this job produces and the sub-job level that unlocks each item (its tier). */
     private final List<ProductionEntry> production = new ArrayList<>();
     public static final int MAX_PRODUCTION = 256;
 
-    /**
-     * One row of a job's unlock table: an activity, an item or block id (or #tag), and the level it unlocks at.
-     * The unlock level decides the tier, so the table doubles as the recipe unlock list.
-     */
     public record ProductionEntry(Activity activity, String selector, int unlockLevel) {
         public enum Activity { CRAFT, SMELT, MINE, HARVEST, FISH, BREW }
 
@@ -69,7 +54,6 @@ public final class JobDef {
                     tag.getString("selector"), tag.getInt("level"));
         }
 
-        /** "CRAFT minecraft:bread 1", the text form the job editor uses. */
         public String encode() {
             return activity.name() + " " + selector + " " + unlockLevel;
         }
@@ -171,7 +155,6 @@ public final class JobDef {
     public void setMasteryCurve(JobMasteryCurve value) { masteryCurve=java.util.Objects.requireNonNull(value); }
     public Set<String> trainerNpcIds() { return trainerNpcIds; }
     public Set<String> itemSelectors() { return itemSelectors; }
-    public Set<String> masteryActivities() { return masteryActivities; }
     public List<JobAttributeModifier> attributeModifiers() { return attributeModifiers; }
 
     public CompoundTag save() {
@@ -189,7 +172,6 @@ public final class JobDef {
         tag.putInt("mastery_points_per_level",skillPointsPerMasteryLevel); tag.put("mastery_curve",masteryCurve.save());
         tag.put("trainers",Nbt.saveStrings(trainerNpcIds));
         tag.put("item_selectors", Nbt.saveStrings(itemSelectors));
-        tag.put("mastery_activities", Nbt.saveStrings(masteryActivities));
         tag.put("attribute_modifiers", Nbt.saveList(attributeModifiers, JobAttributeModifier::save));
         tag.putDouble("production_rate", productionXpRate);
         tag.put("production", Nbt.saveList(production, ProductionEntry::save));
@@ -213,7 +195,6 @@ public final class JobDef {
         job.masteryCurve=tag.contains("mastery_curve")?JobMasteryCurve.load(tag.getCompound("mastery_curve")):JobMasteryCurve.defaults();
         job.trainerNpcIds.addAll(Nbt.loadStringSet(tag,"trainers"));
         job.itemSelectors.addAll(Nbt.loadStringSet(tag, "item_selectors"));
-        job.masteryActivities.addAll(Nbt.loadStringSet(tag, "mastery_activities"));
         job.attributeModifiers.addAll(Nbt.loadList(tag, "attribute_modifiers", JobAttributeModifier::load));
         job.setProductionXpRate(tag.contains("production_rate") ? tag.getDouble("production_rate") : 0);
         for (ProductionEntry entry : Nbt.loadList(tag, "production", ProductionEntry::load)) {

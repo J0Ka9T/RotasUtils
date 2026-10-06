@@ -34,22 +34,14 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
     protected static final ResourceLocation FLARE = tex("flare");
     protected static final ResourceLocation GLOW = tex("glow");
     protected static final ResourceLocation STREAK = tex("streak");
-    /** Tileable soft energy clouds, scrolled up light pillars (scripts/gen_celestial_textures.py). */
     protected static final ResourceLocation NEBULA = tex("nebula");
-    /** A shock ring with a crisp leading edge and a soft wake inside it. */
     protected static final ResourceLocation SHOCK = tex("shock");
-    /** A free-floating, uneven puff of energy (soft all round, unlike the tiling nebula). */
     protected static final ResourceLocation CLOUD = tex("cloud");
     protected static final float TAU = (float) (Math.PI * 2);
     protected static final Vec3 X = new Vec3(1, 0, 0);
     protected static final Vec3 Z = new Vec3(0, 0, 1);
 
     protected static final float[] WHITE = {1, 1, 1};
-    /*
-     * One purple family, hue-shifted: darker runs cooler and more saturated (deep violet), brighter runs
-     * warmer (lilac toward white). Rose is the single accent - sigils, crowns, one ring - never alternated
-     * element by element. Every celestial texture is white, so these vertex colours are the whole palette.
-     */
     private static final float[] PURPLE = {0.58f, 0.22f, 1.00f};
     private static final float[] LILAC = {0.86f, 0.62f, 1.00f};
     private static final float[] ROSE = {1.00f, 0.56f, 0.86f};
@@ -57,7 +49,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
     private static final float[] VOID = {0.06f, 0.02f, 0.16f};
 
     private final BothSides quads = new BothSides();
-    /** Solid, lit 3D geometry (tubes, spheres) with fresnel rims; see Mesh3D. */
     protected final Mesh3D mesh = new Mesh3D();
     protected MultiBufferSource buffers;
     protected VertexConsumer vc;
@@ -101,11 +92,10 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
             case CelestialFxEntity.WARD -> ward(fx, age, pt);
             case CelestialFxEntity.CHARGE -> charge(fx, age, pt);
             case CelestialFxEntity.SUPERNOVA -> supernova(fx, age);
-            default -> { }
+            default -> { if (fx.kind() >= 20 && fx.kind() <= 29) healing(fx, age); }
         }
     }
 
-    /** Captures camera basis, matrices and the entity's interpolated position for this frame. */
     protected boolean begin(CelestialFxEntity fx, float pt, PoseStack pose, MultiBufferSource buffers) {
         Camera camera = entityRenderDispatcher.camera;
         if (camera == null) return false;
@@ -124,13 +114,10 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         return true;
     }
 
-    // ---- Celestial spells ----
+private void healing(CelestialFxEntity fx, float age) {
+        HealingFxPresentation.draw(this, fx, age);
+    }
 
-    /**
-     * Astral Bolt: a comet of painted light. The head is the one hot point - a white star in a purple
-     * cloud; the body is nebula under flowing wisps, streaming back and fading to nothing, with sparks
-     * spiralling off it.
-     */
     private void bolt(CelestialFxEntity fx, float age) {
         Vec3 head = fx.boltPos(age);
         Vec3 dir = fx.targetPos();
@@ -155,7 +142,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         glow(head, 3.8f, PURPLE, 0.3f * appear);
     }
 
-    /** A hit: a white flash, a shock sphere, clouds of light blooming and dispersing, rays thrown out. */
     private void impact(CelestialFxEntity fx, float age) {
         Vec3 c = here();
         float t = Mth.clamp(age / fx.life(), 0, 1);
@@ -174,11 +160,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /**
-     * Nova Burst: the sigil opens under the caster with an overshoot, shock rings race out over the
-     * ground, a shock sphere bursts off a white star above, and columns of light punch up round the
-     * rim and thin away while motes drift up.
-     */
     private void nova(CelestialFxEntity fx, float age) {
         Vec3 center = here().add(0, 0.07, 0);
         float t = Mth.clamp(age / fx.life(), 0, 1);
@@ -217,13 +198,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /**
-     * Prism Ray. A camera-facing strip collapses to a line from the caster's own eye, which is where
-     * it is seen most; so the beam is a real tube: an indigo haze shell, an azure body, a white-hot
-     * fresnel rim that makes the silhouette burn from any angle, and a thin white core. Two prismatic
-     * rails spiral round it in turning spectrum colours - it is a prism ray - and rings race down it.
-     * It punches out with an overshoot and a flash, and lands in a splash of light with a shock ring.
-     */
     private void ray(CelestialFxEntity fx, float age, float pt) {
         Entity owner = fx.owner();
         if (owner == null) return;
@@ -245,14 +219,12 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         Vec3 tip = start.add(direction.scale(length));
         float r = 0.55f * grow;
 
-        // A faint shaded tube keeps its body seen down its own length; painted layers carry the look.
         glowTube(start, tip, r * 0.6f, r * 2.3f, DEEP, 0.18f, 0.8f);
         glowTube(start, tip, r * 0.5f, r * 1.03f, WHITE, 0.4f, 3.6f);
         lightBeam(NEBULA, start, tip, r * 1.8f, r * 1.8f, PURPLE, 0.55f, age * 0.08f, length / 6f, false);
         lightBeam(STREAK, start, tip, r * 1.1f, r * 1.1f, LILAC, 0.85f, age * 0.2f, length / 8f, false);
         lightBeam(STREAK, start, tip, r * 0.35f, r * 0.35f, WHITE, 0.95f, age * 0.35f, length / 10f, false);
 
-        // Prismatic rails: two spirals whose colour runs through the spectrum along the beam.
         float[] hue = new float[3];
         for (int rail = 0; rail < 2; rail++) {
             Vec3 previous = null;
@@ -264,7 +236,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
                         .add(side.scale(Mth.cos(phase) * r * 1.6f))
                         .add(up.scale(Mth.sin(phase) * r * 1.6f));
                 if (previous != null) {
-                    // Purple flowing into rose along the beam, not a rainbow: one colour family.
                     float k = 0.5f + 0.5f * Mth.sin(d * 0.25f - age * 0.3f + rail * Mth.PI);
                     for (int ch = 0; ch < 3; ch++) hue[ch] = PURPLE[ch] + (ROSE[ch] - PURPLE[ch]) * k;
                     streakSegment(previous, point, 0.13f, hue, 0.8f * grow, d * 0.1f, d * 0.1f + 0.4f);
@@ -272,12 +243,10 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
                 previous = point;
             }
         }
-        // Shock rings racing away from the caster down the beam.
         for (float d = (age * 1.2f) % 4f; d < length; d += 4f) {
             planeTex(SHOCK, start.add(direction.scale(d)), side, up, r * 2.4f, LILAC,
                     0.6f * grow * (1 - d / Math.max(1, length) * 0.7f), age * 0.1f + d);
         }
-        // Muzzle: the lens the ray comes out of, and a flash as it erupts.
         iris(start, side, up, 1.5f * grow, age, Math.min(1, grow));
         float erupt = 1 - smooth(0, 6, age);
         if (erupt > 0) {
@@ -299,12 +268,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /**
-     * An additive tube from {@code a} to {@code b}, radius {@code r0} at {@code a} widening to {@code r1}
-     * at {@code b}, shaded fresnel-style: bright where the surface grazes the view, faint face-on.
-     * {@code power} sharpens that - high for a thin burning rim, low for an even haze. Unlike a
-     * camera-facing strip it keeps its width looking straight down it, so beams read from the caster.
-     */
     protected void glowTube(Vec3 a, Vec3 b, float r0, float r1, float[] col, float alpha, float power) {
         if (alpha <= 0.003f) return;
         Vec3 axis = b.subtract(a);
@@ -503,13 +466,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         glow(focus, 1.5f + 5f * phase * phase, LILAC, 0.35f + 0.5f * phase);
     }
 
-    /**
-     * Supernova. Impact: a white flash and a shock sphere bursting off the crown, painted shock rings
-     * racing out over the ground on an ease-out, and a column of light that punches up with an
-     * overshoot. Sustain: the column is painted energy - nebula clouds and flowing wisps scrolling
-     * upward - fading to nothing at its top, with two spirals of stars climbing it. Dissipation: the
-     * column thins, the stars rise away and everything desaturates out.
-     */
     private void supernova(CelestialFxEntity fx, float age) {
         Vec3 center = here().add(0, 0.08, 0);
         float t = Mth.clamp(age / fx.life(), 0, 1);
@@ -518,7 +474,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         float radius = fx.radius();
         observatory(center, radius * 0.88f, age, fade);
 
-        // Shock rings racing out over the ground, staggered, eased, dying as they go.
         for (int i = 0; i < 3; i++) {
             float wave = Mth.clamp((age - 2 - i * 5f) / 18f, 0, 1);
             if (wave <= 0 || wave >= 1) continue;
@@ -535,7 +490,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         star(crown, camRight, camUp, radius * (0.42f + flash * 0.9f), age, fade * (0.4f + flash * 0.6f));
         glow(crown, radius * (2f + flash), LILAC, 0.45f * fade);
 
-        // The column: punches up with an overshoot, breathes, thins as it dies.
         float height = 42 * backOut(Math.min(1, age / 6f));
         float thin = fade * (1 + 0.5f * flash) * (0.94f + 0.06f * Mth.sin(age * 0.6f));
         lightPillar(NEBULA, center, height, radius * 0.36f * thin, radius * 0.12f * thin, PURPLE, 0.6f * fade,
@@ -545,7 +499,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         lightPillar(STREAK, center, height, radius * 0.07f * thin, radius * 0.02f, WHITE, 0.95f * fade,
                 age * 0.14f, 2f);
 
-        // Two spirals of stars climbing the column.
         for (int arm = 0; arm < 2; arm++) {
             for (int i = 0; i < 10; i++) {
                 float ph = frac(age * 0.025f + i / 10f);
@@ -556,7 +509,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
                 flare(p, 0.5f + 0.9f * (1 - ph), ang, arm == 0 ? LILAC : ROSE, fade * life);
             }
         }
-        // Motes drifting up and away from the blast.
         for (int i = 0; i < 16; i++) {
             Vec3 direction = sphereDir(fx.seedValue(), i);
             if (direction.y < 0) direction = new Vec3(direction.x, -direction.y, direction.z);
@@ -565,12 +517,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /**
-     * A column of painted light from {@code base} up {@code height}: three crossed vertical planes and one
-     * facing the camera, so it has body from every side without the faceted look of a shaded tube. The
-     * texture runs up the column (U along the height) and scrolls with {@code scroll}; alpha fades in at
-     * the foot and out to nothing at the top, and the width tapers from {@code r0} to {@code r1}.
-     */
     protected void lightPillar(ResourceLocation tex, Vec3 base, float height, float r0, float r1, float[] col, float a,
                                float scroll, float tile) {
         if (a <= 0.003f || height <= 0.05f) return;
@@ -582,7 +528,7 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         int n = 10;
         for (int pi = 0; pi < planes.length; pi++) {
             Vec3 side = planes[pi];
-            float layer = pi == 0 ? 1f : 0.55f;  // the camera-facing plane carries the most light
+            float layer = pi == 0 ? 1f : 0.55f;
             for (int i = 0; i < n; i++) {
                 float t0 = i / (float) n, t1 = (i + 1) / (float) n;
                 float w0 = r0 + (r1 - r0) * t0, w1 = r0 + (r1 - r0) * t1;
@@ -597,11 +543,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /**
-     * Painted light along any axis from {@code a} to {@code b}: a camera-facing plane plus two fixed ones
-     * crossed round the axis, textured with U along the length, scrolling. {@code trail} fades from
-     * full at {@code a} to nothing at {@code b} (bolts, lances); otherwise it is even with soft ends (rays).
-     */
     protected void lightBeam(ResourceLocation tex, Vec3 a, Vec3 b, float r0, float r1, float[] col, float alpha,
                              float scroll, float tile, boolean trail) {
         if (alpha <= 0.003f) return;
@@ -633,7 +574,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /** Fades in over the first 8% of a column and out along the rest, to nothing at the top. */
     private static float envelope(float t) {
         return smooth(0, 0.08f, t) * (float) Math.pow(1 - t, 1.3);
     }
@@ -672,7 +612,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
     private void star(Vec3 center, Vec3 u, Vec3 v, float radius, float age, float alpha) {
         if (alpha <= 0.003f || radius <= 0.01f) return;
         float spin = age * 0.035f;
-        // A wide deep-violet nebula behind every star: the purple mass the white core burns out of.
         glow(center, radius * 4.5f, DEEP, 0.3f * alpha);
         glow(center, radius * 2.4f, PURPLE, 0.34f * alpha);
         for (int i = 0; i < 8; i++) {
@@ -687,10 +626,7 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         flare(center, radius * 1.2f, -spin, WHITE, 0.9f * alpha);
     }
 
-    // ---- Shared drawing primitives ----
-
-    /** Camera-facing beam from {@code p0} to {@code p1}, textured with the scrolling energy streak. */
-    protected void streakBeam(Vec3 p0, Vec3 p1, float w0, float w1, float[] col, float a, float scroll) {
+protected void streakBeam(Vec3 p0, Vec3 p1, float w0, float w1, float[] col, float a, float scroll) {
         streakQuad(p0, p1, w0, w1, col, a, scroll, scroll + (float) p0.distanceTo(p1) / 4f);
     }
 
@@ -712,19 +648,14 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         texVertex(buf, p0.add(side.scale(w0)), u0, 1, col, a);
     }
 
-    // ---- Textured primitives ---------------------------------------------------------------------
-
-    /** Painted four-ray flare with bloom, facing the camera. */
-    protected void flare(Vec3 c, float size, float spin, float[] col, float a) {
+protected void flare(Vec3 c, float size, float spin, float[] col, float a) {
         sprite(FLARE, c, camRight, camUp, size * 0.5f, col, a, spin);
     }
 
-    /** Soft round glow facing the camera. */
     protected void glow(Vec3 c, float size, float[] col, float a) {
         planeTex(GLOW, c, camRight, camUp, size * 0.5f, col, a, 0);
     }
 
-    /** A textured square of half-size {@code r} in the plane of {@code u, v}, rotated by {@code rot}. */
     protected void sprite(ResourceLocation tex, Vec3 c, Vec3 u, Vec3 v, float r, float[] col, float a, float rot) {
         planeTex(tex, c, u, v, r, col, a, rot);
     }
@@ -741,7 +672,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         texVertex(buf, c.subtract(ru).add(rv), 0, 1, col, a);
     }
 
-    /** Alpha-blended dark disc under a sigil, so it keeps contrast on bright ground and in daylight. */
     protected void underlay(Vec3 c, Vec3 u, Vec3 v, float r, float a) {
         VertexConsumer buf = buffers.getBuffer(VfxRenderTypes.glowTextured(GLOW));
         Vec3 ru = u.scale(r), rv = v.scale(r);
@@ -764,10 +694,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         entityVertex(buf, p, u, v, VOID, a);
     }
 
-    /**
-     * Alpha-blended (darkening) textured square in the plane of {@code u, v}: the only way to draw
-     * black - smoke, void cores, shadows. A colour near black darkens; alpha sets the strength.
-     */
     protected void darkTex(ResourceLocation tex, Vec3 c, Vec3 u, Vec3 v, float r, float[] col, float a, float rot) {
         if (a <= 0.003f || r <= 0) return;
         float cs = Mth.cos(rot), sn = Mth.sin(rot);
@@ -780,7 +706,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         entityVertex(buf, c.subtract(ru).add(rv), 0, 1, col, a);
     }
 
-    /** Alpha-blended camera-facing beam with a scrolling texture (dark cores, shadow tendrils). */
     protected void darkBeam(ResourceLocation tex, Vec3 p0, Vec3 p1, float w0, float w1, float[] col, float a, float u0, float u1) {
         if (a <= 0.003f) return;
         Vec3 axis = p1.subtract(p0);
@@ -802,9 +727,7 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
                 .normal(normal, 0, 1, 0).endVertex();
     }
 
-    // ---- Vector primitives (additive) -----------------------------------------------------------
-
-    protected VertexConsumer additive() {
+protected VertexConsumer additive() {
         vc = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
         return vc;
     }
@@ -817,7 +740,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         quads.vertex(vc, m, (float) (p.x - ox), (float) (p.y - oy), (float) (p.z - oz), c[0], c[1], c[2], a);
     }
 
-    /** Camera-facing soft line: bright along its axis, transparent at both edges. */
     protected void strip(Vec3 p0, Vec3 p1, float w0, float w1, float[] c0, float[] c1, float a0, float a1) {
         if (a0 <= 0.003f && a1 <= 0.003f) return;
         Vec3 axis = p1.subtract(p0);
@@ -835,7 +757,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /** Soft annulus in the plane of {@code u, v}. */
     protected void ring(Vec3 c, Vec3 u, Vec3 vAxis, float r, float w, float[] col, float a, int seg, boolean dashed, float phase) {
         if (a <= 0.003f || r <= 0) return;
         additive();
@@ -856,7 +777,6 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    /** Jagged lightning, re-struck on a tick key so it crackles without jitter. */
     protected void zigzag(Vec3 from, Vec3 to, float jag, int key, float[] col, float a) {
         Vec3 axis = to.subtract(from);
         Vec3 dir = axis.normalize();
@@ -873,9 +793,7 @@ public class CelestialFxRenderer extends EntityRenderer<CelestialFxEntity> {
         }
     }
 
-    // ---- Maths ----------------------------------------------------------------------------------
-
-    protected static Vec3 perpendicular(Vec3 dir) {
+protected static Vec3 perpendicular(Vec3 dir) {
         Vec3 u = dir.cross(new Vec3(0, 1, 0));
         if (u.lengthSqr() < 1e-4) u = dir.cross(new Vec3(1, 0, 0));
         return u.normalize();

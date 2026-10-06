@@ -16,19 +16,10 @@ import net.schwarz.rotasutils.quest.QuestDef;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Server side of the NPC layer: who is bound to what, what they will say, and what a
- * conversation is allowed to do.
- *
- * <p>The client is never trusted with any of it. A dialogue screen is a view of the state
- * computed here, and every action it offers is re-checked on arrival, so a crafted packet
- * can only ask for something the player could have asked for by clicking.</p>
- */
 public final class NpcService {
     private NpcService() {
     }
 
-    /** The NPC bound to this entity, or null when the entity is just an entity. */
     public static NpcDef bound(RotasData data, Entity entity) {
         String uuid = entity.getUUID().toString();
         for (NpcDef npc : data.npcs().values()) {
@@ -43,18 +34,11 @@ public final class NpcService {
         return data.npc(npcId);
     }
 
-    /**
-     * Handles a right-click on a bound entity.
-     *
-     * @return true when the NPC took the interaction, so the entity's own menu is suppressed
-     */
     public static boolean onInteract(ServerPlayer player, RotasData data, Entity entity) {
         NpcDef npc = bound(data, entity);
         if (npc == null) {
             return false;
         }
-        // Reach is re-checked here because the interaction packet only proves the client
-        // believed it was close enough.
         double reach = npc.interactionDistance();
         if (player.distanceToSqr(entity) > reach * reach) {
             return false;
@@ -65,32 +49,26 @@ public final class NpcService {
                             + " " + net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.npc.requires_level",
                             npc.requiredLevel(), progress.level()))
                     .withStyle(ChatFormatting.GRAY));
+            speak(player, npc, "blocked");
             return npc.captureInteraction();
         }
         NpcSocial.onTalk(player, data, npc);
-        // The role decides what a click opens: a board keeper and a shopkeeper go straight to their
-        // board or shop, everyone else starts a conversation.
-        if (npc.role() == NpcDef.Role.BOARD_KEEPER && !npc.boardId().isBlank()) {
-            openBoard(player, data, npc);
-        } else if (npc.role() == NpcDef.Role.MERCHANT && npc.hasShop()) {
-            openShop(player, data, npc);
-        } else if (npc.role() == NpcDef.Role.STABLE && npc.interactions() == null) {
-            net.schwarz.rotasutils.server.horse.HorseService.open(player, npc.id(), "STABLE", null);
-        } else if (npc.role() == NpcDef.Role.CRAFTER && npc.interactions() == null) {
-            CrafterService.open(player, data, npc);
-        } else if (NpcHub.serves(npc.role()) && npc.interactions() == null) {
-            NpcHub.open(player, data, npc);
-        } else if (npc.role() == NpcDef.Role.AUCTIONEER && npc.interactions() == null) {
-            AuctionService.open(player, data, npc, "");
-        } else {
-            openDialogue(player, data, npc);
-        }
+        openDialogue(player, data, npc);
         return npc.captureInteraction();
     }
 
-    /** Opens the NPC's own trades, or the content-pack merchant it points at. */
+    public static void speak(ServerPlayer player, NpcDef npc, String key) {
+        var sound = npc.voiceSound(key);
+        if (sound == null) return;
+        Entity at = findEntity(player.server, npc);
+        double x = at != null ? at.getX() : player.getX(), y = at != null ? at.getEyeY() : player.getEyeY(),
+                z = at != null ? at.getZ() : player.getZ();
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                net.minecraft.core.Holder.direct(sound), net.minecraft.sounds.SoundSource.NEUTRAL, x, y, z, 1.0f,
+                npc.voicePitch() / 100f, player.getRandom().nextLong()));
+    }
+
     public static void openShop(ServerPlayer player, RotasData data, NpcDef npc) {
-        // The shop screen shows the NPC's own trades and its content-pack merchant together.
         if (npc.hasShop()) {
             ShopService.open(player, data, npc);
             return;
@@ -98,7 +76,6 @@ public final class NpcService {
         RotasNetwork.feedback(player, false, net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.npc.nothing_to_sell", npc.name()));
     }
 
-    /** The loaded entity an NPC is bound to, in any dimension, or null. */
     public static Entity findEntity(net.minecraft.server.MinecraftServer server, NpcDef npc) {
         if (!npc.bound()) {
             return null;
@@ -118,11 +95,6 @@ public final class NpcService {
         return null;
     }
 
-    /**
-     * Writes the NPC's mob options onto the entity. They are stored in the entity's own save data, so
-     * they stay after restarts: the mob never despawns, and stand still, can't be hurt and the name tag
-     * follow the NPC settings. Easy NPC movement from the branching conversation's behavior is applied too.
-     */
     public static void applyEntityOptions(NpcDef npc, Entity entity) {
         if (entity instanceof net.minecraft.world.entity.Mob mob) {
             mob.setPersistenceRequired();
@@ -141,31 +113,32 @@ public final class NpcService {
             try {
                 owner = definition.behavior().owner().isBlank() ? null : java.util.UUID.fromString(definition.behavior().owner());
             } catch (IllegalArgumentException ignored) {
-                // Parsing already rejected malformed owners; keep the mob ownerless if one slips through.
             }
             net.schwarz.rotasutils.compat.EasyNpcCompat.configureBehavior(entity,
                     definition.behavior().movement(), definition.behavior().combat(), owner);
         }
     }
 
-    /** Pushes the dialogue screen with everything it may show, and nothing it may not. */
     public static void openDialogue(ServerPlayer player, RotasData data, NpcDef npc) {
         if (npc.interactions() != null) { NpcConversations.open(player, data, npc); return; }
         net.minecraft.nbt.CompoundTag payload = new net.minecraft.nbt.CompoundTag();
         payload.putString("npc_id", npc.id());
-        payload.put("npc", npc.save());
-        payload.putString("state", stateFor(player, data, npc).name());
+        NpcDef shown = npc;
+        String flavour = npc.role().hasScreen() ? NpcHub.greeting(npc) : "";
+        if (!flavour.isEmpty()) {
+            shown = NpcDef.load(npc.save());
+            shown.setGreeting(flavour);
+        }
+        payload.put("npc", shown.save());
+        NpcState state = stateFor(player, data, npc);
+        speak(player, npc, NpcDef.voiceKey(state));
+        payload.putString("state", state.name());
         payload.put("offers", net.schwarz.rotasutils.util.Nbt.saveStrings(offers(player, data, npc)));
         RotasNetwork.openScreen(player, "npc_dialogue", payload);
     }
 
-    /**
-     * The quests this NPC may show this player: published, visible, and either already
-     * accepted or currently offerable. Everything else is simply absent from the dialogue.
-     */
     public static List<String> offers(ServerPlayer player, RotasData data, NpcDef npc) {
         List<String> offers = new ArrayList<>();
-        // "Just talks" means just that; quests stay listed only for the quest-giving roles.
         if (npc.role() == NpcDef.Role.DIALOGUE) {
             return offers;
         }
@@ -182,7 +155,6 @@ public final class NpcService {
         return offers;
     }
 
-    /** The most advanced thing this NPC has for this player. */
     public static NpcState stateFor(ServerPlayer player, RotasData data, NpcDef npc) {
         PlayerProgress progress = data.progress(player.getUUID());
         NpcState best = NpcState.NO_QUEST;
@@ -222,7 +194,6 @@ public final class NpcService {
                 ? NpcState.QUEST_AVAILABLE : NpcState.REQUIREMENTS_NOT_MET;
     }
 
-    /** Opens whatever this NPC's role points at: its board or its shop. */
     public static void openRoleTarget(ServerPlayer player, RotasData data, NpcDef npc) {
         switch (npc.role()) {
             case BOARD_KEEPER -> openBoard(player, data, npc);
@@ -231,7 +202,7 @@ public final class NpcService {
             case CRAFTER -> CrafterService.open(player, data, npc);
             case AUCTIONEER -> AuctionService.open(player, data, npc, "");
             case BLACKSMITH, ENCHANTER, ALCHEMIST, INNKEEPER, PRIEST, FORTUNE_TELLER, BANKER, BOUNTY_MASTER, GUARD,
-                 TRAINER, CARTOGRAPHER, COLLECTOR -> NpcHub.open(player, data, npc);
+                 TRAINER, CARTOGRAPHER, COLLECTOR -> NpcHub.open(player, data, npc, false);
             case JOB_MASTER -> {
                 boolean offered = false;
                 for (net.schwarz.rotasutils.job.JobSlot slot : net.schwarz.rotasutils.job.JobSlot.values()) {
@@ -261,10 +232,8 @@ public final class NpcService {
         RotasNetwork.openBoardBrowser(player, board, npc.id());
     }
 
-    /** Records the entity an admin picked, so the admin never handles a uuid. */
     public static void bind(RotasData data, NpcDef npc, Entity entity) {
         String uuid = entity.getUUID().toString();
-        // One entity, one NPC: the newer binding wins and the older one is released.
         for (NpcDef other : data.npcs().values()) {
             if (!other.id().equals(npc.id()) && uuid.equals(other.entityUuid())) {
                 other.setEntityUuid("");
@@ -275,11 +244,11 @@ public final class NpcService {
         npc.setEntityUuid(uuid);
         npc.setEntityType(String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType())));
         npc.setDimension(entity.level().dimension().location().toString());
+        npc.setHome(entity.blockPosition());
         data.putNpc(npc);
         applyEntityOptions(npc, entity);
     }
 
-    /** True when this quest is handed out or taken back by any NPC, used by validation. */
     public static boolean isQuestLinked(RotasData data, String questId) {
         for (NpcDef npc : data.npcs().values()) {
             if (npc.questIds().contains(questId)) {

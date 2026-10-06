@@ -177,6 +177,12 @@ public final class AdminNetwork {
             desired.put(CoreStat.VIT, request.getInt("stat_vit"));
             desired.put(CoreStat.INT, request.getInt("stat_int"));
             desired.put(CoreStat.AGI, request.getInt("stat_agi"));
+            PlayerProgress current = data.progress(target.getUUID());
+            for (CoreStat extra : new CoreStat[]{CoreStat.DEX, CoreStat.LUK}) {
+                String key = "stat_" + extra.name().toLowerCase(java.util.Locale.ROOT);
+                desired.put(extra, request.contains(key, net.minecraft.nbt.Tag.TAG_INT)
+                        ? request.getInt(key) : CharacterStatService.allocated(current, extra));
+            }
             CharacterStatService.Result result = CharacterStatService.adminSetAllocations(target, data, desired,
                     request.getLong("expected_revision"));
             success = result.success();
@@ -225,6 +231,8 @@ public final class AdminNetwork {
             response.putInt("vit", CharacterStatService.allocated(progress, CoreStat.VIT));
             response.putInt("int", CharacterStatService.allocated(progress, CoreStat.INT));
             response.putInt("agi", CharacterStatService.allocated(progress, CoreStat.AGI));
+            response.putInt("dex", CharacterStatService.allocated(progress, CoreStat.DEX));
+            response.putInt("luk", CharacterStatService.allocated(progress, CoreStat.LUK));
         }
         AdminProtocol.send(requestId, response, packet -> NetworkManager.sendToPlayer(actor, RESPONSE, packet));
     }

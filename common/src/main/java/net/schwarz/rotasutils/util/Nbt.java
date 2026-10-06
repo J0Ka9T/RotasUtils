@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-/** Small serialization helpers shared by every RotasUtils data object. */
 public final class Nbt {
     private Nbt() {
     }
@@ -104,7 +103,6 @@ public final class Nbt {
         return stack.isEmpty() ? new ItemStack(Items.PAPER) : stack;
     }
 
-    /** Reads an enum by name, falling back to {@code fallback} when the stored value is stale. */
     public static <E extends Enum<E>> E readEnum(CompoundTag tag, String key, Class<E> type, E fallback) {
         String name = tag.getString(key);
         if (name.isEmpty()) {

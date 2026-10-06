@@ -43,15 +43,9 @@ import java.util.ArrayList;
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * The single entry point for every client request.
- *
- * <p>Admin-only actions are gated here, not on the client, so a modified client
- * cannot reach them by sending the packet directly.
- */
 public final class ServerActions {
-    /** Upper bound on stored menu preferences per player. */
     private static final int MAX_PREFERENCES = 32;
+    private static final RequestThrottle TITLE_WEAR = new RequestThrottle();
 
     private ServerActions() {
     }
@@ -60,7 +54,6 @@ public final class ServerActions {
         RotasData data = RotasData.get(player.server);
         boolean admin = BoardService.isAdmin(player, data);
 
-        // Kernel screens carry their own permission checks per operation.
         if (KernelUi.handle(player, action, payload)) {
             return;
         }
@@ -81,14 +74,12 @@ public final class ServerActions {
         switch (action) {
             case "npc_response" -> net.schwarz.rotasutils.server.NpcConversations.respond(player, data, payload);
             case "npc_reopen" -> withNpc(player, data, payload, npc -> net.schwarz.rotasutils.server.NpcService.openDialogue(player, data, npc));
-            // Player -------------------------------------------------------
             case "request_sync" -> {
                 RotasNetwork.syncContent(player);
                 RotasNetwork.syncProgress(player);
                 RotasNetwork.syncParty(player);
             }
             case "wallet_withdraw" -> net.schwarz.rotasutils.server.GoldCoinService.withdraw(player, payload.getInt("amount"));
-            // Sneak + left-click with the Disintegrator: the Cero Metralleta barrage, re-validated here.
             case "exo_cero" -> net.schwarz.rotasutils.entity.ExoCeroMuzzleEntity.unleash(player);
             case "curio_click" -> CuriosServerCompat.click(player,
                     payload.getString("slot_type"), payload.getInt("slot_index"), payload.getInt("button"));
@@ -117,7 +108,6 @@ public final class ServerActions {
                             .withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
                 }
             }
-            // Event catalogue (admin) --------------------------------------
             case "event_enable" -> {
                 if (admin) {
                     net.schwarz.rotasutils.server.EventService.setEnabled(player.server, data, payload.getBoolean("on"));
@@ -158,7 +148,6 @@ public final class ServerActions {
                     RotasNetwork.syncContent(player);
                 }
             }
-            // World events (admin) ----------------------------------------
             case "worldevent_open" -> {
                 if (admin) {
                     RotasNetwork.openWorldEventAdmin(player);
@@ -202,7 +191,6 @@ public final class ServerActions {
                     RotasNetwork.openWorldEventAdmin(player);
                 }
             }
-            // Drop filter (admin) ------------------------------------------
             case "drop_scan" -> {
                 if (admin) {
                     RotasNetwork.openMobDrops(player, payload.getString("entity"));
@@ -253,30 +241,102 @@ public final class ServerActions {
             case "open_sockets" -> RotasNetwork.openSockets(player);
             case "open_runes" -> RotasNetwork.openRunes(player);
             case "open_house" -> RotasNetwork.openHouse(player, payload.getString("house"));
+            case "open_sell" -> net.schwarz.rotasutils.server.EconomyService.openSell(player);
+            case "sell" -> net.schwarz.rotasutils.server.EconomyService.sell(player, payload.getInt("slot"));
+            case "worth_open" -> {
+                if (admin) net.schwarz.rotasutils.server.EconomyService.openWorth(player, payload.getString("select"));
+            }
+            case "worth_set" -> {
+                if (admin) net.schwarz.rotasutils.server.EconomyService.setWorth(player, payload.getString("item"), payload.getLong("gold"));
+            }
+            case "settings_open" -> {
+                if (admin) RotasNetwork.openScreen(player, "settings", net.schwarz.rotasutils.server.SettingsPanels.payload(data,
+                        payload.getString("scope"), payload.getInt("page")));
+            }
+            case "settings_set" -> {
+                if (admin) {
+                    String refused = net.schwarz.rotasutils.server.SettingsPanels.set(player.server, payload.getString("scope"),
+                            payload.getString("key"), payload.getDouble("value"));
+                    if (refused != null) RotasNetwork.feedback(player, false, refused);
+                    data.audit(player.getGameProfile().getName() + " set " + payload.getString("key") + " = " + payload.getDouble("value"));
+                    if ("worth".equals(payload.getString("from"))) {
+                        net.schwarz.rotasutils.server.EconomyService.openWorth(player, payload.getString("select"));
+                    } else {
+                        RotasNetwork.openScreen(player, "settings", net.schwarz.rotasutils.server.SettingsPanels.payload(data,
+                                payload.getString("scope"), payload.getInt("page")));
+                    }
+                    for (ServerPlayer online : player.server.getPlayerList().getPlayers()) {
+                        RotasNetwork.syncContent(online);
+                    }
+                }
+            }
+            case "mine_quick" -> {
+                if (admin) {
+                    var site = net.schwarz.rotasutils.server.MiningService.quick(player, data,
+                            Math.max(4, Math.min(24, payload.getInt("radius"))), payload.getString("preset"));
+                    RotasNetwork.openScreen(player, "settings", net.schwarz.rotasutils.server.SettingsPanels.payload(data,
+                            site == null ? "mines" : "mines:" + site.id(), 0));
+                }
+            }
+            case "mine_preset" -> {
+                if (admin) {
+                    var site = data.miningSites().get(payload.getString("site"));
+                    if (site != null) {
+                        net.schwarz.rotasutils.mine.MinePresets.apply(site, payload.getString("preset"));
+                        data.setDirty();
+                        data.audit(player.getGameProfile().getName() + " applied mine preset " + payload.getString("preset") + " to " + site.id());
+                    }
+                    RotasNetwork.openScreen(player, "settings", net.schwarz.rotasutils.server.SettingsPanels.payload(data,
+                            "mines:" + payload.getString("site"), 0));
+                }
+            }
+            case "mine_refill_panel" -> {
+                if (admin) {
+                    var site = data.miningSites().get(payload.getString("site"));
+                    var level = site == null ? null : player.server.getLevel(net.minecraft.resources.ResourceKey.create(
+                            net.minecraft.core.registries.Registries.DIMENSION, new net.minecraft.resources.ResourceLocation(site.dimension())));
+                    if (level != null) {
+                        int back = net.schwarz.rotasutils.server.MiningService.refill(level, site);
+                        data.setDirty();
+                        RotasNetwork.feedback(player, true, net.schwarz.rotasutils.util.ThaiText.t("rotasutils.mine.refilled", back));
+                    }
+                    RotasNetwork.openScreen(player, "settings", net.schwarz.rotasutils.server.SettingsPanels.payload(data,
+                            "mines:" + payload.getString("site"), 0));
+                }
+            }
+            case "role_unlock_add" -> {
+                if (admin) {
+                    String refused = net.schwarz.rotasutils.server.RolePanels.addUnlock(data, payload.getString("job"), payload.getString("item"));
+                    if (refused != null) RotasNetwork.feedback(player, false, refused);
+                    for (ServerPlayer online : player.server.getPlayerList().getPlayers()) {
+                        RotasNetwork.syncContent(online);
+                    }
+                    RotasNetwork.openScreen(player, "settings", net.schwarz.rotasutils.server.SettingsPanels.payload(data,
+                            "unlocks:" + payload.getString("job"), 0));
+                }
+            }
+            case "settings_reset" -> {
+                if (admin) {
+                    net.schwarz.rotasutils.server.SettingsPanels.reset(player.server, payload.getString("scope"));
+                    data.audit(player.getGameProfile().getName() + " reset settings " + payload.getString("scope"));
+                    RotasNetwork.openScreen(player, "settings", net.schwarz.rotasutils.server.SettingsPanels.payload(data, payload.getString("scope"), 0));
+                    for (ServerPlayer online : player.server.getPlayerList().getPlayers()) {
+                        RotasNetwork.syncContent(online);
+                    }
+                }
+            }
+            case "open_trade" -> net.schwarz.rotasutils.server.TradeService.openBook(player, payload.getString("trade"));
+            case "trade_cook" -> net.schwarz.rotasutils.server.TradeService.cook(player, payload.getString("trade"),
+                    payload.getString("recipe"), payload.getInt("quality"));
+            case "trade_claim" -> net.schwarz.rotasutils.server.TradeService.claim(player, payload.getString("trade"));
             case "house_settings" -> {
                 net.schwarz.rotasutils.house.HousePlayerService.saveSettings(player, data, payload.getString("house"),
                         payload.getCompound("settings"));
-                // From the house screen, reopen it on the new values; the admin editor stays where it is.
                 if (!"edit".equals(payload.getString("from"))) {
                     RotasNetwork.openHouse(player, payload.getString("house"));
                 }
             }
-            case "house_settings_open" -> {
-                if (net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
-                    var house = data.house(payload.getString("house"));
-                    if (house != null) {
-                        CompoundTag screen = new CompoundTag();
-                        screen.putString("house", house.id());
-                        screen.putString("name", house.name());
-                        CompoundTag own = data.houseSettings(house.id()).save();
-                        var base = data.houseConfig().tier(house.tier());
-                        own.putLong("tier_deposit", base == null ? 0 : base.deposit());
-                        own.putLong("tier_rent", base == null ? 0 : base.maintenance());
-                        screen.put("settings", own);
-                        RotasNetwork.openScreen(player, "house_quick", screen);
-                    }
-                }
-            }
+            case "house_settings_open" -> openHouseQuick(player, data, payload.getString("house"));
             case "house_evict" -> {
                 if (net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
                     net.schwarz.rotasutils.house.HousePlayerService.evict(player, data, payload.getString("house"));
@@ -296,7 +356,6 @@ public final class ServerActions {
                     case "house_add_member" -> net.schwarz.rotasutils.house.HousePlayerService.addMember(player, data, house, target);
                     default -> net.schwarz.rotasutils.house.HousePlayerService.removeMember(player, data, house, target);
                 }
-                // A player who gave the house back no longer sees it; reopen on whatever is left.
                 RotasNetwork.openHouse(player, action.equals("house_leave") ? "" : house);
             }
             case "rune_inscribe" -> {
@@ -318,11 +377,17 @@ public final class ServerActions {
                 RotasNetwork.openSockets(player);
             }
             case "title_wear" -> {
+                String wanted = payload.getString("title").trim();
+                if (wanted.equals(data.progress(player.getUUID()).activeTitle())) {
+                    return;
+                }
+                if (!TITLE_WEAR.allow(player.getUUID(), 1000, System.nanoTime())) {
+                    return;
+                }
                 boolean worn = net.schwarz.rotasutils.server.TitleService.wear(player, data, payload.getString("title"));
                 RotasNetwork.feedback(player, worn, net.schwarz.rotasutils.util.ThaiText.t(worn
                         ? "rotasutils.cmd.title.worn" : "rotasutils.cmd.title.not_earned", payload.getString("title")));
-                // Everyone's name plate carries the title, so the whole server refreshes its copy.
-                RotasNetwork.syncContent(player.server);
+                if (worn) RotasNetwork.syncContent(player.server);
             }
             case "refine_attempt" -> {
                 var outcome = net.schwarz.rotasutils.server.RefineService.refine(player, data,
@@ -332,7 +397,6 @@ public final class ServerActions {
                 if (!outcome.started()) {
                     RotasNetwork.feedback(player, false, outcome.message());
                 }
-                // The bench always reopens on the fresh numbers, so a broken or levelled item is visible at once.
                 RotasNetwork.openRefine(player);
             }
             case "forge_begin" -> {
@@ -361,8 +425,18 @@ public final class ServerActions {
                 RotasNetwork.feedback(player, result.success(), result.message());
             }
             case "turn_in" -> {
+                String boardId = payload.getString("board");
+                var board = boardId.isEmpty() ? null : data.board(boardId);
+                String closed = board == null ? null : net.schwarz.rotasutils.server.BoardService.openBlockedReason(player, data, board);
+                if (closed == null && board == null && data.serverSettings().requireBoardForAccept()) {
+                    closed = ThaiText.t("rotasutils.msg.quest.board_only");
+                }
+                if (closed != null) {
+                    RotasNetwork.feedback(player, false, closed);
+                    return;
+                }
                 QuestService.ActionResult result = QuestService.turnIn(player, data,
-                        payload.getString("quest"), payload.getString("board"));
+                        payload.getString("quest"), boardId);
                 RotasNetwork.feedback(player, result.success(), result.message());
             }
             case "deliver_item" -> deliverItem(player, data, payload);
@@ -391,14 +465,12 @@ public final class ServerActions {
                 }
                 java.util.UUID targetId = payload.getUUID("target");
                 party(player, PartyService.kick(player, data, targetId));
-                // The removed player is no longer in the roster, so refresh them by hand.
                 notifyRemoved(player, targetId);
             }
             case "party_promote" -> party(player, payload.hasUUID("target")
                     ? PartyService.promote(player, data, payload.getUUID("target"))
                     : new PartyService.Result(false, ThaiText.t("rotasutils.msg.sa.no_member")));
             case "party_disband" -> {
-                // Capture the roster first: after disbanding there is nobody left to sync.
                 java.util.List<java.util.UUID> formerMembers =
                         PartyService.members(data, data.progress(player.getUUID()).partyId());
                 party(player, PartyService.disband(player, data));
@@ -407,7 +479,6 @@ public final class ServerActions {
                 }
             }
             case "party_refresh" -> RotasNetwork.syncParty(player);
-            // Waystones ----------------------------------------------------
             case "waystone_open" -> net.schwarz.rotasutils.server.WaystoneService.open(player, payload.getString("here"));
             case "waystone_warp" -> net.schwarz.rotasutils.server.WaystoneService.warp(player, payload.getString("id"));
             case "waystone_rename" -> net.schwarz.rotasutils.server.WaystoneService.rename(player,
@@ -418,7 +489,6 @@ public final class ServerActions {
                     net.schwarz.rotasutils.server.NpcService.openRoleTarget(player, data, npc));
             case "npc_accept" -> withNpc(player, data, payload, npc -> {
                 String questId = payload.getString("quest");
-                // Only quests this NPC is actually offering right now may be accepted here.
                 if (!net.schwarz.rotasutils.server.NpcService.offers(player, data, npc).contains(questId)) {
                     RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.npc_not_offering", npc.name()));
                     return;
@@ -434,7 +504,7 @@ public final class ServerActions {
                     RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.npc_not_given", npc.name()));
                     return;
                 }
-                QuestService.ActionResult result = QuestService.turnIn(player, data, questId, npc.boardId());
+                QuestService.ActionResult result = QuestService.turnIn(player, data, questId, "");
                 RotasNetwork.feedback(player, result.success(), result.message());
                 net.schwarz.rotasutils.server.NpcService.openDialogue(player, data, npc);
             });
@@ -483,12 +553,10 @@ public final class ServerActions {
                     net.schwarz.rotasutils.server.horse.HorseService.unlist(player, payload.getString("id")), "MARKET");
             case "horse_buy" -> atStable(player, data, payload, () -> horseResult(player, data, payload,
                     net.schwarz.rotasutils.server.horse.HorseService.buy(player, payload.getString("id"), payload.getLong("price")), "MARKET"));
-            // Service NPCs: every entry is re-checked by the hub against the NPC the player is standing at.
             case "npc_service" -> withNpc(player, data, payload, npc ->
                     net.schwarz.rotasutils.server.NpcHub.perform(player, data, npc, payload.getString("service")));
             case "auction_list", "auction_buy", "auction_cancel", "auction_claim" -> withNpc(player, data, payload, npc ->
                     net.schwarz.rotasutils.server.AuctionService.handle(player, data, npc, action, payload));
-            // Breeding happens at a stable NPC, like any other trade with the stable.
             case "horse_breed" -> atStable(player, data, payload, () -> horseResult(player, data, payload,
                     net.schwarz.rotasutils.server.horse.HorseService.breed(player, payload.getString("id"),
                             payload.getString("sire"), payload.getLong("cost")), "BREED"));
@@ -523,7 +591,6 @@ public final class ServerActions {
                     data.setDirty();
                     data.audit(player.getGameProfile().getName() + " saved season rules");
                     for (ServerPlayer online : player.server.getPlayerList().getPlayers()) {
-                        // Raised point rules reach everyone online at once; the rest top up on login.
                         net.schwarz.rotasutils.server.CharacterStatService.grantLevelPoints(data.progress(online.getUUID()), data);
                         net.schwarz.rotasutils.server.CharacterStatService.apply(online, data);
                         RotasNetwork.syncContent(online);
@@ -535,8 +602,6 @@ public final class ServerActions {
                 }
             }
             case "set_variable" -> {
-                // Player preferences only: a short key, a boolean value and a small budget, so this
-                // packet can neither bloat the saved record nor write outside the pref. namespace.
                 String key = payload.getString("key");
                 String value = payload.getString("value");
                 PlayerProgress progress = data.progress(player.getUUID());
@@ -555,7 +620,6 @@ public final class ServerActions {
                 RotasNetwork.syncProgress(player);
             }
 
-            // Admin --------------------------------------------------------
             default -> {
                 if (!admin) {
                     RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.item.not_admin"));
@@ -588,6 +652,7 @@ public final class ServerActions {
                 RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.sa.house_wand_added"));
             }
             case "house_create" -> houseCreate(player, data, payload);
+            case "house_area" -> houseArea(player, data, payload);
             case "house_edit" -> houseEdit(player, data, payload);
             case "house_replace_bounds" -> houseReplaceBounds(player, data, payload);
             case "house_remove" -> houseRemove(player, data, payload);
@@ -627,6 +692,15 @@ public final class ServerActions {
                 }
                 RotasNetwork.openBoardBrowser(player, board);
             }
+            case "open_quest_board" -> {
+                QuestDef quest = data.quest(payload.getString("quest"));
+                BoardConfig board = quest == null || !quest.published() ? null : firstAssignedBoard(data, quest);
+                if (board == null) {
+                    RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.publish_no_board"));
+                    return;
+                }
+                RotasNetwork.openBoardBrowser(player, board);
+            }
             case "duplicate_quest" -> {
                 QuestDef source = data.quest(payload.getString("quest"));
                 if (source == null) {
@@ -641,15 +715,11 @@ public final class ServerActions {
             case "delete_quest" -> {
                 String questId = payload.getString("quest");
                 data.removeQuest(questId);
-                // Active copies stay valid until turn-in; they simply stop being offered.
                 data.audit(player.getGameProfile().getName() + " deleted quest " + questId);
                 RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.sa.quest_deleted"));
                 RotasNetwork.syncContent(player);
             }
             case "new_board" -> {
-                // Boards exist independently of the block: an admin can author a pool first
-                // and bind it to a billboard later, and a board whose block was broken
-                // keeps working for NPCs and commands.
                 BoardConfig board = new BoardConfig(Ids.unique("board", data.boards().keySet()));
                 board.setName(ThaiText.t("rotasutils.msg.board.default_name"));
                 data.putBoard(board);
@@ -675,9 +745,6 @@ public final class ServerActions {
             }
             case "delete_board" -> {
                 String boardId = payload.getString("board");
-                // RotasData.removeBoard also drops the board from every quest that
-                // listed it, so no dangling reference survives in the creator.
-                // A second click (or a stale list) must not report a deletion that did not happen.
                 if (!data.removeBoard(boardId)) {
                     RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.board_gone"));
                     RotasNetwork.syncContent(player);
@@ -738,14 +805,11 @@ public final class ServerActions {
                     npc.setDimension("");
                     data.putNpc(npc);
                     data.audit(player.getGameProfile().getName() + " released NPC " + npc.id());
-                    // Live release supersedes any staged draft for this character.
                     data.configHistory().discard(player.getUUID().toString(), "npc/" + npc.id());
                     RotasNetwork.syncContent(player);
                 }
             }
             case "test_npc_dialogue" -> {
-                // Previews the editor draft when one is attached, so unsaved lines can be
-                // tested against the admin's own progress before the review flow.
                 NpcDef npc = payload.contains("npc_draft")
                         ? NpcDef.load(payload.getCompound("npc_draft"))
                         : data.npc(payload.getString("npc"));
@@ -766,7 +830,6 @@ public final class ServerActions {
                 data.putNpc(npc);
                 data.audit(player.getGameProfile().getName()
                         + (added ? " assigned " : " unassigned ") + questId + " to NPC " + npc.id());
-                // Live assignment supersedes any staged draft for this character.
                 data.configHistory().discard(player.getUUID().toString(), "npc/" + npc.id());
                 RotasNetwork.feedback(player, true, added
                         ? ThaiText.t("rotasutils.msg.sa.npc_assigned", npc.name())
@@ -788,14 +851,11 @@ public final class ServerActions {
                 String npcId = payload.getString("npc");
                 data.removeNpc(npcId);
                 data.audit(player.getGameProfile().getName() + " deleted NPC " + npcId);
-                // Deletion supersedes any staged draft for this character.
                 data.configHistory().discard(player.getUUID().toString(), "npc/" + npcId);
                 RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.sa.npc_removed"));
                 RotasNetwork.syncContent(player);
             }
             case "new_zone" -> {
-                // Starts with a sphere around the admin rather than no shape, because a zone with no
-                // shapes covers the whole dimension - a surprising thing for "New zone here" to do.
                 net.minecraft.core.BlockPos here = player.blockPosition();
                 net.schwarz.rotasutils.core.ZoneDef zone = net.schwarz.rotasutils.server.ZoneWandService.createZone(
                         data, player.serverLevel(), here, new net.schwarz.rotasutils.core.ZoneArea.Sphere(
@@ -806,13 +866,49 @@ public final class ServerActions {
                 syncZones(player);
                 RotasNetwork.openZoneEdit(player, zone.id());
             }
+            case "zone_create" -> zoneCreate(player, data, payload);
+            case "zone_tp" -> {
+                if (net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
+                    var zone = data.zone(payload.getString("zone"));
+                    if (zone != null) {
+                        var result = net.schwarz.rotasutils.server.ZoneAdminTools.goTo(player, zone);
+                        RotasNetwork.feedback(player, result.success(), result.message());
+                    }
+                }
+            }
+            case "zone_who" -> {
+                if (net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
+                    var zone = data.zone(payload.getString("zone"));
+                    if (zone != null) {
+                        java.util.List<String> names = new java.util.ArrayList<>();
+                        for (ServerPlayer other : player.server.getPlayerList().getPlayers()) {
+                            if (zone.appliesTo(other.level().dimension().location().toString())
+                                    && zone.contains(other.getX(), other.getY(), other.getZ())) {
+                                names.add(other.getGameProfile().getName());
+                            }
+                        }
+                        RotasNetwork.feedback(player, true, names.isEmpty() ? "Nobody is in " + zone.name()
+                                : names.size() + " in " + zone.name() + ": " + String.join(", ", names));
+                    }
+                }
+            }
+            case "zone_enable" -> {
+                if (net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
+                    var zone = data.zone(payload.getString("zone"));
+                    if (zone != null) {
+                        var result = net.schwarz.rotasutils.server.ZoneAdminTools.setEnabled(data, zone, payload.getBoolean("on"),
+                                player.getGameProfile().getName());
+                        RotasNetwork.feedback(player, result.success(), result.message());
+                        syncZones(player);
+                    }
+                }
+            }
             case "open_zone" -> {
                 net.schwarz.rotasutils.core.ZoneDef zone = data.zone(payload.getString("zone"));
                 if (zone == null) {
                     RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.zone_gone"));
                     return;
                 }
-                // The wand grows whichever zone the admin is looking at in the editor.
                 net.schwarz.rotasutils.server.ZoneWandService.setActive(player, zone.id());
                 RotasNetwork.openZoneEdit(player, zone.id());
             }
@@ -857,6 +953,7 @@ public final class ServerActions {
                     data.audit(player.getGameProfile().getName() + " saved zone " + updated.id()
                             + " " + updated.levelLabel() + " " + updated.danger() + " xp=" + updated.xpMultiplier());
                     RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.sa.zone_saved"));
+                    net.schwarz.rotasutils.server.ZoneAdminTools.sendLint(player, updated, data.zones().values(), 4);
                     syncZones(player);
                 } catch (IllegalArgumentException failure) {
                     RotasNetwork.feedback(player, false, failure.getMessage());
@@ -956,7 +1053,6 @@ public final class ServerActions {
                     return;
                 }
                 SkillCategory previous = data.category(category.id());
-                // Command effects run at operator level 4; only a level-4 operator may add or rewrite them.
                 if (!BoardService.isOperator(player)
                         && !net.schwarz.rotasutils.server.ConfigService.commands(category)
                                 .equals(net.schwarz.rotasutils.server.ConfigService.commands(previous))) {
@@ -989,9 +1085,6 @@ public final class ServerActions {
             }
             case "save_level_config" -> {
                 LevelConfig config = LevelConfig.load(payload.getCompound("level_config"));
-                // The screen only edits the EXP curve of the season rules. Take those three numbers and keep
-                // the server's own copy of everything else, so a screen opened before another admin's
-                // season edit cannot quietly undo it.
                 var season = data.levelConfig().season().copy();
                 season.mainBaseXp = config.season().mainBaseXp;
                 season.mainExponent = config.season().mainExponent;
@@ -1018,8 +1111,6 @@ public final class ServerActions {
                 CompoundTag stored = payload.getCompound("server_settings");
                 net.schwarz.rotasutils.data.ServerSettings loaded =
                         net.schwarz.rotasutils.data.ServerSettings.load(stored);
-                // The admin level decides who reaches every action in handleAdmin; lowering it would
-                // hand item grants and level-4 reward commands to ordinary players.
                 if (loaded.adminOpLevel() != data.serverSettings().adminOpLevel() && !BoardService.isOperator(player)) {
                     RotasNetwork.feedback(player, false,
                             ThaiText.t("rotasutils.msg.sa.op4"));
@@ -1046,7 +1137,6 @@ public final class ServerActions {
                         payload.contains("npc") ? payload.getString("npc") : "");
             }
 
-            // Jobs and character stats -------------------------------------
             case "save_job" -> {
                 net.schwarz.rotasutils.job.JobDef job = net.schwarz.rotasutils.job.JobDef.load(payload.getCompound("job"));
                 if (!job.id().matches("[a-z0-9_]{1,32}")) {
@@ -1092,7 +1182,6 @@ public final class ServerActions {
                 RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.sa.refunded_stat", refunded));
             });
 
-            // Player progress manager ---------------------------------------
             case "admin_set_level" -> withTarget(player, data, payload, target -> {
                 int before = data.progress(target.getUUID()).level();
                 ProgressService.setLevel(target, data, payload.getInt("level"));
@@ -1137,7 +1226,6 @@ public final class ServerActions {
             });
             case "admin_revoke_clearance" -> withTarget(player, data, payload, target -> {
                 DangerRank rank = DangerRank.byName(payload.getString("rank"), DangerRank.F);
-                // F is the starting clearance every player keeps.
                 if (rank == DangerRank.F || !data.progress(target.getUUID()).clearance().remove(rank)) {
                     RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.admin_nothing_changed"));
                     return;
@@ -1222,7 +1310,6 @@ public final class ServerActions {
                 RotasNetwork.feedback(player, result.success(), result.message());
             });
 
-            // Quest testing --------------------------------------------------
             case "test_complete_objective" -> testCompleteObjective(player, data, payload);
             case "test_fail" -> QuestService.fail(player, data, payload.getString("quest"), ThaiText.t("rotasutils.msg.sa.test_failure"));
             case "test_reset" -> {
@@ -1243,7 +1330,6 @@ public final class ServerActions {
             }
             case "test_spawn_mob" -> {
                 ResourceLocation entityId = ResourceLocation.tryParse(payload.getString("entity"));
-                // The entity registry is defaulted: get() on an unknown id would spawn a pig.
                 EntityType<?> type = entityId == null || !BuiltInRegistries.ENTITY_TYPE.containsKey(entityId)
                         ? null : BuiltInRegistries.ENTITY_TYPE.get(entityId);
                 if (type != null) {
@@ -1268,14 +1354,124 @@ public final class ServerActions {
         }
     }
 
-    // Helpers --------------------------------------------------------------
+private static void houseArea(ServerPlayer player, RotasData data, CompoundTag payload) {
+        if (!net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
+            return;
+        }
+        String op = payload.getString("op");
+        int n = Math.max(1, Math.min(32, payload.contains("n") ? payload.getInt("n") : 1));
+        int minY = player.level().getMinBuildHeight(), maxY = player.level().getMaxBuildHeight() - 1;
+        int[] box = net.schwarz.rotasutils.house.HouseSelections.current(player);
+        switch (op) {
+            case "around" -> {
+                int index = Math.max(0, Math.min(net.schwarz.rotasutils.house.HouseArea.SIZES.length - 1, payload.getInt("size")));
+                box = net.schwarz.rotasutils.house.HouseArea.around(player.blockPosition(), net.schwarz.rotasutils.house.HouseArea.SIZES[index]);
+                net.schwarz.rotasutils.house.HouseSelections.set(player, box);
+            }
+            case "corner1", "corner2", "corner1_look", "corner2_look" -> {
+                net.minecraft.core.BlockPos pos = player.blockPosition();
+                if (op.endsWith("_look")) {
+                    var hit = player.pick(48.0, 0.0f, false);
+                    if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)
+                            || hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) {
+                        RotasNetwork.feedback(player, false, "Look at a block first.");
+                        return;
+                    }
+                    pos = blockHit.getBlockPos();
+                }
+                net.schwarz.rotasutils.house.HouseSelections.setCorner(player, op.startsWith("corner1"), pos);
+                box = net.schwarz.rotasutils.house.HouseSelections.current(player);
+            }
+            case "grow", "shrink", "up", "down" -> {
+                if (box == null) {
+                    RotasNetwork.feedback(player, false, "Choose an area first.");
+                    return;
+                }
+                int[] next = switch (op) {
+                    case "grow" -> net.schwarz.rotasutils.house.HouseArea.grow(box, n, minY, maxY);
+                    case "shrink" -> net.schwarz.rotasutils.house.HouseArea.grow(box, -n, minY, maxY);
+                    case "up" -> net.schwarz.rotasutils.house.HouseArea.up(box, n, minY, maxY);
+                    default -> net.schwarz.rotasutils.house.HouseArea.down(box, n, minY, maxY);
+                };
+                if (java.util.Arrays.equals(next, box)) {
+                    RotasNetwork.feedback(player, false, "It cannot go any further that way.");
+                    return;
+                }
+                box = next;
+                net.schwarz.rotasutils.house.HouseSelections.set(player, box);
+            }
+            case "clear" -> {
+                net.schwarz.rotasutils.house.HouseSelections.clear(player);
+                box = null;
+            }
+            default -> {
+                return;
+            }
+        }
+        if (box != null) {
+            net.schwarz.rotasutils.house.HouseWandService.report(player, player.level().dimension().location().toString(), box);
+        }
+        RotasNetwork.syncContent(player);
+    }
+
+    private static void zoneCreate(ServerPlayer player, RotasData data, CompoundTag payload) {
+        if (!net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
+            return;
+        }
+        var shape = net.schwarz.rotasutils.core.ZoneShapes.Shape.parse(payload.getString("shape"));
+        net.minecraft.core.BlockPos here = player.blockPosition();
+        var level = player.serverLevel();
+        var area = net.schwarz.rotasutils.core.ZoneShapes.area(shape, payload.getInt("size"), here.getX(), here.getY(), here.getZ(),
+                level.getMinBuildHeight(), level.getMaxBuildHeight() - 1);
+        var zone = net.schwarz.rotasutils.server.ZoneWandService.createZone(data, level, here, area);
+        String name = payload.getString("name").trim();
+        int min = payload.getInt("min"), max = payload.getInt("max");
+        if (!name.isEmpty() || min > 0) {
+            int from = min > 0 ? Math.min(10000, min) : zone.levelMin();
+            int to = min > 0 ? Math.max(from, Math.min(10000, max > 0 ? max : from + 4)) : zone.levelMax();
+            zone = zone.withSettings(name.isEmpty() ? zone.name() : (name.length() > 64 ? name.substring(0, 64) : name), from, to, zone.priority(), true,
+                    zone.danger(), zone.recommendedMin(), zone.recommendedMax(), zone.xpMultiplier(), zone.transitionBlocks(), zone.safe());
+        }
+        var type = net.schwarz.rotasutils.core.ZoneType.parse(payload.getString("type"), net.schwarz.rotasutils.core.ZoneType.CUSTOM);
+        if (type != net.schwarz.rotasutils.core.ZoneType.CUSTOM) {
+            zone = net.schwarz.rotasutils.core.ZonePresets.apply(type, zone);
+        }
+        data.putZone(zone);
+        net.schwarz.rotasutils.server.ZoneWandService.setActive(player, zone.id());
+        data.audit(player.getGameProfile().getName() + " created zone " + zone.id() + " (" + shape + " " + type + ")");
+        syncZones(player);
+        RotasNetwork.openZoneEdit(player, zone.id());
+    }
 
     private static void houseCreate(ServerPlayer player, RotasData data, CompoundTag payload) {
         HouseAdminService.CreateRequest request = decodeHouseCreate(player, payload);
         if (request == null) {
             return;
         }
-        reportHouseAction(player, houseAdminService(player, data).create(player.getUUID(), request));
+        HouseAdminService.Action action = houseAdminService(player, data).create(player.getUUID(), request);
+        reportHouseAction(player, action);
+        if (action.success() && payload.getBoolean("configure")) {
+            openHouseQuick(player, data, request.id());
+        }
+    }
+
+    private static void openHouseQuick(ServerPlayer player, RotasData data, String houseId) {
+        if (!net.schwarz.rotasutils.server.BoardService.isAdmin(player, data)) {
+            return;
+        }
+        var house = data.house(houseId);
+        if (house == null) {
+            return;
+        }
+        CompoundTag screen = new CompoundTag();
+        screen.putString("house", house.id());
+        screen.putString("name", house.name());
+        CompoundTag own = data.houseSettings(house.id()).save();
+        var base = data.houseConfig().tier(house.tier());
+        own.putLong("tier_deposit", base == null ? 0 : base.deposit());
+        own.putLong("tier_rent", base == null ? 0 : base.maintenance());
+        screen.put("settings", own);
+        RotasNetwork.openScreen(player, "house_quick", screen);
     }
 
     private static void houseEdit(ServerPlayer player, RotasData data, CompoundTag payload) {
@@ -1312,8 +1508,6 @@ public final class ServerActions {
 
     private static void reportHouseAction(ServerPlayer player, HouseAdminService.Action action) {
         RotasNetwork.feedback(player, action.success(), action.message());
-        // A stale editor needs the current revision, but failed validation must not
-        // cause a broad content refresh or discard the client's typed draft.
         if (!action.success() && action.message().equals("house.stale")) {
             RotasNetwork.syncContent(player);
         }
@@ -1343,7 +1537,7 @@ public final class ServerActions {
                 }
                 ItemStack wand = heldHouseWand(actor);
                 if (wand.isEmpty()) {
-                    return null;
+                    return net.schwarz.rotasutils.house.HouseSelections.pending(playerId);
                 }
                 return new HouseAdminService.Selection(HouseWandItem.dimension(wand),
                         HouseWandItem.first(wand), HouseWandItem.second(wand));
@@ -1356,6 +1550,7 @@ public final class ServerActions {
                     if (!wand.isEmpty()) {
                         HouseWandItem.clear(wand);
                     }
+                    net.schwarz.rotasutils.house.HouseSelections.forget(playerId);
                 }
             }
 
@@ -1386,7 +1581,6 @@ public final class ServerActions {
 
             @Override
             public void rebuildHousing() {
-                // HouseRegistry and HouseBillingService read RotasData directly; no secondary index exists.
             }
 
             @Override
@@ -1401,10 +1595,6 @@ public final class ServerActions {
         };
     }
 
-    /**
-     * Creates the same actor-bound service used by packet actions for legacy
-     * server commands. The service still rechecks permission on each operation.
-     */
     public static HouseAdminService houseAdminService(ServerPlayer actor, RotasData data) {
         return new HouseAdminService(houseStore(actor, data));
     }
@@ -1599,14 +1789,12 @@ public final class ServerActions {
         RotasNetwork.feedback(player, false, "house.invalid_request: " + malformed.getMessage());
     }
 
-    /** Jobs and stats are shown to every player, so their edits refresh everyone's content. */
     private static void syncContentToEveryone(ServerPlayer actor) {
         for (ServerPlayer online : actor.server.getPlayerList().getPlayers()) {
             RotasNetwork.syncContent(online);
         }
     }
 
-    /** Refreshes a player who was just removed from a party, if they are online. */
     private static void notifyRemoved(ServerPlayer actor, java.util.UUID memberId) {
         if (memberId.equals(actor.getUUID())) {
             return;
@@ -1618,7 +1806,6 @@ public final class ServerActions {
         }
     }
 
-    /** Reports a party action and refreshes the roster for everyone it touched. */
     private static void party(ServerPlayer player, PartyService.Result result) {
         RotasNetwork.feedback(player, result.success(), result.message());
         RotasNetwork.syncProgress(player);
@@ -1635,7 +1822,6 @@ public final class ServerActions {
         if (previous != null) {
             quest.setVersion(previous.version());
         }
-        // Command rewards run at operator level 4; only a level-4 operator may add or rewrite them.
         if (!BoardService.isOperator(player)
                 && !net.schwarz.rotasutils.server.ConfigService.commands(quest)
                         .equals(net.schwarz.rotasutils.server.ConfigService.commands(previous))) {
@@ -1656,7 +1842,6 @@ public final class ServerActions {
             quest.bumpVersion();
         }
         data.putQuest(quest);
-        // Keep every board's mirror of the quest's board list in sync.
         for (BoardConfig board : data.boards().values()) {
             boolean shouldList = quest.boardIds().contains(board.id());
             if (shouldList && !board.questIds().contains(quest.id())) {
@@ -1676,8 +1861,6 @@ public final class ServerActions {
         if (board.id().isEmpty()) {
             board.setId(Ids.unique(board.name(), data.boards().keySet()));
         }
-        // Rotation, access and permission settings need admin level (op 2-4 by default). Anyone
-        // below keeps the stored values for those fields even if the client sent others.
         if (!BoardService.isAdmin(player, data)) {
             BoardConfig stored = data.board(board.id());
             if (stored != null) {
@@ -1696,37 +1879,39 @@ public final class ServerActions {
         if (npc.id().isEmpty()) {
             npc.setId(Ids.unique(npc.name(), data.npcs().keySet()));
         }
-        // Two NPCs answering for one entity would make the click ambiguous, so the newer
-        // binding wins and the older one is released rather than silently shadowed.
+        var entity = net.schwarz.rotasutils.server.NpcService.findEntity(player.server, npc);
+        if (entity instanceof net.minecraft.world.entity.player.Player) {
+            RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.npc.invalid_binding"));
+            return null;
+        }
         if (npc.bound()) {
             for (NpcDef other : data.npcs().values()) {
                 if (!other.id().equals(npc.id()) && npc.entityUuid().equals(other.entityUuid())) {
                     other.setEntityUuid("");
+                    other.setEntityType("");
+                    other.setDimension("");
                 }
             }
         }
+        if (entity != null) {
+            npc.setHome(entity.blockPosition());
+        }
         data.putNpc(npc);
-        var entity = net.schwarz.rotasutils.server.NpcService.findEntity(player.server, npc);
         if (entity != null) {
             net.schwarz.rotasutils.server.NpcService.applyEntityOptions(npc, entity);
         }
         data.audit(player.getGameProfile().getName() + " saved NPC " + npc.id());
-        // A direct save supersedes any staged draft for this character.
         data.configHistory().discard(player.getUUID().toString(), "npc/" + npc.id());
         RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.sa.npc_saved"));
-        // Markers and dialogue read the synced NPC, so every player gets the change, not only the editor.
         syncContentToEveryone(player);
         return npc;
     }
 
-    /** Runs {@code consumer} with the NPC named in the payload, or reports it is gone. */
-    /** The stable NPC a horse screen was opened from, or "" when it came from the whistle or a command. */
     private static String stableNpc(RotasData data, CompoundTag payload) {
         NpcDef npc = data.npc(payload.getString("npc"));
         return npc != null && npc.enabled() && npc.role() == NpcDef.Role.STABLE ? npc.id() : "";
     }
 
-    /** Market and NPC sales happen at a stable NPC the player is standing next to. */
     private static void atStable(ServerPlayer player, RotasData data, CompoundTag payload, Runnable action) {
         if (payload.getString("npc").isBlank()) {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.horse.need_npc"));
@@ -1762,12 +1947,6 @@ public final class ServerActions {
         consumer.accept(npc);
     }
 
-    /**
-     * Copies the operator-only board fields from {@code stored} onto {@code incoming}.
-     *
-     * <p>These are the settings that decide who may use a board and what they may do
-     * with it, so a plain content admin cannot change them.
-     */
     public static void restoreOperatorOnlyFields(BoardConfig incoming, BoardConfig stored) {
         incoming.setVisible(stored.visible());
         incoming.setRotation(stored.rotation());
@@ -1804,13 +1983,12 @@ public final class ServerActions {
         return null;
     }
 
-    /** Keeps deleted nodes' point costs so a later reset can still refund them. */
     public static void preserveRemovedNodes(RotasData data, SkillCategory previous, SkillCategory updated) {
         for (SkillNode oldNode : previous.nodes().values()) {
             if (updated.node(oldNode.id()) != null) {
                 continue;
             }
-            for (PlayerProgress progress : data.allPlayers()) {
+            for (PlayerProgress progress : data.allPlayersToModify()) {
                 int rank = progress.skillRank(oldNode.id());
                 if (rank <= 0) {
                     continue;
@@ -1825,12 +2003,8 @@ public final class ServerActions {
         }
     }
 
-    /**
-     * Refunds the category for every stored player, not only those online: once the category is
-     * removed its nodes no longer resolve, so an offline player's spent points could not be recovered.
-     */
     private static void refundCategory(ServerPlayer actor, RotasData data, SkillCategory category) {
-        for (PlayerProgress progress : data.allPlayers()) {
+        for (PlayerProgress progress : data.allPlayersToModify()) {
             SkillService.refund(progress, data, category.id());
         }
         data.setDirty();
@@ -1840,15 +2014,6 @@ public final class ServerActions {
         }
     }
 
-    /**
-     * Replaces the live settings with the ones the admin screen sent.
-     *
-     * <p>This copies through {@code save()} + {@code load()} rather than a hand-written list of
-     * setters. The old list silently dropped every field nobody remembered to add to it - the
-     * waystone costs and the monster-drop toggle were editable in the UI and thrown away on save.
-     * The round trip carries whatever {@code ServerSettings} persists, and {@code load} applies the
-     * same clamps the setters do, so a new field is configurable the moment it is saved.</p>
-     */
     private static void copySettings(net.schwarz.rotasutils.data.ServerSettings source, RotasData data) {
         data.setServerSettings(net.schwarz.rotasutils.data.ServerSettings.load(source.save()));
     }
@@ -1900,12 +2065,17 @@ public final class ServerActions {
         }
         PlayerProgress progress = data.progress(player.getUUID());
         int completions = progress.completionCount(quest.id());
-        // Choice pools are claimed per completion; a quest never completed has nothing to claim.
         if (completions <= 0) {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.complete_first"));
             return;
         }
         int completionIndex = completions - 1;
+        String taken = progress.questVariables().get("quest_paths." + quest.id());
+        if (!reward.path().isEmpty() && taken != null
+                && !java.util.Arrays.asList(taken.split(",")).contains(reward.path())) {
+            RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.sa.reward_gone"));
+            return;
+        }
         boolean granted = RewardService.grantChoice(player, data, reward,
                 RewardService.Context.quest(quest, completionIndex, completionIndex == 0, 1.0, 0));
         RotasNetwork.feedback(player, granted,
@@ -1938,7 +2108,6 @@ public final class ServerActions {
         RotasNetwork.syncProgress(player);
     }
 
-    /** Appends one area to a zone and reports the new shape count. */
     private static String addArea(ServerPlayer player, RotasData data,
                                   net.schwarz.rotasutils.core.ZoneDef zone,
                                   net.schwarz.rotasutils.core.ZoneArea area) {
@@ -1952,7 +2121,6 @@ public final class ServerActions {
         return ThaiText.t("rotasutils.msg.sa.zone_area_count", updated.name(), updated.areas().size());
     }
 
-    /** Zones live in content; refresh every admin so open editors see the new shape at once. */
     private static void syncZones(ServerPlayer source) {
         for (ServerPlayer online : source.server.getPlayerList().getPlayers()) {
             RotasNetwork.syncContent(online);

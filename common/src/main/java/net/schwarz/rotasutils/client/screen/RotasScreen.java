@@ -15,10 +15,6 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Window chrome shared by the console screens: title row, server feedback badge, scroll panel
- * plumbing and back navigation. Subclasses own everything inside the content area.
- */
 @Environment(EnvType.CLIENT)
 public abstract class RotasScreen extends Screen {
     protected int guiLeft;
@@ -28,7 +24,6 @@ public abstract class RotasScreen extends Screen {
 
     private final Screen parent;
     private final List<ScrollPanel> panels = new ArrayList<>();
-    /** Header text drawn in the title bar; screens may change it as their model loads. */
     protected String header;
     private long openTransitionStartedAt;
 
@@ -42,51 +37,36 @@ public abstract class RotasScreen extends Screen {
         this.header = header;
     }
 
-    /** Identifies this screen for world-selection round trips. */
     public String screenKey() {
         return getClass().getSimpleName();
     }
 
-    /** Called when a world selection this screen requested comes back. */
     public void onPick(String fieldKey, String value) {
     }
 
-    /** What a screen does when the server pushes fresh data while it is open. */
     protected enum Refresh {
-        /** Nothing: the screen reads live data while drawing, or refreshes itself. */
         NONE,
-        /** Rebuild the widgets from the new data, keeping scroll positions and typed text. */
         REBUILD,
-        /** Hold an unsaved draft: leave it alone and tell the admin the data changed underneath. */
         BANNER
     }
 
     private boolean dataChanged;
     private boolean sourceSeen;
     private Object lastSource;
-    /** When this screen last sent an action; a change right after it is the screen's own save. */
     private long ownActionAt;
     private static final long OWN_ACTION_WINDOW_MS = 5000;
 
-    /** How this screen reacts to content and kernel pushes; opt in per screen, nothing changes by default. */
     protected Refresh refreshMode() {
         return Refresh.NONE;
     }
 
-    /**
-     * The server data this screen shows or was opened on, compared with {@code equals} after each push
-     * (a CompoundTag, a JSON string, a record). Null means "not tracked": a REBUILD screen then rebuilds
-     * on every content or kernel push, a BANNER screen never warns.
-     */
     protected Object watchedSource() {
         return null;
     }
 
-    /** Called after a server sync so live screens refresh their model. Screens with their own refresh override it. */
     public void onDataRefreshed() {
     }
 
-    /** Entry point for {@link ScreenRouter}: runs the screen's own refresh, then its {@link #refreshMode()}. */
     public final void dispatchRefresh(int kinds) {
         onDataRefreshed();
         if ((kinds & (ScreenRouter.CONTENT | ScreenRouter.KERNEL)) == 0 || minecraft == null) {
@@ -119,11 +99,6 @@ public abstract class RotasScreen extends Screen {
         return changed;
     }
 
-    /**
-     * Rebuilds every widget and puts back what the admin was in the middle of: scroll position of each
-     * list, text and focus of each text box. Matching is by creation order, so it is skipped when the
-     * new layout has a different number of lists or boxes.
-     */
     protected final void rebuildKeepingState() {
         if (minecraft == null) {
             return;
@@ -239,7 +214,6 @@ public abstract class RotasScreen extends Screen {
         RotasNetwork.sendAction(action, payload);
     }
 
-    /** Starts a world selection and closes the screen so the world is reachable. */
     protected void requestPick(String kind, String fieldKey) {
         CompoundTag payload = new CompoundTag();
         payload.putString("kind", kind);
@@ -266,11 +240,6 @@ public abstract class RotasScreen extends Screen {
         renderOpenTransition(graphics);
     }
 
-    /**
-     * Most screens paint panel contents before their own labels and overlays.
-     * A screen whose panel is a transparent scrolling list can opt into painting
-     * that list after its opaque frame instead of having the frame cover rows.
-     */
     protected boolean renderPanelsAfterContent() {
         return false;
     }
@@ -291,40 +260,31 @@ public abstract class RotasScreen extends Screen {
 
     protected abstract void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick);
 
-    /** Full-screen wash behind the window. */
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fill(0, 0, width, height, Ui.SCRIM_TOP);
     }
 
-    /** Title row: name on the left, the server's answer to the last action on the right. */
     protected void renderFrame(GuiGraphics graphics) {
         Ui.window(graphics, guiLeft, guiTop, guiWidth, guiHeight);
         int feedbackWidth = feedbackWidth();
         int headerWidth = guiWidth - 2 * Ui.PAD - (feedbackWidth == 0 ? 0 : feedbackWidth + Ui.GAP);
-        // Native font scale keeps glyphs aligned to the GUI pixel grid.
         Ui.scaledLabel(graphics, Ui.truncate(header, Math.max(24, headerWidth)),
                 guiLeft + Ui.PAD, guiTop + 9, 1.0f, Ui.TEXT_BRIGHT);
         Ui.separator(graphics, guiLeft + Ui.PAD, guiTop + 26, guiWidth - 2 * Ui.PAD);
         renderFeedback(graphics, guiLeft + guiWidth - feedbackWidth - Ui.PAD, guiTop + 7,
                 RotasTheme.SURFACE_HIGH, Ui.DANGER_SOFT, Ui.GOOD, Ui.BAD);
         if (dataChanged) {
-            // Title row, left of the feedback badge, so it never covers the content or the footer buttons.
             String warning = Ui.truncate(L.t("rotasutils.common.data_changed"), guiWidth / 2 - Ui.PAD);
             Ui.labelRight(graphics, warning, guiLeft + guiWidth - feedbackWidth - Ui.PAD
                     - (feedbackWidth == 0 ? 0 : Ui.GAP), guiTop + 9, Ui.WARN);
         }
     }
 
-    /** Width the feedback badge needs, or 0 when there is nothing to show. */
     protected int feedbackWidth() {
         String feedback = ClientState.feedbackMessage();
         return feedback.isEmpty() ? 0 : Math.min(guiWidth / 2, font.width(feedback) + 12);
     }
 
-    /**
-     * The last server response, as a pixel badge whose leading edge carries the outcome colour.
-     * The message itself is the server's wording, so the screen never invents a result.
-     */
     protected void renderFeedback(GuiGraphics graphics, int x, int y,
                                   int okBackground, int badBackground, int okText, int badText) {
         int badgeWidth = feedbackWidth();

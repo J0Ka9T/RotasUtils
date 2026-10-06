@@ -15,11 +15,6 @@ import net.schwarz.rotasutils.title.TitleDef;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Every title on the server: create, edit, duplicate and delete them, and grant or revoke one for an
- * online player. Titles used to be code-seeded and command-only. The list reads the synced content,
- * which the server refreshes for everyone after each change.
- */
 @Environment(EnvType.CLIENT)
 public class TitleManagerScreen extends RotasScreen {
     private static final int ROW = 24;
@@ -47,7 +42,6 @@ public class TitleManagerScreen extends RotasScreen {
         return Math.max(1, (guiHeight - 44 - 64) / ROW);
     }
 
-    /** Buttons depend on the selected title, so a title another admin edits or deletes must rebuild them. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.REBUILD;
@@ -67,7 +61,6 @@ public class TitleManagerScreen extends RotasScreen {
         boolean picked = title != null;
         String pickFirst = "Click a title in the list first";
 
-        // Row 1: change titles. Row 2: give or take one from a player.
         int[][] edit = net.schwarz.rotasutils.core.ButtonRow.fit(rowX, rowW, 80, 56, 60, 64, 88, 118);
         place(Ui.primaryButton(Ui.text("+ New"), button -> minecraft.setScreen(new TitleEditScreen(this, null, false))),
                 edit[0], editY, true, "");
@@ -175,7 +168,6 @@ public class TitleManagerScreen extends RotasScreen {
             boolean isSelected = title.id().equals(selected);
             Ui.rowCard(graphics, guiLeft + 16, rowY, width, ROW - 2,
                     Ui.inside(mouseX, mouseY, guiLeft + 16, rowY, width, ROW - 2), isSelected);
-            // Rarity stripe down the left edge, then the title's own colour swatch.
             graphics.fill(guiLeft + 16, rowY, guiLeft + 19, rowY + ROW - 2, title.rarity().color);
             graphics.fill(guiLeft + 22, rowY + 7, guiLeft + 28, rowY + 13, 0xFF000000 | title.color());
             Ui.label(graphics, Ui.truncate(title.name(), width / 3), guiLeft + 34, rowY + 7,

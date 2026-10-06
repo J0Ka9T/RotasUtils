@@ -27,27 +27,10 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 import net.schwarz.rotasutils.server.WaystoneService;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * The warp pillar: a three-block monument. A tiered plinth that spills past its own block, a fluted
- * shaft banded in gold, and a crown of four buttresses holding a ring, with a crystal core turning
- * inside it (drawn by {@link net.schwarz.rotasutils.client.render.WaystoneRenderer}).
- *
- * <p>All three segments behave as one pillar: any of them can be clicked, any of them can be mined,
- * and the pillar's record is keyed to the base position only, so there is exactly one record per
- * pillar whichever segment the player touched.
- *
- * <p>No state is stored in the block entity: it exists only to carry the renderer.
- */
 public class WaystoneBlock extends BaseEntityBlock {
-    /** 0 plinth, 1 shaft, 2 crown. */
     public static final IntegerProperty SEGMENT = IntegerProperty.create("segment", 0, 2);
     public static final int SEGMENTS = 3;
 
-    /**
-     * Collision follows the stone the player can actually walk into. The plinth's flare overhangs
-     * into the neighbouring blocks visually only: giving it collision there would let a pillar
-     * block a doorway it does not occupy.
-     */
     private static final VoxelShape PLINTH_SHAPE = Block.box(0, 0, 0, 16, 16, 16);
     private static final VoxelShape SHAFT_SHAPE = Block.box(4, 0, 4, 12, 16, 12);
     private static final VoxelShape CROWN_SHAPE = Block.box(2, 0, 2, 14, 16, 14);
@@ -76,7 +59,6 @@ public class WaystoneBlock extends BaseEntityBlock {
         };
     }
 
-    /** The plinth of the pillar {@code pos} belongs to; the position every record is keyed by. */
     public static BlockPos rootOf(BlockState state, BlockPos pos) {
         return pos.below(state.getValue(SEGMENT));
     }
@@ -86,7 +68,6 @@ public class WaystoneBlock extends BaseEntityBlock {
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockPos pos = context.getClickedPos();
         Level level = context.getLevel();
-        // A pillar is placed whole or not at all, so a half-built monument can never exist.
         if (pos.getY() >= level.getMaxBuildHeight() - (SEGMENTS - 1)) {
             return null;
         }
@@ -107,10 +88,6 @@ public class WaystoneBlock extends BaseEntityBlock {
         WaystoneService.onPlaced(level, pos, placer instanceof ServerPlayer player ? player : null);
     }
 
-    /**
-     * Keeps the stack together: mining, a piston or a command that removes one segment takes the
-     * whole pillar with it, and the record goes with the plinth.
-     */
     @Override
     public BlockState updateShape(BlockState state, Direction direction, BlockState neighbour,
                                   LevelAccessor level, BlockPos pos, BlockPos neighbourPos) {
@@ -147,14 +124,12 @@ public class WaystoneBlock extends BaseEntityBlock {
         super.onRemove(state, level, pos, newState, moved);
     }
 
-    /** Only the plinth carries the renderer; the segments above need no block entity of their own. */
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return state.getValue(SEGMENT) == 0 ? new WaystoneBlockEntity(pos, state) : null;
     }
 
-    /** Whichever segment is mined, exactly one pillar item drops, and it drops from the plinth. */
     @Override
     public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         int segment = state.getValue(SEGMENT);
@@ -172,7 +147,6 @@ public class WaystoneBlock extends BaseEntityBlock {
         super.playerWillDestroy(level, pos, state, player);
     }
 
-    /** Pick block on any segment hands back the pillar item. */
     @Override
     public ItemStack getCloneItemStack(BlockGetter level, BlockPos pos, BlockState state) {
         return new ItemStack(RotasRegistry.WAYSTONE_ITEM.get());

@@ -113,7 +113,6 @@ public final class RpgKernel implements AutoCloseable {
 
     public net.schwarz.rotasutils.core.ContentHistory history() { checkThread(); return history; }
 
-    /** True while a content change is being validated or applied. */
     public boolean busy() {
         return busy || closed;
     }
@@ -289,7 +288,6 @@ public final class RpgKernel implements AutoCloseable {
         if (kernel.events.hasListeners(id)) {
             kernel.events.emit(new KernelEventBus.Event(id, occurrence, new KernelPlayerContext(player, facts)));
         }
-        // Quest objectives observe the same events as content rules, without a second event pipeline.
         if (!kernel.content().quests().isEmpty()) {
             kernel.quests().handle(player, id, occurrence, facts);
         }

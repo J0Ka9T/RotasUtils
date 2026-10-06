@@ -4,7 +4,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.GuiGraphics;
 
-/** Integer-aligned, stepped frames shared by Rotas screens and inventory overlays. */
 @Environment(EnvType.CLIENT)
 public final class PixelUi {
     private PixelUi() {}
@@ -22,7 +21,6 @@ public final class PixelUi {
         fill(g, x, y, width, height, corner, edge);
         fill(g, x + 1, y + 1, width - 2, height - 2, 0, surface);
         if (width >= 8 && height >= 8) {
-            // A two-tone bevel gives depth without filtering or blurred edges.
             g.fill(x + 2, y + 1, x + width - 2, y + 2, 0x24FFFFFF);
             g.fill(x + 1, y + 2, x + 2, y + height - 2, 0x24FFFFFF);
             g.fill(x + 2, y + height - 2, x + width - 1, y + height - 1, 0x50000000);

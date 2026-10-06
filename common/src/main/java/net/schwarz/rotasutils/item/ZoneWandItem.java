@@ -26,33 +26,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The Zone Wand: trace level zones in the world and inspect the level a mob's zone gives it.
- *
- * <p>It is deliberately absent from the creative tab. The server hands it out through the admin
- * menu and every use re-checks administrator permission, so a player can neither find it nor use it
- * without the rights.</p>
- *
- * <p>The wand has three tracing modes, switched with sneak + right-click on the air:</p>
- * <ul>
- *   <li><b>Sphere</b> - each block click adds a sphere of the working radius (arenas, caves);</li>
- *   <li><b>Box</b> - click two opposite corners (buildings, walled towns);</li>
- *   <li><b>Outline</b> - click the perimeter point by point and click the first point again to close
- *       it (valleys, coastlines, irregular regions).</li>
- * </ul>
- *
- * <p>The mode and the unfinished shape live on the stack itself, so they survive a relog and the
- * client can preview the shape without extra packets. Nothing is saved to the world until a shape is
- * complete, so a half-traced box never turns into a whole-dimension zone.</p>
- */
 public class ZoneWandItem extends Item {
     private static final String TAG = "RotasZoneWand";
-    /** Box corners closer than this vertically are treated as a floor plan and span the full height. */
     public static final int FLAT_BOX_HEIGHT = 8;
-    /**
-     * Clicking the first outline point's column, or one right next to it, closes the outline. Kept
-     * tight so a small outline is not closed by accident; sneak-clicking any block also finishes it.
-     */
     public static final int CLOSE_DISTANCE = 1;
 
     public enum Mode {
@@ -89,17 +65,12 @@ public class ZoneWandItem extends Item {
         }
     }
 
-    /** Switches mode and drops any unfinished shape. */
     public static void setMode(ItemStack stack, Mode mode) {
         CompoundTag tag = stack.getOrCreateTagElement(TAG);
         tag.putString("mode", mode.name());
         tag.remove("points");
     }
 
-    /**
-     * The zone this wand adds shapes to, written by the server. The client reads it to know which
-     * border to highlight, so no extra packet is needed. Empty when no zone is being worked on.
-     */
     public static String zone(ItemStack stack) {
         CompoundTag tag = stack.getTagElement(TAG);
         return tag == null ? "" : tag.getString("zone");
@@ -114,7 +85,6 @@ public class ZoneWandItem extends Item {
         }
     }
 
-    /** Clicked points of the unfinished box or outline, oldest first. */
     public static List<BlockPos> points(ItemStack stack) {
         CompoundTag tag = stack.getTagElement(TAG);
         List<BlockPos> points = new ArrayList<>();
@@ -143,10 +113,6 @@ public class ZoneWandItem extends Item {
         tag.putIntArray("points", raw);
     }
 
-    /**
-     * Box between two clicked corners. Corners on roughly the same floor describe a floor plan, so
-     * the box spans the whole build height; otherwise it is exactly the clicked volume.
-     */
     public static ZoneArea.Box box(BlockPos a, BlockPos b, int minBuildY, int maxBuildY) {
         boolean flat = Math.abs(a.getY() - b.getY()) < FLAT_BOX_HEIGHT;
         int lowY = flat ? minBuildY : Math.min(a.getY(), b.getY());
@@ -155,7 +121,6 @@ public class ZoneWandItem extends Item {
                 Math.max(a.getX(), b.getX()), highY, Math.max(a.getZ(), b.getZ()));
     }
 
-    /** Outline prism over the clicked points, spanning the build height; null below three corners. */
     public static ZoneArea.Polygon outline(List<BlockPos> points, int minBuildY, int maxBuildY) {
         List<ZoneArea.Polygon.Point> corners = new ArrayList<>();
         for (BlockPos pos : points) {
@@ -170,7 +135,6 @@ public class ZoneWandItem extends Item {
         return corners.size() < 3 ? null : new ZoneArea.Polygon(corners, minBuildY, maxBuildY);
     }
 
-    /** True when a click closes an outline: at least three points and next to the first one. */
     public static boolean closesOutline(List<BlockPos> points, BlockPos click) {
         if (points.size() < 3) {
             return false;
@@ -208,8 +172,6 @@ public class ZoneWandItem extends Item {
         if (context.getPlayer() instanceof ServerPlayer serverPlayer) {
             BlockPos pos = context.getClickedPos();
             if (WorldPicker.isPending(serverPlayer)) {
-                // The zone editor's "Add area" and "Add box" flows take the next block click, so
-                // the wand doubles as the picking tool instead of dropping a stray area.
                 WorldPicker.resolveBlock(serverPlayer, pos);
             } else {
                 ZoneWandService.useBlock(serverPlayer, context.getItemInHand(), pos);

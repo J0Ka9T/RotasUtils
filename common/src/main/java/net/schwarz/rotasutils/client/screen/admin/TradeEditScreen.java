@@ -19,7 +19,6 @@ import net.schwarz.rotasutils.npc.NpcDef;
 import java.util.List;
 import java.util.function.Consumer;
 
-/** One shop trade: pick what the player pays and what they get, with item pictures and counts. */
 @Environment(EnvType.CLIENT)
 public class TradeEditScreen extends RotasScreen {
     private final List<NpcDef.Trade> trades;

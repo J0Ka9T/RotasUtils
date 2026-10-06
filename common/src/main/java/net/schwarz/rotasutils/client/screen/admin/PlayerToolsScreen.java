@@ -13,10 +13,6 @@ import net.schwarz.rotasutils.client.screen.Ui;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Small per-player jobs that used to need a command: give a monster card (picked from the season's
- * card list), reset a player's daily missions. Empty name = yourself.
- */
 @Environment(EnvType.CLIENT)
 public class PlayerToolsScreen extends RotasScreen {
     private String playerName = "";
@@ -40,7 +36,6 @@ public class PlayerToolsScreen extends RotasScreen {
         return 220;
     }
 
-    /** Built from server data with no draft of its own, so a push rebuilds it (scroll and typing kept). */
     @Override
     protected Refresh refreshMode() {
         return Refresh.REBUILD;

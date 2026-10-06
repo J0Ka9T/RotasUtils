@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** The auction house: browse and buy, manage your own listings, list what is in your hand. */
 @Environment(EnvType.CLIENT)
 public class AuctionScreen extends RotasScreen {
     private static final int ROW = 30;
@@ -266,7 +265,6 @@ public class AuctionScreen extends RotasScreen {
                 long net = value - Math.round(value * fee);
                 Ui.labelCentered(graphics, "ได้รับจริง " + Currencies.amount(net), cx, guiTop + 140, Ui.GOOD);
             } catch (NumberFormatException ignored) {
-                // The filter keeps digits only; a too-long number simply shows nothing.
             }
         }
         Ui.labelCentered(graphics, "เงินเข้ากระเป๋าทันทีแม้ออฟไลน์ ของที่หมดเวลารับคืนได้ที่แท็บ 'ของฉัน'", cx, guiTop + 240, Ui.TEXT_DIM);

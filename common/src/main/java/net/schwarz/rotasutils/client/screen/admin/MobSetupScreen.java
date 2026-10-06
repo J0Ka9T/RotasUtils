@@ -25,13 +25,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 
-/**
- * Mob setups sorted into folders ("Desert", "Snow city", ...).
- *
- * <p>A folder only groups setups; every mob keeps its own settings. Left is the folder list, right the
- * setups in the chosen folder as picture cards. Drag a card onto a folder to move it; click a card to edit
- * it. New setups are created in the folder that is open.</p>
- */
 @Environment(EnvType.CLIENT)
 public class MobSetupScreen extends RotasScreen {
     private static final String ALL = "\u0000all";
@@ -54,7 +47,6 @@ public class MobSetupScreen extends RotasScreen {
     private final List<Setup> setups = new ArrayList<>();
     private final List<Card> cards = new ArrayList<>();
     private final List<FolderRow> folderRows = new ArrayList<>();
-    /** Folders made in this screen that no setup is in yet. */
     private static final Set<String> EMPTY_FOLDERS = new LinkedHashSet<>();
     private String folder = ALL;
     private int gridScroll;
@@ -65,7 +57,6 @@ public class MobSetupScreen extends RotasScreen {
     private long deleteConfirmUntil;
     private String pendingNewMob;
 
-    // Dragging
     private Setup pressed;
     private double pressX;
     private double pressY;
@@ -134,9 +125,7 @@ public class MobSetupScreen extends RotasScreen {
         return mobs.isEmpty() ? setup.id() : MobModelCache.displayName(mobs.get(0));
     }
 
-    // Layout -----------------------------------------------------------------
-
-    private int railX() { return guiLeft + Ui.PAD; }
+private int railX() { return guiLeft + Ui.PAD; }
     private int railY() { return guiTop + 50; }
     private int railBottom() { return guiTop + guiHeight - 96; }
     private int gridX() { return railX() + RAIL_W + Ui.GAP; }
@@ -174,7 +163,6 @@ public class MobSetupScreen extends RotasScreen {
                         }, false)))
                 .bounds(guiLeft + guiWidth - Ui.PAD - 150, footerY, 150, 22).build());
 
-        // New folder: type a name, press Create; it shows up empty until a card is dragged in.
         int y = railBottom() + 8;
         newFolderBox = new EditBox(font, railX(), y, RAIL_W - 64, 18, Ui.text("Folder name"));
         newFolderBox.setMaxLength(64);
@@ -201,7 +189,6 @@ public class MobSetupScreen extends RotasScreen {
             boolean confirming = Util.getMillis() < deleteConfirmUntil;
             addRenderableWidget(Ui.dangerButton(Ui.text(confirming ? "Click again" : "Delete folder"), b -> {
                 if (Util.getMillis() < deleteConfirmUntil) {
-                    // The mobs stay; they only leave the folder.
                     setFolder(shown(), NONE);
                     EMPTY_FOLDERS.remove(folder);
                     folder = ALL;
@@ -220,9 +207,7 @@ public class MobSetupScreen extends RotasScreen {
         buildContent();
     }
 
-    // Actions ----------------------------------------------------------------
-
-    private void renameFolder() {
+private void renameFolder() {
         if (renameBox == null) {
             return;
         }
@@ -281,9 +266,7 @@ public class MobSetupScreen extends RotasScreen {
         rebuild();
     }
 
-    // Rendering --------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         mouseXNow = mouseX;
         mouseYNow = mouseY;
@@ -415,9 +398,7 @@ public class MobSetupScreen extends RotasScreen {
                 .replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
-    // Input ------------------------------------------------------------------
-
-    @Override
+@Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int mx = (int) mouseX;
         int my = (int) mouseY;

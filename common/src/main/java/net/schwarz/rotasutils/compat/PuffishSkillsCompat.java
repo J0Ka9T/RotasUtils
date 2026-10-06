@@ -11,12 +11,6 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-/**
- * Soft integration with Pufferfish's Skills / puffish_skills.
- *
- * <p>The mod is intentionally not a compile-time dependency. RotasUtils can still be used in a
- * different pack, while RotasCommu gets a native API integration when puffish_skills is loaded.</p>
- */
 public final class PuffishSkillsCompat {
     public static final String MOD_ID = "puffish_skills";
 
@@ -45,15 +39,10 @@ public final class PuffishSkillsCompat {
         return Platform.isModLoaded(MOD_ID);
     }
 
-    /**
-     * True when Pufferfish is installed and the server chose it to receive Rotas skill points.
-     * Otherwise the built-in job and race trees are the skill system, even with Pufferfish loaded.
-     */
     public static boolean active(net.schwarz.rotasutils.data.RotasData data) {
         return isPresent() && data.levelConfig().pufferfishSkills();
     }
 
-    /** Open Pufferfish's own skill-tree screen for this player. */
     public static boolean openScreen(ServerPlayer player) {
         if (!prepare()) {
             return false;
@@ -67,10 +56,6 @@ public final class PuffishSkillsCompat {
         }
     }
 
-    /**
-     * Adds a compact, read-only Pufferfish category summary to the normal Rotas progress sync.
-     * The client uses this to build JOB/SUB views without duplicating Pufferfish's skill system.
-     */
     public static void writeClientSummary(ServerPlayer player, CompoundTag target) {
         ListTag categories = new ListTag();
         if (prepare()) {
@@ -97,13 +82,6 @@ public final class PuffishSkillsCompat {
         target.putBoolean("puffish_available", reflectionReady);
     }
 
-    /**
-     * Adds points to every currently unlocked Puffish category.
-     * RotasCommu currently treats the Puffish category as the character build layer; supporting
-     * all unlocked categories keeps the bridge data-driven when the server datapack changes.
-     *
-     * @return number of categories that received the points
-     */
     public static int addPointsToUnlockedCategories(ServerPlayer player, int amount) {
         if (amount <= 0 || !prepare()) {
             return 0;
@@ -121,7 +99,6 @@ public final class PuffishSkillsCompat {
         return changed;
     }
 
-    /** Adds points to one explicit Puffish category id. */
     public static boolean addPointsToCategory(ServerPlayer player, String categoryId, int amount) {
         if (amount <= 0 || categoryId == null || categoryId.isBlank() || !prepare()) {
             return false;
@@ -149,7 +126,6 @@ public final class PuffishSkillsCompat {
         }
     }
 
-    /** Unlocks one Puffish category by resource id. */
     public static boolean unlockCategory(ServerPlayer player, String categoryId) {
         Object category = findCategory(categoryId);
         if (category == null) {
@@ -164,7 +140,6 @@ public final class PuffishSkillsCompat {
         }
     }
 
-    /** Unlocks one skill inside a Puffish category. */
     public static boolean unlockSkill(ServerPlayer player, String categoryId, String skillId) {
         Object category = findCategory(categoryId);
         if (category == null || skillId == null || skillId.isBlank()) {

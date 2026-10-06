@@ -9,7 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Zone movement rule: an ender pearl cannot enter or leave a zone that forbids pearls. */
 @Mixin(ThrownEnderpearl.class)
 public abstract class ThrownEnderpearlMixin {
     @Inject(method = "onHit", at = @At("HEAD"), cancellable = true)

@@ -13,14 +13,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Luck and kill combos: the two things that make the next kill feel worth more than the last.
- *
- * <p>Luck reads the player's own {@code generic.luck} attribute, so everything that already raises it -
- * a card, a potion, a piece of gear - makes farming better without knowing this exists. A combo lives
- * only in memory: it is a feel-good number for the next few seconds, not progress, so a restart or a
- * relog simply ends it.</p>
- */
 public final class FarmingService {
     private record Combo(int count, long lastMillis) {
     }
@@ -42,34 +34,24 @@ public final class FarmingService {
         return SeasonService.rules(data).farming;
     }
 
-    // Luck -----------------------------------------------------------------------------------------
-
-    public static double luck(ServerPlayer player) {
+public static double luck(ServerPlayer player) {
         var instance = player.getAttribute(Attributes.LUCK);
         return instance == null ? 0 : instance.getValue();
     }
 
-    /** What the player's luck multiplies a loot chance by. */
     public static double lootLuck(ServerPlayer player, RotasData data) {
         SeasonRules.FarmingRules farming = rules(data);
         return farming == null || !farming.luckEnabled ? 1.0
                 : FarmingMath.luckMultiplier(luck(player), farming.lootChancePerLuck, farming.luckBonusCap);
     }
 
-    /** What the player's luck multiplies a card chance by. */
     public static double cardLuck(ServerPlayer player, RotasData data) {
         SeasonRules.FarmingRules farming = rules(data);
         return farming == null || !farming.luckEnabled ? 1.0
                 : FarmingMath.luckMultiplier(luck(player), farming.cardChancePerLuck, farming.luckBonusCap);
     }
 
-    // Combo ----------------------------------------------------------------------------------------
-
-    /**
-     * One kill in a chain. Called before the kill's experience is worked out, so the kill that extends
-     * a combo is also the first to be paid at the new rate.
-     */
-    public static int onKill(ServerPlayer player, RotasData data) {
+public static int onKill(ServerPlayer player, RotasData data) {
         SeasonRules.FarmingRules farming = rules(data);
         if (farming == null || !farming.comboEnabled) {
             return 0;
@@ -87,7 +69,6 @@ public final class FarmingService {
         return count;
     }
 
-    /** The live chain, or 0 once it has lapsed. */
     public static int combo(ServerPlayer player, RotasData data) {
         SeasonRules.FarmingRules farming = rules(data);
         Combo combo = COMBOS.get(player.getUUID());
@@ -110,18 +91,11 @@ public final class FarmingService {
                 : FarmingMath.comboMultiplier(combo(player, data), farming.comboLootPerKill, farming.comboCap);
     }
 
-    // Elite monsters -------------------------------------------------------------------------------
-
-    /**
-     * Whether a freshly levelled mob is promoted. Only natural spawns roll, and only hostile ones: an
-     * elite cow is a joke, and an elite from a spawner is a farm.
-     */
-    public static MonsterRank rollElite(RotasData data, net.minecraft.world.entity.Mob mob, String reason) {
+public static MonsterRank rollElite(RotasData data, net.minecraft.world.entity.Mob mob, String reason) {
         SeasonRules.FarmingRules farming = rules(data);
         if (farming == null || !farming.eliteEnabled) {
             return MonsterRank.NORMAL;
         }
-        // A world event's waves count as the wild: they are brought by the event, not by a farm.
         boolean natural = "NATURAL".equals(reason) || "CHUNK_GENERATION".equals(reason)
                 || mob.getTags().contains(WorldEventService.WAVE_TAG);
         if (!natural || !BestiaryService.recordable(mob)) {
@@ -142,10 +116,6 @@ public final class FarmingService {
         return roll < champion + elite + veteran ? MonsterRank.VETERAN : MonsterRank.NORMAL;
     }
 
-    /**
-     * A champion is announced to the players near it; its name plate and the target panel carry the
-     * mark. It does not glow: an outline through walls read as a debug overlay, not as a threat.
-     */
     public static void marked(net.minecraft.world.entity.Mob mob, MonsterRank rank, RotasData data) {
         if (rank != MonsterRank.CHAMPION) {
             return;
@@ -161,7 +131,6 @@ public final class FarmingService {
         }
     }
 
-    /** Rank points an elite or champion kill is worth; the season track climbs on these. */
     public static void onRankedKill(ServerPlayer player, RotasData data, MonsterRank rank) {
         SeasonRules.FarmingRules farming = rules(data);
         if (farming == null || !farming.eliteEnabled || rank == null) {
@@ -182,11 +151,6 @@ public final class FarmingService {
         data.setDirty();
     }
 
-    /**
-     * Strips the endless, hidden glow older builds put on champions, so mobs saved before the change
-     * stop glowing once they load. Only that exact effect is removed; a glow from a spectral arrow,
-     * a potion or a command is left alone.
-     */
     public static void clearLegacyGlow(net.minecraft.world.entity.Entity entity) {
         if (!(entity instanceof net.minecraft.world.entity.Mob mob) || mob.level().isClientSide) {
             return;

@@ -21,19 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Salvage (แยกชิ้นส่วน): turning gear nobody wants into what the refine bench needs.
- *
- * <p>Farming leaves a bag full of weapons and armour that are slightly worse than what the player
- * wears. Salvage gives each one a price in gold and refine ore, taken from what the item actually is -
- * its attack or armour, its enchantments, its refinement - and hands back any card set in it. Only the
- * main inventory is offered, never a worn piece, and the screen asks twice before anything is broken.</p>
- */
 public final class SalvageService {
     private SalvageService() {
     }
 
-    /** What one item would give. {@code oreMin..oreMax} because the fraction of the last ore is rolled. */
     public record Yield(boolean possible, long gold, String ore, int oreMin, int oreMax, List<String> cards, double value) {
         static final Yield NONE = new Yield(false, 0, "", 0, 0, List.of(), 0);
     }
@@ -42,7 +33,6 @@ public final class SalvageService {
         return SeasonService.rules(data).salvage;
     }
 
-    /** What an item would give, without breaking it. */
     public static Yield preview(RotasData data, ItemStack stack) {
         SeasonRules.SalvageRules salvage = rules(data);
         ItemRefine.Category category = ItemRefine.categoryOf(stack);
@@ -65,10 +55,6 @@ public final class SalvageService {
         return new Yield(true, Math.round(value * salvage.goldPerValue), ore, oreMin, oreMax, cards, value);
     }
 
-    /**
-     * How strong the item is at what it does: attack damage for a weapon, armour plus toughness for
-     * armour, read from the item's own modifiers so a modded item is priced the same way.
-     */
     private static double strength(ItemStack stack, ItemRefine.Category category) {
         EquipmentSlot slot = category == ItemRefine.Category.ARMOR ? LivingEntity.getEquipmentSlotForItem(stack)
                 : EquipmentSlot.MAINHAND;
@@ -79,7 +65,6 @@ public final class SalvageService {
         } else {
             total += sum(modifiers.get(Attributes.ATTACK_DAMAGE));
             if (total <= 0) {
-                // A bow has no attack attribute; it is still worth taking apart.
                 total = 3;
             }
         }
@@ -96,7 +81,6 @@ public final class SalvageService {
         return total;
     }
 
-    /** Breaks the item in one main-inventory slot. The server re-reads the slot; the screen only names it. */
     public static boolean salvage(ServerPlayer player, RotasData data, int slot) {
         var items = player.getInventory().items;
         if (slot < 0 || slot >= items.size()) {
@@ -120,7 +104,11 @@ public final class SalvageService {
         var oreItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
                 new net.minecraft.resources.ResourceLocation(yield.ore()));
         if (ore > 0 && oreItem != net.minecraft.world.item.Items.AIR) {
-            result.add(new ItemStack(oreItem, Math.min(64, ore)));
+            for (int left = ore; left > 0; ) {
+                int count = Math.min(oreItem.getMaxStackSize(), left);
+                result.add(new ItemStack(oreItem, count));
+                left -= count;
+            }
         }
         for (String card : yield.cards()) {
             result.add(CardItem.of(RotasRegistry.CARD.get(), card, 1));

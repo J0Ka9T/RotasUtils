@@ -9,14 +9,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Lifts vanilla's ceiling on max health (1024) and attack damage (2048). Monster setups scale these by
- * level, and a level-999 boss was silently flattened to 1024 health however high it was set. Armor,
- * toughness and knockback resistance keep their caps: past them the combat formulas give nothing more.
- */
 @Mixin(RangedAttribute.class)
 public abstract class RangedAttributeLimitMixin {
-    /** Room for any level curve, while staying well inside float precision for health. */
     private static final double RAISED_MAX = 1_000_000_000d;
 
     @Shadow

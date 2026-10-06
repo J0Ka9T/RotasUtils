@@ -14,7 +14,6 @@ public final class ClientAdminNetwork {
     private static long request;
     private ClientAdminNetwork() { }
 
-    /** Drops chunk assembly and request ids so a stale editor response cannot reach the next server. */
     public static void reset() {
         CHUNKS.clear();
         connection = null;

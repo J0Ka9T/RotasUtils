@@ -14,17 +14,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * RotasUtils always speaks Thai, whatever language the game itself is set to.
- *
- * <p>The Thai table is read straight from the {@code th_th.json} bundled in the mod jar, so it works
- * the same on a client, an integrated server and a dedicated server - a server can build Thai chat
- * and feedback text without knowing anything about the receiving client. Vanilla Minecraft and other
- * mods are untouched: only keys that exist in RotasUtils' own Thai file are answered here.</p>
- *
- * <p>Formatting follows Minecraft's translation rules ({@code %s}, {@code %1$s}, {@code %%}), and
- * also accepts {@code %d}/{@code %f} the way the parity test allows them.</p>
- */
 public final class ThaiText {
     private static final String PATH = "/assets/rotasutils/lang/th_th.json";
     private static final String PHRASES = "/assets/rotasutils/thai/phrases.json";
@@ -34,38 +23,28 @@ public final class ThaiText {
     private ThaiText() {
     }
 
-    /** True when RotasUtils ships a Thai text for this key. */
     public static boolean has(String key) {
         return key != null && table().containsKey(key);
     }
 
-    /** The raw Thai text for a key, or null when the key is not RotasUtils'. */
     public static String get(String key) {
         return key == null ? null : table().get(key);
     }
 
-    /** Formatted Thai text; the key itself when it is unknown, so a missing entry is visible. */
     public static String t(String key, Object... args) {
         String pattern = get(key);
         return pattern == null ? key : format(pattern, args);
     }
 
-    /**
-     * Thai name for an enum constant shown in the UI, from {@code rotasutils.enum.<group>.<constant>}.
-     * The English label stays as the fallback, so a constant without a Thai entry still reads.
-     * Only for display: never compare or store the result.
-     */
     public static String label(String group, Enum<?> value, String english) {
         String thai = get("rotasutils.enum." + group + "." + value.name().toLowerCase(java.util.Locale.ROOT));
         return thai == null ? english : thai;
     }
 
-    /** A literal component holding the formatted Thai text, for chat, buttons and tooltips. */
     public static net.minecraft.network.chat.MutableComponent c(String key, Object... args) {
         return Component.literal(t(key, args));
     }
 
-    /** Minecraft-style placeholder substitution; missing arguments are left as the placeholder. */
     public static String format(String pattern, Object... args) {
         if (pattern.indexOf('%') < 0) {
             return pattern;
@@ -95,13 +74,6 @@ public final class ThaiText {
         return String.valueOf(value);
     }
 
-    /**
-     * Thai for an English interface phrase, used where screens draw text that was written in English
-     * and is also matched by that English text elsewhere (row labels, field names). Translating at draw
-     * time keeps that matching intact. Entries in {@code thai/phrases.json} are either exact phrases or
-     * patterns with {@code {}} holes, whose captured parts are translated again. Text with no entry is
-     * returned unchanged, so Thai text and names pass straight through.
-     */
     public static String phrase(String english) {
         if (english == null || english.isEmpty()) {
             return english;
@@ -134,7 +106,6 @@ public final class ThaiText {
         String core = english.substring(start, end);
         String thai = loaded.exact.get(core);
         if (thai == null && Character.isLowerCase(core.charAt(0))) {
-            // Screens sometimes lower-case a label inside a sentence ("Search quests").
             thai = loaded.exact.get(Character.toUpperCase(core.charAt(0)) + core.substring(1));
         }
         if (thai == null && depth < 3) {
@@ -231,9 +202,7 @@ public final class ThaiText {
                 }
             }
         } catch (Exception ignored) {
-            // A broken phrase table leaves text in English rather than breaking every screen.
         }
-        // The most specific pattern wins: "Rewards at level {}" before "{} level {}".
         rules.sort((a, b) -> Integer.compare(b.weight(), a.weight()));
         return new Phrases(Collections.unmodifiableMap(exact), java.util.List.copyOf(rules));
     }

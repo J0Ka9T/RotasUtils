@@ -9,9 +9,6 @@ import net.minecraft.util.Mth;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/**
- * Floating XP numbers that appear when XP is gained. Different colors per source.
- */
 @Environment(EnvType.CLIENT)
 public final class FloatingXpText {
     private static final Deque<FloatingXp> floatingXpList = new ArrayDeque<>();
@@ -20,10 +17,6 @@ public final class FloatingXpText {
     private FloatingXpText() {
     }
 
-    /**
-     * Add a floating XP number. sourceKey determines color:
-     * mob_kill=green, boss_kill=red, quest=blue, crafting=orange, default=gold.
-     */
     public static void add(long amount, String sourceKey, int screenX, int screenY) {
         if (amount <= 0 || floatingXpList.size() >= MAX_VISIBLE) {
             return;
@@ -52,7 +45,7 @@ public final class FloatingXpText {
     }
 
     private static class FloatingXp {
-        private static final int DURATION = 60; // 3 seconds
+        private static final int DURATION = 60;
         private final long amount;
         private final int color;
         private final int startX;
@@ -81,12 +74,10 @@ public final class FloatingXpText {
             int textAlpha = (int) (255 * alpha);
 
             String text = "+" + amount + " XP";
-            // Subtle glow
             graphics.drawString(Minecraft.getInstance().font, text,
                     currentX - 1, currentY, (textAlpha / 4 << 24) | (color & 0x00FFFFFF), false);
             graphics.drawString(Minecraft.getInstance().font, text,
                     currentX + 1, currentY, (textAlpha / 4 << 24) | (color & 0x00FFFFFF), false);
-            // Main text
             graphics.drawString(Minecraft.getInstance().font, text,
                     currentX, currentY, (textAlpha << 24) | (color & 0x00FFFFFF), false);
 

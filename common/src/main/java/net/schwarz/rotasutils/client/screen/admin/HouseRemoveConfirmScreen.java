@@ -11,7 +11,6 @@ import net.schwarz.rotasutils.client.screen.RotasScreen;
 import net.schwarz.rotasutils.client.screen.Sfx;
 import net.schwarz.rotasutils.client.screen.Ui;
 
-/** Explicit confirmation surface for removing an unoccupied house definition. */
 @Environment(EnvType.CLIENT)
 public final class HouseRemoveConfirmScreen extends RotasScreen {
     private final HouseScreenActions.EditorContext context;
@@ -71,8 +70,6 @@ public final class HouseRemoveConfirmScreen extends RotasScreen {
             send("house_remove", payload);
             submitted = true;
             Sfx.remove();
-            // Keep the editor instance so a failed server response still exposes
-            // the same typed draft and revision token.
             if (editor != null) {
                 minecraft.setScreen(editor);
             } else {

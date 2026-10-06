@@ -13,12 +13,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Everything one quest billboard knows.
- *
- * <p>Boards only store quest ids, never quest copies, so republishing a quest is
- * immediately visible on every board that lists it.
- */
 public final class BoardConfig {
     private String id;
     private String name = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.board.default_name");
@@ -34,7 +28,6 @@ public final class BoardConfig {
     private int screenColor = 0xFF3BE8FF;
     private String featuredQuestId = "";
 
-    // Quest pool -----------------------------------------------------------
     private final List<String> questIds = new ArrayList<>();
     private final Set<String> categoryFilters = new LinkedHashSet<>();
     private final Set<DangerRank> rankFilters = new LinkedHashSet<>();
@@ -43,14 +36,12 @@ public final class BoardConfig {
     private final Set<String> eventPool = new LinkedHashSet<>();
     private final Set<String> emergencyPool = new LinkedHashSet<>();
 
-    // Rotation -------------------------------------------------------------
     private Rotation rotation = Rotation.NEVER;
     private int rotationSlots = 6;
     private long lastRotationEpochSeconds;
     private final List<String> rotatedSelection = new ArrayList<>();
     private long rotationSeed = 1;
 
-    // Availability ---------------------------------------------------------
     private int minPlayerLevel;
     private int maxPlayerLevel;
     private DangerRank requiredClearance;
@@ -59,7 +50,6 @@ public final class BoardConfig {
     private int scheduleStartHour;
     private int scheduleEndHour;
 
-    // Behaviour ------------------------------------------------------------
     private boolean allowAccept = true;
     private boolean allowTurnIn = true;
     private boolean allowClaim = true;
@@ -442,10 +432,6 @@ public final class BoardConfig {
         return tag;
     }
 
-    /**
-     * Deep copy of this board under a new id, used by the admin "Duplicate" action.
-     * Round-tripping through NBT keeps the copy honest as fields are added.
-     */
     public BoardConfig copyAs(String newId) {
         CompoundTag tag = save();
         tag.putString("id", newId);
@@ -539,7 +525,6 @@ public final class BoardConfig {
             return net.schwarz.rotasutils.util.ThaiText.label("board_rotation", this, display);
         }
 
-        /** 0 = manual only, -1 = recomputed per player on every open. */
         public int periodSeconds() {
             return periodSeconds;
         }

@@ -21,14 +21,6 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Talking to a configured NPC.
- *
- * <p>The screen is a view of a decision the server already made: it shows the line for the
- * state the server resolved and the quests the server said this character may offer, and
- * every button asks the server to do the thing rather than doing it. A stale screen can
- * therefore only ask for something that is refused, never sneak an accept through.</p>
- */
 @Environment(EnvType.CLIENT)
 public class NpcDialogueScreen extends RotasScreen {
     private static final long REVEAL_MS_PER_CHAR = 18L;
@@ -43,7 +35,6 @@ public class NpcDialogueScreen extends RotasScreen {
     private static final int DIALOGUE_TEXT_SELECTED = 0xFF2A1A10;
     private static final int SHADOW = 0x8A000000;
 
-    /** One thing the player can do here. */
     private record Option(String label, String detail, int color, String action, String questId) {
     }
 
@@ -74,7 +65,6 @@ public class NpcDialogueScreen extends RotasScreen {
         this.offers.addAll(offers);
     }
 
-    /** The synced definition when there is one, otherwise the copy that came with the packet. */
     private NpcDef npc() {
         NpcDef synced = ClientState.npc(npcId);
         return synced == null ? fallback : synced;
@@ -156,6 +146,9 @@ public class NpcDialogueScreen extends RotasScreen {
             if (!npc.boardId().isEmpty() && ClientState.board(npc.boardId()) != null) {
                 options.add(new Option(L.t("rotasutils.npc.board",
                         ClientState.board(npc.boardId()).name()), "", Ui.TEXT, "board", ""));
+            }
+            if (npc.role().hasScreen() && npc.role() != NpcDef.Role.MERCHANT && npc.role() != NpcDef.Role.BOARD_KEEPER) {
+                options.add(new Option(npc.role().display(), "", Ui.TEXT, "shop", ""));
             }
             if (npc.hasShop()) {
                 options.add(new Option(L.t("rotasutils.npc.trade"),
@@ -249,7 +242,6 @@ public class NpcDialogueScreen extends RotasScreen {
             }
             case "journal" -> minecraft.setScreen(new MainMenuScreen(MainMenuScreen.Tab.JOURNAL));
             case "leave" -> onClose();
-            // Reading a contract in progress is client-side; nothing needs the server.
             default -> minecraft.setScreen(new QuestDetailScreen(option.questId(),
                     npc() == null ? "" : npc().boardId(), this));
         }
@@ -372,6 +364,10 @@ public class NpcDialogueScreen extends RotasScreen {
         if (npc != null && !npc.farewell().isBlank() && minecraft != null && minecraft.player != null) {
             minecraft.player.displayClientMessage(
                     Component.literal(npc.name() + ": " + npc.farewell()), false);
+            var voice = npc.voiceSound("farewell");
+            if (voice != null) {
+                minecraft.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(voice, npc.voicePitch() / 100f));
+            }
         }
         super.onClose();
     }

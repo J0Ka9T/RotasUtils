@@ -19,11 +19,6 @@ import net.schwarz.rotasutils.data.ParamSpec;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Mining sites without commands. Left: every site. Right: the chosen site's settings and loot, plus
- * the in-world tools - add or remove the block you are looking at, scan an area around you for one
- * block type, refill now. The server re-sends this screen after every action.
- */
 @Environment(EnvType.CLIENT)
 public class MineAdminScreen extends RotasScreen {
     private static final int ROW = 24;
@@ -32,7 +27,6 @@ public class MineAdminScreen extends RotasScreen {
     private final CompoundTag state;
     private String selected;
     private int scroll;
-    /** Unsaved form text by field, so a rebuild (resize, picker) keeps what was typed. */
     private final Map<String, String> form = new LinkedHashMap<>();
     private String scanBlock = "minecraft:iron_ore";
     private String scanRadius = "6";
@@ -106,7 +100,6 @@ public class MineAdminScreen extends RotasScreen {
         place(Ui.primaryButton(Ui.text("Save"), b -> save()), row[4], footer, picked, pickFirst);
         if (!picked) return;
 
-        // Form: two columns of short fields, then loot, then in-world tools.
         int formX = guiLeft + 16 + LIST_W + 12;
         int formW = guiLeft + guiWidth - 16 - formX;
         int half = (formW - 8) / 2;
@@ -134,7 +127,6 @@ public class MineAdminScreen extends RotasScreen {
         loot.setValueListener(value -> form.put("loot", value));
         addRenderableWidget(loot);
 
-        // In-world tools: act on where the admin stands or looks.
         int toolsY = guiTop + guiHeight - 30 - 26;
         int[][] tools = ButtonRow.fit(formX, formW, 92, 92, 120, 40, 24, 64);
         place(Ui.button(Ui.text("+ Block I look at"), b -> send("mine_add_look", idTag())), tools[0], toolsY, true, "");

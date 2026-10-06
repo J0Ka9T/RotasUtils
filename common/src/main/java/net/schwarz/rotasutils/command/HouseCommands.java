@@ -25,6 +25,7 @@ final class HouseCommands {
                 .executes(context -> menu(context.getSource()))
                 .then(Commands.literal("menu").executes(context -> menu(context.getSource())))
                 .then(Commands.literal("list").executes(context -> list(context.getSource())))
+                .then(Commands.literal("available").executes(context -> available(context.getSource())))
                 .then(Commands.literal("leave").then(id().executes(context -> player(context.getSource(),
                         (p, d) -> HousePlayerService.leave(p, d, value(context))))))
                 .then(Commands.literal("buyslot").then(id().executes(context -> player(context.getSource(),
@@ -40,6 +41,8 @@ final class HouseCommands {
                 .then(Commands.literal("setowner").requires(HouseCommands::admin)
                         .then(id().then(Commands.argument("player", GameProfileArgument.gameProfile())
                                 .executes(context -> { UUID target = profile(context); return player(context.getSource(), (p, d) -> HousePlayerService.setOwner(p, d, value(context), target)); }))))
+                .then(Commands.literal("tp").then(id().executes(context -> teleport(context.getSource(), value(context)))))
+                .then(Commands.literal("members").then(id().executes(context -> members(context.getSource(), value(context)))))
                 .then(Commands.literal("here").executes(context -> here(context.getSource())))
                 .then(Commands.literal("info").then(id().executes(context -> info(context.getSource(), value(context)))))
                 .then(Commands.literal("rent").then(id().executes(context -> rent(context.getSource(), value(context)))))
@@ -48,6 +51,24 @@ final class HouseCommands {
                 .then(Commands.literal("wand").requires(HouseCommands::admin).executes(context -> wand(context.getSource())))
                 .then(Commands.literal("remove").requires(HouseCommands::admin)
                         .then(id().executes(context -> remove(context.getSource(), value(context)))))
+                .then(Commands.literal("new").requires(HouseCommands::admin)
+                        .then(Commands.argument("tier", StringArgumentType.word()).suggests((context, builder) -> {
+                                    RotasData.get(context.getSource().getServer()).houseConfig().tiers().keySet().forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .then(Commands.argument("name", StringArgumentType.greedyString())
+                                        .executes(context -> create(context.getSource(),
+                                                HouseNaming.uniqueId(StringArgumentType.getString(context, "name"),
+                                                        RotasData.get(context.getSource().getServer()).houses().keySet()),
+                                                StringArgumentType.getString(context, "tier"), StringArgumentType.getString(context, "name"))))))
+                .then(Commands.literal("config").requires(HouseCommands::admin)
+                        .executes(context -> configShow(context.getSource()))
+                        .then(Commands.literal("preset")
+                                .then(Commands.argument("preset", StringArgumentType.word()).suggests((context, builder) -> {
+                                            HouseConfigPresets.ALL.forEach(p -> builder.suggest(p.id()));
+                                            return builder.buildFuture();
+                                        })
+                                        .executes(context -> configPreset(context.getSource(), StringArgumentType.getString(context, "preset"))))))
                 .then(Commands.literal("create").requires(HouseCommands::admin)
                         .then(Commands.argument("house", StringArgumentType.word())
                                 .then(Commands.argument("tier", StringArgumentType.word())
@@ -75,11 +96,57 @@ final class HouseCommands {
         data.houses().values().forEach(def -> source.sendSuccess(() -> Component.literal(describe(data, def)),false));
         return data.houses().size();
     }
+    private static int available(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        var found = HousePlayerService.finder(player, RotasData.get(player.server), 10);
+        if (found.isEmpty()) { source.sendSuccess(() -> Component.literal(net.schwarz.rotasutils.util.ThaiText.t("rotasutils.house.finder.empty")), false); return 0; }
+        for (var listing : found) {
+            String where = listing.sameDimension() ? listing.distance() + " m" : listing.dimension();
+            source.sendSuccess(() -> Component.literal(net.schwarz.rotasutils.util.ThaiText.t("rotasutils.house.finder.line",
+                    listing.name(), listing.size(), where, listing.deposit(), listing.maintenance(), listing.id()))
+                    .withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                            net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND, "/rotas house rent " + listing.id()))), false);
+        }
+        return found.size();
+    }
     private static int here(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player=source.getPlayerOrException(); RotasData data=RotasData.get(player.server);
         HouseDefinition def=HouseRegistry.at(data.houses().values(), player.level().dimension().location().toString(), player.blockPosition());
         if (def==null) { source.sendSuccess(() -> Component.literal("No house here."), false); return 0; }
         source.sendSuccess(() -> Component.literal(describe(data, def)), false); return 1;
+    }
+    private static boolean belongs(ServerPlayer player, RotasData data, String id) {
+        HouseTenancy tenancy = data.houseTenancy(id);
+        return BoardService.isAdmin(player, data) || player.getUUID().equals(tenancy.owner()) || tenancy.members().contains(player.getUUID());
+    }
+    private static int teleport(CommandSourceStack source, String id) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException(); RotasData data = RotasData.get(player.server); HouseDefinition def = data.house(id);
+        if (def == null) { source.sendFailure(Component.literal("Unknown house: " + id)); return 0; }
+        if (!belongs(player, data, id)) { source.sendFailure(Component.literal("That house is not yours.")); return 0; }
+        var level = player.server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                new net.minecraft.resources.ResourceLocation(def.bounds().dimension())));
+        if (level == null) { source.sendFailure(Component.literal("That house is in a world that is not loaded.")); return 0; }
+        var spot = HouseHome.spot(def.bounds(), new HouseHome.Blocks() {
+            public boolean solid(int x, int y, int z) { return level.getBlockState(new net.minecraft.core.BlockPos(x, y, z)).isSolid(); }
+            public boolean passable(int x, int y, int z) {
+                var at = new net.minecraft.core.BlockPos(x, y, z);
+                return level.getBlockState(at).getCollisionShape(level, at).isEmpty();
+            }
+        });
+        player.teleportTo(level, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, player.getYRot(), player.getXRot());
+        source.sendSuccess(() -> Component.literal("Welcome home to " + def.name() + "."), false);
+        return 1;
+    }
+    private static int members(CommandSourceStack source, String id) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException(); RotasData data = RotasData.get(player.server); HouseDefinition def = data.house(id);
+        if (def == null) { source.sendFailure(Component.literal("Unknown house: " + id)); return 0; }
+        if (!belongs(player, data, id)) { source.sendFailure(Component.literal("That house is not yours.")); return 0; }
+        HouseTenancy tenancy = data.houseTenancy(id);
+        String owner = tenancy.owner() == null ? "nobody" : HousePlayerService.name(player.server, tenancy.owner());
+        String names = tenancy.members().isEmpty() ? "none"
+                : String.join(", ", tenancy.members().stream().map(m -> HousePlayerService.name(player.server, m)).sorted().toList());
+        source.sendSuccess(() -> Component.literal(def.name() + " - owner: " + owner + "; members (" + tenancy.members().size() + "): " + names), false);
+        return tenancy.members().size();
     }
     private static int info(CommandSourceStack source,String id) { RotasData data=RotasData.get(source.getServer()); var def=data.house(id); if(def==null){source.sendFailure(Component.literal("Unknown house: "+id));return 0;} var tenancy=data.houseTenancy(id); source.sendSuccess(()->Component.literal(describe(data, def)+" | members "+tenancy.members().size()),false); return 1; }
     private static int wand(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException { ServerPlayer player=source.getPlayerOrException(); RewardService.give(player,new ItemStack(net.schwarz.rotasutils.registry.RotasRegistry.HOUSE_WAND.get())); return 1; }
@@ -91,6 +158,32 @@ final class HouseCommands {
         if (!action.success()) { source.sendFailure(Component.literal(action.message())); return 0; }
         HouseDefinition def = data.house(id);
         source.sendSuccess(() -> Component.literal("Created house "+describe(data, def)), true);
+        return 1;
+    }
+    private static String span(long millis) {
+        long days = millis / 86_400_000L, hours = millis % 86_400_000L / 3_600_000L, minutes = millis % 3_600_000L / 60_000L;
+        return (days > 0 ? days + "d " : "") + (hours > 0 ? hours + "h " : "") + (minutes > 0 || (days == 0 && hours == 0) ? minutes + "m" : "").trim();
+    }
+    private static int configShow(CommandSourceStack source) {
+        HouseConfig c = RotasData.get(source.getServer()).houseConfig();
+        String preset = HouseConfigPresets.ALL.stream().filter(p -> HouseConfigPresets.matches(p, c)).map(HouseConfigPresets.Preset::label).findFirst().orElse("custom");
+        source.sendSuccess(() -> Component.literal("House rules (" + preset + "): rent every " + span(c.paymentIntervalMillis()) + ", reminded " + span(c.reminderLeadMillis())
+                + " ahead, grace " + span(c.graceMillis()) + ", buyout x" + c.buyoutMultiplier() + ", " + c.baseMemberLimit() + " members (+"
+                + c.maxPurchasedMemberSlots() + " at " + c.memberSlotPrice() + "), currency " + c.currency() + ", " + c.tiers().size() + " tiers."), false);
+        source.sendSuccess(() -> Component.literal("Presets: " + String.join(", ", HouseConfigPresets.ALL.stream().map(HouseConfigPresets.Preset::id).toList())
+                + " - /rotas house config preset <name>"), false);
+        return 1;
+    }
+    private static int configPreset(CommandSourceStack source, String id) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var preset = HouseConfigPresets.find(id);
+        if (preset.isEmpty()) { source.sendFailure(Component.literal("Unknown preset: " + id + ". Try " + String.join(", ", HouseConfigPresets.ALL.stream().map(HouseConfigPresets.Preset::id).toList()))); return 0; }
+        ServerPlayer player = source.getPlayerOrException(); RotasData data = RotasData.get(player.server);
+        HouseConfig made = preset.get().applyTo(data.houseConfig());
+        HouseAdminService.Action action = ServerActions.houseAdminService(player, data).saveConfig(player.getUUID(), new HouseAdminService.ConfigRequest(
+                made.currency(), made.paymentIntervalMillis(), made.reminderLeadMillis(), made.graceMillis(), made.buyoutMultiplier(), made.baseMemberLimit(),
+                made.memberSlotPrice(), made.maxPurchasedMemberSlots(), new java.util.ArrayList<>(made.tiers().values()), data.houseConfig().revision()));
+        if (!action.success()) { source.sendFailure(Component.literal(action.message())); return 0; }
+        source.sendSuccess(() -> Component.literal("House rules set to " + preset.get().label() + ": " + preset.get().blurb()), true);
         return 1;
     }
     private static int remove(CommandSourceStack source,String id) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -115,7 +208,6 @@ final class HouseCommands {
         return profiles.iterator().next().getId();
     }
     private interface PlayerAction { HousePlayerService.Result run(ServerPlayer player, RotasData data); }
-    /** Runs a house action as the calling player; the service already told them the outcome. */
     private static int player(CommandSourceStack source, PlayerAction action) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player=source.getPlayerOrException();
         HousePlayerService.Result result=action.run(player, RotasData.get(player.server));

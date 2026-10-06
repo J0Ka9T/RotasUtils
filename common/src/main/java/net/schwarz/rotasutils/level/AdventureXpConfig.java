@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.level;
 
 import net.minecraft.nbt.CompoundTag;
 
-/** Bounded tuning for risk-based XP and repeated-kill decay. */
 public final class AdventureXpConfig {
     private double trivialFloor = 0.10;
     private double dangerousCap = 1.75;
@@ -11,7 +10,6 @@ public final class AdventureXpConfig {
     private int discoveryXp = 150;
     private int distanceMilestoneBlocks = 1000;
     private int distanceMilestoneXp = 100;
-    /** Server ticks of play time that forgive one remembered kill of the same monster type. */
     private long repetitionWindowTicks = 6000;
 
     public double trivialFloor() { return trivialFloor; }

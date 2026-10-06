@@ -8,12 +8,6 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Locks an ability onto something before its cutscene begins. A small cone round the crosshair picks
- * the living thing the player is plainly aiming at, so the player does not need pixel-perfect aim;
- * with nothing in the cone it falls back to the point the crosshair rests on, or a point straight
- * ahead. Everything is decided here, on the server.
- */
 public final class TargetFinder {
     private TargetFinder() {
     }
@@ -33,7 +27,6 @@ public final class TargetFinder {
                 continue;
             }
             double angle = Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, to.normalize().dot(look)))));
-            // Something close is easy to aim at and something far is hard: widen the cone with proximity.
             if (angle > coneDegrees + 8.0 / Math.max(1.0, distance / 4.0) || !player.hasLineOfSight(e)) {
                 continue;
             }

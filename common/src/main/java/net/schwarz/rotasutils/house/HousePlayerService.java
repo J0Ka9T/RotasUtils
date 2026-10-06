@@ -14,17 +14,9 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Everything a player does with a house: rent, pay, buy out, give it back, and manage who else may
- * build in it. The house screen and the {@code /rotas house} commands both come through here, so a
- * rule is checked once and every refusal reads the same in either place.
- *
- * <p>The money rules stay in {@link HouseService}; this class picks the house, applies the result,
- * tells the player in their language and resyncs, so the world outline and screen follow at once.</p>
- */
 public final class HousePlayerService {
-    /** Online players this close can be added as members from the screen without typing a name. */
     private static final double INVITE_RANGE = 24.0;
+    public static final int FINDER_ROWS = 6;
 
     private HousePlayerService() {
     }
@@ -32,13 +24,7 @@ public final class HousePlayerService {
     public record Result(boolean success, String message) {
     }
 
-    // Choosing a house ------------------------------------------------------------------------------
-
-    /**
-     * The house a screen or command means: the one named, else the one the player stands in, else the
-     * first one they own, else the first one they belong to. Null when there is none.
-     */
-    public static HouseDefinition pick(ServerPlayer player, RotasData data, String requested) {
+public static HouseDefinition pick(ServerPlayer player, RotasData data, String requested) {
         if (requested != null && !requested.isBlank()) {
             return data.house(requested);
         }
@@ -60,9 +46,7 @@ public final class HousePlayerService {
         return member;
     }
 
-    // Actions ---------------------------------------------------------------------------------------
-
-    public static Result rent(ServerPlayer player, RotasData data, String id) {
+public static Result rent(ServerPlayer player, RotasData data, String id) {
         return money(player, data, id, (service, tenancy, house) ->
                 service.rent(tenancy, player.getUUID(), data.houseTier(house), System.currentTimeMillis(), tenancy.revision()));
     }
@@ -77,7 +61,6 @@ public final class HousePlayerService {
                 service.buyout(tenancy, player.getUUID(), data.houseTier(house), tenancy.revision()));
     }
 
-    /** The owner hands the house back (nothing is refunded); a member leaves it. */
     public static Result leave(ServerPlayer player, RotasData data, String id) {
         HouseDefinition house = data.house(id);
         if (house == null) {
@@ -141,14 +124,14 @@ public final class HousePlayerService {
         return done(player, data, "rotasutils.msg.house.result.member_removed", name(player.server, target));
     }
 
-    /** One more member slot for the configured price, up to the configured cap. */
     public static Result buySlot(ServerPlayer player, RotasData data, String id) {
         HouseConfig config = data.houseConfig();
         HouseTenancy tenancy = data.house(id) == null ? null : data.houseTenancy(id);
         if (tenancy == null || !player.getUUID().equals(tenancy.owner())) {
             return tell(player, false, "rotasutils.msg.house.result.not_owner");
         }
-        if (tenancy.purchasedMemberSlots() >= config.maxPurchasedMemberSlots()) {
+        if (tenancy.purchasedMemberSlots() >= config.maxPurchasedMemberSlots()
+                || memberLimit(config, tenancy) >= HouseTenancy.MAX_MEMBERS) {
             return tell(player, false, "rotasutils.msg.house.result.no_more_slots");
         }
         var profile = data.progress(player.getUUID());
@@ -160,13 +143,11 @@ public final class HousePlayerService {
         data.putHouseTenancy(id, new HouseTenancy(tenancy.status(), tenancy.owner(), tenancy.members(),
                 tenancy.nextPaymentAt(), tenancy.graceEndsAt(), tenancy.overdueCharge(),
                 tenancy.purchasedMemberSlots() + 1, tenancy.revision() + 1));
+        data.audit(player.getGameProfile().getName() + " house_buy_slot " + id + " price=" + config.memberSlotPrice());
         return done(player, data, "rotasutils.msg.house.result.slot_bought", memberLimit(config, data.houseTenancy(id)));
     }
 
-    // Administration --------------------------------------------------------------------------------
-
-    /** Clears a house back to available, e.g. for an abandoned build. Members go with the owner. */
-    public static Result evict(ServerPlayer admin, RotasData data, String id) {
+public static Result evict(ServerPlayer admin, RotasData data, String id) {
         HouseDefinition house = data.house(id);
         if (house == null) {
             return tell(admin, false, "rotasutils.msg.house.result.not_found");
@@ -178,10 +159,6 @@ public final class HousePlayerService {
         return done(admin, data, "rotasutils.msg.house.result.evicted", house.name());
     }
 
-    /**
-     * Hands a house to a player as an active rental starting now, keeping its members (except the new
-     * owner, who cannot also be a member). Used to fix mistakes or move a house between players.
-     */
     public static Result setOwner(ServerPlayer admin, RotasData data, String id, UUID owner) {
         HouseDefinition house = data.house(id);
         if (house == null) {
@@ -199,10 +176,7 @@ public final class HousePlayerService {
         return done(admin, data, "rotasutils.msg.house.result.owner_set", house.name(), name(admin.server, owner));
     }
 
-    // Screen state ----------------------------------------------------------------------------------
-
-    /** The house screen's payload for the house {@link #pick} chooses; {@code found} false when none. */
-    public static CompoundTag view(ServerPlayer player, RotasData data, String requested) {
+public static CompoundTag view(ServerPlayer player, RotasData data, String requested) {
         CompoundTag tag = new CompoundTag();
         HouseConfig config = data.houseConfig();
         tag.putLong("gold", data.progress(player.getUUID()).rpg().currency(config.currency()));
@@ -210,6 +184,7 @@ public final class HousePlayerService {
         HouseDefinition house = pick(player, data, requested);
         if (house == null) {
             tag.putBoolean("found", false);
+            tag.put("available", available(player, data));
             return tag;
         }
         HouseTenancy tenancy = data.houseTenancy(house.id());
@@ -275,7 +250,26 @@ public final class HousePlayerService {
         return tag;
     }
 
-    /** Administrator: saves a house's own price, guest access and welcome line. */
+    public static java.util.List<HouseFinder.Listing> finder(ServerPlayer player, RotasData data, int limit) {
+        return HouseFinder.available(data.houses().values(), data::houseTenancy, data::houseTier,
+                player.level().dimension().location().toString(), player.getX(), player.getZ(), limit);
+    }
+
+    private static ListTag available(ServerPlayer player, RotasData data) {
+        ListTag list = new ListTag();
+        for (HouseFinder.Listing listing : finder(player, data, FINDER_ROWS)) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("id", listing.id());
+            entry.putString("name", listing.name());
+            entry.putLong("deposit", listing.deposit());
+            entry.putLong("maintenance", listing.maintenance());
+            entry.putString("size", listing.size());
+            entry.putInt("distance", listing.distance());
+            list.add(entry);
+        }
+        return list;
+    }
+
     public static Result saveSettings(ServerPlayer admin, RotasData data, String id, CompoundTag payload) {
         if (!net.schwarz.rotasutils.server.BoardService.isAdmin(admin, data)) {
             return tell(admin, false, "rotasutils.msg.admin_only");
@@ -296,7 +290,6 @@ public final class HousePlayerService {
         return done(admin, data, "rotasutils.msg.house.result.settings_saved", house.name());
     }
 
-    /** Houses the player owns or belongs to, for the screen's switcher. */
     private static ListTag mine(ServerPlayer player, RotasData data) {
         ListTag list = new ListTag();
         for (HouseDefinition house : data.houses().values()) {
@@ -311,9 +304,7 @@ public final class HousePlayerService {
         return list;
     }
 
-    // Helpers ---------------------------------------------------------------------------------------
-
-    public static int memberLimit(HouseConfig config, HouseTenancy tenancy) {
+public static int memberLimit(HouseConfig config, HouseTenancy tenancy) {
         return Math.min(HouseTenancy.MAX_MEMBERS, config.baseMemberLimit() + tenancy.purchasedMemberSlots());
     }
 
@@ -325,7 +316,6 @@ public final class HousePlayerService {
         }
     }
 
-    /** A player's name, online or from the profile cache, falling back to a short id. */
     public static String name(MinecraftServer server, UUID id) {
         ServerPlayer online = server.getPlayerList().getPlayer(id);
         if (online != null) {
@@ -392,7 +382,6 @@ public final class HousePlayerService {
         return new Result(success, message);
     }
 
-    /** A change that others can see: tell the player, then resync everyone's house outlines. */
     private static Result done(ServerPlayer player, RotasData data, String key, Object... args) {
         data.setDirty();
         Result result = tell(player, true, key, args);

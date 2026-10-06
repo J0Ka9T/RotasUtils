@@ -17,15 +17,6 @@ import net.schwarz.rotasutils.entity.CelestialFxEntity;
 
 import java.util.List;
 
-/**
- * Draws the Abyss school (darkness). Where Celestial is light, Abyss is its absence: the <b>shape
- * is carried by alpha-blended dark layers</b> (smoke, void cores, swirls, cracks) that genuinely
- * darken the world behind them, and additive light is used only for thin violet and crimson rims,
- * coronas and embers - "anti-light" with a burning edge. Additive layers are drawn after the dark
- * ones so rims sit on top.
- *
- * <p>Palette: void black, deep violet, crimson-magenta, pale lilac for the hottest edge.</p>
- */
 @Environment(EnvType.CLIENT)
 public class AbyssFxRenderer extends CelestialFxRenderer {
     private static final ResourceLocation A_RUNES = abyss("sigil_runes");
@@ -40,7 +31,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
     private static final float[] CRIMSON = {0.95f, 0.1f, 0.4f};
     private static final float[] LILAC = {0.85f, 0.65f, 1.0f};
 
-    // 3D surface styles: dark lit bodies with glowing rims.
     private static final Mesh3D.Style SHADE_FLESH = new Mesh3D.Style(0.06f, 0.02f, 0.09f, 0.55f, 0.18f, 0.95f, 0.9f, 2.6f);
     private static final Mesh3D.Style MAW_FLESH = new Mesh3D.Style(0.09f, 0.015f, 0.04f, 0.85f, 0.1f, 0.3f, 0.6f, 3.0f);
     private static final Mesh3D.Style BONE = new Mesh3D.Style(0.62f, 0.56f, 0.66f, 0.9f, 0.25f, 0.5f, 0.45f, 3.0f);
@@ -79,14 +69,7 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    // ---- Spells ---------------------------------------------------------------------------------
-
-    /**
-     * Ink Eel (3D): a solid, lit ink body - a tube whose radius swells behind the head and tapers to a
-     * whip tail, undulating as it swims - with a glowing violet fresnel rim, two pairs of flapping fins
-     * (flattened ellipsoids), a lilac eye and crimson photophores; ink drips from the tail.
-     */
-    private void shadowBolt(CelestialFxEntity fx, float age) {
+private void shadowBolt(CelestialFxEntity fx, float age) {
         Vec3 dir = fx.targetPos();
         Vec3 head = fx.boltPos(age);
         float in = smooth(0, 2, age);
@@ -130,7 +113,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /** Void Burst: black smoke blooms outward, a crimson rune ring snaps open, embers fly. */
     private void voidBurst(CelestialFxEntity fx, float age) {
         Vec3 c = here();
         float t = Mth.clamp(age / fx.life(), 0, 1);
@@ -152,11 +134,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /**
-     * Hands from Below (3D): a pool of liquid night with a raised glossy meniscus and ripples; solid,
-     * lit shadow hands rise from it - forearm, palm, five jointed fingers - with glowing violet rims and
-     * crimson nails. Each creature inside gets a hand that closes around it on the damage tick.
-     */
     private void grasp(CelestialFxEntity fx, float age) {
         Vec3 c = here().add(0, 0.03, 0);
         float life = fx.life();
@@ -166,7 +143,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         darkTex(SMOKE, c, X, Z, R * 1.3f * open, BLACK, 0.7f, seed);
         darkTex(GLOW, c, X, Z, R * 1.05f * open, BLACK, 0.95f, 0);
         darkTex(GLOW, c, X, Z, R * 0.95f * open, BLACK, 0.95f, 0);
-        // Meniscus: a low glossy ring around the pool's edge.
         if (open > 0.05f) {
             int m = 40;
             Vec3[] rim = new Vec3[m + 1];
@@ -206,7 +182,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /** One solid shadow hand: swaying forearm, a flat palm and five three-joint fingers. */
     private void hand(Vec3 base, Vec3 palm, float size, float grip, float time, float a, int id) {
         if (a <= 0.02f) return;
         Vec3[] arm = new Vec3[7];
@@ -259,7 +234,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         return out;
     }
 
-    /** Void Ray: an anti-light beam - a black core with burning crimson edges and a void swirl at the hand. */
     private void voidRay(CelestialFxEntity fx, float age, float pt) {
         Entity owner = fx.owner();
         if (owner == null) return;
@@ -278,8 +252,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         Vec3 tip = muzzle.add(dir.scale(reach));
         Vec3 u = perpendicular(dir), v = dir.cross(u);
         float w = 0.85f * grow * (0.96f + 0.04f * Mth.sin(age * 60));
-        // Dark core first, then the burning edges on top. The tubes give it a body that reads down
-        // its own length, from the caster's eye, where the flat strips thin to a line.
         glowTube(muzzle, tip, w * 0.8f, w * 2.4f, VIOLET, 0.25f, 0.8f);
         glowTube(muzzle, tip, w * 0.7f, w * 1.15f, CRIMSON, 0.7f, 2.6f);
         strip(muzzle, tip, w * 2.6f, w * 2.6f, VIOLET, VIOLET, 0.28f, 0.28f);
@@ -309,12 +281,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /**
-     * The Watcher (3D): a lit eyeball with a crimson fresnel rim hangs above the caster, turning to
-     * track the nearest enemy. Real eyelids (sphere shells) open, hold, blink shut at tick 22-26 and
-     * half-reopen; eight tentacles sway behind it. The blink (tick 26, the damage tick) throws a ring
-     * of dark thorns up out of the ground that races outward.
-     */
     private void eclipse(CelestialFxEntity fx, float age) {
         Vec3 c = here();
         float R = fx.radius();
@@ -325,14 +291,12 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         Entity caster = fx.owner();
         Vec3 ahead = caster == null ? Vec3.ZERO : caster.getLookAngle().multiply(1, 0, 1).normalize().scale(3.0);
         Vec3 eye = c.add(ahead).add(0, 4.4 + 0.2 * Mth.sin(age * 0.12f), 0);
-        // Where it looks: the nearest enemy, else the camera.
         Vec3 look = cam;
         double best = R * R * 4;
         for (LivingEntity e : inside(fx, c, R * 2)) {
             double d = e.position().distanceToSqr(c);
             if (d < best) { best = d; look = e.getEyePosition(); }
         }
-        // Half towards its prey, half towards the viewer, so the caster always sees the iris.
         Vec3 f = look.subtract(eye).normalize().add(cam.subtract(eye).normalize().scale(0.8)).normalize();
         Vec3 worldUp = new Vec3(0, 1, 0);
         Vec3 ay = worldUp.subtract(f.scale(worldUp.dot(f)));
@@ -345,7 +309,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         else open = 0.75f * smooth(27, 31, age);
 
         glow(eye, re * 4.5f, CRIMSON, 0.18f * grow);
-        // Tentacles from the back of the eye.
         int seed = fx.seedValue();
         Mesh3D.Style flesh = new Mesh3D.Style(0.16f, 0.05f, 0.2f, 0.75f, 0.2f, 1.0f, 0.9f, 2.2f);
         for (int k = 0; k < 8; k++) {
@@ -366,9 +329,7 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
             mesh.tube(pts, rad, 8, flesh);
             flare(pts[n - 1], 0.35f, k, CRIMSON, 0.8f * grow);
         }
-        // Eyeball.
         mesh.sphere(eye, ax, ay, f, re, re, re, 16, 22, new Mesh3D.Style(0.06f, 0.02f, 0.08f, 1.0f, 0.15f, 0.4f, 1.1f, 2.4f));
-        // Iris on the front surface and a raised slit pupil.
         if (open > 0.05f) {
             float dilate = age < 22 ? 0.09f + 0.03f * Mth.sin(age * 0.5f) : 0.16f;
             Vec3 front = eye.add(f.scale(re * 1.005));
@@ -377,7 +338,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
             mesh.sphere(eye.add(f.scale(re * 0.97)), ax, ay, f, re * dilate, re * 0.45f, re * 0.08f, 6, 12,
                     new Mesh3D.Style(0.0f, 0.0f, 0.0f, 0.9f, 0.1f, 0.3f, 0.6f, 3f));
         }
-        // Eyelids: upper and lower shells closing to the equator.
         float upper = Mth.lerp(open, Mth.HALF_PI + 0.03f, 0.55f);
         float lower = Mth.lerp(open, Mth.HALF_PI - 0.03f, Mth.PI - 0.6f);
         float lidR = re * 1.07f;
@@ -386,11 +346,9 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         mesh.sphereSection(eye, ax, ay, f, lidR, lidR, lidR, lower, Mth.PI, 10, 24, lid);
         ring(eye.add(ay.scale(Mth.cos(upper) * lidR)), ax, f, Mth.sin(upper) * lidR, 0.08f, CRIMSON, 0.9f * grow, 40, false, 0);
         ring(eye.add(ay.scale(Mth.cos(lower) * lidR)), ax, f, Mth.sin(lower) * lidR, 0.08f, CRIMSON, 0.9f * grow, 40, false, 0);
-        // Gaze line while it hunts.
         if (age > 10 && age < 22 && best < R * R * 4) {
             strip(eye.add(f.scale(re)), look, 0.06f, 0.01f, CRIMSON, CRIMSON, 0.5f, 0.15f);
         }
-        // Blink: a ring of dark thorns bursts out of the ground and races outward.
         if (age >= 26) {
             float t = Mth.clamp((age - 26) / 16f, 0, 1);
             float front = R * (0.25f + 1.1f * easeOut(t));
@@ -409,7 +367,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /** Shade Step: the caster dissolves into smoke at the start and re-forms at the end, joined by a dark wake. */
     private void shadeStep(CelestialFxEntity fx, float age) {
         Vec3 from = fx.originPos().add(0, 1, 0);
         Vec3 to = fx.targetPos().add(0, 1, 0);
@@ -430,11 +387,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /**
-     * The Maw (3D): raised fleshy lips (a wobbling torus) and an inner gum ring around a throat that
-     * falls away into the earth; two rows of solid bone fangs curve inward over it; thick tongues reach
-     * out to the creatures being dragged in. In the last ticks the fangs snap shut in the middle.
-     */
     private void pit(CelestialFxEntity fx, float age) {
         Vec3 c = here().add(0, 0.04, 0);
         float life = fx.life();
@@ -444,7 +396,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         float bite = smooth(life - 9, life - 3, age);
         float gape = open * (1 - 0.75f * bite);
         int seed = fx.seedValue();
-        // Throat: dark discs sliding away from the viewer fake a deep shaft; crimson glow far below.
         Vec3 away = new Vec3(c.x - cam.x, 0, c.z - cam.z);
         away = away.lengthSqr() < 1e-4 ? X : away.normalize();
         darkTex(SMOKE, c, X, Z, mouth * 1.5f * open, BLACK, 0.6f, seed);
@@ -457,7 +408,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
         Vec3 deep = c.add(away.scale(mouth * 0.45 * gape));
         sprite(GLOW, deep.add(0, 0.02, 0), X, Z, mouth * 0.4f * gape, CRIMSON, 0.7f + 0.25f * Mth.sin(age * 0.3f), 0);
-        // Lips and gums.
         for (int layer = 0; layer < 2; layer++) {
             int n = 48;
             Vec3[] lip = new Vec3[n + 1];
@@ -471,7 +421,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
             }
             mesh.tube(lip, rad, 14, MAW_FLESH);
         }
-        // Fangs: curved bone cones leaning in, converging on the centre to bite.
         for (int row = 0; row < 2; row++) {
             int count = row == 0 ? 14 : 10;
             for (int i = 0; i < count; i++) {
@@ -488,7 +437,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
                 mesh.tube(new Vec3[]{base.add(0, -0.2, 0), base, mid, tip}, new float[]{br * 1.1f, br, br * 0.6f, 0f}, 12, BONE);
             }
         }
-        // Tongues.
         int t = 0;
         for (LivingEntity e : inside(fx, c, R)) {
             if (t++ >= 5) break;
@@ -519,7 +467,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /** Night Veil: smoke coils around the caster and a faint dark pool follows them. */
     private void veil(CelestialFxEntity fx, float age, float pt) {
         Entity owner = fx.owner();
         if (owner == null) return;
@@ -536,7 +483,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /** Oblivion charge: darkness is drawn into a black orb before the hands; the ground splits beneath. */
     private void oblivionCharge(CelestialFxEntity fx, float age, float pt) {
         Entity owner = fx.owner();
         if (owner == null) return;
@@ -564,10 +510,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         darkTex(GLOW, core, camRight, camUp, orb, BLACK, 1, 0);
     }
 
-    /**
-     * Oblivion: a black sphere swallows the light for 25 ticks, then bursts - smoke dome, crimson
-     * shock rings, a field of cracks and dark pillars erupting around the seal.
-     */
     private void oblivion(CelestialFxEntity fx, float age) {
         Vec3 c = here();
         float life = fx.life();
@@ -582,7 +524,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         voidCurtain(c, R * 1.05f, 3f + 5f * collapseT, 0.6f * fade, age);
         Vec3 heart = c.add(0, 3, 0);
         if (burst <= 0) {
-            // Collapse: a sphere of night grows while light and smoke are pulled into it.
             float s = 0.5f + R * 0.45f * easeOut(collapseT);
             glow(heart, s * 4, CRIMSON, 0.4f);
             for (int i = 0; i < 26; i++) {
@@ -598,7 +539,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
             darkTex(SWIRL, heart, camRight, camUp, s * 1.3f, BLACK, 0.8f, -age * 0.25f);
             return;
         }
-        // Burst.
         float flash = 1 - smooth(0, 0.15f, burst);
         glow(heart, R * 5 * (0.3f + flash), CRIMSON, 0.6f * flash + 0.2f * fade);
         flare(heart, R * 3 * flash + 1, 0, LILAC, flash);
@@ -613,7 +553,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
             if (tk <= 0) continue;
             ring(c.add(0, 0.2, 0), X, Z, R * 1.8f * easeOut(tk), 0.8f * (1 - tk) + 0.2f, k == 1 ? VIOLET : CRIMSON, (1 - tk) * fade, 96, false, 0);
         }
-        // Dark pillars erupting around the seal, with crimson edges.
         for (int k = 0; k < 8; k++) {
             float a = k * TAU / 8 + CelestialFxRenderer.hash(seed, k) * 0.4f;
             Vec3 base = c.add(Mth.cos(a) * R * 0.85, 0, Mth.sin(a) * R * 0.85);
@@ -623,17 +562,12 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         }
     }
 
-    /**
-     * Ink splash: ribbons wrap the target, then burst into droplets that fly on real ballistic arcs,
-     * streak while falling and leave stains on the ground that spread and slowly fade.
-     */
     private void inkSplash(CelestialFxEntity fx, float age) {
         Vec3 c = here();
         float life = fx.life();
         float r = fx.radius();
         int seed = fx.seedValue();
         double ground = groundY(fx, c);
-        // Wrap: three ink ribbons coil tighter around the impact for the first 8 ticks.
         float wrap = 1 - smooth(4, 9, age);
         for (int k = 0; k < 3; k++) {
             Vec3 prev = null;
@@ -647,7 +581,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
             }
         }
         if (age < 3) glow(c, 3f * r, CRIMSON, 0.5f * (1 - age / 3));
-        // Droplets on ballistic arcs.
         float g = 0.045f;
         for (int i = 0; i < 20; i++) {
             Vec3 d = sphereDir(seed, i);
@@ -671,12 +604,10 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
                 if (since < 8) ring(at, X, Z, grow * 1.3f, 0.03f, CRIMSON, 0.7f * (1 - since / 8), 16, false, 0);
             }
         }
-        // The big central stain under the impact.
         float fade = 1 - smooth(life - 25, life, age);
         darkTex(SMOKE, new Vec3(c.x, ground + 0.015, c.z), X, Z, r * (0.6f + 0.5f * easeOut(Math.min(1, age / 10f))), BLACK, 0.9f * fade, seed);
     }
 
-    /** Ground height under an effect, found once and cached on the entity. */
     private double groundY(CelestialFxEntity fx, Vec3 c) {
         if (Double.isNaN(fx.clientGroundY)) {
             HitResult down = fx.level().clip(new ClipContext(c, c.add(0, -12, 0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, fx));
@@ -685,7 +616,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         return fx.clientGroundY;
     }
 
-    /** Additive textured rectangle (half-sizes hw, hh) in the plane of {@code u, v}. */
     private void rect(ResourceLocation tex, Vec3 c, Vec3 u, Vec3 v, float hw, float hh, float[] col, float a) {
         if (a <= 0.003f) return;
         var buf = buffers.getBuffer(VfxRenderTypes.lightTextured(tex));
@@ -696,7 +626,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         texVertex(buf, c.subtract(ru).add(rv), 0, 1, col, a);
     }
 
-    /** Alpha-blended (darkening) textured rectangle. */
     private void rectDark(ResourceLocation tex, Vec3 c, Vec3 u, Vec3 v, float hw, float hh, float[] col, float a) {
         if (a <= 0.003f) return;
         var buf = buffers.getBuffer(VfxRenderTypes.glowTextured(tex));
@@ -707,10 +636,7 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         entityVertex(buf, c.subtract(ru).add(rv), 0, 1, col, a);
     }
 
-    // ---- Abyss elements -------------------------------------------------------------------------
-
-    /** Dark seal: heavy black underlay, violet rune ring, crimson arcane seal, lilac edge pass. */
-    private void abyssSigil(Vec3 c, Vec3 u, Vec3 v, float r, float a, float spinOuter, float spinInner) {
+private void abyssSigil(Vec3 c, Vec3 u, Vec3 v, float r, float a, float spinOuter, float spinInner) {
         if (a <= 0.003f || r <= 0.01f) return;
         darkTex(GLOW, c, u, v, r * 1.35f, BLACK, 0.8f * a, 0);
         sprite(A_RUNES, c, u, v, r, VIOLET, a, spinOuter);
@@ -718,7 +644,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         sprite(A_RUNES, c, u, v, r, LILAC, 0.25f * a, spinOuter);
     }
 
-    /** Violet wall rising from a circle; darker and lower-key than Celestial's curtain. */
     private void voidCurtain(Vec3 c, float r, float height, float a, float time) {
         if (a <= 0.003f || r <= 0.05f || height <= 0.05f) return;
         int seg = 48;
@@ -739,7 +664,6 @@ public class AbyssFxRenderer extends CelestialFxRenderer {
         texVertex(buf, p0.add(0, height, 0), scroll + 1, 0, col, 0);
     }
 
-    /** A clawing shadow tendril: curved, tapering, swaying; black body with a crimson edge and tip. */
     private void tendril(Vec3 base, float lean, float height, float time, float width, float a) {
         if (height <= 0.05f || a <= 0.003f) return;
         int n = 8;

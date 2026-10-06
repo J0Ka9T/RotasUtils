@@ -16,11 +16,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RotasNetworkContentTest {
-    /**
-     * Serializer-boundary coverage only; this is not authenticated ServerPlayer proof.
-     * The public ServerPlayer entry recomputes permission and held-wand selection before
-     * delegating to this package-private encoder context.
-     */
     @Test
     void serializerBoundaryScopesAdminSnapshotAndUsesActorSelection() {
         SharedConstants.tryDetectVersion();

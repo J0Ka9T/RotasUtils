@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.client.screen.player;
 
 import java.util.List;
 
-/** Counts the quest states players use to decide what to open next. */
 public record QuestBoardSummary(int total, int available, int active, int ready) {
     public enum State { AVAILABLE, ACTIVE, READY, LOCKED }
 

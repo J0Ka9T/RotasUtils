@@ -8,13 +8,6 @@ import net.schwarz.rotasutils.network.RotasNetwork;
 import net.schwarz.rotasutils.progress.PlayerProgress;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * The season track: rungs on the rank points a player already earns.
- *
- * <p>Nothing here earns points - quests, bosses, the daily track and the bestiary already do. A claim is
- * recorded in the existing claimed-rewards set under the season id and the rung's point value, so a
- * rung is paid once per season however the rungs are reordered, and a new season id starts over.</p>
- */
 public final class SeasonTrackService {
     private SeasonTrackService() {
     }
@@ -26,12 +19,10 @@ public final class SeasonTrackService {
         return SeasonService.rules(data).seasonTrack;
     }
 
-    /** The claimed-rewards key for one rung of the current season. */
     public static String key(SeasonRules.SeasonTrackRules track, SeasonRules.SeasonTier tier) {
         return "season:" + track.seasonId + ":" + tier.points;
     }
 
-    /** Which rungs are claimed, as a bitmask over the current rung order, for the screen. */
     public static int claimedMask(RotasData data, PlayerProgress progress) {
         SeasonRules.SeasonTrackRules track = rules(data);
         int mask = 0;
@@ -57,7 +48,6 @@ public final class SeasonTrackService {
             return new Result(false, ThaiText.t("rotasutils.msg.season_track.not_yet",
                     rung.points - progress.rankPoints()));
         }
-        // The claimed set is the record; adding to it first means a re-entrant payout cannot pay twice.
         if (!progress.claimOnce(key(track, rung))) {
             return new Result(false, ThaiText.t("rotasutils.msg.daily.already"));
         }
@@ -68,7 +58,6 @@ public final class SeasonTrackService {
                 rung.name.isBlank() ? String.valueOf(tier + 1) : rung.name, TrackRewards.describe(paid)));
     }
 
-    /** How many reached rungs are still waiting to be claimed. */
     public static int waiting(RotasData data, PlayerProgress progress) {
         SeasonRules.SeasonTrackRules track = rules(data);
         if (track == null || !track.enabled) {

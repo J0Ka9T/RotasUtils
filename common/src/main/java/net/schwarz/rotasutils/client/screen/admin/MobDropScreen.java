@@ -16,13 +16,6 @@ import net.schwarz.rotasutils.client.screen.Ui;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * What one kind of mob drops, and whether each of those drops is switched on.
- *
- * <p>The list is the mob's real loot table as the server rolled it, so the chances are the ones players
- * meet. Clicking a row turns that drop off for this mob only; the global switch is on the item browser
- * instead, and a row already off everywhere says so rather than pretending the click did something.</p>
- */
 @Environment(EnvType.CLIENT)
 public class MobDropScreen extends RotasScreen {
     private static final int ROWS = 9;
@@ -134,7 +127,6 @@ public class MobDropScreen extends RotasScreen {
         }
     }
 
-    /** {@code "12% x3"}, or the word for an item an administrator added by hand. */
     private static String chanceText(Row row) {
         if (row.chance() < 0) {
             return L.t("rotasutils.drops.added_by_admin");

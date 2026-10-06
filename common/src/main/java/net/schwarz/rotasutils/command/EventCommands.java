@@ -12,9 +12,6 @@ import net.schwarz.rotasutils.event.EventType;
 import net.schwarz.rotasutils.server.EventService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * {@code /rotas events}: the same catalogue the screen shows, for a console or a command block.
- */
 final class EventCommands {
     private EventCommands() {
     }
@@ -101,7 +98,6 @@ final class EventCommands {
         source.sendSuccess(() -> Component.literal(ThaiText.t("rotasutils.cmd.events.list",
                 rules.size(), EventService.enabled(data))), false);
         for (var rule : rules) {
-            // A rule that changes nothing is not worth a line; the screen shows those.
             if (rule.enabled && rule.xpMultiplier == 1.0 && rule.xpFlat == 0 && rule.gold == 0
                     && "OFF".equals(rule.announce) && rule.filter.isEmpty()) {
                 continue;

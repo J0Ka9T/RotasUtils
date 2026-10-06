@@ -14,8 +14,8 @@ from PIL import Image
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "common", "src", "main", "resources",
                    "assets", "rotasutils", "textures", "environment")
-W, H = 10.8, 24.5            # aperture half width / half height, degrees
-BOX_W, BOX_H = 30.0, 34.0     # rim/abyss quad half extents, degrees
+W, H = 10.8, 24.5
+BOX_W, BOX_H = 30.0, 34.0
 
 NAVY = np.array([0.02, 0.03, 0.09])
 INDIGO = np.array([0.14, 0.10, 0.62])
@@ -374,7 +374,7 @@ def flare(width=1024, height=256):
     y, x = np.mgrid[0:height, 0:width]
     x = (x + 0.5) / width * 2 - 1
     y = (y + 0.5) / height * 2 - 1
-    ax, ay = x, y * 0.25              # quad is 4:1; measure the round parts in square units
+    ax, ay = x, y * 0.25
     r = np.sqrt(ax * ax + ay * ay)
     streak = np.exp(-(y / 0.035) ** 2) * np.exp(-np.abs(x) / 0.32)
     streak += np.exp(-(y / 0.012) ** 2) * np.exp(-np.abs(x) / 0.7) * 0.6

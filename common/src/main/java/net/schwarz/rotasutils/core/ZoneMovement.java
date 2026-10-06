@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.core;
 
 import net.minecraft.nbt.CompoundTag;
 
-/** Ways of moving that a zone forbids for non-administrators. */
 public record ZoneMovement(boolean noElytra, boolean noFlight, boolean noEnderPearlIn) {
     public static final ZoneMovement NONE = new ZoneMovement(false, false, false);
 

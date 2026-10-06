@@ -22,11 +22,11 @@ import efanim as E
 import poser as P
 
 P.REALISM.update(
-    item_segment=((0, -0.36, -0.29), (0, 0.5, -0.29)),   # stock butt -> muzzle
+    item_segment=((0, -0.36, -0.29), (0, 0.5, -0.29)),
     foregrip=(0, 0.22, -0.18),
     wrist_envelope=False,
     two_handed=True,
-    rear_grip=(0, 0.06, -0.22),   # receiver: the off hand's hold for near-vertical aims
+    rear_grip=(0, 0.06, -0.22),
 )
 BUTT = Vector((0, -0.36, -0.29))
 IDLE_YAW = 0.0
@@ -72,7 +72,6 @@ def w(f, base=None, **ch):
     return k(f, base, bodyframe=(0, 0, 0), **ch)
 
 
-# ---- stances ------------------------------------------------------------------------------
 HOLD_ARMS = chest(dict(handR=(0.1, 0.25, 1.05), poleR=(0.45, -0.4, -0.8), handL=(-0.15, 0.45, 0.95),
                        poleL=(-0.55, -0.2, -0.8), **gun((-0.6, 0.7, -0.38), (0, 0.3, 1))))
 READY = dict(P.idle_key() or {}, support=(1, 0, 0), bodyframe=(1, 0, 0), **HOLD_ARMS)
@@ -87,7 +86,7 @@ def at(f, dy=0.0, **ch):
 
 HOLD = [
     at(0),
-    k(60, READY, **chest(dict(handR=(0.1, 0.25, 1.062), **gun((-0.6, 0.71, -0.35), (0, 0.3, 1))))),  # breath in
+    k(60, READY, **chest(dict(handR=(0.1, 0.25, 1.062), **gun((-0.6, 0.71, -0.35), (0, 0.3, 1))))),
     at(120),
 ]
 
@@ -96,7 +95,6 @@ RUN_ARMS = chest(dict(handR=(0.22, 0.16, 1.0), poleR=(0.5, -0.3, -0.8), handL=(-
 HOLD_RUN = [k(0, READY, **RUN_ARMS), k(20, READY, **dict(RUN_ARMS, handR=(0.22, 0.16, 1.015))),
             k(40, READY, **RUN_ARMS)]
 
-# aim: bladed stance, stock in the right shoulder pocket, barrel on the look direction
 AIM_BODY = dict(root=(0, 0, -0.02, -45, 2, 0), torso=(0, 2, 0), chest=(0, 2, 0), head=(45, 0, 0),
                 footR=(0.2, -0.1, 0.011), footL=(-0.14, 0.2, 0.011), support=(1, 0, 0), bodyframe=(0, 0, 0),
                 poleR=(0.7, -0.3, -0.6), poleL=(-0.5, -0.1, -0.85), handL=(-0.1, 0.6, 1.3))
@@ -114,8 +112,7 @@ AIM_DOWN = aim((0, 0.25, -1), (0, 1, 0.25), (0.14, 0.08, 1.28), grip2=P.REALISM[
                root=(0, 0.02, -0.05, -45, 18, 0), torso=(0, 12, 0), chest=(0, 14, 0), head=(45, 40, 0))
 AIM_LYING = AIM_MID
 
-# ---- attacks --------------------------------------------------------------------------------
-AUTO1 = [  # Stock Jab: flip the gun back over the shoulder, drive the butt forward
+AUTO1 = [
     at(0),
     w(8, root=(0, -0.05, -0.07, -35, -3, 0), torso=(-5, 0, 0), chest=(-10, -3, 0), head=(20, 0, 0),
       **(dict(handR=(0.34, -0.02, 1.22), poleR=(0.7, -0.2, -0.5), **gun((0.2, -0.6, 0.78), (0, -0.8, -0.6)),
@@ -128,7 +125,6 @@ AUTO1 = [  # Stock Jab: flip the gun back over the shoulder, drive the butt forw
     w(19, root=(0, 0.25, -0.1, 5, 10, 0), torso=(4, 3, 0), chest=(8, 5, 0), head=(-16, -6, 0),
       **(dict(handR=(0.16, 0.44, 1.2), handL=(-0.44, -0.08, 1.05), **gun((0.14, -0.5, 0.85), (0, -0.85, -0.5)))),
       support=(0, 0, 0)),
-    # the right hand brings the gun back to low ready first, so the foregrip comes to the left hand
     w(25, root=(0, 0.25, -0.08, -22, 6, 0), torso=(0, 2, 0), chest=(0, 3, 0), head=(18, -4, 0),
       **(dict(handR=(0.16, 0.34, 1.0), poleR=(0.45, -0.4, -0.8), **gun((-0.55, 0.72, -0.4), (0, 0.3, 1)),
               handL=(-0.3, 0.42, 1.0), poleL=(-0.55, -0.25, -0.8))), support=(0, 0, 0)),
@@ -138,7 +134,7 @@ AUTO1 = [  # Stock Jab: flip the gun back over the shoulder, drive the butt forw
     at(43, 0.25),
 ]
 
-AUTO2 = [  # Barrel Sweep: two-handed club swing, left to right
+AUTO2 = [
     at(0),
     w(9, root=(0, -0.04, -0.09, 34, 2, -4), torso=(8, 0, 0), chest=(18, 0, 0), head=(-50, 0, 0),
       **(dict(handR=(-0.18, 0.02, 1.12), poleR=(0.3, -0.4, -0.85), **gun((-0.85, -0.45, 0.2), (0, 0, 1)),
@@ -159,7 +155,7 @@ AUTO2 = [  # Barrel Sweep: two-handed club swing, left to right
     at(41, 0.2),
 ]
 
-AUTO3 = [  # Point-Blank: step in, hip-fire, recoil
+AUTO3 = [
     at(0),
     w(10, root=(0, -0.02, -0.12, -20, 10, 0), torso=(0, 4, 0), chest=(0, 4, 0), head=(-5, -10, 0),
       **(dict(handR=(0.32, 0.16, 1.02), poleR=(0.5, -0.4, -0.75), **gun((0, 1, -0.15), (0, 0.15, 1)),
@@ -168,7 +164,6 @@ AUTO3 = [  # Point-Blank: step in, hip-fire, recoil
     w(16, root=(0, 0.32, -0.14, 0, 14, 0), torso=(0, 5, 0), chest=(0, 6, 0), head=(-25, -12, 0),
       **(dict(handR=(0.28, 0.52, 1.06), poleR=(0.5, -0.4, -0.75), **gun((-0.15, 1, 0), (0, 0, 1)))),
       footL=(-0.18, 0.42, 0.011)),
-    # recoil: the muzzle kicks up and the body rocks back
     w(21, root=(0, 0.27, -0.1, 0, 2, 0), torso=(0, -3, 0), chest=(0, -6, 0), head=(-25, 4, 0),
       **(dict(handR=(0.28, 0.44, 1.16), **gun((-0.14, 0.75, 0.66), (0, -0.66, 0.75)))),
       footL=(-0.18, 0.42, 0.011)),
@@ -195,11 +190,11 @@ def tremble(f, dx, dz):
     return brace(f, **s)
 
 
-OVERDRIVE = [  # innate: Annihilation Overdrive
+OVERDRIVE = [
     at(0),
     brace(12),
     tremble(30, 0.004, 0.003), tremble(46, -0.004, 0.006), tremble(62, 0.006, -0.002), tremble(74, -0.005, 0.008),
-    brace(80),  # the Lance fires (charge started at 0.2 s; EF event), recoil slams the body back
+    brace(80),
     brace(86, root=(0, -0.3, -0.1, -45, -6, 0), chest=(0, -8, 0), head=(45, 8, 0),
           **shoulder((0.2, -0.2, 1.42), (0, 0.85, 0.52), (0, -0.52, 0.85)),
           footR=(0.24, -0.4, 0.011), footL=(-0.2, 0.1, 0.011)),

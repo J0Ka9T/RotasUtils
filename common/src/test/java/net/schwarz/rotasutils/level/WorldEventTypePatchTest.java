@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The admin world-event forms patch one block of the season JSON; the parser must keep the result. */
 class WorldEventTypePatchTest {
     private static JsonObject root() {
         return JsonParser.parseString(new SeasonRules().toJson()).getAsJsonObject();

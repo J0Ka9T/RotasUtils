@@ -33,7 +33,6 @@ class ScreenScaleTest {
 
     @Test
     void hubKeepsScaleTwoOnSmallMonitorsWhereTheDesignCanvasWouldNeedScaleOne() {
-        // Windowed 1366x768, windowed 1280x720 and windowed 1024x768 client areas.
         assertEquals(1, ScreenScale.effectiveScale(2, 1350, 705));
         assertEquals(2, ScreenScale.hubScale(2, 1350, 705));
         assertEquals(2, ScreenScale.hubScale(2, 1264, 657));

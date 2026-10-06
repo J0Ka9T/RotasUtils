@@ -51,28 +51,13 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
-/**
- * Nemeses (ศัตรูคู่แค้น): the monster that killed you remembers you.
- *
- * <p>A hostile mob that kills a player may rise. It is named after how it killed, gains levels through
- * the ordinary {@link MonsterService#relevel}, is made tougher with owner-scoped modifiers exactly like a
- * boss phase, and stops despawning. Each further player it kills ranks it up. When its body is lost it
- * is not gone: after a cooldown it finds the player it last killed and comes for them. Only a player
- * ends it, and whoever does takes a bounty and a trophy weapon named after it.</p>
- *
- * <p>The record is world data; the body is the entity carrying the nemesis tag whose UUID the record
- * names. A stale copy that reloads with an old chunk is refused when it is added, the same way a stable
- * horse's old copy is. The once-a-second pass looks up at most {@code maxActive} bodies by UUID.</p>
- */
 public final class NemesisService {
     public static final String TAG_PREFIX = "rotas_nemesis:";
     private static final String OWNER = "nemesis";
     private static final String HEALTH = "minecraft:generic.max_health";
     private static final String DAMAGE = "minecraft:generic.attack_damage";
-    /** Server-side player variable: the second this player's death last raised a nemesis. */
     private static final String LAST_RISE = "rpg.nemesis.last_rise";
 
-    /** "id|player" -> the second a nemesis last spoke to that player. */
     private static final Map<String, Long> TAUNTS = new HashMap<>();
     private static int sweepTicks;
 
@@ -92,7 +77,6 @@ public final class NemesisService {
         return System.currentTimeMillis() / 1000L;
     }
 
-    /** The nemesis id an entity carries: 0 when it is none, -1 when its tag is unreadable. */
     public static int idOf(Entity entity) {
         for (String tag : entity.getTags()) {
             if (tag.startsWith(TAG_PREFIX)) {
@@ -106,7 +90,6 @@ public final class NemesisService {
         return 0;
     }
 
-    /** Refuses a nemesis body that is not the one its record names: a copy left behind in an old chunk. */
     public static EventResult onAdd(Entity entity, Level level) {
         if (level.isClientSide || level.getServer() == null) {
             return EventResult.pass();
@@ -119,10 +102,7 @@ public final class NemesisService {
         return nemesis != null && entity.getUUID().equals(nemesis.body()) ? EventResult.pass() : EventResult.interruptFalse();
     }
 
-    // Rising and growing ---------------------------------------------------------------------------
-
-    /** A player died. If a mob did it, that mob may rise, or - already a nemesis - grow. */
-    public static void onPlayerKilled(ServerPlayer victim, DamageSource source) {
+public static void onPlayerKilled(ServerPlayer victim, DamageSource source) {
         RotasData data = RotasData.get(victim.server);
         SeasonRules.NemesisRules rules = rules(data);
         if (rules == null || !rules.enabled || data.kernel() == null
@@ -151,7 +131,6 @@ public final class NemesisService {
         rise(victim, mob, state, source, data, rules);
     }
 
-    /** Hostile, wild and not already somebody's boss, quest mob or named creature. */
     private static boolean eligible(Mob mob, MonsterState state) {
         if (!BestiaryService.recordable(mob) || mob.getMaxHealth() >= 250.0f
                 || mob.getType().is(net.schwarz.rotasutils.event.RotasEvents.BOSS_TAG)
@@ -165,7 +144,6 @@ public final class NemesisService {
         return !mob.hasCustomName() || (state != null && mob.getCustomName().getString().equals(state.name()));
     }
 
-    /** How many nemeses have killed this player and still exist. */
     public static int hunting(RotasData data, UUID player) {
         int count = 0;
         for (Nemesis nemesis : data.nemeses().values()) {
@@ -234,11 +212,6 @@ public final class NemesisService {
                 nemesis.timesKilled(victim.getUUID())).withStyle(ChatFormatting.DARK_RED));
     }
 
-    /**
-     * Makes a live body look and fight like its record: level, plate, owner-scoped health and damage, no
-     * despawning, no burning in daylight. Idempotent, so the once-a-second pass can call it on every
-     * loaded body and it only does work after an unload, a dimension change or a rank-up.
-     */
     private static void dress(Mob mob, Nemesis nemesis, RotasData data, SeasonRules.NemesisRules rules,
                               boolean force, boolean heal) {
         MonsterService monsters = data.kernel() == null ? null : data.kernel().monsters();
@@ -246,7 +219,6 @@ public final class NemesisService {
             return;
         }
         MonsterState state = monsters.peek(mob);
-        // A body that just arrived is still waiting for its level; naming it now would be overwritten.
         if (state == null && mob.tickCount < 40 && !force) {
             return;
         }
@@ -269,7 +241,6 @@ public final class NemesisService {
             mob.setCustomNameVisible(true);
         }
         if (force || !MonsterService.carriesOwned(mob, OWNER, HEALTH)) {
-            // Keep the share of health it had: a reload clamps health to the unmodified maximum first.
             float share = mob.getMaxHealth() <= 0 ? 1f : mob.getHealth() / mob.getMaxHealth();
             Map<String, MonsterDefinitions.Scale> scales = new TreeMap<>();
             scales.put(HEALTH, new MonsterDefinitions.Scale(NemesisMath.scale(nemesis.rank(), rules.healthPerRank), 0, 0));
@@ -288,13 +259,7 @@ public final class NemesisService {
         }
     }
 
-    // Death ------------------------------------------------------------------------------------------
-
-    /**
-     * A nemesis body died. Slain by a player, it is gone for good and pays; anything else - fire, a fall,
-     * another monster - only loses the body, and it will come back.
-     */
-    public static EventResult onDeath(LivingEntity entity, DamageSource source) {
+public static EventResult onDeath(LivingEntity entity, DamageSource source) {
         if (!(entity instanceof Mob mob) || mob.level().isClientSide || mob.getServer() == null) {
             return EventResult.pass();
         }
@@ -388,11 +353,6 @@ public final class NemesisService {
         RotasNetwork.syncProgress(killer);
     }
 
-    /**
-     * A new weapon named after the nemesis, with its history on the lore. It is always made from the
-     * configured item and never copied from what the mob held: a mob can be holding a player's own gear,
-     * and copying that would duplicate it.
-     */
     private static ItemStack trophy(Nemesis nemesis, SeasonRules.NemesisRules rules, RotasData data, ServerPlayer killer) {
         String configured = nemesis.style() == NemesisMath.Style.RANGED ? rules.trophyRangedItem : rules.trophyItem;
         ResourceLocation id = ResourceLocation.tryParse(configured == null ? "" : configured);
@@ -422,9 +382,7 @@ public final class NemesisService {
                 .withStyle(style -> style.withColor(colour).withItalic(false))));
     }
 
-    // The once-a-second pass ---------------------------------------------------------------------
-
-    public static void tick(MinecraftServer server, RotasData data) {
+public static void tick(MinecraftServer server, RotasData data) {
         SeasonRules.NemesisRules rules = rules(data);
         if (rules == null || !rules.enabled || data.nemeses().isEmpty() || data.kernel() == null) {
             return;
@@ -455,7 +413,6 @@ public final class NemesisService {
         }
     }
 
-    /** The loaded, living body of a record, looked up by UUID in every level. */
     public static Mob body(MinecraftServer server, Nemesis nemesis) {
         if (nemesis.body() == null) {
             return null;
@@ -493,7 +450,6 @@ public final class NemesisService {
         TAUNTS.keySet().removeIf(key -> key.startsWith(prefix));
     }
 
-    /** A nemesis without a body looks for the player it last killed, once its cooldown is over. */
     private static void ambush(MinecraftServer server, RotasData data, Nemesis nemesis, SeasonRules.NemesisRules rules, long now) {
         if (!rules.ambushEnabled || now < nemesis.nextAmbushAt() || nemesis.target() == null) {
             return;
@@ -521,10 +477,6 @@ public final class NemesisService {
         level.playSound(null, target.blockPosition(), SoundEvents.RAVAGER_ROAR, SoundSource.HOSTILE, 1.0f, 0.8f);
     }
 
-    /**
-     * Brings a nemesis' body back near a position. The old body, if one still sits in an unloaded chunk,
-     * is refused when it loads because the record now names the new one. Null when nothing could be placed.
-     */
     public static Mob summon(ServerLevel level, BlockPos center, Nemesis nemesis, RotasData data, SeasonRules.NemesisRules rules) {
         EntityType<?> type = SpawnPlacer.mobType(nemesis.entityType());
         if (type == null) {
@@ -551,10 +503,7 @@ public final class NemesisService {
         return mob;
     }
 
-    // What players read ------------------------------------------------------------------------------
-
-    /** Where a nemesis is, as a rumour: a direction and a rough distance, or where it was last seen. */
-    public static String whereabouts(MinecraftServer server, ServerPlayer viewer, Nemesis nemesis) {
+public static String whereabouts(MinecraftServer server, ServerPlayer viewer, Nemesis nemesis) {
         Mob body = body(server, nemesis);
         boolean here = viewer.level().dimension().location().toString().equals(
                 body != null ? body.level().dimension().location().toString() : nemesis.dimension());
@@ -569,7 +518,6 @@ public final class NemesisService {
         return body != null ? direction : ThaiText.t("rotasutils.nemesis.lurking", direction);
     }
 
-    /** Removes a record and its loaded body, for an administrator. */
     public static boolean remove(MinecraftServer server, RotasData data, int id) {
         Nemesis nemesis = data.nemesis(id);
         if (nemesis == null) {

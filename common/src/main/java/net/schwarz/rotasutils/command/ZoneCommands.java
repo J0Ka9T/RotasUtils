@@ -24,7 +24,6 @@ import net.schwarz.rotasutils.util.ThaiText;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Command shortcuts for the level zones the Zone Wand and the admin screen author. */
 final class ZoneCommands {
     private ZoneCommands() {
     }
@@ -71,6 +70,31 @@ final class ZoneCommands {
                                                 EntityArgument.getPlayer(context, "player"))))))
                         .then(Commands.literal("test").requires(source -> RotasPermissions.allowed(source, RotasPermissions.Capability.EDIT))
                                 .executes(context -> gateTest(context.getSource()))))
+                .then(Commands.literal("near")
+                        .executes(context -> near(context.getSource(), 256))
+                        .then(Commands.argument("blocks", IntegerArgumentType.integer(8, 4096))
+                                .executes(context -> near(context.getSource(), IntegerArgumentType.getInteger(context, "blocks")))))
+                .then(Commands.literal("tp").requires(source -> RotasPermissions.allowed(source, RotasPermissions.Capability.EDIT))
+                        .then(Commands.argument("zone", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    RotasData.get(context.getSource().getServer()).zones().keySet().forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> teleport(context.getSource(), StringArgumentType.getString(context, "zone")))))
+                .then(Commands.literal("enable").requires(source -> RotasPermissions.allowed(source, RotasPermissions.Capability.EDIT))
+                        .then(Commands.argument("zone", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    RotasData.get(context.getSource().getServer()).zones().keySet().forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> enable(context.getSource(), StringArgumentType.getString(context, "zone"), true))))
+                .then(Commands.literal("disable").requires(source -> RotasPermissions.allowed(source, RotasPermissions.Capability.EDIT))
+                        .then(Commands.argument("zone", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    RotasData.get(context.getSource().getServer()).zones().keySet().forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> enable(context.getSource(), StringArgumentType.getString(context, "zone"), false))))
                 .then(Commands.literal("remove").requires(source -> RotasPermissions.allowed(source, RotasPermissions.Capability.EDIT))
                         .then(Commands.argument("zone", StringArgumentType.word())
                                 .suggests((context, builder) -> {
@@ -138,9 +162,19 @@ final class ZoneCommands {
         if (zone==null) { source.sendFailure(Component.literal(ThaiText.t("rotasutils.cmd.zone.unknown", id))); return 0; }
         source.sendSuccess(() -> Component.literal(ThaiText.t("rotasutils.cmd.zone.inspect", zone.id(), zone.revision(),
                 zone.levelLabel(), zone.priority(), zone.areas().size(), zone.excludedAreas().size(), zone.combatRules())), false);
-        source.sendSuccess(() -> Component.literal(ThaiText.t("rotasutils.cmd.zone.valid")
-                + (zone.areas().isEmpty() ? ThaiText.t("rotasutils.cmd.zone.valid_warning") : "")), false);
-        return 1;
+        net.schwarz.rotasutils.core.ZoneSummary.lines(zone).forEach(line ->
+                source.sendSuccess(() -> Component.literal(line), false));
+        var findings = net.schwarz.rotasutils.core.ZoneLint.check(zone, RotasData.get(source.getServer()).zones().values());
+        if (findings.isEmpty()) {
+            source.sendSuccess(() -> Component.literal(ThaiText.t("rotasutils.cmd.zone.valid")), false);
+        }
+        for (var finding : findings) {
+            var text = Component.literal(finding.level().name().charAt(0) + " " + finding.message());
+            source.sendSuccess(() -> text.copy().withStyle(finding.level() == net.schwarz.rotasutils.core.ZoneLint.Level.ERROR
+                    ? net.minecraft.ChatFormatting.RED : finding.level() == net.schwarz.rotasutils.core.ZoneLint.Level.WARNING
+                    ? net.minecraft.ChatFormatting.GOLD : net.minecraft.ChatFormatting.GRAY), false);
+        }
+        return findings.isEmpty() ? 1 : (net.schwarz.rotasutils.core.ZoneLint.hasErrors(findings) ? 0 : 1);
     }
 
     private static int wand(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -157,7 +191,6 @@ final class ZoneCommands {
         return 1;
     }
 
-    /** Lists a zone's spawn points with whether their mob is alive or when it returns. */
     private static int points(CommandSourceStack source, String id) {
         RotasData data = RotasData.get(source.getServer());
         ZoneDef zone = data.zone(id);
@@ -197,7 +230,6 @@ final class ZoneCommands {
         return 1;
     }
 
-    /** Lists every entry requirement of a zone with whether the player passes it. */
     private static int gateCheck(CommandSourceStack source, String id, ServerPlayer target) {
         RotasData data = RotasData.get(source.getServer());
         ZoneDef zone = data.zone(id);
@@ -231,6 +263,76 @@ final class ZoneCommands {
         boolean testing = ZoneGateService.toggleAdminTest(player.getUUID());
         source.sendSuccess(() -> Component.literal(ThaiText.t(testing
                 ? "rotasutils.cmd.zone.gate_test_on" : "rotasutils.cmd.zone.gate_test_off")), false);
+        return 1;
+    }
+
+    private static net.minecraft.world.phys.Vec3 centreOf(ZoneDef zone) {
+        return net.schwarz.rotasutils.server.ZoneAdminTools.centreOf(zone);
+    }
+
+    private static int near(CommandSourceStack source, int blocks) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        RotasData data = RotasData.get(player.server);
+        String dimension = player.level().dimension().location().toString();
+        record Hit(ZoneDef zone, double distance) {
+        }
+        List<Hit> hits = new ArrayList<>();
+        for (ZoneDef zone : data.zones().values()) {
+            if (!zone.enabled() || !zone.appliesTo(dimension)) {
+                continue;
+            }
+            double d = zone.distance(player.getX(), player.getY(), player.getZ());
+            if (d <= blocks) {
+                hits.add(new Hit(zone, d));
+            }
+        }
+        if (hits.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No zone within " + blocks + " blocks."), false);
+            return 0;
+        }
+        hits.sort(java.util.Comparator.comparingDouble(Hit::distance));
+        for (Hit hit : hits) {
+            ZoneDef zone = hit.zone();
+            var centre = centreOf(zone);
+            String way = centre == null ? "everywhere" : compass(centre.x - player.getX(), centre.z - player.getZ());
+            String there = hit.distance() <= 0 ? "you are inside" : Math.round(hit.distance()) + " blocks " + way;
+            source.sendSuccess(() -> Component.literal(zone.name() + " (" + zone.id() + ") Lv " + zone.levelLabel() + " " + zone.danger().label() + " - " + there), false);
+        }
+        return hits.size();
+    }
+
+    static String compass(double dx, double dz) {
+        String[] names = {"east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east"};
+        double angle = Math.toDegrees(Math.atan2(dz, dx));
+        int index = (int) Math.round(((angle % 360) + 360) % 360 / 45.0) % 8;
+        return names[index];
+    }
+
+    private static int teleport(CommandSourceStack source, String id) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        RotasData data = RotasData.get(source.getServer());
+        ZoneDef zone = data.zone(id);
+        if (zone == null) {
+            source.sendFailure(Component.literal(ThaiText.t("rotasutils.cmd.zone.unknown", id)));
+            return 0;
+        }
+        var result = net.schwarz.rotasutils.server.ZoneAdminTools.goTo(source.getPlayerOrException(), zone);
+        if (!result.success()) {
+            source.sendFailure(Component.literal(result.message()));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(result.message()), true);
+        return 1;
+    }
+
+    private static int enable(CommandSourceStack source, String id, boolean on) {
+        RotasData data = RotasData.get(source.getServer());
+        ZoneDef zone = data.zone(id);
+        if (zone == null) {
+            source.sendFailure(Component.literal(ThaiText.t("rotasutils.cmd.zone.unknown", id)));
+            return 0;
+        }
+        var result = net.schwarz.rotasutils.server.ZoneAdminTools.setEnabled(data, zone, on, RotasPermissions.actor(source));
+        source.sendSuccess(() -> Component.literal(result.message()), true);
         return 1;
     }
 

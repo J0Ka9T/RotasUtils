@@ -41,6 +41,7 @@ public final class KernelPlayerContext implements KernelContext {
             case "player.total_xp" -> progress.totalXp();
             case "player.skill_points" -> progress.skillPoints();
             case "player.stat_points" -> progress.rpg().statPoints();
+            case "player.rank" -> progress.highestClearance().ordinal();
             default -> {
                 if (name.startsWith("currency.")) { yield progress.rpg().currency(name.substring(9)); }
                 if (name.startsWith("reputation.")) { yield progress.reputation(name.substring(11)); }
@@ -63,6 +64,9 @@ public final class KernelPlayerContext implements KernelContext {
     @Override
     public String text(String name) {
         checkThread();
+        if (name.equals("player.rank_name")) {
+            return data.progress(player.getUUID()).highestClearance().name();
+        }
         if (name.equals("player.dimension")) {
             return player.level().dimension().location().toString();
         }
@@ -100,7 +104,7 @@ public final class KernelPlayerContext implements KernelContext {
 
     public static Map<String, Function<JsonObject, ConditionEngine.Condition>> requirementAdapters() {
         Map<String, Function<JsonObject, ConditionEngine.Condition>> adapters = new HashMap<>();
-        for (String name : Set.of("MIN_LEVEL", "MAX_LEVEL", "HAS_ITEM", "DIMENSION", "PERMISSION", "PRESTIGE")) {
+        for (String name : Set.of("MIN_LEVEL", "MAX_LEVEL", "HAS_ITEM", "DIMENSION", "PERMISSION", "PRESTIGE", "RANK_CLEARANCE")) {
             adapters.put(name, json -> {
                 Map<String, String> params = new HashMap<>();
                 json.getAsJsonObject("params").entrySet().forEach(entry -> params.put(entry.getKey(), entry.getValue().getAsString()));
@@ -151,6 +155,10 @@ public final class KernelPlayerContext implements KernelContext {
                 default -> {
                     if (spec.key().equals("permission") && !value.isEmpty()) {
                         throw new IllegalArgumentException("Named permissions require a registered permission adapter; use op_level");
+                    }
+                    if (spec.kind() == ParamSpec.ParamKind.RANK
+                            && net.schwarz.rotasutils.quest.DangerRank.byName(value, null) == null) {
+                        throw new IllegalArgumentException("Unknown rank (use F, E, D, C, B, A, S, SS or SSS): " + value);
                     }
                     tag.putString(spec.key(), value);
                 }

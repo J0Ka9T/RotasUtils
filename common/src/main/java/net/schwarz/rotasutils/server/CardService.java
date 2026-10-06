@@ -20,18 +20,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Cards (การ์ด): where they come from, what they fit and what they are worth.
- *
- * <p>A card is the thinnest drop in the game - a few in ten thousand kills - and the one that changes a
- * build. Once it is in a socket its bonus is an ordinary attribute bonus applied with the rest of the
- * player's equipment, so nothing about a card needs its own runtime state.</p>
- */
 public final class CardService {
     private CardService() {
     }
 
-    /** Rebuilds the shared display table from the configuration. Called whenever season.json loads. */
     public static void refreshIndex(RotasData data) {
         SeasonRules.CardRules rules = SeasonService.rules(data).cards;
         Map<String, CardIndex.Entry> entries = new LinkedHashMap<>();
@@ -42,10 +34,6 @@ public final class CardService {
         CardIndex.set(entries);
     }
 
-    /**
-     * One kill's chance at a card. Only a card whose source names this entity - or a card with no source
-     * at all - can drop, so a server decides exactly which monster carries which card.
-     */
     public static void onKill(ServerPlayer killer, RotasData data, LivingEntity entity, String entityId) {
         SeasonRules.CardRules rules = SeasonService.rules(data).cards;
         if (rules == null || !rules.enabled || rules.entries == null || rules.entries.isEmpty()) {
@@ -59,8 +47,9 @@ public final class CardService {
             if (!card.source.isBlank() && !card.source.equalsIgnoreCase(entityId)) {
                 continue;
             }
+            double dropScale = 1.0 + Math.max(0, CombatStats.get(killer.getUUID()).dropRate());
             double chance = net.schwarz.rotasutils.core.FarmingMath.boosted(
-                    card.chance >= 0 ? card.chance : rules.dropChance,
+                    (card.chance >= 0 ? card.chance : rules.dropChance) * dropScale,
                     FarmingService.cardLuck(killer, data),
                     BestiaryService.loot(data, data.progress(killer.getUUID()), entityId));
             if (chance <= 0 || killer.getRandom().nextDouble() >= chance) {
@@ -73,12 +62,10 @@ public final class CardService {
             data.audit(killer.getGameProfile().getName() + " found card " + entry.getKey());
             EventService.fire(killer, data, net.schwarz.rotasutils.event.EventType.CARD_DROP, entry.getKey());
             RotasNetwork.syncProgress(killer);
-            // One kill leaves at most one card; a lucky roll is not a jackpot of every card at once.
             return;
         }
     }
 
-    /** The bonuses the cards in one item contribute. */
     public static List<CharacterStat.Effect> effects(ItemStack stack) {
         List<CharacterStat.Effect> effects = new ArrayList<>();
         for (String id : ItemSockets.cards(stack)) {
@@ -90,7 +77,6 @@ public final class CardService {
         return effects;
     }
 
-    /** What went wrong when a card cannot go into an item, or an empty string when it can. */
     public static String cannotInsert(RotasData data, ItemStack target, String cardId) {
         SeasonRules.CardRules rules = SeasonService.rules(data).cards;
         if (rules == null || !rules.enabled) {
@@ -113,10 +99,6 @@ public final class CardService {
         return "";
     }
 
-    /**
-     * Puts the card the player is holding into one of their items. The card is consumed only once it is
-     * actually in the socket, and a card in a socket stays there until it is prised out again.
-     */
     public static boolean insert(ServerPlayer player, RotasData data, int inventorySlot) {
         ItemStack card = player.getMainHandItem();
         if (!CardItem.isCard(card)) {
@@ -141,7 +123,6 @@ public final class CardService {
         return true;
     }
 
-    /** Punches one socket into the chosen item, consuming a socket punch from the inventory. */
     public static boolean punch(ServerPlayer player, RotasData data, int inventorySlot) {
         SeasonRules.CardRules rules = SeasonService.rules(data).cards;
         ItemStack target = target(player, inventorySlot);
@@ -180,7 +161,6 @@ public final class CardService {
         return true;
     }
 
-    /** The item a screen picked: an inventory slot, or the off-hand when the slot is -1. */
     private static ItemStack target(ServerPlayer player, int inventorySlot) {
         if (inventorySlot < 0) {
             return player.getOffhandItem();

@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.client.render;
 
-/** V4 Apotheosis art direction and performance budget in one reviewable place. */
 public final class EldritchSkyArt {
     public static final float SKY_TAKEOVER = 0.998f;
     public static final float CLOUD_TAKEOVER = 1.0f;

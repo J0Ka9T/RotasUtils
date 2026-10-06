@@ -50,34 +50,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * The Tetrarch of the Four Rifts: the sovereign who steps out where four rifts clash.
- *
- * <p>Level 99999, shown through the same nameplate and target frame as every leveled monster (its
- * name carries the level in the server's own format and the World Boss rank mark), and it owns that
- * level: the monster system does not re-level it ({@link OwnsItsLevel}).</p>
- *
- * <p>It fights with ten {@link TetrarchPower}s, each telegraphed before it lands and each with an
- * answer: step out of the lance's line or the judgement circle, jump the nova, outrun the brand, keep
- * moving over the void, pull against the well, find the one safe quarter of the convergence. Three
- * phases (below two thirds and one third of its health it roars, calls echoes of itself and unlocks
- * more), an enrage below a quarter, a boss bar, per-hit damage caps and a slow floating death.</p>
- *
- * <p>Everything that touches the world runs on the server; clients only see synced state (the
- * power being cast and when, its aim, the shield, the arrival) and draw from it.</p>
- */
 public class TetrarchEntity extends Monster implements OwnsItsLevel {
     public static final int LEVEL = 99999;
-    /** Ticks it spends forming after it arrives; untouchable and still during them. */
     public static final int ARRIVE_TICKS = 70;
     public static final int DEATH_TICKS = 80;
-    /** No single blow takes more than this. */
     private static final float HIT_CAP = 28f;
     private static final float ECHO_HIT_CAP = 20f;
     private static final double ARENA_LEASH = 40.0;
     private static final int MELEE_COOLDOWN = 22;
     private static final int GLOBAL_COOLDOWN = 36;
-    /** Convergence: distance of the four rifts from the Tetrarch. */
     public static final double ULT_RADIUS = 11.0;
 
     private static final EntityDataAccessor<Integer> ARRIVE =
@@ -113,7 +94,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
     private UUID brandTarget;
     private Vec3 brandPos;
     private int brandFuse;
-    /** Starfall: where each shard lands, and how many ticks after the power lands it does. */
     private final List<Vec3> starMarks = new ArrayList<>();
     private final List<Integer> starDelays = new ArrayList<>();
 
@@ -135,7 +115,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
                 .add(Attributes.KNOCKBACK_RESISTANCE, 1.0);
     }
 
-    /** The Tetrarch forming at {@code pos}, as the convergence collapses. */
     public static TetrarchEntity arrive(ServerLevel level, Vec3 pos, float yaw) {
         TetrarchEntity boss = new TetrarchEntity(RotasRegistry.TETRARCH.get(), level);
         boss.moveTo(pos.x, pos.y, pos.z, yaw, 0f);
@@ -169,13 +148,10 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
     }
 
-    // Synced state, read by the renderer ---------------------------------------------------------
-
-    public boolean arriving() {
+public boolean arriving() {
         return entityData.get(ARRIVE) < ARRIVE_TICKS;
     }
 
-    /** 0 while still forming, 1 once solid. */
     public float arrival(float partialTick) {
         int t = entityData.get(ARRIVE);
         return t >= ARRIVE_TICKS ? 1f : Math.min(1f, (t + partialTick) / ARRIVE_TICKS);
@@ -185,7 +161,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return TetrarchPower.byOrdinal(entityData.get(CAST));
     }
 
-    /** Ticks since the current power began, with the frame's fraction. */
     public float castTime(float partialTick) {
         return tickCount - entityData.get(CAST_START) + partialTick;
     }
@@ -211,15 +186,12 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return entityData.get(PHASE);
     }
 
-    /** Direction (x, z) of convergence rift {@code quarter}; the safe quarter is the one its rift faces from. */
     public static Vec3 quarterDirection(int quarter) {
         double angle = Math.PI / 2 * quarter;
         return new Vec3(Math.cos(angle), 0, Math.sin(angle));
     }
 
-    // Tick ---------------------------------------------------------------------------------------
-
-    @Override
+@Override
     public void tick() {
         super.tick();
         if (level().isClientSide) {
@@ -227,7 +199,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             return;
         }
         if (!hasCustomName()) {
-            // Summoned some other way than a convergence: it still wears its level.
             name((ServerLevel) level());
         }
         if (arriving()) {
@@ -258,7 +229,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             home = position();
         }
         if (echo() && (owner == null || !(level.getEntity(owner) instanceof TetrarchEntity master) || !master.isAlive())) {
-            // An echo does not outlive the one it echoes.
             RiftFx.send(level, RiftFx.Kind.TEAR, RiftFx.VIOLET, position(), 0.9f, 14);
             discard();
             return;
@@ -281,7 +251,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         Player target = getTarget() instanceof Player player && player.isAlive() && !player.isSpectator() ? player : null;
         TetrarchPower power = casting();
         if (power != TetrarchPower.ASCENSION && isNoGravity()) {
-            // Reloaded or cut off mid-Ascension: never left hanging in the air.
             setNoGravity(false);
         }
         if (power != null) {
@@ -296,7 +265,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             return;
         }
         if (distanceToSqr(home) > ARENA_LEASH * ARENA_LEASH && cooldowns[TetrarchPower.RIFT_STEP.ordinal()] == 0) {
-            // Dragged too far from where it stepped out: it goes back.
             blink(level, home);
             return;
         }
@@ -323,7 +291,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    /** A ready power in range, weighted; echoes only know the rift step. */
     private TetrarchPower choose(double distance) {
         int total = 0;
         TetrarchPower[] all = TetrarchPower.values();
@@ -367,7 +334,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         Vec3 aim = target == null ? position() : target.getEyePosition();
         switch (power) {
             case VIOLET_LANCE -> {
-                // The aim is locked when it starts charging: that is the line to leave.
                 Vec3 from = lanceOrigin();
                 Vec3 dir = aim.subtract(from).normalize();
                 aim = from.add(dir.scale(power.range));
@@ -377,7 +343,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
                 judgementMarks.clear();
                 for (Player player : players(power.range)) {
                     judgementMarks.add(player.position());
-                    // The circle it will strike, turning under their feet while it charges.
                     RiftFx.send(level, RiftFx.Kind.SIGIL, RiftFx.GOLD, player.position(), 2.8f, power.windup + 2);
                 }
                 level.playSound(null, blockPosition(), SoundEvents.BELL_RESONATE, SoundSource.HOSTILE, 2f, 0.7f);
@@ -453,19 +418,14 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    // Powers -------------------------------------------------------------------------------------
-
-    /** What players see while a power charges, beyond the renderer's own drawing. */
-    private void telegraph(ServerLevel level, TetrarchPower power, int elapsed) {
+private void telegraph(ServerLevel level, TetrarchPower power, int elapsed) {
         if (power == TetrarchPower.VIOLET_LANCE && elapsed == power.windup - 8) {
             riftSound("rift.strain", 1.5f, 1.4f);
         }
         if (power == TetrarchPower.HEAVENS_WHEEL && elapsed % 6 == 0) {
-            // Faint spokes where the wheel will start, so the first gap can be read before it turns.
             drawWheel(level, 0.35f, 7);
         }
         if (power == TetrarchPower.ASCENSION) {
-            // Lifted slowly into the air on its own light.
             Vec3 at = ascendFrom.add(0, ASCEND_HEIGHT * smooth(elapsed / (float) power.windup), 0);
             teleportTo(at.x, at.y, at.z);
             setDeltaMovement(Vec3.ZERO);
@@ -493,7 +453,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             case VIOLET_LANCE -> {
                 Vec3 from = lanceOrigin();
                 Vec3 to = castAim();
-                // From the second phase it fans three lances: the aimed one and one either side.
                 int fan = phase() >= 2 && !echo() ? 1 : 0;
                 java.util.Set<java.util.UUID> struck = new java.util.HashSet<>();
                 for (int side = -fan; side <= fan; side++) {
@@ -517,7 +476,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
                     level.playSound(null, BlockPos.containing(mark), SoundEvents.TRIDENT_THUNDER, SoundSource.HOSTILE, 1.4f, 1.3f);
                     for (Player player : level.getEntitiesOfClass(Player.class, new AABB(mark, mark).inflate(2.8, 3, 2.8),
                             this::fair)) {
-                        // The same circle the telegraph drew, not the box around it.
                         if (Math.hypot(player.getX() - mark.x, player.getZ() - mark.z) > 2.8) {
                             continue;
                         }
@@ -593,7 +551,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    /** Powers that keep acting after they land. */
     private void sustain(ServerLevel level, TetrarchPower power, int t) {
         float mult = enraged() ? 1.3f : 1f;
         switch (power) {
@@ -653,14 +610,11 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    // Heavens Wheel ------------------------------------------------------------------------------
-
-    private static final double WHEEL_REACH = 20.0;
+private static final double WHEEL_REACH = 20.0;
     private int wheelSpin = 1;
     private double wheelAngle;
     private final java.util.Map<java.util.UUID, Integer> wheelHit = new java.util.HashMap<>();
 
-    /** Degrees the wheel turns per tick, {@code t} ticks after it starts: slow, then a gathering rush. */
     public static double wheelSpeed(int t) {
         double ramp = Math.min(1.0, t / 90.0);
         return 1.2 + 3.3 * ramp * ramp;
@@ -681,7 +635,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             double bearing = Math.toDegrees(Math.atan2(offset.z, offset.x));
             for (int spoke = 0; spoke < 4; spoke++) {
                 double gap = Math.abs(Mth.wrapDegrees(bearing - (wheelAngle + spoke * 90.0)));
-                // The spoke is about 1.4 blocks wide either side, whatever the distance.
                 if (gap < Math.toDegrees(1.4 / d)) {
                     Integer last = wheelHit.get(player.getUUID());
                     if (last == null || t - last >= 12) {
@@ -699,7 +652,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    /** The four spokes, each a lance in its own rift's colour, alive for {@code life} ticks. */
     private void drawWheel(ServerLevel level, float size, int life) {
         Vec3 from = position().add(0, 1.1, 0);
         for (int spoke = 0; spoke < 4; spoke++) {
@@ -709,18 +661,14 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    // Ascension ----------------------------------------------------------------------------------
-
-    private static final double ASCEND_HEIGHT = 7.0;
+private static final double ASCEND_HEIGHT = 7.0;
     private Vec3 ascendFrom = Vec3.ZERO;
     private double spiralTurn;
-    /** Pillars waiting to strike: x, y, z, the tick they fall on, and their rift colour. */
     private final java.util.List<double[]> pillars = new java.util.ArrayList<>();
 
     private void tickAscension(ServerLevel level, TetrarchPower power, int t, float mult) {
         int fall = power.active - 14;
         if (t < fall) {
-            // Held aloft while four arms of pillars spiral in towards the spot beneath it.
             teleportTo(ascendFrom.x, ascendFrom.y + ASCEND_HEIGHT + 0.3 * Math.sin(t * 0.2), ascendFrom.z);
             setDeltaMovement(Vec3.ZERO);
             if (t % 8 == 0) {
@@ -758,7 +706,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             RiftFx.send(level, RiftFx.Kind.SIGIL, RiftFx.PRISM, ascendFrom, 12f, 14);
             riftSound("rift.strain", 3f, 0.5f);
         }
-        // The fall: it drops with the sky behind it, and the ground breaks where it lands.
         double k = Math.min(1.0, (t - fall) / 13.0);
         teleportTo(ascendFrom.x, ascendFrom.y + ASCEND_HEIGHT * (1 - k * k), ascendFrom.z);
         if (t == power.active - 1) {
@@ -788,10 +735,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return c * c * (3f - 2f * c);
     }
 
-    /**
-     * Starfall: three circles round each player within reach - one under them, two a step away - each
-     * struck in turn, so standing still is the one thing that surely fails.
-     */
     private void planStarfall(ServerLevel level, TetrarchPower power) {
         starMarks.clear();
         starDelays.clear();
@@ -801,7 +744,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
                         (random.nextDouble() - 0.5) * 7);
                 Vec3 floor = ground(level, at);
                 Vec3 mark = floor == null ? at : floor;
-                // Staggered through the power's active ticks so the shards land one after another.
                 int delay = 4 + (starMarks.size() * 5) % (power.active - 6);
                 starMarks.add(mark);
                 starDelays.add(delay);
@@ -810,7 +752,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    /** Radius of the nova ring {@code t} ticks after it lands. */
     public static double novaRadius(float t) {
         return Math.min(16.0, t * 0.55);
     }
@@ -824,7 +765,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             if (spot == null) {
                 continue;
             }
-            // Facing the Tetrarch; the safe quarter's rift stays open a moment longer, dim.
             float yaw = (float) Math.toDegrees(Math.atan2(dir.x, -dir.z));
             RiftPortalEntity.open(level, spot, yaw, RiftPortalEntity.Kind.CONVERGE, colours[quarter],
                     TetrarchPower.CONVERGENCE.windup + 12);
@@ -866,9 +806,7 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         level.playSound(null, BlockPos.containing(spot), SoundEvents.ENDERMAN_TELEPORT, SoundSource.HOSTILE, 1f, 0.4f);
     }
 
-    // Ongoing effects ----------------------------------------------------------------------------
-
-    private void tickShield() {
+private void tickShield() {
         if (shieldTicks > 0 && --shieldTicks == 0) {
             entityData.set(SHIELD, 0f);
         }
@@ -884,7 +822,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             return;
         }
         if (brandFuse % 10 == 0) {
-            // The brand burns over their head until it goes off.
             RiftFx.send(level, RiftFx.Kind.BURST, RiftFx.CRIMSON, player.position().add(0, player.getBbHeight() + 0.4, 0),
                     0.3f, 8);
         }
@@ -897,7 +834,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             RiftFx.send(level, RiftFx.Kind.SHOCKWAVE, RiftFx.CRIMSON, brandPos, 8f, 18);
             level.playSound(null, player.blockPosition(), SoundEvents.GENERIC_EXPLODE, SoundSource.HOSTILE, 1.5f, 0.8f);
         } else {
-            // Outrun: the brand gutters out harmlessly where they stood.
             RiftFx.send(level, RiftFx.Kind.BURST, RiftFx.DARK, brandPos.add(0, 0.5, 0), 0.6f, 14);
         }
         brandTarget = null;
@@ -926,7 +862,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         riftSound("rift.implode", 2.5f, 0.7f);
         RiftFx.send(level, RiftFx.Kind.BURST, RiftFx.PRISM, position().add(0, 2, 0), 2.5f, 26);
         RiftFx.send(level, RiftFx.Kind.SHOCKWAVE, RiftFx.PRISM, position(), 18f, 28);
-        // The heavens answer: a column onto it, and one of each rift at the four quarters.
         RiftFx.send(level, RiftFx.Kind.PILLAR, RiftFx.PRISM, position(), 3.5f, 40);
         for (int quarter = 0; quarter < 4; quarter++) {
             Vec3 spot = ground(level, position().add(quarterDirection(quarter).scale(12)));
@@ -935,7 +870,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             }
         }
         ClientFxCall.quake(level, position(), 4f, 40);
-        // A new phase always opens with its echoes.
         entityData.set(CAST, -1);
         begin(TetrarchPower.SUMMON_ECHOES, getTarget() instanceof Player player ? player : null);
     }
@@ -958,9 +892,7 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return enraged() ? (int) (ticks * 0.65) : ticks;
     }
 
-    // Damage -------------------------------------------------------------------------------------
-
-    @Override
+@Override
     public boolean hurt(DamageSource source, float amount) {
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
             return super.hurt(source, amount);
@@ -1005,7 +937,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             player.knockback(0.9, getX() - player.getX(), getZ() - player.getZ());
         }
         if (level() instanceof ServerLevel level) {
-            // Every blow is a cut of rift light, in the colour of the rift it leans on now.
             int colour = enraged() ? RiftFx.CRIMSON : phase() == 3 ? RiftFx.DARK : phase() == 2 ? RiftFx.GOLD : RiftFx.VIOLET;
             RiftFx.send(level, RiftFx.Kind.SLASH, colour, position().add(0, 1.6, 0), target.position().add(0, 1, 0),
                     echo() ? 0.8f : 1.2f, 8);
@@ -1023,9 +954,7 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return false;
     }
 
-    // Death --------------------------------------------------------------------------------------
-
-    @Override
+@Override
     public void die(DamageSource source) {
         if (!level().isClientSide && !echo()) {
             say("death");
@@ -1036,7 +965,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         super.die(source);
     }
 
-    /** It does not fall: it rises and comes apart over {@link #DEATH_TICKS}. */
     @Override
     protected void tickDeath() {
         ++deathTime;
@@ -1074,9 +1002,7 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    // Boss bar, name, voice ----------------------------------------------------------------------
-
-    @Override
+@Override
     public void startSeenByPlayer(ServerPlayer player) {
         super.startSeenByPlayer(player);
         if (!echo()) {
@@ -1090,7 +1016,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         bossBar.removePlayer(player);
     }
 
-    /** The level-carrying nameplate, in the server's own format, marked with its rank. */
     private void name(ServerLevel level) {
         MonsterRank rank = echo() ? MonsterRank.ELITE : MonsterRank.WORLD_BOSS;
         String base = ThaiText.t(echo() ? "entity.rotasutils.tetrarch.echo" : "entity.rotasutils.tetrarch");
@@ -1107,17 +1032,13 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         if (ECHO.equals(key)) {
             refreshDimensions();
         }
-        // Client only: remember when it entered a new phase, so the renderer can play the ascension.
-        // Not on first sync (tickCount 0), or a player arriving mid-fight would see a phase change.
         if (PHASE.equals(key) && level().isClientSide && tickCount > 5) {
             phaseShiftTick = tickCount;
         }
     }
 
-    /** Client: when it last entered a new phase, as a tick count; far in the past if never seen. */
     private int phaseShiftTick = -100000;
 
-    /** Client: ticks since it last entered a new phase in front of this player. */
     public float sincePhaseShift(float partialTick) {
         return tickCount - phaseShiftTick + partialTick;
     }
@@ -1127,7 +1048,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return echo() ? super.getDimensions(pose).scale(0.65f) : super.getDimensions(pose);
     }
 
-    /** A line to everyone within 64 blocks, in their chat. */
     private void say(String key) {
         if (echo() || !(level() instanceof ServerLevel level)) {
             return;
@@ -1141,13 +1061,9 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    // Client -------------------------------------------------------------------------------------
-
-    /** Client: whether it was seen still forming, and the tick it finished forming in front of this player. */
-    private boolean seenForming;
+private boolean seenForming;
     private int formedTick = -100000;
 
-    /** Client: ticks since it finished forming in front of this player. */
     public float sinceFormed(float partialTick) {
         return tickCount - formedTick + partialTick;
     }
@@ -1161,7 +1077,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
         Vec3 chest = position().add(0, getBbHeight() * 0.6, 0);
         if (arriving() && tickCount % 8 == 0) {
-            // Light of all four rifts drawn together into its shape.
             RiftFx.local(RiftFx.Kind.GATHER, RiftFx.PRISM, chest, 3f, 8);
         }
         TetrarchPower power = casting();
@@ -1175,16 +1090,12 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
             RiftFx.local(RiftFx.Kind.BURST, colour, at, echo() ? 0.25f : 0.6f, 12);
         }
         if (enraged() && deathTime == 0 && tickCount % 5 == 0) {
-            // Enraged, it sheds crimson embers.
             Vec3 at = position().add((random.nextDouble() - 0.5) * 1.4, random.nextDouble() * 2.8, (random.nextDouble() - 0.5) * 1.4);
             RiftFx.local(RiftFx.Kind.BURST, RiftFx.CRIMSON, at, 0.2f, 10);
         }
     }
 
-    // Helpers ------------------------------------------------------------------------------------
-
-    /** Players that can be fought within {@code range}. */
-    private List<Player> players(double range) {
+private List<Player> players(double range) {
         return level().getEntitiesOfClass(Player.class, getBoundingBox().inflate(range), this::fair);
     }
 
@@ -1192,7 +1103,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return player.isAlive() && !player.isSpectator() && !player.isCreative();
     }
 
-    /** Where the lance leaves from: its raised right hand. */
     public Vec3 lanceOrigin() {
         return position().add(0, getBbHeight() * 0.8, 0);
     }
@@ -1203,13 +1113,11 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return p.distanceTo(a.add(ab.scale(t)));
     }
 
-    /** One of the rifts' own sounds, heard by everyone near. */
     private void riftSound(String id, float volume, float pitch) {
         SoundEvent event = SoundEvent.createVariableRangeEvent(new ResourceLocation(net.schwarz.rotasutils.Rotasutils.MOD_ID, id));
         level().playSound(null, blockPosition(), event, SoundSource.HOSTILE, volume, pitch);
     }
 
-    /** Its name across the screen of everyone near as it takes shape. */
     private void announce() {
         if (!(level() instanceof ServerLevel level)) {
             return;
@@ -1225,7 +1133,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    /** Standing room near {@code at}: solid floor within a few blocks and space to stand. */
     private Vec3 ground(ServerLevel level, Vec3 at) {
         BlockPos base = BlockPos.containing(at);
         for (int dy = 3; dy >= -5; dy--) {
@@ -1238,9 +1145,7 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         return null;
     }
 
-    // Persistence --------------------------------------------------------------------------------
-
-    @Override
+@Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putBoolean("RotasEcho", echo());
@@ -1272,7 +1177,6 @@ public class TetrarchEntity extends Monster implements OwnsItsLevel {
         }
     }
 
-    /** Sends a camera quake to every client near {@code at}. */
     static final class ClientFxCall {
         private ClientFxCall() {
         }

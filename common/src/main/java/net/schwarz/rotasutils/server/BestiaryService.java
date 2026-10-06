@@ -11,14 +11,6 @@ import net.schwarz.rotasutils.level.SeasonRules;
 import net.schwarz.rotasutils.progress.PlayerProgress;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * The monster book (สมุดมอนสเตอร์).
- *
- * <p>Every kind of hostile monster a player kills has its own count, and the count climbs rungs. A rung
- * is knowledge: a little more damage against that kind, a little more loot from it, rank points once,
- * and - from the reveal rung on - the book lists what that monster drops. It rewards the long farm of
- * one monster, which is exactly the loop a loot-driven server wants.</p>
- */
 public final class BestiaryService {
     private BestiaryService() {
     }
@@ -27,12 +19,10 @@ public final class BestiaryService {
         return SeasonService.rules(data).bestiary;
     }
 
-    /** True for the monsters the book records: hostile creatures, not farm animals. */
     public static boolean recordable(LivingEntity entity) {
         return entity instanceof Enemy || entity.getType().getCategory() == MobCategory.MONSTER;
     }
 
-    /** One kill in the book; announces a rung the moment it is reached and pays its rank points. */
     public static void onKill(ServerPlayer player, RotasData data, LivingEntity victim, String entityId) {
         SeasonRules.BestiaryRules book = rules(data);
         if (book == null || !book.enabled || !recordable(victim)) {
@@ -63,7 +53,6 @@ public final class BestiaryService {
         }
     }
 
-    /** The rung this player has reached against one kind of monster. */
     public static int tier(RotasData data, PlayerProgress progress, String entityId) {
         SeasonRules.BestiaryRules book = rules(data);
         if (book == null || !book.enabled || progress == null) {
@@ -72,21 +61,18 @@ public final class BestiaryService {
         return FarmingMath.bestiaryTier(progress.bestiaryKills(entityId), book.tiers);
     }
 
-    /** What the book multiplies this player's damage against that kind by. */
     public static double damage(RotasData data, PlayerProgress progress, String entityId) {
         SeasonRules.BestiaryRules book = rules(data);
         int tier = tier(data, progress, entityId);
         return tier <= 0 ? 1.0 : 1.0 + tier * book.damagePerTier;
     }
 
-    /** What the book multiplies loot chances from that kind by. */
     public static double loot(RotasData data, PlayerProgress progress, String entityId) {
         SeasonRules.BestiaryRules book = rules(data);
         int tier = tier(data, progress, entityId);
         return tier <= 0 ? 1.0 : 1.0 + tier * book.lootPerTier;
     }
 
-    /** True once the book lists this monster's drops for this player. */
     public static boolean revealed(RotasData data, PlayerProgress progress, String entityId) {
         SeasonRules.BestiaryRules book = rules(data);
         return book != null && book.enabled && tier(data, progress, entityId) >= Math.max(1, book.revealDropsAt);

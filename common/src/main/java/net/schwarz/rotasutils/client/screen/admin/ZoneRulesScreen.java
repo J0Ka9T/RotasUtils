@@ -18,11 +18,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
-/**
- * The zone's play rules. Every rule is "Global" (this zone changes nothing) or a value set here; a zone
- * with higher priority inside this one can still override it. Changes go to the zone editor's unsaved
- * copy when leaving this screen and are saved with the zone.
- */
 @Environment(EnvType.CLIENT)
 public class ZoneRulesScreen extends RotasScreen {
     private static final String TAKEN = "damage_taken";
@@ -98,7 +93,6 @@ public class ZoneRulesScreen extends RotasScreen {
     private void toggle(String name, RuleBool rule, Consumer<RuleBool> set, int x, int y) {
         String state = !rule.overridden() ? "Global" : rule.value() ? "On" : "Off";
         addRenderableWidget(Ui.button(Ui.text(name + ": " + state), button -> {
-            // Global -> On -> Off -> Global
             set.accept(!rule.overridden() ? RuleBool.of(true) : rule.value() ? RuleBool.of(false) : RuleBool.inherit());
             Sfx.select();
             rebuild(true);
@@ -122,7 +116,6 @@ public class ZoneRulesScreen extends RotasScreen {
         buildContent();
     }
 
-    /** Writes the rules to the zone editor; false (with feedback) when a number is invalid. */
     private boolean apply() {
         boxes.forEach((key, box) -> typed.put(key, box.getValue()));
         try {

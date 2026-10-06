@@ -4,13 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 
-/**
- * Whether a player is standing at a work station. Refinement needs a Refine Forge and inscribing
- * needs a Rune Altar within {@link #REACH} blocks; every attempt asks again, so the answer is always
- * about where the player is now, not where they opened the screen.
- */
 public final class StationService {
-    /** Blocks from the player's feet to the station, in every direction. */
     public static final int REACH = 4;
 
     private StationService() {
@@ -20,7 +14,6 @@ public final class StationService {
         return find(player, station) != null;
     }
 
-    /** The nearest {@code station} within reach, or null; effects play at it. */
     @org.jetbrains.annotations.Nullable
     public static BlockPos find(ServerPlayer player, Block station) {
         BlockPos feet = player.blockPosition();
@@ -37,5 +30,38 @@ public final class StationService {
             }
         }
         return best;
+    }
+
+    public static String tradeForKind(net.schwarz.rotasutils.block.StationBlock.Kind kind) {
+        return switch (kind) {
+            case STOVE -> "chef";
+            case SMELTER -> "miner";
+            case BENCH -> "blacksmith";
+            case TABLE -> "alchemy";
+            case TANNERY -> "rancher";
+            case FISH -> "fisher";
+            case MILL -> "farmer";
+            default -> "";
+        };
+    }
+
+    public static boolean hasActiveQueueNearby(net.minecraft.world.level.Level level, BlockPos pos,
+                                              net.schwarz.rotasutils.block.StationBlock.Kind kind) {
+        String trade = tradeForKind(kind);
+        if (trade.isEmpty() || level.isClientSide()) return false;
+        long now = System.currentTimeMillis();
+        for (net.minecraft.world.entity.player.Player player : level.players()) {
+            if (player instanceof ServerPlayer serverPlayer && player.blockPosition().closerThan(pos, 10.0)) {
+                net.schwarz.rotasutils.progress.PlayerProgress progress =
+                        net.schwarz.rotasutils.data.RotasData.get(serverPlayer.server).progress(serverPlayer.getUUID());
+                String queueStr = progress.questVariables().get("rpg.trade." + trade + ".queue");
+                if (queueStr != null && !queueStr.isBlank()) {
+                    for (net.schwarz.rotasutils.core.TradeKit.Cooking c : net.schwarz.rotasutils.core.TradeKit.parseQueue(queueStr)) {
+                        if (!c.done(now)) return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

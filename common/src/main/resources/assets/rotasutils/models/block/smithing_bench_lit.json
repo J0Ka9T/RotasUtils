@@ -1,0 +1,312 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "rotasutils:block/smithing_bench_front",
+    "front": "rotasutils:block/smithing_bench_front",
+    "side": "rotasutils:block/smithing_bench_side",
+    "top": "rotasutils:block/smithing_bench_top",
+    "bottom": "rotasutils:block/smithing_bench_bottom"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        12,
+        16
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#bottom",
+          "cullface": "down"
+        },
+        "north": {
+          "uv": [
+            0,
+            4,
+            16,
+            16
+          ],
+          "texture": "#front"
+        },
+        "south": {
+          "uv": [
+            0,
+            4,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            0,
+            4,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0,
+            4,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#top"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        12,
+        5
+      ],
+      "to": [
+        12,
+        13.5,
+        11
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            4,
+            5,
+            12,
+            11
+          ],
+          "texture": "#top"
+        },
+        "north": {
+          "uv": [
+            4,
+            6,
+            12,
+            7
+          ],
+          "texture": "#top"
+        },
+        "south": {
+          "uv": [
+            4,
+            6,
+            12,
+            7
+          ],
+          "texture": "#top"
+        },
+        "west": {
+          "uv": [
+            5,
+            6,
+            11,
+            7
+          ],
+          "texture": "#top"
+        },
+        "east": {
+          "uv": [
+            5,
+            6,
+            11,
+            7
+          ],
+          "texture": "#top"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        13.5,
+        5
+      ],
+      "to": [
+        13,
+        16,
+        11
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            3,
+            5,
+            13,
+            11
+          ],
+          "texture": "#top"
+        },
+        "down": {
+          "uv": [
+            3,
+            5,
+            13,
+            11
+          ],
+          "texture": "#top"
+        },
+        "north": {
+          "uv": [
+            3,
+            6,
+            13,
+            8
+          ],
+          "texture": "#top"
+        },
+        "south": {
+          "uv": [
+            3,
+            6,
+            13,
+            8
+          ],
+          "texture": "#top"
+        },
+        "west": {
+          "uv": [
+            5,
+            6,
+            11,
+            8
+          ],
+          "texture": "#top"
+        },
+        "east": {
+          "uv": [
+            5,
+            6,
+            11,
+            8
+          ],
+          "texture": "#top"
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.625,
+        0.625,
+        0.625
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        0
+      ],
+      "scale": [
+        0.25,
+        0.25,
+        0.25
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        75,
+        45,
+        0
+      ],
+      "translation": [
+        0,
+        2.5,
+        0
+      ],
+      "scale": [
+        0.375,
+        0.375,
+        0.375
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        45,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.4,
+        0.4,
+        0.4
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.4,
+        0.4,
+        0.4
+      ]
+    }
+  }
+}

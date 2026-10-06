@@ -21,37 +21,19 @@ import net.minecraft.world.phys.Vec3;
 import net.schwarz.rotasutils.Rotasutils;
 import net.schwarz.rotasutils.item.RedReversalItem;
 
-/**
- * Red Reversal: a slow, deliberate charge and one violent release. The server owns the gameplay half -
- * it faces the caster at the target when the sequence begins, fires the real attack at
- * {@link RedTimings#RELEASE} (not when the item was clicked), finds what it hits, and later applies
- * damage and knockback with a smooth falloff. The cutscene, the red mass and the camera are the client's;
- * it only learns where the attack starts, where it lands and when.
- */
 public final class RedReversalAbility implements AbilityDefinition {
     public static final RedReversalAbility INSTANCE = new RedReversalAbility("red_reversal", 1.0, 1.0, false, false,
             RedTimings.RELEASE, RedTimings.END_TICKS, RedTimings.RANGE, RedTimings.PROJECTILE_SPEED);
-    /**
-     * Red Reversal MAX: the same sequence, but everything it throws is bigger - twice the blast, a far heavier hit,
-     * a line of force that tears through everything along its path, and an aftershock where it lands.
-     */
     public static final RedReversalAbility MAX = new RedReversalAbility("red_reversal_max", 2.0, 2.6, true, true,
             RedTimings.RELEASE, RedTimings.END_TICKS, RedTimings.RANGE, RedTimings.PROJECTILE_SPEED);
-    /**
-     * Hollow Purple: Blue and Red merged. A far slower, far larger cutscene, a mass of distorted space that erases
-     * everything near its path, and a landing that removes a whole section of the world.
-     */
-    public static final RedReversalAbility PURPLE = new RedReversalAbility("hollow_purple", 2.4, 4.0, true, false,
+    public static final RedReversalAbility PURPLE = new RedReversalAbility("hollow_purple", PurpleTimings.BLAST_SCALE, 4.0, true, false,
             PurpleTimings.RELEASE, PurpleTimings.END_TICKS, PurpleTimings.RANGE, PurpleTimings.PROJECTILE_SPEED);
     public static final ResourceLocation ID = INSTANCE.id;
 
     private final ResourceLocation id;
-    /** Blast radius and damage multipliers over the base values in {@link RedTimings}. */
     private final double size;
     private final double power;
-    /** Whether the shot also hurts everything it passes. */
     private final boolean carve;
-    /** Whether the landing sends a second, smaller blast. */
     private final boolean aftershock;
     private final int endTicks;
     private final double range;
@@ -98,15 +80,11 @@ public final class RedReversalAbility implements AbilityDefinition {
         return timeline;
     }
 
-    // Events -----------------------------------------------------------------------------------------
-
-    /** Nothing may interrupt the cutscene: the caster cannot be hurt until it ends. */
-    @Override
+@Override
     public void end(AbilityContext context, boolean completed) {
         context.player.setInvulnerable(false);
     }
 
-    /** Turns the caster to face what they locked onto; the client turns the rest of the body itself. */
     private static void begin(AbilityContext c) {
         ServerPlayer player = c.player;
         player.setInvulnerable(true);
@@ -118,7 +96,6 @@ public final class RedReversalAbility implements AbilityDefinition {
         player.yHeadRot = yaw;
     }
 
-    /** The real attack. Everything the client shows of it is decided here. */
     private void release(AbilityContext c) {
         ServerPlayer player = c.player;
         ServerLevel level = c.level;
@@ -149,7 +126,11 @@ public final class RedReversalAbility implements AbilityDefinition {
             level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 2.0f, 0.5f);
         }
         if (carve) {
-            c.after(Math.max(1, travel / 2), () -> carve(c, origin, impact, travelDir));
+            if (this == PURPLE) {
+                carve(c, origin, impact, travelDir, travel);
+            } else {
+                c.after(Math.max(1, travel / 2), () -> carve(c, origin, impact, travelDir, 0));
+            }
         }
         c.after(travel, () -> blast(c, impact, travelDir, 1.0));
         if (aftershock) {
@@ -161,8 +142,7 @@ public final class RedReversalAbility implements AbilityDefinition {
         return e != caster && e.isAlive() && !e.isSpectator() && e.isPickable() && !(e instanceof ArmorStand);
     }
 
-    /** MAX only: everything within a few blocks of the line of fire is struck on the way past. */
-    private void carve(AbilityContext c, Vec3 from, Vec3 to, Vec3 travelDir) {
+    private void carve(AbilityContext c, Vec3 from, Vec3 to, Vec3 travelDir, int travelTicks) {
         ServerPlayer caster = c.player;
         double reach = 3.0 * Math.sqrt(size);
         Vec3 seg = to.subtract(from);
@@ -174,14 +154,37 @@ public final class RedReversalAbility implements AbilityDefinition {
             if (f < 0.02 || spared(victim, caster)) {
                 continue;
             }
-            victim.invulnerableTime = 0;
-            victim.hurt(c.level.damageSources().playerAttack(caster), (float) (RedTimings.DAMAGE * 0.5 * power * f));
-            victim.setDeltaMovement(victim.getDeltaMovement().add(travelDir.scale(1.5 * f)).add(0, 0.4 * f, 0));
+            if (travelTicks > 0) {
+                double flight = travelTicks / 20.0;
+                double launch = Math.min(0.10, flight * 0.4);
+                int delay = Math.max(1, (int) Math.ceil(20 * (launch + (flight - launch) * Math.pow(u, 2.0 / 3.0))));
+                c.after(delay, () -> {
+                    if (!victim.isAlive() || victim.level() != c.level || spared(victim, caster)) {
+                        return;
+                    }
+                    Vec3 now = victim.getBoundingBox().getCenter();
+                    double along = Mth.clamp(now.subtract(from).dot(seg) / Math.max(1.0e-4, seg.lengthSqr()), 0, 1);
+                    double falloff = Falloff.of(now.distanceTo(from.add(seg.scale(along))), reach);
+                    if (falloff >= 0.02) {
+                        strikeCarve(c, victim, travelDir, falloff);
+                    }
+                });
+            } else {
+                strikeCarve(c, victim, travelDir, f);
+            }
+        }
+    }
+
+    private void strikeCarve(AbilityContext c, LivingEntity victim, Vec3 direction, double falloff) {
+        victim.invulnerableTime = 0;
+        boolean hurt = victim.hurt(c.level.damageSources().playerAttack(c.player),
+                (float) (RedTimings.DAMAGE * 0.5 * power * falloff));
+        if (!erase(c, victim, hurt)) {
+            victim.setDeltaMovement(victim.getDeltaMovement().add(direction.scale(1.5 * falloff)).add(0, 0.4 * falloff, 0));
             victim.hurtMarked = true;
         }
     }
 
-    /** Damage and knockback round the impact, both fading smoothly with distance from its centre. */
     private void blast(AbilityContext c, Vec3 impact, Vec3 travelDir, double strength) {
         ServerPlayer caster = c.player;
         ServerLevel level = c.level;
@@ -203,7 +206,10 @@ public final class RedReversalAbility implements AbilityDefinition {
             }
             DamageSource source = level.damageSources().playerAttack(caster);
             victim.invulnerableTime = 0;
-            victim.hurt(source, (float) (RedTimings.DAMAGE * power * strength * f));
+            boolean hurt = victim.hurt(source, (float) (RedTimings.DAMAGE * power * strength * f));
+            if (erase(c, victim, hurt)) {
+                continue;
+            }
             Vec3 away = centre.subtract(impact);
             away = away.lengthSqr() < 0.04 ? travelDir : away.normalize();
             double resist = 1.0 - victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
@@ -219,5 +225,15 @@ public final class RedReversalAbility implements AbilityDefinition {
             return true;
         }
         return victim.isAlliedTo(caster);
+    }
+
+    private boolean erase(AbilityContext context, LivingEntity victim, boolean hurt) {
+        if (this != PURPLE || !hurt || victim.isAlive() || victim instanceof net.minecraft.world.entity.player.Player) {
+            return false;
+        }
+        AbilityNet.sendErase(context, victim);
+        victim.setDeltaMovement(Vec3.ZERO);
+        victim.hurtMarked = true;
+        return true;
     }
 }

@@ -7,10 +7,6 @@ import java.util.List;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * The console draws whatever the server sends, so the two sides have to agree on the shape of the
- * snapshot. This walks live content through the server encoder into the client read model.
- */
 class KernelUiCatalogTest {
     private final ContentRegistry registry = new ContentRegistry(new ConditionEngine(Map.of()), new ActionEngine(Map.of()));
 
@@ -97,7 +93,6 @@ class KernelUiCatalogTest {
         assertEquals("Track it", quest.stages().get(0).label());
         assertEquals("Defeat 4", quest.stages().get(0).objectives().get(0).label());
         assertEquals(4, quest.stages().get(0).objectives().get(0).count());
-        // An objective without a label falls back to its event, so a row is never blank.
         assertEquals("rotas:item_obtained", quest.stages().get(1).objectives().get(0).label());
 
         var merchant = ClientKernelState.merchants().get(0);

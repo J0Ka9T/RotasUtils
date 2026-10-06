@@ -45,15 +45,7 @@ import net.schwarz.rotasutils.server.QuestService;
 import net.schwarz.rotasutils.server.SkillService;
 import net.schwarz.rotasutils.server.WorldPicker;
 
-/**
- * All game-event wiring.
- *
- * <p>Every hook is edge triggered. The only periodic work is a coarse server tick
- * that runs once a second and only touches players who actually have timed or
- * location objectives.
- */
 public final class RotasEvents {
-    /** Entity tag admins can populate to mark extra bosses; empty by default. */
     public static final TagKey<EntityType<?>> BOSS_TAG =
             TagKey.create(Registries.ENTITY_TYPE, Rotasutils.id("bosses"));
 
@@ -66,11 +58,12 @@ public final class RotasEvents {
     public static void init() {
         LifecycleEvent.SERVER_STARTED.register(RotasEvents::onServerStarted);
         LifecycleEvent.SERVER_STOPPING.register(RotasEvents::onServerStopping);
+        LifecycleEvent.SERVER_STARTED.register(net.schwarz.rotasutils.server.BlockBreakLog::start);
+        LifecycleEvent.SERVER_STOPPING.register(server -> net.schwarz.rotasutils.server.BlockBreakLog.stop());
         PlayerEvent.PLAYER_JOIN.register(RotasEvents::onPlayerJoin);
         PlayerEvent.PLAYER_QUIT.register(RotasEvents::onPlayerQuit);
         PlayerEvent.PLAYER_RESPAWN.register((player, conqueredEnd) -> {
             SkillService.recalculate(player, RotasData.get(player.server));
-            // A respawned player is a new entity without the transient stat modifiers.
             net.schwarz.rotasutils.server.CharacterStatService.apply(player, RotasData.get(player.server));
             net.schwarz.rotasutils.server.RpgKernel.emit(player, "rotas:player_respawned",
                     java.util.UUID.randomUUID().toString(), java.util.Map.of());
@@ -78,28 +71,23 @@ public final class RotasEvents {
             net.schwarz.rotasutils.sky.EldritchSkyService.syncTo(player);
         });
         PlayerEvent.CHANGE_DIMENSION.register((player, from, to) -> {
-            // A last-allowed position is only meaningful in the dimension it was recorded in.
             net.schwarz.rotasutils.server.ZoneGateService.forget(player.getUUID());
             net.schwarz.rotasutils.server.ZonePresenceService.forget(player.getUUID());
-        net.schwarz.rotasutils.house.HousePresenceService.forget(player.getUUID());
             net.schwarz.rotasutils.house.HousePresenceService.forget(player.getUUID());
             RotasNetwork.syncProgress(player);
             net.schwarz.rotasutils.sky.EldritchSkyService.syncTo(player);
         });
 
-        // Stable horses are knocked out instead of dying; registered first so nothing else sees the death.
         EntityEvent.LIVING_DEATH.register((entity, source) ->
                 net.schwarz.rotasutils.server.horse.HorseService.onDeath(entity));
         EntityEvent.ADD.register(net.schwarz.rotasutils.server.horse.HorseService::onAdd);
         EntityEvent.ADD.register(net.schwarz.rotasutils.server.CompanionService::onAdd);
         EntityEvent.LIVING_DEATH.register((entity, source) -> net.schwarz.rotasutils.server.CompanionService.onDeath(entity));
-        // Owners cannot hurt their own companion, and nothing the companion does can be pinned on a player.
         EntityEvent.LIVING_HURT.register((entity, source, amount) ->
                 net.schwarz.rotasutils.server.CompanionService.protectedFrom(entity, source.getEntity())
                         ? EventResult.interruptFalse() : EventResult.pass());
         EntityEvent.LIVING_HURT.register(net.schwarz.rotasutils.server.horse.HorseTraitEffects::onHurt);
         PlayerEvent.PLAYER_ADVANCEMENT.register(net.schwarz.rotasutils.server.ExplorationService::onAdvancement);
-        // Deaths are a title too: some players earn their name by never staying down.
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer victim && !victim.level().isClientSide) {
                 net.schwarz.rotasutils.server.TitleService.count(victim.server, RotasData.get(victim.server),
@@ -108,7 +96,6 @@ public final class RotasEvents {
             return EventResult.pass();
         });
         EntityEvent.LIVING_DEATH.register(RotasEvents::onLivingDeath);
-        // A volatile elite bursts where it falls.
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             try {
                 net.schwarz.rotasutils.server.MobAffixService.onDeath(entity);
@@ -117,12 +104,10 @@ public final class RotasEvents {
             }
             return EventResult.pass();
         });
-        // Zone rule: Rotas XP lost on death, whoever or whatever killed the player.
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer player && !player.level().isClientSide) {
                 net.schwarz.rotasutils.server.ZoneRuleService.applyXpLoss(player, RotasData.get(player.server));
             }
-            // A zone spawn point's mob died: start that point's respawn cooldown.
             if (entity instanceof net.minecraft.world.entity.Mob && !entity.level().isClientSide) {
                 RotasData data = RotasData.instance();
                 if (data != null && data.kernel() != null) {
@@ -131,9 +116,9 @@ public final class RotasEvents {
             }
             return EventResult.pass();
         });
-        // Mob Setup spawn rules: cancels natural spawns a setup forbids (zone, dimension, time, height, crowd).
         EntityEvent.LIVING_CHECK_SPAWN.register((entity, level, x, y, z, type, spawner) ->
                 net.schwarz.rotasutils.server.MobSpawnDirector.checkSpawn(entity, level, x, y, z, type));
+        net.schwarz.rotasutils.house.HouseGuard.register();
         BlockEvent.BREAK.register(RotasEvents::onBlockBreak);
         BlockEvent.PLACE.register(RotasEvents::onBlockPlace);
         PlayerEvent.CRAFT_ITEM.register(RotasEvents::onCraft);
@@ -143,23 +128,21 @@ public final class RotasEvents {
                 player instanceof ServerPlayer serverPlayer
                         && net.schwarz.rotasutils.server.GoldCoinService.pickUp(serverPlayer, entity)
                         ? EventResult.interruptFalse() : EventResult.pass());
+        InteractionEvent.RIGHT_CLICK_BLOCK.register(net.schwarz.rotasutils.server.BlockBreakLog::onRightClick);
         InteractionEvent.RIGHT_CLICK_BLOCK.register(RotasEvents::onRightClickBlock);
         InteractionEvent.INTERACT_ENTITY.register(RotasEvents::onInteractEntity);
         TickEvent.SERVER_POST.register(RotasEvents::onServerTick);
         TickEvent.SERVER_POST.register(net.schwarz.rotasutils.server.MobSetupService::tick);
-        // A gated level zone pushes a player back out; checked every tick so it cannot be walked through.
         TickEvent.PLAYER_POST.register(net.schwarz.rotasutils.server.ZoneGateService::onPlayerTick);
-        // Zone titles, effects and movement rules; checked every 10 ticks per player.
         TickEvent.PLAYER_POST.register(net.schwarz.rotasutils.server.ZonePresenceService::onPlayerTick);
         TickEvent.PLAYER_POST.register(net.schwarz.rotasutils.house.HousePresenceService::onPlayerTick);
-        // A nemesis body that reloads with an old chunk after its record moved on is refused.
+        TickEvent.PLAYER_POST.register(ObjectiveEngine::onPlayerTick);
         EntityEvent.ADD.register(net.schwarz.rotasutils.server.NemesisService::onAdd);
         EntityEvent.ADD.register((entity, level) -> {
             net.schwarz.rotasutils.server.FarmingService.clearLegacyGlow(entity);
             net.schwarz.rotasutils.server.DungeonService.onEntityAdd(entity);
             return dev.architectury.event.EventResult.pass();
         });
-        // Registered last, so a death another listener cancelled never raises or ends a nemesis.
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             if (entity.level().isClientSide) {
                 return EventResult.pass();
@@ -177,11 +160,10 @@ public final class RotasEvents {
         });
     }
 
-    // Lifecycle ------------------------------------------------------------
-
-    private static void onServerStarted(MinecraftServer server) {
+private static void onServerStarted(MinecraftServer server) {
         RotasData.get(server).setKernel(new net.schwarz.rotasutils.server.RpgKernel(server));
         net.schwarz.rotasutils.server.SeasonConfigFile.load(server, RotasData.get(server));
+        net.schwarz.rotasutils.server.TradeConfig.load(server);
         ProgressService.migrateStatSystem(RotasData.get(server));
         net.schwarz.rotasutils.server.TitleService.seedDefaults(RotasData.get(server));
         net.schwarz.rotasutils.server.JobService.seedDefaults(RotasData.get(server));
@@ -196,6 +178,7 @@ public final class RotasEvents {
     }
 
     private static void onServerStopping(MinecraftServer server) {
+        net.schwarz.rotasutils.house.HouseSelections.clearAll();
         net.schwarz.rotasutils.sky.SkyClash.clear();
         net.schwarz.rotasutils.sky.SkySunder.clear();
         net.schwarz.rotasutils.server.CompanionService.clear();
@@ -216,14 +199,12 @@ public final class RotasEvents {
         net.schwarz.rotasutils.server.WorldEventService.clear();
         net.schwarz.rotasutils.server.ProductionService.clear();
         net.schwarz.rotasutils.server.PartyService.clear();
-        // Everything below is static per-player state. On an integrated server the JVM outlives the
-        // world, so anything left here is carried into the next world the player opens.
         net.schwarz.rotasutils.server.CombatStats.clear();
         net.schwarz.rotasutils.server.DungeonService.clearAll();
         net.schwarz.rotasutils.server.MobSpawnDirector.clearCaches();
+        net.schwarz.rotasutils.network.SyncQueue.clear();
         net.schwarz.rotasutils.server.ZoneWandService.clear();
         net.schwarz.rotasutils.server.ZoneRuleService.clear();
-        net.schwarz.rotasutils.network.SyncQueue.clear();
         net.schwarz.rotasutils.server.ZoneVisibilityService.clear();
         net.schwarz.rotasutils.server.NpcConversations.clear();
         net.schwarz.rotasutils.server.ObjectiveEngine.clear();
@@ -236,11 +217,15 @@ public final class RotasEvents {
     }
 
     private static void onPlayerJoin(ServerPlayer player) {
+        net.schwarz.rotasutils.network.SyncQueue.forget(player.getUUID());
         RotasData data = RotasData.get(player.server);
         PlayerProgress progress = data.progress(player.getUUID());
-        // A fresh client holds nothing, so it must not be skipped as "already up to date".
-        net.schwarz.rotasutils.network.SyncQueue.forget(player.getUUID());
         progress.setLastKnownName(player.getGameProfile().getName());
+        try {
+            net.schwarz.rotasutils.house.HouseBillingService.onJoin(player, data);
+        } catch (RuntimeException failure) {
+            Rotasutils.LOG.error("House login notice failed: {}", failure.toString());
+        }
         if(progress.mainJob().isEmpty() && data.levelConfig().firstJoinMode()==net.schwarz.rotasutils.level.LevelConfig.FirstJoinMode.ASSIGN) {
             var main=data.job(data.levelConfig().firstJoinMainJob());
             if(main!=null&&main.enabled()&&main.mainAllowed()) net.schwarz.rotasutils.server.JobService.assignSlot(progress,main,net.schwarz.rotasutils.job.JobSlot.MAIN);
@@ -256,7 +241,13 @@ public final class RotasEvents {
         SkillService.recalculate(player, data);
         net.schwarz.rotasutils.server.CharacterStatService.grantLevelPoints(progress, data);
         net.schwarz.rotasutils.server.CharacterStatService.apply(player, data);
-        net.schwarz.rotasutils.server.CharacterStatService.restoreHealth(player, progress);
+        if (progress.lastHealth() <= 0 || !progress.questVariables().containsKey("rpg.health300")) {
+            player.setHealth(player.getMaxHealth());
+            progress.questVariables().put("rpg.health300", "1");
+            progress.markDirty();
+        } else {
+            net.schwarz.rotasutils.server.CharacterStatService.restoreHealth(player, progress);
+        }
         net.schwarz.rotasutils.server.DailyService.onJoin(player, data);
         net.schwarz.rotasutils.server.EventService.fire(player, data,
                 net.schwarz.rotasutils.event.EventType.PLAYER_LOGIN, "");
@@ -270,14 +261,12 @@ public final class RotasEvents {
         promptMainJob(player, data);
     }
 
-    /** In CHOOSE mode a player without a main job gets the job picker, which stays up until they pick. */
     public static void promptMainJob(ServerPlayer player, RotasData data) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (!progress.mainJob().isEmpty()
                 || data.levelConfig().firstJoinMode() != net.schwarz.rotasutils.level.LevelConfig.FirstJoinMode.CHOOSE) {
             return;
         }
-        // Never lock a player in a picker with nothing they can pick.
         boolean pickable = data.jobs().values().stream()
                 .anyMatch(job -> job.enabled() && job.mainAllowed() && job.minLevel() <= progress.level());
         if (pickable) {
@@ -286,10 +275,11 @@ public final class RotasEvents {
     }
 
     private static void onPlayerQuit(ServerPlayer player) {
+        net.schwarz.rotasutils.network.SyncQueue.forget(player.getUUID());
         net.schwarz.rotasutils.server.RpgKernel.emit(player, "rotas:player_logout",
                 java.util.UUID.randomUUID().toString(), java.util.Map.of());
-        net.schwarz.rotasutils.network.SyncQueue.forget(player.getUUID());
         WorldPicker.clear(player);
+        net.schwarz.rotasutils.house.HouseSelections.forget(player.getUUID());
         net.schwarz.rotasutils.server.CombatStats.forget(player.getUUID());
         PlayerProgress leaving = RotasData.get(player.server).peek(player.getUUID());
         if (leaving != null && player.isAlive()) {
@@ -307,7 +297,6 @@ public final class RotasEvents {
         if (RotasData.get(player.server).kernel() != null) {
             RotasData.get(player.server).kernel().forgetPlayer(player.getUUID());
         }
-        // Party membership persists; only the pending invitation is dropped.
         net.schwarz.rotasutils.server.PartyService.forget(player);
         RotasData data = RotasData.instance();
         if (data != null) {
@@ -315,9 +304,7 @@ public final class RotasEvents {
         }
     }
 
-    // Combat ---------------------------------------------------------------
-
-    private static EventResult onLivingDeath(LivingEntity entity, DamageSource source) {
+private static EventResult onLivingDeath(LivingEntity entity, DamageSource source) {
         return handleLivingDeath(entity, source, false);
     }
 
@@ -353,7 +340,6 @@ public final class RotasEvents {
         }
 
         boolean boss = isBoss(entity) || (monster != null && monster.boss());
-        // The chain is extended before anything is paid, so the kill that grows it is paid at the new rate.
         if (net.schwarz.rotasutils.server.BestiaryService.recordable(entity)) {
             net.schwarz.rotasutils.server.FarmingService.onKill(killer, data);
         }
@@ -363,8 +349,6 @@ public final class RotasEvents {
                 .entityName(entity.hasCustomName() ? entity.getCustomName().getString() : "")
                 .entityUuid(entity.getUUID())
                 .boss(boss)
-                // Scoreboard tags are loader neutral, so quest-spawned mobs can be marked
-                // by this mod, by a datapack, or by /summon without a Forge-only NBT hook.
                 .questSpawned(entity.getTags().contains("rotasutils_quest_spawned"))
                 .dimension(entity.level().dimension().location().toString())
                 .biome(biomeOf(entity.level(), entity.blockPosition()))
@@ -377,7 +361,6 @@ public final class RotasEvents {
         ObjectiveEngine.handle(killer, data, event);
         String monsterIdentity = String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()));
         XpSource killSource = boss ? XpSource.BOSS_KILL : XpSource.MOB_KILL;
-        // A world event pays by where the monster died, like a zone's own multiplier.
         double worldEventXp = net.schwarz.rotasutils.server.WorldEventService.xpMultiplier(entity);
         if (net.schwarz.rotasutils.server.SeasonService.active(data)) {
             var award = monster == null
@@ -422,19 +405,15 @@ public final class RotasEvents {
         } catch (RuntimeException failure) {
             net.schwarz.rotasutils.Rotasutils.LOG.error("Weapon memory / world event failed: {}", failure.getMessage());
         }
-        // The rarest thing a kill can leave. Never let it reach the kill path if a card is misconfigured.
         try { net.schwarz.rotasutils.server.CardService.onKill(killer, data, entity, monsterIdentity); }
         catch (RuntimeException failure) {
             net.schwarz.rotasutils.Rotasutils.LOG.error("Card drop failed: {}", failure.getMessage());
         }
-        // A kill is also how most titles are earned; the tally only counts what some title asks for.
         try { net.schwarz.rotasutils.server.TitleService.onKill(killer, data, monsterIdentity, boss); }
         catch (RuntimeException failure) {
             net.schwarz.rotasutils.Rotasutils.LOG.error("Title tally failed: {}", failure.getMessage());
         }
         if (monster == null) {
-            // A mob nobody set up still pays what the plain drop rules say. Never let a drop failure
-            // reach the kill path: the experience and the quest event above are already committed.
             try { net.schwarz.rotasutils.server.DropService.onPlainMobKilled(killer, entity); }
             catch (RuntimeException failure) {
                 net.schwarz.rotasutils.Rotasutils.LOG.error("Plain mob drop failed: {}", failure.getMessage());
@@ -443,7 +422,6 @@ public final class RotasEvents {
         return EventResult.pass();
     }
 
-    /** The player credited with a kill: the striker, a projectile's owner, or a pet's owner. */
     public static ServerPlayer resolveKiller(DamageSource source) {
         if (source.getEntity() instanceof ServerPlayer player) {
             return player;
@@ -464,16 +442,11 @@ public final class RotasEvents {
                 || entity instanceof WitherBoss
                 || entity instanceof Warden
                 || entity.getType().is(BOSS_TAG)
-                // Many modded bosses do not expose a Forge/vanilla boss marker. A very large
-                // live health pool is a reliable fallback and still leaves minibosses on the
-                // continuous dynamic-threat curve rather than hard-coding mod ids.
                 || (entity.getMaxHealth() >= 250.0f
                 && entity.getType().getCategory() == net.minecraft.world.entity.MobCategory.MONSTER);
     }
 
-    // World ----------------------------------------------------------------
-
-    private static EventResult onBlockBreak(Level level, BlockPos pos, BlockState state,
+private static EventResult onBlockBreak(Level level, BlockPos pos, BlockState state,
                                             ServerPlayer player, dev.architectury.utils.value.IntValue xp) {
         if (level.isClientSide || player == null) {
             return EventResult.pass();
@@ -486,7 +459,6 @@ public final class RotasEvents {
             player.displayClientMessage(net.minecraft.network.chat.Component.translatable("rotasutils.msg.house.protected"), true);
             return EventResult.interruptFalse();
         }
-        // A spent mining node refuses the break before anything else can count it.
         if (net.schwarz.rotasutils.server.MiningService.onBreak(player, level, pos, state)
                 == net.schwarz.rotasutils.server.MiningService.Break.BLOCKED) {
             return EventResult.interruptFalse();
@@ -512,6 +484,7 @@ public final class RotasEvents {
                         net.schwarz.rotasutils.job.JobDef.ProductionEntry.Activity.HARVEST, target, 1);
             }
         }
+        net.schwarz.rotasutils.server.BlockBreakLog.record(player, level, pos, state, false);
         return EventResult.pass();
     }
 
@@ -528,6 +501,7 @@ public final class RotasEvents {
                 .blockId(BuiltInRegistries.BLOCK.getKey(state.getBlock()))
                 .pos(pos)
                 .dimension(level.dimension().location().toString()));
+        net.schwarz.rotasutils.server.BlockBreakLog.record(player, level, pos, state, true);
         return EventResult.pass();
     }
 
@@ -582,22 +556,21 @@ public final class RotasEvents {
         if (player.level().isClientSide || !(player instanceof ServerPlayer serverPlayer)) {
             return EventResult.pass();
         }
-        // Position and board picks are tooling too; they must not advance objectives.
         if (WorldPicker.isPending(serverPlayer)
                 && RotasRegistry.ADMIN_TOOL.get().equals(player.getItemInHand(hand).getItem())) {
             return EventResult.pass();
         }
-        // Tracing a level zone is administration, not a world interaction.
         if (player.getItemInHand(hand).is(RotasRegistry.ZONE_WAND.get())) {
             return EventResult.pass();
         }
         if (player.getItemInHand(hand).is(RotasRegistry.HOUSE_WAND.get())) return EventResult.pass();
-        if (!net.schwarz.rotasutils.house.HouseProtectionService.canInteract(serverPlayer, pos)) {
+        if (!net.schwarz.rotasutils.house.HouseProtectionService.canInteract(serverPlayer, pos)
+                || !net.schwarz.rotasutils.house.HouseProtectionService.canPlaceAgainst(serverPlayer, pos, face,
+                        player.getItemInHand(hand))) {
             player.displayClientMessage(net.minecraft.network.chat.Component.translatable("rotasutils.msg.house.protected"), true);
             return EventResult.interruptFalse();
         }
         BlockState state = player.level().getBlockState(pos);
-        // Furnaces and brewing stands remember who opened them; their hoppers take sealed results for that player.
         var blockEntity = player.level().getBlockEntity(pos);
         if (blockEntity instanceof net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity
                 || blockEntity instanceof net.minecraft.world.level.block.entity.BrewingStandBlockEntity) {
@@ -616,16 +589,17 @@ public final class RotasEvents {
         if (player.level().isClientSide || !(player instanceof ServerPlayer serverPlayer)) {
             return EventResult.pass();
         }
-        // A world-selection click with the admin tool is tooling, not gameplay: the
-        // picker needs the entity interaction chain, and no objectives may fire for it.
         if (WorldPicker.isPending(serverPlayer)
                 && RotasRegistry.ADMIN_TOOL.get().equals(player.getItemInHand(hand).getItem())) {
             return EventResult.pass();
         }
+        if (!net.schwarz.rotasutils.house.HouseGuard.mayHandle(serverPlayer, entity)) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("rotasutils.msg.house.protected"), true);
+            return EventResult.interruptFalse();
+        }
         if (net.schwarz.rotasutils.server.horse.HorseService.blockPotion(serverPlayer, entity, hand)) {
             return EventResult.interruptTrue();
         }
-        // The whistle on a SWEM horse stables it. Handled here because the horse's own click would mount it first.
         if (player.getItemInHand(hand).is(RotasRegistry.HORSE_WHISTLE.get())
                 && net.schwarz.rotasutils.server.horse.SwemCompat.isHorse(entity)) {
             var result = net.schwarz.rotasutils.server.horse.HorseService.adopt(serverPlayer, entity);
@@ -633,19 +607,13 @@ public final class RotasEvents {
                     .withStyle(result.ok() ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.RED), true);
             return EventResult.interruptTrue();
         }
-        // The NPC Wand edits the clicked mob. This event runs before the mob's own interaction,
-        // so interrupting here also keeps villager trades and Easy NPC dialogs from opening.
         if (player.getItemInHand(hand).is(RotasRegistry.NPC_WAND.get()) && entity instanceof LivingEntity living) {
             net.schwarz.rotasutils.server.NpcWandService.use(serverPlayer, living);
             return EventResult.interruptTrue();
         }
-        // The Zone Wand re-levels a mob to its zone; that is tooling, so no quest objective fires.
         if (player.getItemInHand(hand).is(RotasRegistry.ZONE_WAND.get())) {
             return EventResult.pass();
         }
-        // Easy NPC editor tools stay with the upstream mod, which owns their access
-        // checks; Rotas objectives and dialogue stand down for those clicks so the
-        // wand keeps working even on a bound NPC.
         if (EasyNpcCompat.isEditorInteraction(player, entity, hand)) {
             return EventResult.pass();
         }
@@ -653,8 +621,6 @@ public final class RotasEvents {
         ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         String name = entity.hasCustomName() ? entity.getCustomName().getString() : entity.getName().getString();
 
-        // A configured NPC answers first, and the talk objectives below still fire, so
-        // "talk to the clerk" completes on the same click that opens the clerk's dialogue.
         boolean captured = net.schwarz.rotasutils.server.NpcService.onInteract(serverPlayer, data, entity);
 
         ObjectiveEngine.handle(serverPlayer, data, new QuestEvent(EventKind.ENTITY_INTERACT)
@@ -662,21 +628,16 @@ public final class RotasEvents {
                 .entityUuid(entity.getUUID())
                 .entityName(name)
                 .dimension(player.level().dimension().location().toString()));
-        // The same interaction also satisfies talk-to-NPC objectives, which is what
-        // makes plain villagers and modded NPCs work without a compat layer.
         ObjectiveEngine.handle(serverPlayer, data, new QuestEvent(EventKind.TALK_NPC)
                 .entityType(typeId)
                 .entityUuid(entity.getUUID())
                 .entityName(name)
                 .dimension(player.level().dimension().location().toString()));
-        // Interrupting stops the entity's own menu (villager trades, for one) from opening
-        // on top of the dialogue screen the NPC just pushed.
         return captured ? EventResult.interruptTrue() : EventResult.pass();
     }
 
-    // Tick -----------------------------------------------------------------
-
-    private static void onServerTick(MinecraftServer server) {
+private static void onServerTick(MinecraftServer server) {
+        net.schwarz.rotasutils.network.SyncQueue.flush(server);
         RotasData data = RotasData.instance();
         if (data == null) {
             return;
@@ -686,10 +647,7 @@ public final class RotasEvents {
             data.kernel().equipment().tick(server, data);
         }
         net.schwarz.rotasutils.server.MiningService.tick(server, data);
-        net.schwarz.rotasutils.network.SyncQueue.flush(server);
 
-        // Vanilla XP is only a compatibility mirror. Restore it every tick so mods that
-        // directly mutate Player.experienceLevel cannot create a second level economy.
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             ProgressService.syncVanillaLevelMirror(player, data);
         }
@@ -704,16 +662,26 @@ public final class RotasEvents {
         } catch (RuntimeException failure) {
             Rotasutils.LOG.error("Nemesis / world event tick failed: {}", failure.getMessage(), failure);
         }
-        net.schwarz.rotasutils.house.HouseBillingService.tick(server, data, System.currentTimeMillis());
+        try {
+            net.schwarz.rotasutils.house.HouseBillingService.tick(server, data, System.currentTimeMillis());
+        } catch (RuntimeException failure) {
+            Rotasutils.LOG.error("House billing tick failed: {}", failure.getMessage(), failure);
+        }
         try {
             net.schwarz.rotasutils.server.DungeonService.tick(server);
         } catch (RuntimeException failure) {
             Rotasutils.LOG.error("Dungeon tick failed: {}", failure.getMessage(), failure);
         }
         net.schwarz.rotasutils.server.horse.HorseService.tick(server);
+        net.schwarz.rotasutils.server.CombatStats.regenTick(server);
         net.schwarz.rotasutils.server.TitleService.tickAura(server, data);
         net.schwarz.rotasutils.server.ExplorationService.tick(server, data);
         net.schwarz.rotasutils.server.CompanionService.tick(server);
+        try {
+            net.schwarz.rotasutils.server.PerkService.tick(server, data);
+        } catch (RuntimeException failure) {
+            Rotasutils.LOG.error("Role perk tick failed: {}", failure.getMessage(), failure);
+        }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerProgress progress = data.peek(player.getUUID());
             if (progress == null) {
@@ -729,7 +697,6 @@ public final class RotasEvents {
                 RotasNetwork.syncProgress(player);
             }
         }
-        // Batched save for everything that is not a reward transaction.
         if (++autosaveCounter >= Math.max(1, data.serverSettings().autosaveIntervalSeconds())) {
             autosaveCounter = 0;
             data.setDirty();

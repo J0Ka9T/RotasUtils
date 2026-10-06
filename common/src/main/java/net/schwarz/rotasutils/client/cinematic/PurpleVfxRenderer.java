@@ -15,20 +15,6 @@ import org.joml.Matrix4f;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Draws every running Hollow Purple, from the same handful of GPU batches as Red. Blue is a gravitational vortex
- * (a dark heart in bright cyan, trails and dust falling in), Red its opposite (dense crimson plasma pushing dust and
- * sparks out); the world reacts to both; they deform toward one another, throw ribbons, sparks and lightning between
- * them, fall into a point, and Purple is born: one sphere of one hue - a solid violet body, violet plasma, a bright
- * rim and a single white-hot heart - crackling with lightning, Red and Blue winding into it only for its first
- * moments. Fired, it is a gigantic sphere that scorches a trench under its path; where it lands a sphere of space
- * is erased in a blink, holds, and closes to nothing, leaving drifting stars. Everything is a function of the
- * sequence time and a seed.
- *
- * <p>Seen in game before it was tuned: light on a noon sky only holds its colour over a dark body, so every sphere
- * has an alpha-blended one under it; motes are round, never square; and big spheres get enough segments that their
- * outline is a circle.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class PurpleVfxRenderer {
     private PurpleVfxRenderer() {
@@ -44,7 +30,6 @@ public final class PurpleVfxRenderer {
     private static final Vec3 LIGHT = new Vec3(0.3, 0.8, 0.5).normalize();
 
     private record Draw(ClientCast cast, double t, CameraRig.Frame frame, PurplePose.Sockets s, int lod, double distance) {
-        /** Animation time: it stops dead at the stable moment. */
         double ta() {
             return PurpleProfile.animTime(t);
         }
@@ -53,9 +38,7 @@ public final class PurpleVfxRenderer {
     private record Orbs(Vec3 blue, Vec3 red, Vec3 mid, double rB, double rR) {
     }
 
-    // Small shortcuts ---------------------------------------------------------------------------------
-
-    private static double rnd(long seed, int i, int k) {
+private static double rnd(long seed, int i, int k) {
         return RedVfxRenderer.rnd(seed, i, k);
     }
 
@@ -96,7 +79,6 @@ public final class PurpleVfxRenderer {
         };
     }
 
-    /** Dark bent space: almost black violet, thickest at the edge, so it reads as a lens and not as glow. */
     private static Mesh.Surface darkShell(double alpha) {
         return (nx, ny, nz, fres, out) -> {
             out[0] = 0.03f;
@@ -106,7 +88,6 @@ public final class PurpleVfxRenderer {
         };
     }
 
-    /** A surface pulled toward {@code axis} (the other energy) and pinched round the middle. */
     private static Mesh.Surface deformed(Vec3 axis, double amount, Mesh.Surface inner) {
         return new Mesh.Surface() {
             @Override
@@ -122,7 +103,6 @@ public final class PurpleVfxRenderer {
         };
     }
 
-    /** Segments for the big spheres (the fired mass, the blast): enough that the outline is a circle, not a polygon. */
     private static int bigLat(int lod) {
         return lod == 0 ? 32 : 14;
     }
@@ -131,17 +111,14 @@ public final class PurpleVfxRenderer {
         return lod == 0 ? 48 : 24;
     }
 
-    /** The solid violet body drawn under a sphere's light, so its colour holds against a bright sky. */
     private static Mesh.Surface body(double alpha) {
         return RedVfxRenderer.flat(0.13f, 0.0f, 0.30f, alpha);
     }
 
-    /** A soft round mote. Anything close to the lens is held to about two percent of the view. */
     private static void dot(Mesh m, Vec3 p, double size, float[] col) {
         m.glow(p, Math.min(size * 1.4, 0.022 * p.distanceTo(m.camera) + 0.004), col);
     }
 
-    /** A small cube of rubble, fading out as it nears the lens instead of filling the frame. */
     private static void chunk(Mesh m, Vec3 p, double size, float[] col, double spin) {
         Vec3 side = new Vec3(Math.cos(spin), 0, Math.sin(spin)), norm = new Vec3(-Math.sin(spin), 0, Math.cos(spin));
         col[3] *= (float) Curves.clamp01((p.distanceTo(m.camera) - 1.5) / 2.0);
@@ -150,7 +127,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** A jagged bolt from a to b with a white-hot middle. */
     private static void bolt(Mesh m, Vec3 a, Vec3 b, double width, double jag, float[] col, long seed, int id) {
         Vec3 prev = a;
         int segs = 7;
@@ -168,10 +144,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /**
-     * Lightning crackling off a sphere of radius {@code r}: a few bolts at a time, redrawn every tenth of a second
-     * rather than moved, the way drawn lightning is.
-     */
     private static void crackle(Mesh m, Vec3 at, double r, double reach, int count, double amount, double time, long seed, int base) {
         int key = (int) Math.floor(time * 10);
         for (int i = 0; i < count; i++) {
@@ -186,14 +158,11 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    // Geometry of the hands ---------------------------------------------------------------------------
-
-    private static Vec3 orbAt(Vec3 hand, Vec3 dir, double r) {
+private static Vec3 orbAt(Vec3 hand, Vec3 dir, double r) {
         return hand.add(dir.scale(0.12 + 0.8 * r)).add(0, 0.02, 0);
     }
 
-
-    private static Vec3 coreCenter(Draw d) {
+private static Vec3 coreCenter(Draw d) {
         return PurplePose.core(d.s(), d.t());
     }
 
@@ -221,9 +190,7 @@ public final class PurpleVfxRenderer {
         return new Orbs(lerp(b, mid, mk), lerp(r, mid, mk), mid, rB, rR);
     }
 
-    // Entry ------------------------------------------------------------------------------------------
-
-    public static void render(PoseStack poseStack, Camera camera, float partialTick, Matrix4f projection) {
+public static void render(PoseStack poseStack, Camera camera, float partialTick, Matrix4f projection) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || ClientCasts.all().isEmpty()) {
             return;
@@ -260,7 +227,6 @@ public final class PurpleVfxRenderer {
         RenderSystem.enableDepthTest();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         try {
-            // Dark and dusty things, blended normally.
             RenderSystem.defaultBlendFunc();
             RenderSystem.depthMask(false);
             mesh.begin();
@@ -268,12 +234,17 @@ public final class PurpleVfxRenderer {
                 alphaLayers(mesh, d);
             }
             mesh.draw();
-            // Light, added.
             RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
             mesh.begin();
             for (Draw d : draws) {
                 additiveLayers(mesh, d);
             }
+            int density = switch (mc.options.particles().get()) {
+                case MINIMAL -> 20;
+                case DECREASED -> 48;
+                default -> 100;
+            };
+            PurpleDissolve.fragments(mesh, cam, partialTick, density);
             mesh.draw();
         } finally {
             RenderSystem.defaultBlendFunc();
@@ -284,9 +255,7 @@ public final class PurpleVfxRenderer {
         requestPostFx(draws, cam, view, projection);
     }
 
-    // Alpha layers -----------------------------------------------------------------------------------
-
-    private static void alphaLayers(Mesh m, Draw d) {
+private static void alphaLayers(Mesh m, Draw d) {
         double t = d.t();
         ClientCast cast = d.cast();
         if (d.lod() <= 1 && t < PurpleTimings.RELEASE) {
@@ -326,7 +295,6 @@ public final class PurpleVfxRenderer {
         m.sphere(at.x, at.y, at.z, r * 0.93, latOf(d.lod()), lonOf(d.lod()), RedVfxRenderer.flat(skin[0], skin[1], skin[2], 0.5));
     }
 
-    /** Rocks floating up from the ground, and dust rising: dull, solid, and drawn into the point at the collapse. */
     private static void environmentSolid(Mesh m, Draw d) {
         double t = d.t(), ta = d.ta();
         double env = PurpleProfile.env(t);
@@ -362,9 +330,7 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    // Additive layers --------------------------------------------------------------------------------
-
-    private static void additiveLayers(Mesh m, Draw d) {
+private static void additiveLayers(Mesh m, Draw d) {
         double t = d.t();
         ClientCast cast = d.cast();
         bodyLights(m, d);
@@ -399,10 +365,7 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    // Blue and Red -----------------------------------------------------------------------------------
-
-    /** Blue: a gravitational vortex. A dark heart, bright cyan on the outside, everything falling in. */
-    private static void blueOrb(Mesh m, Draw d, Vec3 at, double r, Vec3 toOther, double def) {
+private static void blueOrb(Mesh m, Draw d, Vec3 at, double r, Vec3 toOther, double def) {
         if (r < 0.004) {
             return;
         }
@@ -431,7 +394,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Red: the opposite. A dense crimson core, unstable plasma, broken ribbons, everything pushed away. */
     private static void redOrb(Mesh m, Draw d, Vec3 at, double r, Vec3 toOther, double def) {
         if (r < 0.004) {
             return;
@@ -457,7 +419,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Broken, uneven arcs turning round Red at different distances, speeds and directions. */
     private static void arcs(Mesh m, Draw d, Vec3 at, double r, int count, double amount) {
         long seed = d.cast().seed;
         double t = d.t();
@@ -490,7 +451,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Ribbons drawn in (Blue) or thrown out (Red) in spirals from far away. */
     private static void trails(Mesh m, Draw d, Vec3 at, double r, float[] col, boolean inward, int base, int count, double amount) {
         if (amount < 0.02) {
             return;
@@ -523,7 +483,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Small bright fragments: falling into Blue, or thrown away from Red. */
     private static void fragments(Mesh m, Draw d, Vec3 at, double r, float[] col, boolean inward, int base, double amount) {
         long seed = d.cast().seed;
         double t = d.t();
@@ -538,7 +497,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Ribbons stretched between the two energies, and purple sparks in the space between them. */
     private static void links(Mesh m, Draw d, Orbs o) {
         double t = d.t();
         double def = PurpleProfile.deform(t), sp = PurpleProfile.sparks(t);
@@ -590,7 +548,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** For a fraction of a second, almost nothing: one tiny purple-white spark between the hands. */
     private static void point(Mesh m, Draw d) {
         double r = PurpleProfile.pointRadius(d.t());
         if (r <= 0) {
@@ -602,9 +559,7 @@ public final class PurpleVfxRenderer {
         m.glow(at, 0.28, c(0.6f, 0.25f, 1f, 0.25));
     }
 
-    // Purple -----------------------------------------------------------------------------------------
-
-    private static void core(Mesh m, Draw d) {
+private static void core(Mesh m, Draw d) {
         double t = d.t(), ta = d.ta();
         long seed = d.cast().seed;
         double R = PurpleProfile.coreRadius(t);
@@ -616,8 +571,6 @@ public final class PurpleVfxRenderer {
         double born = Curves.smoothstep((t - PurpleTimings.BORN) / 0.10);
         double L = Math.min(1.5, PurpleProfile.light(t));
         double sq = 1 - 0.85 * Curves.window(t, PurpleTimings.COMPRESS, PurpleTimings.COMPRESS_END);
-        // One hue all the way through (layers of different hues only add up to pastel): violet plasma on the dark
-        // body, a bright rim, and a single white-hot heart.
         m.sphere(at.x, at.y, at.z, R, lat, lon, RedVfxRenderer.plasma(ta * 0.9, 2.2, 0.9, ta, (int) seed + 7, VIO_DEEP, VIO_HOT, 0.9 * born, 1.4));
         m.sphere(at.x, at.y, at.z, R * 1.04, lat, lon, rim(0.8f, 0.55f, 1f, 0.9 * born, 3.0));
         m.sphere(at.x, at.y, at.z, R * 0.30, lat, lon, RedVfxRenderer.flat(1f, 0.96f, 1f, 0.95 * born));
@@ -625,7 +578,6 @@ public final class PurpleVfxRenderer {
         m.glow(at, R * 3.0, c(0.5f, 0.2f, 1f, 0.26 * L * born));
         m.glow(at, R * 1.6, c(0.7f, 0.45f, 1f, 0.22 * L * born));
         if (d.lod() <= 1) {
-            // Red and Blue are still winding into it for its first moments; after that it is simply Purple.
             double merging = born * (1 - Curves.smoothstep((t - PurpleTimings.BORN) / 1.4));
             if (merging > 0.02) {
                 helices(m, at, R, ta, seed, merging);
@@ -639,7 +591,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Red and Blue, still visible inside, spiralling round each other while they merge into Purple. */
     private static void helices(Mesh m, Vec3 at, double R, double ta, long seed, double amount) {
         Vec3[] b = basis(randomDir(seed, 8100));
         Vec3 axis = b[0].cross(b[1]);
@@ -664,7 +615,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Large broken elliptical ribbons: most nearly transparent, a few flashing bright for a few frames. */
     private static void ribbons(Mesh m, Draw d, Vec3 at, double R, double ta, long seed, double amount) {
         int n = d.lod() == 0 ? 8 : 4;
         for (int i = 0; i < n; i++) {
@@ -690,7 +640,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** A faint cosmic halo: tiny stars and violet dust. */
     private static void halo(Mesh m, Draw d, Vec3 at, double R, double ta, long seed, double amount) {
         m.glow(at, R * 7.5, c(0.5f, 0.2f, 0.95f, 0.09 * amount));
         int stars = d.lod() == 0 ? 40 : 20;
@@ -708,10 +657,7 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    // Light and world ---------------------------------------------------------------------------------
-
-    /** Red light on one side of the caster, blue on the other, the middle dark; later a huge violet light. */
-    private static void bodyLights(Mesh m, Draw d) {
+private static void bodyLights(Mesh m, Draw d) {
         double t = d.t();
         PurplePose.Sockets s = d.s();
         double gy = d.frame().feet().y + 0.03;
@@ -741,7 +687,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** Particles drifting toward the player, Blue pulling the world in, Red pushing it out, pressure waves on the ground. */
     private static void environmentGlow(Mesh m, Draw d) {
         double t = d.t(), ta = d.ta();
         double env = PurpleProfile.env(t);
@@ -778,7 +723,6 @@ public final class PurpleVfxRenderer {
                     dot(m, p, 0.03 + 0.03 * rnd(seed, 6700 + i, 4), c(1f, 0.35f, 0.15f, 0.5 * env * (1 - frac)));
                 }
             }
-            // Pressure waves: Red's roll outward from its side, Blue's contract toward its own.
             double k = (t * 0.6 + 0.2) % 1.0;
             m.groundRing(d.s().handR().x, gy, d.s().handR().z, 0.5 + 5 * k, 0.4 + 0.4 * k, c(1f, 0.15f, 0.1f, 0.22 * (1 - k) * env));
             m.groundRing(d.s().handL().x, gy, d.s().handL().z, 0.3 + 5 * (1 - k), 0.4 + 0.4 * (1 - k), c(0.2f, 0.55f, 1f, 0.22 * k * env));
@@ -788,14 +732,11 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    // Release ----------------------------------------------------------------------------------------
-
-    private static Vec3 shotDir(Draw d, Vec3 origin) {
+private static Vec3 shotDir(Draw d, Vec3 origin) {
         ClientCast cast = d.cast();
         return cast.released() ? unit(cast.impact.subtract(origin)) : d.frame().forward();
     }
 
-    /** The flash that fills the middle of the screen, speed lines, and a ring and a wedge of wind on the ground. */
     private static void releasing(Mesh m, Draw d, double dt) {
         Vec3 o = releaseCore(d);
         long seed = d.cast().seed;
@@ -806,7 +747,6 @@ public final class PurpleVfxRenderer {
         }
         double x = Curves.clamp01(dt / 0.4);
         double ease = 1 - Math.pow(1 - x, 3);
-        // Speed lines thrown out from the flick: thin, straight, gone in a few frames.
         if (dt < 0.35 && d.lod() <= 1) {
             double a = 0.8 * (1 - dt / 0.35);
             for (int i = 0; i < 18; i++) {
@@ -833,9 +773,7 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    // The travelling mass ----------------------------------------------------------------------------
-
-    private static Vec3 pathAt(ClientCast cast, double dtp) {
+private static Vec3 pathAt(ClientCast cast, double dtp) {
         Vec3 origin = cast.liveOrigin != null ? cast.liveOrigin : cast.releaseOrigin;
         double travel = Math.max(0.05, cast.travelSeconds);
         double launch = Math.min(0.10, travel * 0.4);
@@ -843,13 +781,11 @@ public final class PurpleVfxRenderer {
         return origin.add(cast.impact.subtract(origin).scale(Math.pow(u, 1.5)));
     }
 
-    /** The mass squeezes for the last quarter second before it lands. */
     private static double squeeze(ClientCast cast, double t) {
         double di = cast.sinceImpact(t);
         return di < 0 && di > -COMPRESS_WINDOW ? 1 - 0.55 * Curves.smoothstep((di + COMPRESS_WINDOW) / COMPRESS_WINDOW) : 1;
     }
 
-    /** The mass is a sphere, drawn out behind only a little by its own speed. */
     private static final double STRETCH = 1.25;
 
     private static boolean flying(Draw d, double dtp) {
@@ -868,7 +804,6 @@ public final class PurpleVfxRenderer {
         double rp = PurpleProfile.projectileRadius(dtp) * squeeze(cast, d.t());
         m.sphere(p.x, p.y, p.z, rp * 0.98, bigLat(d.lod()), bigLon(d.lod()), RedVfxRenderer.elongated(dir, 1.0, STRETCH, body(0.94)));
         m.sphere(p.x, p.y, p.z, rp * 1.25, 14, 24, RedVfxRenderer.elongated(dir, 1.0, STRETCH, darkShell(0.35)));
-        // Dust dragged toward the path and then thrown away from it.
         if (d.lod() <= 1) {
             double gy = d.frame().feet().y;
             for (int k = 0; k < 12; k++) {
@@ -895,10 +830,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /**
-     * A gigantic sphere of one hue: violet plasma on its dark body, a bright rim, a white-hot heart, lightning
-     * crackling off it, and light thrown on the land.
-     */
     private static void projectileAdditive(Mesh m, Draw d) {
         ClientCast cast = d.cast();
         double t = d.t();
@@ -920,7 +851,6 @@ public final class PurpleVfxRenderer {
         m.glow(p, rp * 1.6, c(0.7f, 0.45f, 1f, 0.22));
         if (d.lod() <= 1) {
             crackle(m, p, rp, 0.9, d.lod() == 0 ? 12 : 6, 1.0, t, seed, 9900);
-            // Fragments torn off the sides and left behind.
             for (int i = 0; i < (d.lod() == 0 ? 16 : 6); i++) {
                 Vec3 sdv = randomDir(seed, 9900 + i);
                 double life = (t * 3 + rnd(seed, 9900 + i, 1)) % 1.0;
@@ -931,10 +861,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /**
-     * The wake: a cone of violet light drawn to a thread behind the mass, with a few sparks hanging in it. A tube, not
-     * ribbons: the chase camera looks straight down it, and camera-facing ribbons turn into sheets from there.
-     */
     private static void trail(Mesh m, Draw d) {
         ClientCast cast = d.cast();
         double t = d.t();
@@ -970,7 +896,6 @@ public final class PurpleVfxRenderer {
                 }
             }
         }
-        // Pressure waves in the ground under the path.
         double gy = d.frame().feet().y;
         for (int k = 0; k < 12; k++) {
             double tk = now - k * 0.09;
@@ -986,11 +911,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /**
-     * The trench it carves: a dark scorched strip on the ground under the path, its edges glowing while it is fresh.
-     * ponytail: assumes flat ground at the caster's feet, as the ground rings do; sample the heightmap per segment
-     * if it has to follow terrain.
-     */
     private static void scorch(Mesh m, Draw d, boolean light) {
         ClientCast cast = d.cast();
         double dtp = d.t() - cast.releaseAt, di = Math.max(0, cast.sinceImpact(d.t()));
@@ -1018,7 +938,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /** A flat band on the ground from a to b, between offsets {@code o0} and {@code o1} to the side: c0 at o0, c1 at o1. */
     private static void strip(Mesh m, Vec3 a, Vec3 b, Vec3 side, double o0, double o1, double y, float[] c0, float[] c1) {
         double[][] p = {{a.x + side.x * o0, a.z + side.z * o0}, {b.x + side.x * o0, b.z + side.z * o0},
                 {b.x + side.x * o1, b.z + side.z * o1}, {a.x + side.x * o1, a.z + side.z * o1}};
@@ -1028,10 +947,7 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    // Impact -----------------------------------------------------------------------------------------
-
-    /** Everything nearby bends toward the impact in the moment before it lands. */
-    private static void converge(Mesh m, Draw d, double u) {
+private static void converge(Mesh m, Draw d, double u) {
         long seed = d.cast().seed;
         Vec3 at = d.cast().impact;
         int n = d.lod() == 0 ? 60 : 24;
@@ -1042,7 +958,6 @@ public final class PurpleVfxRenderer {
         m.glow(at, 1.2 + 2 * u, c(0.9f, 0.7f, 1f, 0.4 * u));
     }
 
-    /** The solid body of the erased sphere, a wall of dust along the ground, and rubble flung out flat. */
     private static void impactSolid(Mesh m, Draw d, double di) {
         if (d.lod() > 2) {
             return;
@@ -1052,7 +967,8 @@ public final class PurpleVfxRenderer {
         Vec3 at = cast.impact;
         double rb = PurpleProfile.blastRadius(di);
         if (rb > 0.05) {
-            m.sphere(at.x, at.y, at.z, rb * 0.98, bigLat(d.lod()), bigLon(d.lod()), body(0.92));
+            double opacity = 0.92 * (1 - Curves.smoothstep(Curves.window(di, 0.22, 0.72)));
+            m.sphere(at.x, at.y, at.z, rb * 0.98, bigLat(d.lod()), bigLon(d.lod()), body(opacity));
         }
         if (d.lod() <= 1) {
             double x = Curves.clamp01(di / 1.3);
@@ -1076,11 +992,6 @@ public final class PurpleVfxRenderer {
         }
     }
 
-    /**
-     * Not an explosion but a piece of space being erased: a sphere of violet with a white heart, out in a blink, held,
-     * then closing to nothing; one white frame; huge curved ribbons and rings on the ground flung out; and afterward
-     * stars drifting, and Red and Blue's fragments parting and fading.
-     */
     private static void impactAdditive(Mesh m, Draw d, double di) {
         ClientCast cast = d.cast();
         long seed = cast.seed;
@@ -1090,7 +1001,8 @@ public final class PurpleVfxRenderer {
         double rb = PurpleProfile.blastRadius(di);
         if (rb > 0.05) {
             int lat = bigLat(d.lod()), lon = bigLon(d.lod());
-            m.sphere(at.x, at.y, at.z, rb, lat, lon, RedVfxRenderer.plasma(di * 3, 1.6, 2, di, (int) seed, VIO_DEEP, VIO_HOT, 0.9, 1.3));
+            double skin = 0.9 * (1 - Curves.smoothstep(Curves.window(di, 0.25, 0.8)));
+            m.sphere(at.x, at.y, at.z, rb, lat, lon, RedVfxRenderer.plasma(di * 3, 1.6, 2, di, (int) seed, VIO_DEEP, VIO_HOT, skin, 1.3));
             m.sphere(at.x, at.y, at.z, rb * 1.02, lat, lon, rim(0.75f, 0.5f, 1f, 0.7, 4.0));
             m.glow(at, rb, c(1f, 0.94f, 1f, 0.9 * (1 - Curves.smoothstep(di / 0.6))));
             m.glow(at, rb * 2.2, c(0.65f, 0.25f, 1f, 0.3));
@@ -1098,7 +1010,6 @@ public final class PurpleVfxRenderer {
                 crackle(m, at, rb, 0.5, 14, 1.0, di, seed, 9750);
             }
         }
-        // The impact frame: the whole view goes white for an instant.
         if (di < 0.4) {
             m.glow(at, 40, c(1f, 0.95f, 1f, Math.exp(-di * 9)));
         }
@@ -1131,7 +1042,6 @@ public final class PurpleVfxRenderer {
             m.groundRing(at.x, at.y + 0.06, at.z, Rw * 1.05, 1.5 + 2 * w0, c(0.6f, 0.3f, 1f, 0.5 * (1 - w0)));
         }
         m.groundFan(at.x, at.y + 0.04, at.z, 40, c(0.55f, 0.2f, 1f, 0.5 * Math.exp(-di * 1.2)));
-        // Afterward: purple dust and stars drifting, Red and Blue's fragments parting and fading.
         double linger = cast.linger();
         double life = Math.max(0, 1 - di / linger);
         double fadeIn = Curves.smoothstep((di - 0.5) / 0.6);
@@ -1147,15 +1057,13 @@ public final class PurpleVfxRenderer {
             for (int i = 0; i < 24 && part > 0; i++) {
                 Vec3 base = at.add(randomDir(seed, 7000 + i).scale(2 + 4 * rnd(seed, 7000 + i, 1)));
                 double drift = di * (0.9 + 0.6 * rnd(seed, 7000 + i, 2));
-                dot(m, base.add(side[0].scale(drift)), 0.08, c(1f, 0.25f, 0.15f, 0.8 * part * fadeIn));
-                dot(m, base.subtract(side[0].scale(drift)), 0.08, c(0.3f, 0.7f, 1f, 0.8 * part * fadeIn));
+                dot(m, base.add(side[0].scale(drift)), 0.08, c(0.8f, 0.45f, 1f, 0.65 * part * fadeIn));
+                dot(m, base.subtract(side[0].scale(drift)), 0.08, c(0.55f, 0.25f, 1f, 0.5 * part * fadeIn));
             }
         }
     }
 
-    // Post effect ------------------------------------------------------------------------------------
-
-    private static double strengthOf(Draw d) {
+private static double strengthOf(Draw d) {
         double t = d.t();
         ClientCast cast = d.cast();
         double s = PurpleProfile.distortion(t);

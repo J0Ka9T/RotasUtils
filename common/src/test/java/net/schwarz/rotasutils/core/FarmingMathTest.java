@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Luck, combos, the monster book and salvage: the promises the farming loop makes. */
 class FarmingMathTest {
     @Test void luckRaisesAChanceButNeverPastItsCap() {
         assertEquals(1.0, FarmingMath.luckMultiplier(0, 0.1, 1.0), 1e-9);

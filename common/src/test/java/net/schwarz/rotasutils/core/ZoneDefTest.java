@@ -100,7 +100,6 @@ class ZoneDefTest {
         ZoneDef chosen = ZoneService.select(zones, OVERWORLD, 0, 64, 0);
         assertNotNull(chosen);
         assertEquals("rotas:town", chosen.id());
-        // Outside the town sphere only the whole-dimension zone matches.
         assertEquals("rotas:wide", ZoneService.select(zones, OVERWORLD, 500, 64, 500).id());
     }
 

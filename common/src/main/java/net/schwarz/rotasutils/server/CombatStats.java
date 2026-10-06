@@ -15,23 +15,45 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Logical combat values from character stats: defense, evasion and magic attack. They are rebuilt with the
- * attribute modifiers in {@link CharacterStatService#apply} and read by the damage mixin.
- *
- * <p>The damage hook also carries the combat balance from {@link SeasonRules}. A player's level never changes a
- * hit, against monsters or players: it only grants stat points. Between players the stat bonus, dodge chance and
- * single-hit burst are bounded so PvP is not decided by one stacked stat.</p>
- */
 public final class CombatStats {
     public static final String DEFENSE = "rotas:defense";
     public static final String EVASION = "rotas:evasion";
     public static final String MAGIC_ATTACK = "rotas:magic_attack";
-    /** Percent bonus to magic damage (0.5 = +50%); the magic counterpart of STR's percent attack. */
     public static final String MAGIC_POWER = "rotas:magic_power";
 
-    public record Values(double defense, double evasion, double magicAttack, double magicPower) {
-        public static final Values NONE = new Values(0, 0, 0, 0);
+    public static final String CRIT_CHANCE = "rotas:crit_chance";
+    public static final String CRIT_DAMAGE = "rotas:crit_damage";
+    public static final String REGEN = "rotas:regen";
+
+    public static final String ARMOR_PEN = "rotas:armor_pen";
+    public static final String COOLDOWN_REDUCTION = "rotas:cooldown_reduction";
+    public static final String DROP_RATE = "rotas:drop_rate";
+    public static final String LIFE_STEAL = "rotas:life_steal";
+    public static final String DAMAGE_REDUCTION = "rotas:damage_reduction";
+    public static final String STAMINA_REGEN = "rotas:stamina_regen";
+
+    public static final double CRIT_BASE = 1.5;
+
+    public static final double DEFAULT_MAX_DODGE = 0.50;
+    public static final double DEFAULT_MAX_CRIT_CHANCE = 0.60;
+    public static final double DEFAULT_MAX_CRIT_DAMAGE = 3.00;
+    public static final double DEFAULT_MAX_REGEN = 0.05;
+    public static final double DEFAULT_MAX_ARMOR_PEN = 0.40;
+    public static final double DEFAULT_MAX_CDR = 0.35;
+    public static final double DEFAULT_MAX_DROP_RATE = 1.00;
+    public static final double DEFAULT_MAX_LIFE_STEAL = 0.10;
+    public static final double DEFAULT_MAX_DAMAGE_REDUCTION = 0.30;
+    public static final double DEFAULT_MAX_STAMINA_REGEN = 0.50;
+
+    public static final double MAX_CRIT_CHANCE = DEFAULT_MAX_CRIT_CHANCE;
+    public static final double MAX_CRIT_DAMAGE = DEFAULT_MAX_CRIT_DAMAGE;
+    public static final double MAX_REGEN = DEFAULT_MAX_REGEN;
+
+    public record Values(double defense, double evasion, double magicAttack, double magicPower,
+                         double critChance, double critDamage, double regen,
+                         double armorPen, double cooldownReduction, double dropRate,
+                         double lifeSteal, double damageReduction, double staminaRegen) {
+        public static final Values NONE = new Values(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     private static final Map<UUID, Values> VALUES = new ConcurrentHashMap<>();
@@ -41,12 +63,18 @@ public final class CombatStats {
 
     public static boolean logical(String attribute) {
         return DEFENSE.equals(attribute) || EVASION.equals(attribute) || MAGIC_ATTACK.equals(attribute)
-                || MAGIC_POWER.equals(attribute);
+                || MAGIC_POWER.equals(attribute) || CRIT_CHANCE.equals(attribute) || CRIT_DAMAGE.equals(attribute)
+                || REGEN.equals(attribute) || ARMOR_PEN.equals(attribute) || COOLDOWN_REDUCTION.equals(attribute)
+                || DROP_RATE.equals(attribute) || LIFE_STEAL.equals(attribute)
+                || DAMAGE_REDUCTION.equals(attribute) || STAMINA_REGEN.equals(attribute);
     }
 
     public static void set(UUID player, Values values) {
         if (values.defense() <= 0 && values.evasion() <= 0 && values.magicAttack() <= 0
-                && values.magicPower() <= 0) {
+                && values.magicPower() <= 0 && values.critChance() <= 0 && values.critDamage() <= 0
+                && values.regen() <= 0 && values.armorPen() <= 0 && values.cooldownReduction() <= 0
+                && values.dropRate() <= 0 && values.lifeSteal() <= 0 && values.damageReduction() <= 0
+                && values.staminaRegen() <= 0) {
             VALUES.remove(player);
         } else {
             VALUES.put(player, values);
@@ -65,7 +93,6 @@ public final class CombatStats {
         VALUES.clear();
     }
 
-    /** Rolls evasion against a hit from a living attacker; environmental damage cannot be dodged. */
     public static boolean evade(ServerPlayer player, DamageSource source) {
         Values values = VALUES.get(player.getUUID());
         if (values == null || values.evasion() <= 0 || !(source.getEntity() instanceof LivingEntity)
@@ -73,7 +100,6 @@ public final class CombatStats {
             return false;
         }
         double chance = values.evasion();
-        // A dodge roll decides a player duel far more than a monster fight, so it counts for less there.
         RotasData data = RotasData.instance();
         if (data != null && source.getEntity() instanceof ServerPlayer attacker && attacker != player) {
             chance *= SeasonService.rules(data).pvpEvasionScale;
@@ -106,47 +132,101 @@ public final class CombatStats {
             }
         }
         if (attacker != null && rules != null && !magic(source)) {
-            // Refinement is flat attack on the weapon that struck, so it lands before every multiplier
-            // and is scaled by the PvP and level-parity rules exactly like the weapon's own damage.
             result += refineAttack(rules, attacker, source);
             if (defender == null) {
-                // A weapon's memory is of monsters, so it only counts against them.
                 result *= WeaponMemoryService.damageMultiplier(rules, attacker, source, victim);
             }
             result *= RuneService.damageMultiplier(attacker, source, victim);
         }
         if (attacker != null && magic(source)) {
             Values values = get(attacker.getUUID());
-            // Percent first, so it scales the spell rather than the flat bonus sitting on top of it.
             result *= 1.0 + Math.max(0, values.magicPower());
             double bonus = values.magicAttack();
-            // A flat bonus on every hit made fast multi-hit spells outscale everything; bound it by the hit.
             result += rules == null ? bonus : SeasonMath.capFlatBonus(result, bonus, rules.magicBonusMaxRatio);
+        }
+        if (attacker != null && !magic(source) && (source.getDirectEntity() == attacker
+                || source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.Projectile)) {
+            result *= critMultiplier(attacker, victim);
         }
         if (rules != null) {
             if (pvp) {
                 result *= pvpMultiplier(rules, attacker, source);
             }
         }
+        if (attacker != null) {
+            Values attackerValues = get(attacker.getUUID());
+            double pen = attackerValues.armorPen();
+            if (pen > 0 && victim.getArmorValue() > 0 && !source.is(DamageTypeTags.BYPASSES_ARMOR)) {
+                result *= 1.0 + (pen * Math.min(0.8, victim.getArmorValue() / 25.0));
+            }
+        }
         if (defender != null && !source.is(DamageTypeTags.BYPASSES_ARMOR)) {
-            // Worn armour is read here rather than cached, so a piece swapped mid-fight counts at once.
             double defense = get(defender.getUUID()).defense() + refineDefense(rules, defender);
+            if (attacker != null) {
+                double pen = get(attacker.getUUID()).armorPen();
+                if (pen > 0) {
+                    defense = Math.max(0, defense * (1.0 - Math.min(1.0, pen)));
+                }
+            }
             if (defense > 0) {
                 double scale = rules == null ? 100 : rules.defenseScale;
                 result *= SeasonMath.defenseMultiplier(defense, scale);
             }
+            double reduction = get(defender.getUUID()).damageReduction();
+            if (reduction > 0) {
+                result *= Math.max(0, 1.0 - Math.min(1.0, reduction));
+            }
         }
         if (pvp) {
-            // No single player hit may take more than a set share of the victim's health.
             result = SeasonMath.capHit(result, defender.getMaxHealth(), rules == null ? 0 : rules.pvpMaxHitShare);
         }
         return (float) Math.max(0, result);
     }
 
-    /**
-     * Flat attack the attacker's refined weapon adds to this hit. Only the weapon that actually struck
-     * counts: a melee swing, or a projectile fired from the weapon in hand.
-     */
+    public static void onHitLanded(ServerPlayer attacker, LivingEntity victim, DamageSource source, float damageDealt) {
+        if (attacker == null || victim == null || damageDealt <= 0 || !attacker.isAlive()) return;
+        Values values = get(attacker.getUUID());
+        if (values.lifeSteal() > 0 && !magic(source)) {
+            float healAmount = (float) (damageDealt * values.lifeSteal());
+            healAmount = Math.min(healAmount, (float) (attacker.getMaxHealth() * 0.10));
+            if (healAmount > 0) {
+                attacker.heal(healAmount);
+                if (attacker.serverLevel() != null) {
+                    attacker.serverLevel().sendParticles(ParticleTypes.HEART,
+                            attacker.getX(), attacker.getY() + 1.2, attacker.getZ(),
+                            2, 0.2, 0.2, 0.2, 0.01);
+                }
+            }
+        }
+    }
+
+    public static int scaleCooldown(ServerPlayer player, int ticks) {
+        if (player == null || ticks <= 0) return ticks;
+        double cdr = get(player.getUUID()).cooldownReduction();
+        return cdr > 0 ? (int) Math.max(1, Math.round(ticks * (1.0 - Math.min(1.0, cdr)))) : ticks;
+    }
+
+    private static double critMultiplier(ServerPlayer attacker, LivingEntity victim) {
+        Values values = get(attacker.getUUID());
+        if (values.critChance() <= 0 || attacker.getRandom().nextDouble() >= values.critChance()) {
+            return 1.0;
+        }
+        if (victim.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            level.sendParticles(ParticleTypes.CRIT, victim.getX(), victim.getY(0.5), victim.getZ(), 8, 0.3, 0.3, 0.3, 0.1);
+        }
+        return CRIT_BASE + values.critDamage();
+    }
+
+    public static void regenTick(net.minecraft.server.MinecraftServer server) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Values values = VALUES.get(player.getUUID());
+            if (values == null || values.regen() <= 0 || !player.isAlive() || player.getHealth() >= player.getMaxHealth()) {
+                continue;
+            }
+            player.heal((float) (player.getMaxHealth() * values.regen()));
+        }
+    }
+
     private static double refineAttack(SeasonRules rules, ServerPlayer attacker, DamageSource source) {
         boolean melee = source.getDirectEntity() == attacker;
         boolean shot = source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.Projectile;
@@ -156,7 +236,6 @@ public final class CombatStats {
         return net.schwarz.rotasutils.item.ItemRefine.attackBonus(rules.refine, attacker.getMainHandItem());
     }
 
-    /** Defence the defender's refined armour adds, on the same channel Vitality feeds. */
     private static double refineDefense(SeasonRules rules, ServerPlayer defender) {
         if (rules == null || rules.refine == null || !rules.refine.enabled) {
             return 0;
@@ -170,17 +249,15 @@ public final class CombatStats {
         return total;
     }
 
-    /** Only part of a stacked attack build counts, and fights run longer. Level plays no part. */
     private static double pvpMultiplier(SeasonRules rules, ServerPlayer attacker, DamageSource source) {
         double multiplier = rules.pvpDamageMultiplier;
-        // The stat bonus is a multiplier on melee attack damage; projectiles and spells never carried it.
         if (source.getDirectEntity() == attacker) {
             multiplier *= SeasonMath.statBonusScale(CharacterStatService.statAttackBonus(attacker), rules.pvpStatEfficiency);
         }
         return multiplier;
     }
 
-    private static boolean magic(DamageSource source) {
+    static boolean magic(DamageSource source) {
         if (source.is(DamageTypeTags.WITCH_RESISTANT_TO)) {
             return true;
         }

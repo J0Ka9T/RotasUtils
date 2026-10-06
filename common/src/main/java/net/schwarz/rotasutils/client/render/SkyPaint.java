@@ -18,12 +18,6 @@ import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
-/**
- * Painted light on the sky dome: the textures from {@code scripts/gen_sunder_textures.py} laid around
- * any direction of the sky, curved with it, blended additively. For the sky passes, which draw with
- * their own GL state rather than through a buffer source. Call inside a pass that has blending on and
- * depth writes off; {@link #begin} and {@link #end} bracket each texture.
- */
 @Environment(EnvType.CLIENT)
 final class SkyPaint {
     static final ResourceLocation SEAL = tex("seal");
@@ -35,7 +29,6 @@ final class SkyPaint {
     static final ResourceLocation MOTE = tex("mote");
     static final ResourceLocation CRACKS = tex("cracks");
 
-    /** The centre direction and a tangent basis around it (right, up). */
     private static final float[] D = {0f, 1f, 0f}, R = {1f, 0f, 0f}, U = {0f, 0f, 1f};
     private static float tr = 1f, tg = 1f, tb = 1f;
     private static final float[] P = new float[3];
@@ -71,13 +64,11 @@ final class SkyPaint {
         tb = c[2];
     }
 
-    /** Centre later primitives on a unit direction of the sky. */
     static void centre(float[] direction) {
         float len = (float) Math.sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
         D[0] = direction[0] / len;
         D[1] = direction[1] / len;
         D[2] = direction[2] / len;
-        // Right is horizontal; straight overhead, where that is undefined, take east.
         float rx = D[2], rz = -D[0];
         float rl = (float) Math.sqrt(rx * rx + rz * rz);
         if (rl < 1.0e-3f) {
@@ -88,13 +79,11 @@ final class SkyPaint {
         R[0] = rx / rl;
         R[1] = 0f;
         R[2] = rz / rl;
-        // up = right x direction, so it points towards the zenith.
         U[0] = R[1] * D[2] - R[2] * D[1];
         U[1] = R[2] * D[0] - R[0] * D[2];
         U[2] = R[0] * D[1] - R[1] * D[0];
     }
 
-    /** A texture as a disc of {@code radiusDeg} around the centre, turned by {@code rollDeg}, curved on the dome. */
     static void disc(BufferBuilder b, Matrix4f m, float radiusDeg, float rollDeg, float alpha, float dome) {
         if (alpha <= 0.003f || radiusDeg <= 0.01f) {
             return;
@@ -117,7 +106,6 @@ final class SkyPaint {
         }
     }
 
-    /** A small texture at an offset (degrees) from the centre, on a 2x2 grid. */
     static void sprite(BufferBuilder b, Matrix4f m, float x, float y, float halfDeg, float rollDeg, float alpha,
                        float dome) {
         if (alpha <= 0.003f || halfDeg <= 0.01f) {
@@ -143,7 +131,6 @@ final class SkyPaint {
     }
 
     private static void point(BufferBuilder b, Matrix4f m, float x, float y, float u, float v, float alpha, float dome) {
-        // Rotate the centre by the offset's angle, towards the offset's direction in the tangent plane.
         double angle = Math.toRadians(Math.sqrt(x * x + y * y));
         if (angle < 1.0e-8) {
             P[0] = D[0];

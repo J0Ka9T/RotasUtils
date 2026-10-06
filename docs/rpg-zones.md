@@ -78,6 +78,15 @@ with no areas covers the whole dimension.
 Zones persist in the world's `rotasutils_data.dat` and are pushed to administrators for the editor.
 Zones saved before these settings existed load with the defaults above.
 
+## Making a zone from a screen
+
+Admin menu > Level Zones > **New zone...** makes a zone without the wand: a name (blank is named after the biome), a
+**type** (its preset is applied: Town, Dungeon, Boss arena, PvP arena), a **shape and size** centred where you stand
+(Sphere r16-256, a Box 32-512 wide from the bottom of the world to the top, or the whole dimension) and, if you want, the mob
+level band (blank: taken from where you stand). **Create zone** opens the editor for the rest. **Quick zone here** keeps the old
+one-click sphere. On the zone list each zone has **Go there** and **Turn off / Turn on** buttons (the same as
+`/rotas zone tp` and `/rotas zone enable|disable`).
+
 ## The Zone Wand
 
 The Zone Wand is an **administrator-only** item. It is listed only in the **RotasUtils Admin Tools**
@@ -251,6 +260,9 @@ apply to everyone.
   - `/rotas zone gate test` - hold yourself (an administrator) to entry locks until toggled off.
   - `/rotas zone points <zone>` - spawn points with alive / ready / seconds until the mob returns.
   - `/rotas zone points <zone> respawn <point>` - clear a point's cooldown.
+  - `/rotas zone near [blocks]` - every zone within reach (default 256), nearest first, with the way to it.
+  - `/rotas zone tp <zone>` - go to the middle of a zone's first shape (administrators).
+  - `/rotas zone enable|disable <zone>` - switch a zone on or off without opening the editor (administrators).
   - `/rotas zone wand [radius]` - get the wand, optionally setting its sphere radius.
   - `/rotas zone remove <zone>` - delete a zone.
   - `/rotas monster level <mob> <level>` - re-level one mob, keeping its profile, tier and affixes.

@@ -13,21 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * What an admin should know about a dialogue before expecting it to work.
- *
- * <p>Deliberately free of any text: the editor turns the keys returned here into words through its
- * own localisation, so this stays pure, unit-testable and safe on a dedicated server.</p>
- */
 public final class NpcDialogueGuide {
-    /** Every field the dialogue schema can show, so the editor can name it in the player's language. */
     private static final Set<String> FIELDS = Set.of(
             "start", "nodes", "gifts", "dialogue_enabled", "quests_enabled", "shop_enabled", "gifts_enabled",
             "invalid_gift", "behavior", "id", "lines", "choices", "text", "next", "when", "quest", "state",
             "min_level", "flag", "value", "action", "type", "target", "rewards", "amount", "repeat",
             "cooldown_seconds", "items", "count", "success", "enabled", "movement", "combat", "owner", "patrol");
 
-    /** A problem the editor shows: {@code args} fill the placeholders in {@code key}. */
     public record Problem(String key, List<Object> args, boolean blocking) {
         public static Problem blocking(String key, Object... args) {
             return new Problem(key, List.of(args), true);
@@ -38,31 +30,22 @@ public final class NpcDialogueGuide {
         }
     }
 
-    /** The size of a conversation, for the editor's status row. */
     public record Shape(int steps, String opening, int buttons, int gifts) { }
 
-    /** A localisable name for a position in the dialogue tree, with its placeholders. */
     public record Crumb(String key, List<Object> args) { }
 
     private NpcDialogueGuide() {
     }
 
-    /** Translation key naming {@code field} in plain words, or empty when the field is not ours. */
     public static String labelKey(String field) {
         String key = field == null ? "" : field;
         return FIELDS.contains(key) ? "rotasutils.dialogue.field." + key : "";
     }
 
-    /** Every configurable field, so the language guard can check each one is named. */
     public static Set<String> fields() {
         return FIELDS;
     }
 
-    /**
-     * Names a position in the dialogue tree in plain words, so the editor never has to show a raw
-     * path such as {@code nodes / 0 / choices / 1 / action}. Steps are named by their id, buttons by
-     * their label, and anything else by the field it holds.
-     */
     public static Crumb describe(JsonObject document, List<String> path) {
         if (path == null || path.isEmpty()) {
             return new Crumb("rotasutils.dialogue.btn.conversation", List.of());
@@ -95,7 +78,6 @@ public final class NpcDialogueGuide {
                 : new Crumb(key, List.of());
     }
 
-    /** The whole trail from the conversation root down to {@code path}, outermost first. */
     public static List<Crumb> trail(JsonObject document, List<String> path) {
         List<Crumb> crumb = new ArrayList<>();
         if (path == null || path.isEmpty()) {
@@ -141,10 +123,6 @@ public final class NpcDialogueGuide {
         return value != null && value.isJsonPrimitive() ? value.getAsString() : "?";
     }
 
-    /**
-     * Everything an admin should see before expecting the dialogue to work. Blocking problems stop
-     * it loading; warnings load fine but usually read wrong in game.
-     */
     public static List<Problem> problems(JsonObject document) {
         List<Problem> problems = new ArrayList<>();
         if (document == null) {
@@ -216,12 +194,10 @@ public final class NpcDialogueGuide {
         return List.copyOf(problems);
     }
 
-    /** How many blocking problems the document has; the editor shows those first. */
     public static long blocking(JsonObject document) {
         return problems(document).stream().filter(Problem::blocking).count();
     }
 
-    /** The size of the conversation, for the editor's status row. */
     public static Shape shape(JsonObject document) {
         JsonArray nodes = array(document, "nodes");
         int buttons = 0;
@@ -236,7 +212,6 @@ public final class NpcDialogueGuide {
         return new Shape(nodes.size(), opening, buttons, array(document, "gifts").size());
     }
 
-    /** Step ids a player can actually reach by pressing buttons from {@code opening}. */
     private static Set<String> reachable(Map<String, JsonObject> byId, String opening) {
         Set<String> seen = new LinkedHashSet<>();
         if (opening == null || !byId.containsKey(opening)) {

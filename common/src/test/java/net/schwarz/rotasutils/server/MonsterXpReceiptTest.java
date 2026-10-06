@@ -34,6 +34,22 @@ class MonsterXpReceiptTest {
     }
 
     @Test
+    void fullBudgetEvictsOldestMonsterReceiptsButKeepsOtherClaims() {
+        var progress = new RotasData().progress(UUID.randomUUID());
+        progress.claimedRewards().add("quest:keep:0");
+        UUID oldest = UUID.randomUUID();
+        assertTrue(ProgressService.claimMonsterXpReceipt(progress, oldest));
+        for (int i = 2; i < 65_536; i++) {
+            progress.claimedRewards().add("monster_xp|filler:" + i);
+        }
+
+        assertTrue(ProgressService.claimMonsterXpReceipt(progress, UUID.randomUUID()));
+        assertTrue(progress.claimedRewards().size() <= 65_536);
+        assertTrue(progress.claimedRewards().contains("quest:keep:0"));
+        assertFalse(progress.claimedRewards().contains("monster_xp|" + oldest));
+    }
+
+    @Test
     void sameMonsterCanBeClaimedByDifferentRecipients() {
         RotasData data = new RotasData();
         var first = data.progress(UUID.randomUUID());

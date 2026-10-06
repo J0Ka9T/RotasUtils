@@ -16,11 +16,6 @@ import net.schwarz.rotasutils.level.SeasonRules;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Every drop table in one list: what each monster rank leaves, what each loot grade holds, and the mobs
- * that have a drop of their own. Click a row to edit it; "+ Custom drop for a mob" gives one kind of mob
- * its own table.
- */
 @Environment(EnvType.CLIENT)
 public class DropTablesScreen extends RotasScreen {
     private static final int ROW_H = 26;

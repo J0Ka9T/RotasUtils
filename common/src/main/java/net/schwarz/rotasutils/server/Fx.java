@@ -7,11 +7,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import org.joml.Vector3f;
 
-/**
- * Small server-side particle choreography for feedback moments (a purchase, a blessing, a title). Shapes, not
- * clouds: a rising spiral reads as "something happened to you", a ground ring as "something happened here".
- * Counts stay small so a busy town square never floods clients.
- */
 public final class Fx {
     private Fx() {
     }
@@ -20,7 +15,6 @@ public final class Fx {
         return new DustParticleOptions(new Vector3f((rgb >> 16 & 0xFF) / 255f, (rgb >> 8 & 0xFF) / 255f, (rgb & 0xFF) / 255f), size);
     }
 
-    /** Two interleaved arms rising round an entity: blessings, titles, level milestones. */
     public static void spiral(Entity entity, ParticleOptions particle, int points, double radius, double height) {
         if (!(entity.level() instanceof ServerLevel level)) return;
         for (int i = 0; i < points; i++) {
@@ -34,7 +28,6 @@ public final class Fx {
         }
     }
 
-    /** A flat ring on the ground: something happened here. */
     public static void ring(Entity entity, ParticleOptions particle, int points, double radius) {
         if (!(entity.level() instanceof ServerLevel level)) return;
         for (int i = 0; i < points; i++) {
@@ -44,13 +37,11 @@ public final class Fx {
         }
     }
 
-    /** A short upward fountain at chest height: a reward landing. */
     public static void fountain(Entity entity, ParticleOptions particle, int count) {
         if (!(entity.level() instanceof ServerLevel level)) return;
         level.sendParticles(particle, entity.getX(), entity.getY() + 1.1, entity.getZ(), count, 0.25, 0.35, 0.25, 0.12);
     }
 
-    /** Feedback for one NPC service, chosen by what the service did. */
     public static void service(Entity player, String service) {
         switch (service) {
             case "repair_hand", "repair_all" -> fountain(player, ParticleTypes.CRIT, 18);

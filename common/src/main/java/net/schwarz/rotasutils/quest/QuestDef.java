@@ -14,10 +14,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * A quest template. Templates live in world save data, completely separate from the
- * per-player progression records so editing a quest never touches player progress.
- */
 public final class QuestDef {
     private static final int MAX_STAGES = 16;
     private static final int MAX_BOUNTY_LIMIT = 1_000_000;
@@ -36,6 +32,8 @@ public final class QuestDef {
     private DangerRank rank = DangerRank.F;
     private boolean mainQuest;
     private boolean hidden;
+    private boolean autoComplete;
+    private boolean followUp;
     private int themeColor = 0xFFFFAA00;
     private String completionSound = "minecraft:entity.player.levelup";
 
@@ -63,7 +61,6 @@ public final class QuestDef {
     private final List<String> failureConditions = new ArrayList<>();
     private final List<String> recommendedSkills = new ArrayList<>();
     private final List<String> recommendedEquipment = new ArrayList<>();
-    /** Boards keep their own pools; this mirror is used by the creator's board picker. */
     private final Set<String> boardIds = new LinkedHashSet<>();
     private String kernelOrigin = "";
     private String resetPolicy = "";
@@ -171,6 +168,22 @@ public final class QuestDef {
 
     public void setMainQuest(boolean mainQuest) {
         this.mainQuest = mainQuest;
+    }
+
+    public boolean followUp() {
+        return followUp;
+    }
+
+    public void setFollowUp(boolean followUp) {
+        this.followUp = followUp;
+    }
+
+    public boolean autoComplete() {
+        return autoComplete;
+    }
+
+    public void setAutoComplete(boolean autoComplete) {
+        this.autoComplete = autoComplete;
     }
 
     public boolean hidden() {
@@ -316,6 +329,34 @@ public final class QuestDef {
         return objectives;
     }
 
+    public void freezeObjectiveKeys() {
+        java.util.Set<String> used = new java.util.HashSet<>();
+        for (Objective objective : objectives()) {
+            if (objective.hasSavedKey()) {
+                used.add(objective.key());
+            }
+        }
+        for (Objective objective : objectives) {
+            if (objective.hasSavedKey()) {
+                continue;
+            }
+            String key = objective.key();
+            for (int n = objectives.size(); used.contains(key); n++) {
+                key = "o" + n;
+            }
+            objective.setKey(key);
+            used.add(key);
+        }
+    }
+
+    public List<String> objectiveKeys() {
+        List<String> keys = new ArrayList<>();
+        for (Objective objective : objectives()) {
+            keys.add(objective.key());
+        }
+        return keys;
+    }
+
     public List<QuestStage> stages() {
         return stages;
     }
@@ -374,7 +415,6 @@ public final class QuestDef {
         return boardIds;
     }
 
-    /** Total experience listed on the reward preview, before rank and skill scaling. */
     public long baseExperience() {
         long total = 0;
         for (Reward reward : rewards) {
@@ -426,6 +466,12 @@ public final class QuestDef {
         tag.putString("rank", rank.name());
         tag.putBoolean("main", mainQuest);
         tag.putBoolean("hidden", hidden);
+        if (autoComplete) {
+            tag.putBoolean("auto_complete", true);
+        }
+        if (followUp) {
+            tag.putBoolean("follow_up", true);
+        }
         tag.putInt("color", themeColor);
         tag.putString("sound", completionSound);
         tag.putInt("rec_level", recommendedLevel);
@@ -478,6 +524,8 @@ public final class QuestDef {
         quest.rank = Nbt.readEnum(tag, "rank", DangerRank.class, DangerRank.F);
         quest.mainQuest = tag.getBoolean("main");
         quest.hidden = tag.getBoolean("hidden");
+        quest.autoComplete = tag.getBoolean("auto_complete");
+        quest.followUp = tag.getBoolean("follow_up");
         quest.themeColor = tag.contains("color") ? tag.getInt("color") : 0xFFFFAA00;
         quest.completionSound = tag.getString("sound");
         quest.recommendedLevel = tag.getInt("rec_level");

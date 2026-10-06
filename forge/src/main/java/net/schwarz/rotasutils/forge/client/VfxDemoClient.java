@@ -9,7 +9,6 @@ import net.schwarz.rotasutils.forge.magic.VfxDemo;
 
 import java.io.File;
 
-/** Client half of the dev VFX harness: hides the HUD, sets the camera, takes screenshots on cue. */
 public final class VfxDemoClient {
     private static int lastIndex = -1;
     private static int nextShot;

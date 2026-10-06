@@ -14,12 +14,10 @@ public enum MonsterRank {
         this.stars = stars;
     }
 
-    /** The rank's own colour: plate name, target-frame ribbon and aura all use it. */
     public int rgb() {
         return rgb;
     }
 
-    /** Star pips drawn beside the name; NORMAL has none. */
     public int stars() {
         return stars;
     }

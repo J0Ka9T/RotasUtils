@@ -8,15 +8,9 @@ import com.google.gson.JsonPrimitive;
 import java.util.List;
 import java.util.Map;
 
-/**
- * One-click difficulty for a section. "Normal" is the mod's defaults; "easy" and "hard" scale a few
- * key values of those defaults, so a preset always lands on a known, sane point instead of drifting
- * from whatever was there before. Only the listed values change; everything else is left alone.
- */
 public final class SeasonPresets {
     public enum Level { EASY, NORMAL, HARD }
 
-    /** One scaled value: its path and the factor for easy and for hard. {@code cap} bounds chances. */
     public record Knob(List<String> path, double easy, double hard, double cap) {
         static Knob of(String path, double easy, double hard) {
             return new Knob(List.of(path.split("\\.")), easy, hard, Double.MAX_VALUE);
@@ -60,11 +54,6 @@ public final class SeasonPresets {
         return KNOBS.containsKey(section);
     }
 
-    /**
-     * Sets the section's knobs in {@code draft} to {@code defaults} scaled for {@code level}.
-     *
-     * @return how many values were set
-     */
     public static int apply(JsonObject draft, JsonObject defaults, String section, Level level) {
         int changed = 0;
         for (Knob knob : KNOBS.getOrDefault(section, List.of())) {

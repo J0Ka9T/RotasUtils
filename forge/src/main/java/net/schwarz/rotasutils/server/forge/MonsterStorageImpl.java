@@ -85,8 +85,6 @@ public final class MonsterStorageImpl {
 
         private CompoundTag readAndPrimeHealth() {
             if (primeHealth) {
-                // Forge restores capabilities before LivingEntity reads and clamps Health. Prime the
-                // vanilla-scale value here so MonsterService's transient modifiers preserve this ratio.
                 entity.setHealth(MonsterStorage.healthAtRatio(entity.getMaxHealth(), loadedHealthRatio));
                 primeHealth = false;
             }
@@ -112,7 +110,6 @@ public final class MonsterStorageImpl {
             CompoundTag result = new CompoundTag();
             if (!state.isEmpty()) {
                 result.put(STATE_KEY, state.copy());
-                // Entity serializes ForgeCaps immediately before LivingEntity writes its Health field.
                 result.putDouble(HEALTH_RATIO_KEY, MonsterStorage.healthRatio(entity.getHealth(), entity.getMaxHealth()));
             }
             return result;

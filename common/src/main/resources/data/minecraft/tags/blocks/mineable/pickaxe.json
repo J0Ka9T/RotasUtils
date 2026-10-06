@@ -2,6 +2,13 @@
   "replace": false,
   "values": [
     "rotasutils:refine_forge",
-    "rotasutils:rune_altar"
+    "rotasutils:rune_altar",
+    "rotasutils:cooking_station",
+    "rotasutils:smeltery",
+    "rotasutils:smithing_bench",
+    "rotasutils:alchemy_table",
+    "rotasutils:tannery",
+    "rotasutils:fishmonger",
+    "rotasutils:mill"
   ]
 }

@@ -30,23 +30,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The Zenith: every sword that came before it, forged into one. Swinging it still cuts like a
- * sword, but holding use looses spectral copies of every sword in the world. Each one loops out to
- * the point the wielder aims at and back, cutting everything along the way, the way the Terraria
- * blade does.
- */
 public class ZenithItem extends SwordItem {
-    /** Ticks between two spectral blades while use is held. */
     public static final int FIRE_INTERVAL = 1;
-    /** How far the wielder can aim a blade, in blocks. */
     public static final double REACH = 64.0;
-    /** A blade that finds nothing to aim at still flies out this far. */
     private static final double MIN_REACH = 5.0;
-    /** Ticks before Excalibur can be called again. */
     public static final int EXCALIBUR_COOLDOWN = 120;
 
-    /** Every sword in the registry, in a stable order, built on first use (after registries freeze). */
     private static List<Item> swords;
 
     public ZenithItem(Properties properties) {
@@ -57,7 +46,6 @@ public class ZenithItem extends SwordItem {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (player.isShiftKeyDown()) {
-            // Excalibur: one colossal slash of light, then a long cool-down.
             if (level instanceof ServerLevel server) {
                 net.schwarz.rotasutils.entity.ExcaliburSlashEntity.unleash(server, player);
                 player.getCooldowns().addCooldown(this, EXCALIBUR_COOLDOWN);
@@ -101,10 +89,6 @@ public class ZenithItem extends SwordItem {
         }
     }
 
-    /**
-     * Where the wielder is aiming: the first creature or block along their look, else a point at
-     * full reach. Never closer than {@link #MIN_REACH} so a blade always has room to loop.
-     */
     static Vec3 aim(LivingEntity user) {
         Vec3 eye = user.getEyePosition();
         Vec3 look = user.getViewVector(1f);
@@ -122,11 +106,6 @@ public class ZenithItem extends SwordItem {
         return target;
     }
 
-    /**
-     * The sword that becomes the shot-th spectral blade. The Zenith cycles through every sword it
-     * contains rather than picking at random, so a long volley shows all of them; {@code salt}
-     * only chooses where in the cycle a new volley begins.
-     */
     public static ItemStack bladeFor(int shot, int salt) {
         List<Item> all = swords();
         if (all.isEmpty()) {

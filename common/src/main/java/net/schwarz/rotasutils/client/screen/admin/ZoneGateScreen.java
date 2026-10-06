@@ -15,13 +15,6 @@ import net.schwarz.rotasutils.core.ZoneDef;
 
 import java.util.List;
 
-/**
- * The entry gate of one level zone.
- *
- * <p>Edits the zone's requirement list in place; the parent {@link ZoneEditScreen} holds the same
- * list and saves it with the rest of the zone, so nothing reaches the server until Save. A
- * requirement the editor marks advisory is shown to players but never blocks entry.</p>
- */
 @Environment(EnvType.CLIENT)
 public class ZoneGateScreen extends RotasScreen {
     private static final int ROW = 24;
@@ -93,7 +86,6 @@ public class ZoneGateScreen extends RotasScreen {
         int room = usable - 100;
         String head = Ui.truncate((index + 1) + ". " + requirement.type().display(), room);
         Ui.label(graphics, head, x + 8, y + 5, Ui.TEXT);
-        // The configured fields (quest id, level, item) so rows of the same type can be told apart.
         String summary = requirement.summary();
         int used = font.width(head) + 10;
         if (!summary.isEmpty() && room - used > 24) {

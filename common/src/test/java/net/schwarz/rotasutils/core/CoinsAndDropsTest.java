@@ -25,7 +25,6 @@ class CoinsAndDropsTest {
         rule.coinMax = 2;
         rule.coinPerLevel = 0.5;
         rule.coinMultiplier = 3;
-        // (2 + 0.5 * 40) * 3 = 66: above one vanilla stack, which coins no longer care about.
         assertEquals(66, net.schwarz.rotasutils.server.DropServiceAccess.coins(40, rule, RandomSource.create(1)));
         rule.coinMax = 5;
         for (int seed = 0; seed < 50; seed++) {

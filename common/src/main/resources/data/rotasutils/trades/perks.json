@@ -1,0 +1,69 @@
+{
+  "perks": [
+    {
+      "role": "miner",
+      "type": "prospect",
+      "base": 5,
+      "perLevel": 0.4,
+      "max": 10
+    },
+    {
+      "role": "miner",
+      "type": "rich_veins",
+      "base": 5,
+      "perLevel": 1,
+      "max": 25
+    },
+    {
+      "role": "miner",
+      "type": "swift_pick",
+      "base": 0,
+      "perLevel": 0.1,
+      "max": 2
+    },
+    {
+      "role": "farmer",
+      "type": "green_thumb",
+      "base": 1,
+      "perLevel": 0.3,
+      "max": 6,
+      "radius": 6
+    },
+    {
+      "role": "fisher",
+      "type": "lucky_waters",
+      "base": 0.3,
+      "perLevel": 0.1,
+      "max": 2
+    },
+    {
+      "role": "rancher",
+      "type": "animal_whisperer",
+      "base": 0.5,
+      "perLevel": 0.2,
+      "max": 3,
+      "radius": 10
+    },
+    {
+      "role": "chef",
+      "type": "banquet",
+      "base": 5,
+      "perLevel": 0.25,
+      "max": 9
+    },
+    {
+      "role": "alchemy",
+      "type": "master_brew",
+      "base": 10,
+      "perLevel": 2,
+      "max": 40
+    },
+    {
+      "role": "alchemy",
+      "type": "arcane_mind",
+      "base": 10,
+      "perLevel": 4,
+      "max": 80
+    }
+  ]
+}

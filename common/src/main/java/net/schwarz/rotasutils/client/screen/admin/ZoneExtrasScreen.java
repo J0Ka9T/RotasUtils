@@ -20,11 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Titles shown when players enter or leave the zone, effects kept on players inside, forbidden
- * movement, and how the zone shows itself to players (approach border, zone chip, entry banner).
- * Changes go to the zone editor's unsaved copy when leaving this screen.
- */
 @Environment(EnvType.CLIENT)
 public class ZoneExtrasScreen extends RotasScreen {
     private static final int EFFECT_ROW = 22;
@@ -189,7 +184,6 @@ public class ZoneExtrasScreen extends RotasScreen {
         }
     }
 
-    /** Writes everything to the zone editor; false (with feedback) when a value is invalid. */
     private boolean apply() {
         boxes.forEach((key, box) -> typed.put(key, box.getValue()));
         try {

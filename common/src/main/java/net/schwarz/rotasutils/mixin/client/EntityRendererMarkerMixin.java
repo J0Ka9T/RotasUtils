@@ -10,13 +10,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Draws the RotasUtils quest marker over entities that are configured NPCs.
- *
- * <p>Injected on the shared {@link EntityRenderer} rather than on any particular renderer so
- * an NPC can be a villager, an armour stand or a modded entity without this having to know.
- * The renderer itself returns immediately for entities that are not NPCs.</p>
- */
 @Mixin(EntityRenderer.class)
 public abstract class EntityRendererMarkerMixin {
     @Inject(method = "render", at = @At("TAIL"))

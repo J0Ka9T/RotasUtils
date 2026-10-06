@@ -15,12 +15,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Season production hooks on inventory slots. A crafting, furnace or brewing result sealed to a sub-role the player
- * lacks cannot be taken (shift-click and craft-all go through {@code mayPickup} too), and taking a potion out of a
- * brewing stand pays Alchemy production EXP. Both run on the server only; the client's prediction is corrected by
- * the normal slot resync.
- */
 @Mixin(Slot.class)
 public abstract class SlotMixin {
     @Inject(method = "mayPickup", at = @At("HEAD"), cancellable = true)

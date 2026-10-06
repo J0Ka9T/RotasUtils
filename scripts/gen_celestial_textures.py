@@ -64,11 +64,10 @@ def stretch_x(field, w):
 def streak():
     h, w = 64, 512
     y = np.linspace(0, 1, h)[:, None]
-    # Noise on a short grid, stretched 16x along U: long flowing wisps, varied across V.
     wisps = stretch_x(periodic_noise(h, 32, beta=2.0), w)
     fine = stretch_x(periodic_noise(h, 64, beta=1.6), w)
     body = smoothstep(0.45, 0.95, wisps) * 0.85 + smoothstep(0.6, 1.0, fine) * 0.35
-    core = np.exp(-((y - 0.5) / 0.16) ** 2)                   # brighter down the middle
+    core = np.exp(-((y - 0.5) / 0.16) ** 2)
     edge = smoothstep(0.0, 0.3, y) * smoothstep(0.0, 0.3, 1 - y)
     return save("streak.png", (body * (0.55 + 0.45 * core) + 0.12 * core) * edge)
 
@@ -85,7 +84,7 @@ def shock():
     yy, xx = np.mgrid[0:n, 0:n] / (n - 1) * 2 - 1
     r = np.sqrt(xx * xx + yy * yy)
     ring_r = 0.86
-    lead = np.exp(-((r - ring_r) / 0.012) ** 2)                # crisp leading edge
+    lead = np.exp(-((r - ring_r) / 0.012) ** 2)
     trail = np.where(r < ring_r, np.exp(-((ring_r - r) / 0.16) ** 2) * 0.55, 0)
     ang = np.arctan2(yy, xx)
     ripples = 0.92 + 0.08 * np.sin(ang * 9 + 0.7) * np.sin(ang * 4 + 1.3)
@@ -97,11 +96,10 @@ def cloud():
     yy, xx = np.mgrid[0:n, 0:n] / (n - 1) * 2 - 1
     r = np.sqrt(xx * xx + yy * yy)
     ang = np.arctan2(yy, xx)
-    # An uneven silhouette: the falloff radius wobbles round the edge, so it never reads as a circle.
     wobble = 0.78 + 0.1 * np.sin(ang * 3 + 0.4) + 0.06 * np.sin(ang * 5 + 2.1)
     mask = smoothstep(wobble, wobble * 0.35, r)
     body = periodic_noise(n, n, beta=3.0)
-    core = np.clip(1 - r, 0, 1)  # denser in the middle, so the puff stays centred
+    core = np.clip(1 - r, 0, 1)
     return save("cloud.png", mask * (0.3 + 0.45 * smoothstep(0.2, 0.85, body) + 0.35 * core))
 
 

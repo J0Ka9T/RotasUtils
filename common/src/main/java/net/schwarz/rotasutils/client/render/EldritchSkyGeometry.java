@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.client.render;
 
 import java.util.Random;
 
-/** Immutable seed geometry for one V4 Apotheosis activation. */
 public final class EldritchSkyGeometry {
     public static final int APERTURE_SAMPLES = 29;
     public static final int RIM_PLATES = 9;

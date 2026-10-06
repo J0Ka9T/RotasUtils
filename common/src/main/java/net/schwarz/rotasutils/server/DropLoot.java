@@ -15,18 +15,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.random.RandomGenerator;
 
-/** Rolls what one grade of drop is worth. Pure content: nothing here touches a player. */
 public final class DropLoot {
-    /** Upper bound on one kill's drop, so no configuration can flood a bag in a single roll. */
     private static final int MAX_STACKS = 16;
 
     private DropLoot() {
     }
 
-    /**
-     * The loot one grade pays. A content-pack loot table named after the grade wins if one exists;
-     * otherwise the grade's entry in {@code season.json} under {@code drops.grades} is rolled.
-     */
     public static List<ItemStack> roll(RotasData data, DropGrade grade, String seed) {
         ContentId tableId = new ContentId(grade.tableId());
         if (data.kernel() != null && data.kernel().content().items().loot().containsKey(tableId)) {
@@ -35,10 +29,6 @@ public final class DropLoot {
         return fromRules(SeasonService.rules(data).drops, grade, LootService.random(seed));
     }
 
-    /**
-     * Rolls the configured contents of a grade: its gold range, then each item line. A grade the
-     * configuration does not describe falls back to the common grade, and then to nothing.
-     */
     private static List<ItemStack> fromRules(SeasonRules.DropRules rules, DropGrade grade, RandomGenerator random) {
         SeasonRules.GradeLoot loot = rules == null || rules.grades == null ? null : rules.grades.get(grade.key());
         if (loot == null && rules != null && rules.grades != null) {
@@ -64,11 +54,6 @@ public final class DropLoot {
         return List.copyOf(stacks);
     }
 
-    /**
-     * One configured item line: {@code "minecraft:diamond 1-3"}, {@code "minecraft:diamond 2"} or
-     * {@code "minecraft:diamond 1-3 @0.5"} for a chance. A line that cannot be read, or names an
-     * item another mod has removed, is skipped rather than failing the whole drop.
-     */
     static ItemStack parse(String line, RandomGenerator random) {
         if (line == null || line.isBlank()) {
             return ItemStack.EMPTY;

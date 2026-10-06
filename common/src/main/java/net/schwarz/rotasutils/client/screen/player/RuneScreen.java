@@ -16,15 +16,6 @@ import net.schwarz.rotasutils.item.ItemRunes;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The Rune Altar (แท่นจารึกรูน), in the same board style as the other Rotas screens.
- *
- * <p>The weapon is on the left with a socket for each rune slot beneath it; slots open as the weapon is
- * refined. The runes the player carries are cards on the right, each with its tier. Drag a card onto a
- * socket (or select it and click the socket) to inscribe it - the rune it replaces comes back - and fuse
- * three runes of one tier into one of the next with the button below. Every number is the server's,
- * which re-checks the altar, the runes and the gold and reopens the screen.</p>
- */
 @Environment(EnvType.CLIENT)
 public class RuneScreen extends RotasScreen {
     private static final int PAD = 14;
@@ -56,9 +47,7 @@ public class RuneScreen extends RotasScreen {
         }
     }
 
-    // State ------------------------------------------------------------------------------------------
-
-    private boolean station() {
+private boolean station() {
         return state.getBoolean("station");
     }
 
@@ -96,9 +85,7 @@ public class RuneScreen extends RotasScreen {
         return s.getBoolean("open") && !same && gold() >= s.getLong("cost");
     }
 
-    // Layout -----------------------------------------------------------------------------------------
-
-    private int top() {
+private int top() {
         return guiTop + 56;
     }
 
@@ -185,9 +172,7 @@ public class RuneScreen extends RotasScreen {
         addRenderableWidget(fuse);
     }
 
-    // Input ------------------------------------------------------------------------------------------
-
-    private void inscribe(int slot) {
+private void inscribe(int slot) {
         if (!canInscribe(slot)) {
             return;
         }
@@ -242,9 +227,7 @@ public class RuneScreen extends RotasScreen {
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
-    // Drawing ----------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, Ui.BOARD_SCRIM_TOP, Ui.BOARD_SCRIM_BOTTOM);
     }

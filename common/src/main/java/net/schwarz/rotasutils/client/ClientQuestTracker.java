@@ -13,30 +13,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Which accepted quest the HUD tracker follows.
- *
- * <p>Tracking is a client-side view preference, not progression: the server neither knows
- * nor cares which quest a player is watching, so nothing here needs a packet. The choice
- * survives a restart through one small file next to the game's other client settings.</p>
- *
- * <p>When nothing is tracked - a fresh profile, or the tracked quest was turned in - the
- * tracker falls back to whichever accepted quest is closest to done, so the panel is
- * useful before the player has ever pressed Track.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class ClientQuestTracker {
     private static final String FILE_NAME = "rotasutils-tracked-quest.txt";
-    /** Empty means "no explicit choice"; the resolver then picks one. */
     private static String trackedId = "";
     private static boolean loaded;
-    /** Set when the player explicitly clears tracking, so the fallback stays off. */
     private static boolean suppressed;
 
     private ClientQuestTracker() {
     }
 
-    /** The quest the HUD should show, or empty when there is nothing to show. */
     public static String resolved() {
         load();
         PlayerProgress progress = ClientState.progress();
@@ -46,8 +32,6 @@ public final class ClientQuestTracker {
         if (suppressed) {
             return "";
         }
-        // Fall back to the active quest that is furthest along, so the panel opens on
-        // the contract the player is most likely finishing.
         String best = "";
         double bestFraction = -1d;
         for (ActiveQuest active : progress.activeQuests().values()) {
@@ -64,7 +48,6 @@ public final class ClientQuestTracker {
         return best;
     }
 
-    /** Completed objectives over total, counting a required objective only. */
     public static double fractionDone(QuestDef quest, ActiveQuest active) {
         int total = 0;
         int done = 0;
@@ -84,7 +67,6 @@ public final class ClientQuestTracker {
         return !questId.isEmpty() && questId.equals(resolved());
     }
 
-    /** Explicit choice from the quest page. Tracking the tracked quest clears it. */
     public static void toggle(String questId) {
         load();
         if (questId.equals(resolved())) {
@@ -97,7 +79,6 @@ public final class ClientQuestTracker {
         save();
     }
 
-    /** Called when a quest is accepted so the newest contract takes the panel. */
     public static void track(String questId) {
         load();
         trackedId = questId == null ? "" : questId;
@@ -126,7 +107,6 @@ public final class ClientQuestTracker {
                 trackedId = value;
             }
         } catch (IOException | RuntimeException failure) {
-            // A preference file is never worth interrupting a client for.
             Rotasutils.LOG.debug("Could not read the quest tracker preference", failure);
         }
     }

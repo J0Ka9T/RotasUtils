@@ -10,7 +10,7 @@
 
 Imports each clip onto the EF rig (keys at their JSON times), runs lint.lint over every frame and prints
 two verdicts:
-  STRICT  the house authoring standard (every check). New moves must pass; POP on strike frames is allowed.
+  STRICT  the house authoring standard. POP is a failure, including during strikes.
   PARITY  never worse than vanilla Epic Fight: ENVELOPE, HINGE and hands/elbows in the body, each allowed
           on <= 3 frames (vanilla clips themselves touch the 0.5% tails of the envelope).
 Calibrated against vanilla EF 20.14 sword/longsword/tachi clips: they fail STRICT (feet skate, blade tips
@@ -24,15 +24,23 @@ import efanim as E
 import lint as L
 import poser as P
 
-STRICT = ('PENETRATION', 'WRIST', 'TWIST', 'GROUND', 'FEET_CROSS', 'FOOT_SLIDE', 'SPINE', 'HINGE', 'ENVELOPE', 'END_POSE', 'LOCKED')
+HUMAN = ('COM_OFF', 'SPIN_RATE', 'FOOT_SPEED', 'AIR_TIME')
+STRICT = ('PENETRATION', 'WRIST', 'TWIST', 'GROUND', 'FEET_CROSS', 'FOOT_SLIDE', 'SPINE', 'HINGE', 'ENVELOPE', 'END_POSE', 'LOCKED', 'POP')
 PARITY = ('ENVELOPE', 'HINGE', 'PENETRATION')
 PARITY_TOLERANCE = 3
 
 
+def allowed(kind, detail):
+    """Findings a moveset module declared legitimate for its style (REALISM['lint_allow'] = [(kind, detail-prefix), ...])."""
+    return any(kind == k_ and str(detail).startswith(p_) for k_, p_ in P.REALISM.get('lint_allow', ()))
+
+
 def verdicts(issues):
+    issues = {k_: [(f_, d_) for f_, d_ in v_ if not allowed(k_, d_)] for k_, v_ in issues.items()}
+    issues = {k_: v_ for k_, v_ in issues.items() if v_}
     frames = {k: len({f for f, _ in v}) for k, v in issues.items()}
     body = {f for f, d in issues.get('PENETRATION', []) if not d.startswith('blade')}
-    strict = sorted(k for k in frames if k in STRICT)
+    strict = sorted(k for k in frames if k in STRICT or (k in HUMAN and P.REALISM.get('human_limits')))
     parity = sorted(k for k in PARITY if k in frames and (len(body) if k == 'PENETRATION' else frames[k]) > PARITY_TOLERANCE)
     return strict, parity
 
@@ -70,12 +78,14 @@ def main(argv):
         print(f'== {name} ({end + 1} frames @ {fps} fps)')
         issues, _ = L.lint(0, end, neutral=neutral, skip_end=name in loops)
         strict, parity = verdicts(issues)
-        print('  STRICT:', ('FAIL ' + ','.join(strict)) if strict else 'PASS' + ('  (check POP frames are strike frames)' if 'POP' in issues else ''))
+        print('  STRICT:', ('FAIL ' + ','.join(strict)) if strict else 'PASS')
         print('  PARITY:', ('FAIL ' + ','.join(parity)) if parity else 'PASS')
         failed += bool(strict)
         if render:
             E.render_frames(render, list(range(0, end + 1, 4)), views=('quarter', 'behind'), prefix=name, res=260)
     print(f'{len(files) - failed}/{len(files)} passed STRICT')
+    if failed:
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':

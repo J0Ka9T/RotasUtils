@@ -16,14 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Everything RotasUtils remembers about one player.
- *
- * <p>This object is the single source of truth. The client receives a copy for
- * rendering only; every mutation happens here on the server.
- */
 public final class PlayerProgress {
-    /** Undelivered stacks are bounded so a full inventory cannot grow player data without limit. */
     public static final int MAILBOX_LIMIT = 128;
     public static final int CURRENT_DATA_VERSION = 2;
 
@@ -76,9 +69,7 @@ public final class PlayerProgress {
 
     private final Map<String, Integer> skillRanks = new LinkedHashMap<>();
     private final Set<String> unlockedCategories = new LinkedHashSet<>();
-    /** Chosen side of each CHOICE node, keyed by the choice node id. */
     private final Map<String, String> chosenBranches = new LinkedHashMap<>();
-    /** Skills removed from the tree but preserved so points can still be refunded. */
     private final Map<String, Integer> legacySkills = new LinkedHashMap<>();
 
     private final Set<DangerRank> clearance = EnumSet.of(DangerRank.F);
@@ -88,17 +79,12 @@ public final class PlayerProgress {
     private final Map<String, Long> lastCompletedAt = new LinkedHashMap<>();
     private final Map<String, Long> questCooldowns = new LinkedHashMap<>();
     private final Set<String> failedQuests = new LinkedHashSet<>();
-    /** Warp pillars this player has paid to record; a pillar not in here cannot be warped to. */
     private final Set<String> waystones = new LinkedHashSet<>();
-    /** The monster book: kills per kind of monster. Server-side; the book page is sent on request. */
     private final Map<String, Long> bestiary = new LinkedHashMap<>();
-    /** Titles (ฉายา) this player has earned, and the one they wear. */
     private final Set<String> titles = new LinkedHashSet<>();
     private String activeTitle = "";
     private final Set<String> unlockedQuests = new LinkedHashSet<>();
-    /** Reward pools already claimed, guarding against duplicate claims. */
     private final Set<String> claimedRewards = new LinkedHashSet<>();
-    /** Undelivered reward/loot stacks, kept server-side until the player has room for them. */
     private final List<CompoundTag> mailbox = new ArrayList<>();
     private final Map<String, String> questVariables = new LinkedHashMap<>();
 
@@ -108,11 +94,8 @@ public final class PlayerProgress {
     private String job = "";
     private String subJob = "";
     private long jobChangedAt;
-    /** Highest level whose stat points were already granted. */
     private int statPointLevel = 1;
-    /** Health at logout, restored once transient stat modifiers are back; -1 when unknown. */
     private float lastHealth = -1;
-    /** Season rank points (Rank EXP), a separate currency from job EXP that only climbs F to SS. */
     private long rankPoints;
 
     public long rankPoints() {
@@ -132,7 +115,6 @@ public final class PlayerProgress {
         markDirty();
     }
 
-    /** Bumped whenever anything changes so sync only fires for dirty players. */
     private transient boolean dirty = true;
     private RpgProfile rpg = new RpgProfile(this::markDirty);
     private CompoundTag retainedFields = new CompoundTag();
@@ -177,7 +159,6 @@ public final class PlayerProgress {
         return dirty;
     }
 
-    /** Stacks waiting for delivery; the list is a copy so callers cannot bypass the bounds. */
     public List<CompoundTag> mailbox() {
         return List.copyOf(mailbox);
     }
@@ -190,7 +171,6 @@ public final class PlayerProgress {
         markDirty();
     }
 
-    /** Removes and returns every pending stack. */
     public List<CompoundTag> drainMail() {
         List<CompoundTag> pending = List.copyOf(mailbox);
         if (!pending.isEmpty()) {
@@ -217,7 +197,6 @@ public final class PlayerProgress {
         markDirty();
     }
 
-    /** Back to a fresh character: level, EXP and every skill tree point and rank cleared. */
     public void resetLevelAndSkills(int startLevel) {
         level = Math.max(1, startLevel);
         xp = 0;
@@ -357,20 +336,14 @@ public final class PlayerProgress {
         return legacySkills;
     }
 
-    /** Kills of one kind of monster. */
     public long bestiaryKills(String entity) {
         return entity == null ? 0 : bestiary.getOrDefault(entity, 0L);
     }
 
-    /** Every kind of monster in the book, with its kills. */
     public Map<String, Long> bestiary() {
         return java.util.Collections.unmodifiableMap(bestiary);
     }
 
-    /**
-     * Counts one kill and returns the new total, or -1 when the book is full and this kind is not in it
-     * yet. A full book keeps counting the kinds it already has.
-     */
     public long addBestiaryKill(String entity, int limit) {
         if (entity == null || entity.isBlank()) {
             return -1;
@@ -385,7 +358,6 @@ public final class PlayerProgress {
         return next;
     }
 
-    /** Every title this player has earned, in the order they earned them. */
     public Set<String> titles() {
         return titles;
     }
@@ -394,7 +366,6 @@ public final class PlayerProgress {
         return id != null && titles.contains(id);
     }
 
-    /** Records an earned title. Returns false when it was already earned or the list is full. */
     public boolean addTitle(String id) {
         if (id == null || id.isBlank() || titles.contains(id)
                 || titles.size() >= net.schwarz.rotasutils.title.TitleDef.MAX_TITLES) {
@@ -416,12 +387,10 @@ public final class PlayerProgress {
         return true;
     }
 
-    /** The title the player is wearing, or an empty string. */
     public String activeTitle() {
         return activeTitle;
     }
 
-    /** Wears an earned title; an empty id takes the current one off. */
     public boolean setActiveTitle(String id) {
         String wanted = id == null ? "" : id.trim();
         if (!wanted.isEmpty() && !titles.contains(wanted)) {
@@ -528,7 +497,6 @@ public final class PlayerProgress {
         return claimedRewards;
     }
 
-    /** Returns true only the first time a given reward key is claimed. */
     public boolean claimOnce(String key) {
         boolean added = claimedRewards.add(key);
         if (added) {
@@ -541,7 +509,6 @@ public final class PlayerProgress {
         return questVariables;
     }
 
-    /** Removes exact variable keys, marking the record dirty once when anything was removed. */
     public void removeQuestVariables(Collection<String> keys) {
         boolean removed = false;
         for (String key : keys) {
@@ -563,7 +530,6 @@ public final class PlayerProgress {
         }
     }
 
-    /** Number of completions across all quests of the given rank. */
     public int completionsOfRank(DangerRank rank, java.util.function.Function<String, DangerRank> rankLookup) {
         int total = 0;
         for (Map.Entry<String, Integer> entry : completedQuests.entrySet()) {
@@ -583,7 +549,6 @@ public final class PlayerProgress {
         return total;
     }
 
-    /** Every warp pillar this player has recorded, in the order they were found. */
     public Set<String> waystones() {
         return java.util.Collections.unmodifiableSet(waystones);
     }
@@ -592,7 +557,6 @@ public final class PlayerProgress {
         return id != null && waystones.contains(id);
     }
 
-    /** Records a pillar; false when it was already known, so the caller does not charge twice. */
     public boolean discoverWaystone(String id) {
         if (id == null || id.isEmpty() || waystones.size() >= net.schwarz.rotasutils.data.RotasData.WAYSTONE_LIMIT
                 || !waystones.add(id)) {
@@ -612,7 +576,6 @@ public final class PlayerProgress {
         return partyId;
     }
 
-    /** True when this player leads their party; only the leader may invite or kick. */
     public boolean partyLeader() {
         return partyLeader;
     }
@@ -627,7 +590,6 @@ public final class PlayerProgress {
         markDirty();
     }
 
-    /** The job id, or empty when the player has not chosen one. */
     public String job() {
         return job;
     }
@@ -847,7 +809,6 @@ public final class PlayerProgress {
         if(!progress.job.isEmpty()) progress.rpg.learnJob(progress.job);
         if(!progress.subJob.isEmpty()&&!progress.subJob.equals(progress.job)) progress.rpg.learnJob(progress.subJob);
         progress.jobChangedAt = tag.getLong("job_changed");
-        // Records from before stats start at 1, so existing characters receive points for their levels.
         progress.statPointLevel = tag.contains("stat_point_level") ? Math.max(1, tag.getInt("stat_point_level")) : 1;
         progress.lastHealth = tag.contains("last_health") ? tag.getFloat("last_health") : -1;
         progress.rankPoints = Math.max(0, tag.getLong("rank_points"));

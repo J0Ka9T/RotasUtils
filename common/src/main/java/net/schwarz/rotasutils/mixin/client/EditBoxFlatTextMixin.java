@@ -12,11 +12,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/**
- * Vanilla text fields draw their value, cursor, hint and suggestion with a drop shadow, which reads
- * as doubled, smeared ink on the Rotas parchment. Inside Rotas screens those strings are drawn flat;
- * every other screen keeps vanilla's shadow.
- */
 @Mixin(EditBox.class)
 public abstract class EditBoxFlatTextMixin {
     @Redirect(method = "renderWidget", require = 0, at = @At(value = "INVOKE",

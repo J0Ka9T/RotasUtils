@@ -52,11 +52,9 @@ class RedCinematicTest {
     @Test
     void handSocketFollowsTheArmForwardOfTheCaster() {
         Vec3 feet = new Vec3(10, 64, 10);
-        // Facing south (+z): yaw 0.
         RedPose.Sockets s = RedPose.sockets(RedPose.sample(3.0), feet, 0);
         assertTrue(s.core().z > feet.z + 0.4, "the core sits in front of the caster");
         assertTrue(s.core().y > feet.y + 1.0 && s.core().y < feet.y + 2.2, "at about head height");
-        // Turning the caster to face east (yaw -90) turns the socket with them.
         RedPose.Sockets east = RedPose.sockets(RedPose.sample(3.0), feet, -90);
         assertTrue(east.core().x > feet.x + 0.4);
     }
@@ -132,7 +130,6 @@ class RedCinematicTest {
         assertEquals(0, PurpleProfile.orbRadius(PurpleTimings.POINT + 0.01, PurpleTimings.RED), 1e-9);
         assertTrue(PurpleProfile.pointRadius(PurpleTimings.POINT + 0.1) < 0.03, "only a tiny spark before Purple is born");
         assertTrue(PurpleProfile.coreRadius(PurpleTimings.BORN + 0.3) > 0.45, "then it is born big");
-        // pulsing while it shows off, then perfectly stable
         double a = PurpleProfile.coreRadius(PurpleTimings.STABLE + 0.05), b = PurpleProfile.coreRadius(PurpleTimings.COMPRESS - 0.05);
         assertEquals(a, b, 1e-9);
         assertEquals(PurpleProfile.PURPLE_RADIUS, a, 1e-9);

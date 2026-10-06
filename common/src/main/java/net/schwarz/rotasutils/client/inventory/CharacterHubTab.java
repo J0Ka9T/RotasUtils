@@ -4,7 +4,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.schwarz.rotasutils.client.screen.L;
 
-/** Stable tab ids for the inventory-backed Character Hub. */
 @Environment(EnvType.CLIENT)
 public enum CharacterHubTab {
     BAG("rotasutils.hub.bag"),

@@ -10,15 +10,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Puts the worn title (ฉายา) in front of a player's name wherever the server writes it: chat, death
- * messages, {@code /msg} and the commands that name a player.
- *
- * <p>The name plate above a player's head is built on the client from its own copy of the player, so it
- * is handled separately; this is the server half, and it needs no packet of its own.</p>
- */
-// getDisplayName is declared on Player, not on ServerPlayer, so that is what this targets; the body
-// then does nothing unless the player is the server-side one.
 @Mixin(Player.class)
 public abstract class ServerPlayerTitleMixin {
     @Inject(method = "getDisplayName", at = @At("RETURN"), cancellable = true)
@@ -33,8 +24,6 @@ public abstract class ServerPlayerTitleMixin {
         if (data == null) {
             return;
         }
-        // peek: a name is asked for in places a fresh record must not be created, such as a tab list
-        // refresh for a player who has not finished joining.
         var progress = data.peek(self.getUUID());
         if (progress == null || progress.activeTitle().isBlank()) {
             return;

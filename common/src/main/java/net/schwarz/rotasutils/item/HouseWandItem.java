@@ -27,7 +27,6 @@ public final class HouseWandItem extends Item {
     public static void clear(ItemStack stack) { stack.removeTagKey(TAG); }
     private static BlockPos point(ItemStack stack, String key) { CompoundTag tag=stack.getTagElement(TAG); return tag != null && tag.contains(key) ? BlockPos.of(tag.getLong(key)) : null; }
 
-    /** Right-click a block: second corner, or with sneak and a full selection, move the nearest face there. */
     @Override public InteractionResult useOn(UseOnContext context) {
         if (!context.getLevel().isClientSide && context.getPlayer() instanceof ServerPlayer player) {
             ItemStack wand = context.getItemInHand();
@@ -40,11 +39,6 @@ public final class HouseWandItem extends Item {
         return InteractionResult.sidedSuccess(context.getLevel().isClientSide);
     }
 
-    /**
-     * Right-click the air: with both corners picked, open the create form on that selection; with no
-     * selection inside a house, open that house's screen and settings. Sneak + right-click the air:
-     * clear the selection, or with none inside a house, load that house's area to reshape it.
-     */
     @Override public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         boolean selected = first(stack) != null && second(stack) != null;

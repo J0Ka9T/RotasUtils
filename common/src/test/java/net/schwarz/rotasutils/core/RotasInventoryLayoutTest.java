@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RotasInventoryLayoutTest {
-    /** Real hub sizes: targetWidth/targetHeight output from 1080p through 1440p GUI scales. */
     private static final int[][] SIZES = {{304, 208}, {320, 240}, {424, 238}, {480, 270},
             {560, 330}, {620, 360}, {640, 360}, {664, 344}, {700, 320}};
     private static final int[][] FULL = {{560, 330}, {620, 360}, {640, 360}, {664, 344}};

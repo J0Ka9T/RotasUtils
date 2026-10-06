@@ -9,11 +9,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Keep inventory for players who die in a zone that keeps it. Vanilla calls {@code dropEquipment} before
- * {@code dropExperience} while dropping death loot, so the inventory decision is made first and the
- * experience orbs follow it. {@link ServerPlayerRestoreMixin} copies both onto the respawned player.
- */
 @Mixin(Player.class)
 public abstract class PlayerKeepInventoryMixin {
     @Inject(method = "dropEquipment", at = @At("HEAD"), cancellable = true)

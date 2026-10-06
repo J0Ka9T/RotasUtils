@@ -11,12 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * What the client knows about live kernel content and its own kernel state.
- *
- * <p>This is a read model for the control screens. Nothing here decides anything: the screens draw
- * it, the server owns it, and every action the screens offer is re-checked server side.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class ClientKernelState {
     public record MonsterEntry(String id, String name, int levelMin, int levelMax, boolean manualOnly,
@@ -42,7 +36,6 @@ public final class ClientKernelState {
 
     public record MerchantEntry(String id, String label, List<TradeEntry> trades) { }
 
-    /** Where the player stands on one quest. {@code stage} is -1 when it is finished. */
     public record QuestState(String id, int stage, boolean available, boolean claimable, long completed,
                              Map<String, Integer> objectives) { }
 
@@ -227,7 +220,6 @@ public final class ClientKernelState {
         previewLines = List.of();
     }
 
-    /** Drops server content, revisions, the player's kernel state and any preview. */
     public static void reset() {
         ready = false;
         contentHash = "";

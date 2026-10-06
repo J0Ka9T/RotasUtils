@@ -27,11 +27,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/**
- * Operator-only rift items: each tears a standing rift on the ground where the holder looks, facing
- * them, and the rift's {@link RiftPortalEntity.Kind} decides what it does. The Rift Key (travel)
- * also remembers a destination: sneak and use it where the rift should lead.
- */
 public final class RiftSigilItem extends Item {
     private static final double REACH = 12.0;
     private static final double FALLBACK_DISTANCE = 4.0;
@@ -75,7 +70,6 @@ public final class RiftSigilItem extends Item {
             serverPlayer.displayClientMessage(Component.translatable("rotasutils.msg.rift_sigil.no_room"), true);
             return InteractionResultHolder.fail(held);
         }
-        // The rift faces the holder.
         Vec3 toPlayer = serverPlayer.position().subtract(ground);
         float yaw = (float) Math.toDegrees(Math.atan2(-toPlayer.x, toPlayer.z));
         if (kind == RiftPortalEntity.Kind.TRAVEL) {
@@ -89,7 +83,6 @@ public final class RiftSigilItem extends Item {
         return InteractionResultHolder.consume(held);
     }
 
-    /** Remembers where the holder stands, and the way they face, as where the rift leads. */
     private static void bind(ItemStack held, ServerPlayer player) {
         CompoundTag tag = held.getOrCreateTagElement(DESTINATION);
         tag.putString("dim", player.level().dimension().location().toString());
@@ -103,7 +96,6 @@ public final class RiftSigilItem extends Item {
                 SoundSource.PLAYERS, 0.8f, 1.4f);
     }
 
-    /** Standing spot for the rift: the top of the block looked at, else a few blocks ahead on the ground. */
     private static Vec3 groundInFront(ServerLevel level, ServerPlayer player) {
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
@@ -116,7 +108,6 @@ public final class RiftSigilItem extends Item {
             Vec3 ahead = eye.add(new Vec3(look.x, 0, look.z).normalize().scale(FALLBACK_DISTANCE));
             base = BlockPos.containing(ahead);
         }
-        // Settle onto the ground within a few blocks either way.
         for (int dy = 0; dy <= 6; dy++) {
             BlockPos down = base.below(dy);
             if (fits(level, down)) {
@@ -130,7 +121,6 @@ public final class RiftSigilItem extends Item {
         return null;
     }
 
-    /** Solid floor below and room for a person-height doorway above. */
     private static boolean fits(ServerLevel level, BlockPos pos) {
         if (!level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP)) {
             return false;

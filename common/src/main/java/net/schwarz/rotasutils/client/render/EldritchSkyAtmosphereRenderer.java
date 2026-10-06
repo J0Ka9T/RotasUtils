@@ -10,7 +10,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import org.joml.Matrix4f;
 
-/** Near-opaque spherical takeover, circulating storm masses, shockwaves, and crawling scars. */
 @Environment(EnvType.CLIENT)
 public final class EldritchSkyAtmosphereRenderer {
     public static final float DOME_RADIUS = EldritchSkyArt.DOME_RADIUS;
@@ -23,7 +22,6 @@ public final class EldritchSkyAtmosphereRenderer {
     private static final float[] B = new float[3];
     private static final float[] C = new float[3];
     private static final float[] D = new float[3];
-    /** South, west, north, east: the four rifts tint their own horizon. */
     private static final float[][] FOUR_SKIES_COLORS = {
             {0.29f, 0.075f, 0.085f}, {0.055f, 0.18f, 0.12f},
             {0.085f, 0.12f, 0.30f}, {0.31f, 0.20f, 0.07f}
@@ -40,7 +38,6 @@ public final class EldritchSkyAtmosphereRenderer {
         if (env.influence() <= 0.001f) return;
         Matrix4f matrix = pose.last().pose();
         drawDome(matrix, env, fourSkies);
-        // Shader packs alpha-cut these soft masses into pale hard-edged polygons.
         if (!ShaderPackCompat.active()) drawStormMasses(matrix, geometry, env);
     }
 

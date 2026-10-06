@@ -21,13 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Forge implementation of the Curios bridge.
- *
- * <p>Curios classes are only touched behind {@link #available()}, so a pack without Curios never
- * classloads them. A slot is never forced empty for a player-initiated unequip until Curios' own
- * rules agree: curse of binding, {@code ICurio.canUnequip} and {@code CurioUnequipEvent}.</p>
- */
 public final class CuriosServerCompatImpl {
     private static final String MOD_ID = "curios";
 
@@ -60,7 +53,6 @@ public final class CuriosServerCompatImpl {
         return CuriosAccess.equipped(player);
     }
 
-    /** Isolated so the Curios types are only resolved once Curios is confirmed present. */
     private static final class CuriosAccess {
         private CuriosAccess() {
         }
@@ -150,8 +142,7 @@ public final class CuriosServerCompatImpl {
             }
         }
 
-
-        static Map<String, List<ItemStack>> equipped(ServerPlayer player) {
+static Map<String, List<ItemStack>> equipped(ServerPlayer player) {
             try {
                 ICuriosItemHandler handler = resolve(player);
                 if (handler == null) {
@@ -177,10 +168,6 @@ public final class CuriosServerCompatImpl {
             }
         }
 
-        /**
-         * The rules a normal Curios removal enforces: curse of binding, the curio's own
-         * {@code canUnequip}, and the {@link CurioUnequipEvent} that other mods can deny.
-         */
         private static boolean mayUnequip(ServerPlayer player, String slotType, int slotIndex, ItemStack stack) {
             boolean bindingCurse = EnchantmentHelper.hasBindingCurse(stack);
             SlotContext context = new SlotContext(slotType, player, slotIndex, false, true);

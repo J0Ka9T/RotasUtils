@@ -2,24 +2,11 @@ package net.schwarz.rotasutils.level;
 
 import net.minecraft.nbt.CompoundTag;
 
-/**
- * How much each combat attribute counts toward a monster's threat rating, and so toward its XP.
- *
- * <p>These numbers decide the payout of every mob that has no explicit XP override, which makes them
- * the main lever for pacing a pack. They used to be literals in the scoring code with no way to
- * change them short of recompiling, so a pack whose mobs were all tankier (or all glassier) than
- * vanilla could not be balanced at all.</p>
- *
- * <p>The health tiers exist because large modded health pools usually come with custom attacks that
- * {@code ATTACK_DAMAGE} does not describe. Each crossed tier multiplies the score, so a boss with a
- * huge pool is not scored as if it were a very fat zombie.</p>
- */
 public final class MonsterXpWeights {
     private double health = 0.35;
     private double damage = 4.0;
     private double armor = 1.7;
     private double toughness = 3.5;
-    /** Speed above a walking pace is what makes a mob dangerous, so the baseline is subtracted. */
     private double speedBaseline = 0.18;
     private double speed = 30.0;
     private double knockbackResistance = 18.0;
@@ -69,7 +56,6 @@ public final class MonsterXpWeights {
     public double tierThreeMultiplier() { return tierThreeMultiplier; }
     public void setTierThreeMultiplier(double value) { tierThreeMultiplier = clamp(value, 1, 100, 1.20); }
 
-    /** Scores a mob's live combat attributes. The caller applies the XP scale and the clamps. */
     public double threat(double healthValue, double damageValue, double armorValue,
                          double toughnessValue, double speedValue, double knockbackValue) {
         double score = healthValue * health
@@ -104,7 +90,6 @@ public final class MonsterXpWeights {
 
     public static MonsterXpWeights load(CompoundTag tag) {
         MonsterXpWeights weights = new MonsterXpWeights();
-        // Through the setters so a hand-edited file or a save packet cannot smuggle in a NaN.
         if (tag.contains("health")) { weights.setHealth(tag.getDouble("health")); }
         if (tag.contains("damage")) { weights.setDamage(tag.getDouble("damage")); }
         if (tag.contains("armor")) { weights.setArmor(tag.getDouble("armor")); }

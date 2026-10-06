@@ -31,14 +31,7 @@ import yesman.epicfight.particle.EpicFightParticles;
 import yesman.epicfight.world.capabilities.item.CapabilityItem;
 import yesman.epicfight.world.capabilities.item.WeaponCapability;
 
-/**
- * The Zenith's own Epic Fight moveset: a diagonal cut, a flat backhand sweep, and a leaping spin that
- * ends in a slam loosing a ring of spectral blades. Clips live in
- * {@code assets/rotasutils/animmodels/animations/biped/combat/}; the item opts in through
- * {@code data/rotasutils/capabilities/weapons/zenith.json}.
- */
 public final class ZenithMoveset {
-    /** Seconds into auto3 when the blade meets the ground (frame 42 of the 60 fps clip, after the blade lag). */
     private static final float SLAM_TIME = 0.7F;
     private static final int RING_BLADES = 8;
     private static final double RING_RADIUS = 7.0;
@@ -56,10 +49,10 @@ public final class ZenithMoveset {
     }
 
     private static void registerAnimations(AnimationManager.AnimationRegistryEvent event) {
-        // one builder per namespace: every rotasutils clip registers here
         event.newBuilder(Rotasutils.MOD_ID, builder -> {
             build(builder);
             ExoMoveset.build(builder);
+            CapoeiraMoveset.build(builder);
         });
     }
 
@@ -87,7 +80,6 @@ public final class ZenithMoveset {
         return ((HumanoidArmature) Armatures.BIPED.get()).toolR;
     }
 
-    /** The slam's payoff: spectral blades loop out in a ring around the wielder and back. */
     private static void bladeRing(LivingEntity user) {
         if (!(user.level() instanceof ServerLevel level)) {
             return;

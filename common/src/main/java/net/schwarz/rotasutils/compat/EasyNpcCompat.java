@@ -29,18 +29,10 @@ import net.schwarz.rotasutils.server.QuestService;
 
 import java.util.UUID;
 
-/** Optional Easy NPC 7.12.1 entity adapter. Rotas dialogue state is not an upstream condition hook. */
 public final class EasyNpcCompat {
-    /** Mod ids Easy NPC has shipped under. */
     private static final String[] MOD_IDS = {"easy_npc", "easynpc", "easy_npc_bundle"};
-    /** Entity-type namespaces its NPCs have shipped under, bundles included. */
     private static final String[] NAMESPACES = {"easy_npc", "easynpc", "easy_npc_bundle"};
-    /** Easy NPC's own marker interface; resolved reflectively so no version is compiled against. */
     private static final String NPC_INTERFACE = "de.markusbordihn.easynpc.entity.easynpc.EasyNPC";
-    /**
-     * NPC data version written when Easy NPC cannot tell us its own. Newer builds moved past this
-     * number, so {@link #npcDataVersion} always prefers the live entity's answer.
-     */
     private static final int FALLBACK_DATA_VERSION = 3;
 
     private static Boolean present;
@@ -66,7 +58,6 @@ public final class EasyNpcCompat {
         return present;
     }
 
-    /** True when a shipped entity-type namespace belongs to an Easy NPC build. */
     public static boolean isEasyNpcNamespace(String namespace) {
         if (namespace == null) {
             return false;
@@ -79,14 +70,6 @@ public final class EasyNpcCompat {
         return false;
     }
 
-    /**
-     * True when the entity is an Easy NPC.
-     *
-     * <p>Asked two ways on purpose: the entity-type namespace catches every shipped build, and
-     * Easy NPC's own {@code EasyNPC} marker interface catches a build whose namespace we have never
-     * seen. The interface is looked up by name, so no Easy NPC version is compiled against and a
-     * missing class simply falls back to the namespace answer.</p>
-     */
     public static boolean isEasyNpc(Entity entity) {
         if (entity == null) {
             return false;
@@ -105,10 +88,6 @@ public final class EasyNpcCompat {
         return npcInterface != void.class && npcInterface.isInstance(entity);
     }
 
-    /**
-     * The NPC data version the entity itself reports, so a newer Easy NPC is never stamped with an
-     * older one. Falls back to {@link #FALLBACK_DATA_VERSION} when the accessor is unavailable.
-     */
     static int npcDataVersion(Entity entity) {
         try {
             Object value = entity.getClass().getMethod("getNPCDataVersion").invoke(entity);
@@ -116,12 +95,10 @@ public final class EasyNpcCompat {
                 return version;
             }
         } catch (ReflectiveOperationException | RuntimeException unavailable) {
-            // Older or repackaged builds: keep the long-standing default.
         }
         return FALLBACK_DATA_VERSION;
     }
 
-    /** Leave tool interaction and its access checks to Easy NPC before advancing Rotas objectives. */
     public static boolean isEditorInteraction(Player player, Entity entity, InteractionHand hand) {
         if (!isEasyNpc(entity)) return false;
         ResourceLocation item = BuiltInRegistries.ITEM.getKey(player.getItemInHand(hand).getItem());
@@ -129,7 +106,6 @@ public final class EasyNpcCompat {
                 || "easy_npc".equals(item.getNamespace());
     }
 
-    /** Creates and adds a persistent, passive guide. Caller must already have checked admin access. */
     public static Entity createDemoNpc(ServerLevel level, Vec3 position, UUID owner, String name) {
         if (!level.getServer().isSameThread()) throw new IllegalStateException("NPC creation off server thread");
         ResourceLocation id = new ResourceLocation("easy_npc", "humanoid");
@@ -155,7 +131,6 @@ public final class EasyNpcCompat {
         return level.addFreshEntity(mob) ? mob : null;
     }
 
-    /** Applies upstream objective NBT; patrol leaves navigation to the Rotas saved route. */
     public static boolean configureBehavior(Entity entity, String movement, String combat, UUID owner) {
         if (!isEasyNpc(entity) || !(entity.level() instanceof ServerLevel level)) return false;
         if (!level.getServer().isSameThread()) throw new IllegalStateException("NPC configuration off server thread");
@@ -196,13 +171,6 @@ public final class EasyNpcCompat {
         entries.add(objective);
     }
 
-    /**
-     * The dialogue state this entity should show for this player.
-     *
-     * <p>A bound NPC answers from its own configuration. Anything else is matched against the
-     * quests that reference it by uuid, which is how a quest can point at an Easy NPC without
-     * that NPC being configured in RotasUtils at all.</p>
-     */
     public static NpcState stateFor(ServerPlayer player, Entity npc) {
         RotasData data = RotasData.get(player.server);
         NpcDef bound = NpcService.bound(data, npc);
@@ -212,12 +180,10 @@ public final class EasyNpcCompat {
         return objectiveStateFor(player, data, npc.getUUID());
     }
 
-    /** Marker string for any NPC mod that wants to render one above the head. */
     public static String markerFor(NpcState state) {
         return state.marker();
     }
 
-    /** State from quests that name this entity in an objective, for unbound entities. */
     private static NpcState objectiveStateFor(ServerPlayer player, RotasData data, UUID npcId) {
         PlayerProgress progress = data.progress(player.getUUID());
         NpcState best = NpcState.NO_QUEST;

@@ -11,23 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Quest parties.
- *
- * <p>Membership itself lives on {@link PlayerProgress#partyId()} so it survives a
- * restart along with the rest of a player's progress. Only the pending invitations are
- * kept in memory here: an invite that outlives the session it was sent in is not worth
- * persisting, and dropping them on restart is the safe direction to fail.
- *
- * <p>Every mutation goes through this class so the "who may do what" rules live in one
- * place: only the leader may invite, kick or disband, and a player joins a party only
- * after accepting an invitation addressed to them.
- */
 public final class PartyService {
-    /** How long an invitation stays valid. */
     private static final long INVITE_TIMEOUT_MILLIS = 120_000L;
 
-    /** Pending invitations, keyed by the invited player. One at a time per player. */
     private static final PartyInvites INVITES = new PartyInvites();
 
     private PartyService() {
@@ -43,10 +29,7 @@ public final class PartyService {
         }
     }
 
-    /* ---- queries --------------------------------------------------------- */
-
-    /** Every player id in {@code partyId}, leader first. Empty when the party is gone. */
-    public static List<UUID> members(RotasData data, UUID partyId) {
+public static List<UUID> members(RotasData data, UUID partyId) {
         List<UUID> members = new ArrayList<>();
         if (partyId == null) {
             return members;
@@ -81,9 +64,7 @@ public final class PartyService {
         return progress.partyId() != null && progress.partyLeader();
     }
 
-    /* ---- mutations ------------------------------------------------------- */
-
-    public static Result create(ServerPlayer player, RotasData data) {
+public static Result create(ServerPlayer player, RotasData data) {
         if (!data.serverSettings().partySystemEnabled()) {
             return Result.fail(ThaiText.t("rotasutils.msg.party.disabled"));
         }
@@ -105,7 +86,6 @@ public final class PartyService {
         }
         PlayerProgress leaderProgress = data.progress(leader.getUUID());
         if (leaderProgress.partyId() == null) {
-            // Inviting is how a party starts: nobody has to find a "create party" button first.
             Result created = create(leader, data);
             if (!created.success()) {
                 return created;
@@ -131,15 +111,12 @@ public final class PartyService {
         INVITES.pruneExpired(now);
         INVITES.put(target.getUUID(), new PartyInvites.Invite(leaderProgress.partyId(), leader.getUUID(),
                 leader.getGameProfile().getName(), now + INVITE_TIMEOUT_MILLIS));
-        // Tell the invited player straight away, in chat and on their party screen, so an invitation
-        // is never something they have to go looking for.
         target.sendSystemMessage(ThaiText.c("rotasutils.msg.party.invite_chat",
                 leader.getGameProfile().getName()));
         net.schwarz.rotasutils.network.RotasNetwork.syncParty(target);
         return Result.ok(ThaiText.t("rotasutils.msg.party.invited", targetName));
     }
 
-    /** The invitation waiting for {@code player}, or null. Expired or no-longer-authorized ones are dropped. */
     public static String pendingInviteFrom(ServerPlayer player) {
         long now = System.currentTimeMillis();
         PartyInvites.Invite invite = INVITES.get(player.getUUID());
@@ -153,7 +130,6 @@ public final class PartyService {
         return invite.fromName();
     }
 
-    /** An invitation only stands while its party still exists and its author is still the leader. */
     private static boolean stillAuthorized(PartyInvites.Invite invite) {
         RotasData data = RotasData.instance();
         return data != null && invite.fromPlayer().equals(leaderOf(data, invite.partyId()));
@@ -169,7 +145,6 @@ public final class PartyService {
         if (progress.partyId() != null) {
             return Result.fail(ThaiText.t("rotasutils.msg.party.leave_first"));
         }
-        // Re-check on accept: the party may have been disbanded, handed over or filled since the invite.
         UUID leader = leaderOf(data, invite.partyId());
         if (leader == null || !leader.equals(invite.fromPlayer())) {
             return Result.fail(ThaiText.t("rotasutils.msg.party.invite_invalid"));
@@ -198,7 +173,6 @@ public final class PartyService {
         }
         boolean wasLeader = progress.partyLeader();
         clear(progress);
-        // Invitations this player sent are no longer authorized once they leave the party.
         INVITES.removeFrom(player.getUUID());
         if (wasLeader) {
             promoteSomeone(data, partyId);
@@ -215,7 +189,6 @@ public final class PartyService {
         if (leader.getUUID().equals(targetId)) {
             return Result.fail(ThaiText.t("rotasutils.msg.party.use_disband"));
         }
-        // peek, not progress: a UUID sent by the client must never create a stored record.
         PlayerProgress target = data.peek(targetId);
         if (target == null || !leaderProgress.partyId().equals(target.partyId())) {
             return Result.fail(ThaiText.t("rotasutils.msg.party.not_member"));
@@ -230,14 +203,12 @@ public final class PartyService {
         if (leaderProgress.partyId() == null || !leaderProgress.partyLeader()) {
             return Result.fail(ThaiText.t("rotasutils.msg.party.leader_pass"));
         }
-        // peek, not progress: a UUID sent by the client must never create a stored record.
         PlayerProgress target = data.peek(targetId);
         if (target == null || !leaderProgress.partyId().equals(target.partyId())) {
             return Result.fail(ThaiText.t("rotasutils.msg.party.not_member"));
         }
         leaderProgress.setPartyLeader(false);
         leaderProgress.markDirty();
-        // Invitations the previous leader sent can no longer be honoured.
         INVITES.removeFrom(leader.getUUID());
         target.setPartyLeader(true);
         target.markDirty();
@@ -259,10 +230,6 @@ public final class PartyService {
         return Result.ok(ThaiText.t("rotasutils.msg.party.disbanded"));
     }
 
-    /**
-     * Players nearby who could be invited right now: online, in range, and in no party. Used for the
-     * click-to-invite list, so nobody has to type a name.
-     */
     public static List<ServerPlayer> invitableNearby(ServerPlayer player, RotasData data) {
         List<ServerPlayer> found = new ArrayList<>();
         if (!data.serverSettings().partySystemEnabled()) {
@@ -286,13 +253,19 @@ public final class PartyService {
         return found;
     }
 
-    /** Online party members other than {@code player}, for roster display and sync. */
     public static List<ServerPlayer> online(MinecraftServer server, RotasData data, UUID partyId) {
         List<ServerPlayer> players = new ArrayList<>();
-        for (UUID memberId : members(data, partyId)) {
-            ServerPlayer member = server.getPlayerList().getPlayer(memberId);
-            if (member != null) {
-                players.add(member);
+        if (partyId == null) {
+            return players;
+        }
+        for (ServerPlayer member : server.getPlayerList().getPlayers()) {
+            PlayerProgress progress = data.peek(member.getUUID());
+            if (progress != null && partyId.equals(progress.partyId())) {
+                if (progress.partyLeader()) {
+                    players.add(0, member);
+                } else {
+                    players.add(member);
+                }
             }
         }
         return players;
@@ -304,7 +277,6 @@ public final class PartyService {
         progress.markDirty();
     }
 
-    /** Keeps a party alive when its leader leaves by handing the role to a member. */
     private static void promoteSomeone(RotasData data, UUID partyId) {
         List<UUID> remaining = members(data, partyId);
         if (remaining.isEmpty()) {
@@ -315,13 +287,11 @@ public final class PartyService {
         next.markDirty();
     }
 
-    /** Clears the invitations a disconnecting player was part of: incoming and outgoing. */
     public static void forget(ServerPlayer player) {
         INVITES.remove(player.getUUID());
         INVITES.removeFrom(player.getUUID());
     }
 
-    /** Drops every pending invitation; used when the server stops. */
     public static void clear() {
         INVITES.clear();
     }

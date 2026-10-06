@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Cards: the effect lines an administrator writes, and what the shipped set promises. */
 class CardEffectsTest {
     @Test void aFlatLineAndAPercentLineBothRead() {
         CharacterStat.Effect flat = CardEffects.parse("minecraft:generic.armor 3");

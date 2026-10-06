@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.client.render;
 
-/** Seeded event clocks. Every schedule is stable for an activation and allocates nothing per frame. */
 public final class EldritchSkyPulseClock {
     public enum Channel {
         FRACTURE(6f, 10f, 0.55f, 1.15f, 0x46A7_11D3L),

@@ -25,14 +25,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * A fighter hired from a guard for a few minutes. One per player; it keeps up with its employer (a teleport when
- * left behind), attacks whatever attacks them or what they attack, and leaves when the contract ends, when the
- * employer logs out, or when it falls - without drops, so hiring is never an iron farm.
- *
- * <p>Performance: one entity per hiring player, checked once a second; the list lives in memory and a companion
- * reloaded after a restart is refused when its chunk loads.</p>
- */
 public final class CompanionService {
     public static final String TAG = "rotas_companion";
 
@@ -56,7 +48,6 @@ public final class CompanionService {
         return HIRES.containsKey(player.getUUID());
     }
 
-    /** Spawns the companion beside the player. Null on success, otherwise why not. */
     public static String hire(ServerPlayer player, RotasData data) {
         SeasonRules.NpcSocialRules rules = rules(data);
         if (!rules.companions) return "ตอนนี้ไม่มีผู้คุ้มกันให้จ้าง";
@@ -83,7 +74,6 @@ public final class CompanionService {
         }
         mob.setCustomName(Component.literal("ผู้คุ้มกันของ " + player.getGameProfile().getName()).withStyle(ChatFormatting.AQUA));
         mob.setCustomNameVisible(true);
-        // Registered before it joins the world, so the chunk-load guard lets this one in.
         HIRES.put(player.getUUID(), new Hire(mob.getUUID(), System.currentTimeMillis() + rules.companionMinutes * 60_000L));
         if (!level.addFreshEntity(mob)) {
             HIRES.remove(player.getUUID());
@@ -93,7 +83,6 @@ public final class CompanionService {
         return null;
     }
 
-    /** Once a second: follow, fight for the employer, and end contracts. */
     public static void tick(MinecraftServer server) {
         if (HIRES.isEmpty()) return;
         long now = System.currentTimeMillis();
@@ -141,20 +130,17 @@ public final class CompanionService {
         entity.discard();
     }
 
-    /** A companion that falls just leaves: no drops, no death screen spam. */
     public static EventResult onDeath(LivingEntity entity) {
         if (entity.level().isClientSide || !entity.getTags().contains(TAG)) return EventResult.pass();
         dismiss(entity);
         return EventResult.interruptFalse();
     }
 
-    /** Companions never attack players, and players never hurt their own. */
     public static boolean protectedFrom(Entity victim, Entity attacker) {
         return victim.getTags().contains(TAG) && attacker instanceof ServerPlayer player
                 && HIRES.containsKey(player.getUUID()) && HIRES.get(player.getUUID()).entity().equals(victim.getUUID());
     }
 
-    /** Refuses a companion that reloads with its chunk after its contract is gone (a restart, a crash). */
     public static EventResult onAdd(Entity entity, Level level) {
         if (level.isClientSide || !entity.getTags().contains(TAG)) return EventResult.pass();
         for (Hire hire : HIRES.values()) if (hire.entity().equals(entity.getUUID())) return EventResult.pass();

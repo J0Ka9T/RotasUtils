@@ -3,7 +3,6 @@ package net.schwarz.rotasutils.core;
 import com.google.gson.*;
 import java.util.*;
 
-/** Form defaults come from the example packs; returned trees never share mutable state. */
 public final class GuidedContentSchema {
     public record Template(String name, String kind, JsonObject document) {
         public Template { document = document.deepCopy(); }

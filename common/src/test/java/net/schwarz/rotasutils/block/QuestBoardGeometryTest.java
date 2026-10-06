@@ -23,7 +23,6 @@ class QuestBoardGeometryTest {
                     BlockPos offset = QuestBoardGeometry.cellOffset(facing, column, row);
                     assertTrue(Math.abs(offset.getX()) <= 1 && Math.abs(offset.getZ()) <= 1, facing + " " + offset);
                     assertTrue(offset.getY() == 0 || offset.getY() == 1, facing + " " + offset);
-                    // The board spans across its facing, never towards or away from the viewer.
                     assertEquals(0, offset.getX() * facing.getStepX() + offset.getZ() * facing.getStepZ());
                     cells.add(offset);
                 }
@@ -64,12 +63,10 @@ class QuestBoardGeometryTest {
     @Test
     void rotationMatchesTheBlockstateModelRotation() {
         double[] post = QuestBoardGeometry.NORTH[0];
-        // A quarter turn four times returns the same box.
         double[] east = QuestBoardGeometry.rotate(post, Direction.EAST);
         double[] south = QuestBoardGeometry.rotate(post, Direction.SOUTH);
         double[] back = QuestBoardGeometry.rotate(QuestBoardGeometry.rotate(south, Direction.SOUTH), Direction.NORTH);
         assertArrayEquals(post, back, 1e-9);
-        // North's left post (low x) lands on east's low z, as a y:90 model rotation does.
         assertTrue(east[2] < 0 && east[5] < 0);
         assertTrue(south[0] > 16);
     }

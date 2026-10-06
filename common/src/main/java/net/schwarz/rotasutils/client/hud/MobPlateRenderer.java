@@ -20,13 +20,6 @@ import net.schwarz.rotasutils.client.ClientState;
 import net.schwarz.rotasutils.core.MonsterRank;
 import org.joml.Matrix4f;
 
-/**
- * The small plate above a leveled monster's head, replacing the vanilla name tag (which is drawn through
- * walls). A pixel-art plate holds a difficulty-coloured gem, the level, the mob's name and a thin health
- * bar. It is depth-tested, so blocks hide it like real geometry; it shows for mobs within
- * {@link MobInfoRules#PLATE_NEAR} blocks, and farther ones only while hurt or aimed at, fading out by
- * {@link MobInfoRules#PLATE_MAX}. Hidden with F1.
- */
 @Environment(EnvType.CLIENT)
 public final class MobPlateRenderer {
     private static final ResourceLocation ATLAS = new ResourceLocation("rotasutils", "textures/gui/mob_plate.png");
@@ -107,7 +100,6 @@ public final class MobPlateRenderer {
         int nameWidth = font.width(name);
         int starsWidth = rank.stars() > 0 ? font.width(stars) + 3 : 0;
         int width = 12 + 2 + levelWidth + 4 + starsWidth + nameWidth + 5;
-        // A ranked plate wears its rank colour on the rim and name, so an elite in a crowd stands out.
         int rimRgb = rank == MonsterRank.NORMAL ? 0xFFFFFF : rank.rgb();
         int nameRgb = rank == MonsterRank.NORMAL ? NAME_COLOR : rank.rgb();
         float left = -width / 2.0f;
@@ -148,7 +140,6 @@ public final class MobPlateRenderer {
             font.drawInBatch(name, nameX, 2, argb | nameRgb, false, matrix, buffers,
                     Font.DisplayMode.NORMAL, 0, light);
             if (detail && !mark.affixes().isEmpty()) {
-                // Affix words under the bar, each in its own colour: the fight plan in one line.
                 int total = 0;
                 for (int i = 0; i < mark.affixes().size(); i++) {
                     total += font.width(affixText(mark.affixes().get(i))) + (i > 0 ? 6 : 0);

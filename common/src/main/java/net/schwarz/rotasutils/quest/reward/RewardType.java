@@ -5,11 +5,9 @@ import net.schwarz.rotasutils.data.ParamSpec.ParamKind;
 
 import java.util.List;
 
-/** Everything a quest, level-up or skill node can hand out. */
 public enum RewardType {
     ROTAS_XP("RotasUtils Experience", List.of(
             new ParamSpec("amount", ParamKind.INT, "Amount", "100"),
-            new ParamSpec("scale_with_rank", ParamKind.BOOL, "Scale With Danger Rank", "true"),
             new ParamSpec("scale_with_level", ParamKind.BOOL, "Scale With Player Level", "false"))),
     SKILL_POINT("Skill Point", List.of(
             new ParamSpec("amount", ParamKind.INT, "Amount", "1"))),

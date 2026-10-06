@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** A tab of the skill tree holding its own node graph. */
 public final class SkillCategory {
     private String id;
     private String name;
@@ -23,16 +22,13 @@ public final class SkillCategory {
     private int accentColor = 0xFFFFAA00;
     private int order;
     private int version = 1;
-    /** When true this category spends its own point pool instead of the global one. */
     private boolean usesCategoryPoints;
     private boolean lockedByDefault;
     private int minLevel = 1;
 
     private final List<Requirement> unlockRequirements = new ArrayList<>();
     private final Map<String, SkillNode> nodes = new LinkedHashMap<>();
-    /** Jobs that may use this tree; empty means every job. */
     private final Set<String> jobs = new LinkedHashSet<>();
-    /** Origins (races) that may use this tree; empty means every race. */
     private final Set<String> races = new LinkedHashSet<>();
 
     public SkillCategory(String id, String name) {
@@ -153,7 +149,6 @@ public final class SkillCategory {
         nodes.put(node.id(), node);
     }
 
-    /** Removes a node and every dangling connection that pointed at it. */
     public void removeNode(String nodeId) {
         nodes.remove(nodeId);
         for (SkillNode node : nodes.values()) {
@@ -199,8 +194,6 @@ public final class SkillCategory {
         for (SkillNode node : Nbt.loadList(tag, "nodes", SkillNode::load)) {
             category.nodes.put(node.id(), node);
         }
-        // Exclusivity declarations become EXCLUSIVE connections on the counterpart, so
-        // either side of an exclusive branch blocks the other through the shared gate.
         SkillRules.mirrorExclusives(category.nodes);
         return category;
     }

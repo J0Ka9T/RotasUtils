@@ -17,7 +17,6 @@ import net.schwarz.rotasutils.client.screen.Ui;
 
 import java.util.List;
 
-/** Searchable, server-snapshot-backed housing administration overview. */
 @Environment(EnvType.CLIENT)
 public final class HouseManagerScreen extends RotasScreen {
     private final List<HouseAdminPresentation.OverviewRow> emptyRows = List.of();
@@ -36,7 +35,6 @@ public final class HouseManagerScreen extends RotasScreen {
         this(null);
     }
 
-    /** Kept as a small pure seam so the overview route can be checked without a client runtime. */
     public static boolean rentalSettingsEnabled() {
         return true;
     }
@@ -47,8 +45,6 @@ public final class HouseManagerScreen extends RotasScreen {
 
     @Override
     protected boolean renderPanelsAfterContent() {
-        // The list is registered without a background. Paint it after the
-        // content frames so rows stay visible inside the inset list region.
         return true;
     }
 

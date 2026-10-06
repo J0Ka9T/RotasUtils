@@ -11,11 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Tells a player whose house they just walked into. A house for rent says what it costs and how to
- * take it, so a player finds housing by walking around instead of being told a command; the player's
- * own house greets them; anyone else's names its owner, which also explains why they cannot build.
- */
 public final class HousePresenceService {
     private static final int CHECK_INTERVAL = 10;
     private static final Map<UUID, String> current = new ConcurrentHashMap<>();
@@ -27,7 +22,6 @@ public final class HousePresenceService {
         current.remove(player);
     }
 
-    /** Event hook: runs after each player tick. */
     public static void onPlayerTick(Player player) {
         if (!(player instanceof ServerPlayer serverPlayer) || player.level().isClientSide()
                 || serverPlayer.connection == null || serverPlayer.tickCount % CHECK_INTERVAL != 0) {
@@ -48,7 +42,6 @@ public final class HousePresenceService {
         UUID self = serverPlayer.getUUID();
         String welcome = data.houseSettings(id).welcome();
         if (!welcome.isEmpty()) {
-            // The house's own line goes to chat so the price or owner line still fits the action bar.
             serverPlayer.sendSystemMessage(net.minecraft.network.chat.Component.literal(welcome)
                     .withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY));
         }

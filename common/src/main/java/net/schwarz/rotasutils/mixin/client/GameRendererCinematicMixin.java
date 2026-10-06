@@ -10,7 +10,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** The Clash of Heavens film's lens (its zoom, and no held item in shot), plus eruption lens punches. */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererCinematicMixin {
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)

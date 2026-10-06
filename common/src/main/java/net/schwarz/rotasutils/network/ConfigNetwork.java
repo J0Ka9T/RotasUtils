@@ -18,7 +18,9 @@ public final class ConfigNetwork {
         String domain = ""; ListTag lines = new ListTag();
         try {
             String operation = request.getString("action");
-            Capability permission = Set.of("config_status", "config_list").contains(operation) ? Capability.VIEW : operation.equals("config_apply") ? Capability.APPLY : Capability.EDIT;
+            Capability permission = Set.of("config_status", "config_list").contains(operation) ? Capability.VIEW
+                    : Set.of("config_apply", "config_commit").contains(operation) ? Capability.APPLY : Capability.EDIT;
+            if (operation.equals("config_commit") && !AdminNetwork.allowed(player, Capability.EDIT)) { throw new IllegalStateException("Permission denied: " + Capability.EDIT); }
             if (!AdminNetwork.allowed(player, permission)) { throw new IllegalStateException("Permission denied: " + permission); }
             if (Set.of("config_list", "config_import_files", "config_export").contains(operation)) { workspace(player, requestId, request); return; }
             domain = request.contains("domain") ? request.getString("domain") : ConfigService.domain(request.getString("edit_action"), request.getCompound("payload"));
@@ -26,13 +28,23 @@ public final class ConfigNetwork {
             switch (operation) {
                 case "config_status" -> response.putString("message", "Save a private draft, review differences, then apply.");
                 case "config_stage" -> {
-                    var live = ConfigService.snapshot(data, domain);
-                    if (!ConfigService.merge(live, request.getCompound("baseline")).equals(live)) { throw new IllegalStateException("Live values changed since this editor opened. Your edits remain local; reopen the editor to compare current values."); }
-                    var edited = request.getCompound("payload").getCompound(ConfigService.payloadKey(request.getString("edit_action")));
-                    var value = ConfigService.merge(live, edited);
-                    if (request.getString("edit_action").equals("publish_quest")) { value.putBoolean("published", true); }
-                    history.stage(actor, domain, live, value, request.getLong("generation"));
+                    stage(data, actor, domain, request);
                     response.putString("message", "Draft saved on server. Live settings are unchanged.");
+                }
+                case "config_commit" -> {
+                    long generation = stage(data, actor, domain, request);
+                    var issues = ConfigService.validate(data, domain, history.draft(actor, domain).value());
+                    issues.forEach(issue -> lines.add(StringTag.valueOf(issue.severity() + " " + issue.field() + ": " + issue.message())));
+                    if (issues.stream().anyMatch(i -> i.severity() == Validation.Severity.ERROR)) {
+                        response.putString("message", "Not saved live: fix the errors below, then press Back and save again.");
+                    } else {
+                        ConfigService.checkBoardPermission(player.createCommandSourceStack(), domain, history.draft(actor, domain).value());
+                        ConfigService.checkSettingsPermission(player.createCommandSourceStack(), domain, history.draft(actor, domain).value());
+                        ConfigService.checkCommandPermission(player.createCommandSourceStack(), domain, history.draft(actor, domain).value());
+                        ConfigService.apply(player.server, actor, domain, generation);
+                        response.putBoolean("applied", true);
+                        response.putString("message", request.getString("edit_action").equals("publish_quest") ? "Published. Changes are live." : "Saved. Changes are live.");
+                    }
                 }
                 case "config_review" -> {
                     var draft = history.check(actor, domain, ConfigService.snapshot(data, domain), request.getLong("generation"));
@@ -48,7 +60,7 @@ public final class ConfigNetwork {
                     ConfigService.checkBoardPermission(player.createCommandSourceStack(), domain, applying.value());
                     ConfigService.checkSettingsPermission(player.createCommandSourceStack(), domain, applying.value());
                     ConfigService.checkCommandPermission(player.createCommandSourceStack(), domain, applying.value());
-                    ConfigService.apply(player.server, actor, domain, request.getLong("generation")); response.putString("message", "Configuration applied. Changes are live.");
+                    ConfigService.apply(player.server, actor, domain, request.getLong("generation")); response.putBoolean("applied", true); response.putString("message", "Configuration applied. Changes are live.");
                 }
                 case "config_discard" -> { history.discard(actor, domain, request.getLong("generation")); response.putString("message", "Draft discarded."); }
                 case "config_restore" -> {
@@ -74,6 +86,18 @@ public final class ConfigNetwork {
         response.put("lines", lines); response.putBoolean("APPLY", AdminNetwork.allowed(player, Capability.APPLY));
         response.putBoolean("ROLLBACK", AdminNetwork.allowed(player, Capability.ROLLBACK));
         AdminProtocol.send(requestId, response, packet -> NetworkManager.sendToPlayer(player, AdminNetwork.RESPONSE, packet));
+    }
+
+    private static long stage(RotasData data, String actor, String domain, CompoundTag request) {
+        var live = ConfigService.snapshot(data, domain);
+        String action = request.getString("edit_action");
+        var edited = request.getCompound("payload").getCompound(ConfigService.payloadKey(action));
+        var value = domain.startsWith("quest/") ? edited.copy() : ConfigService.merge(live, edited);
+        if (action.equals("publish_quest")) { value.putBoolean("published", true); }
+        var previous = data.configHistory().draft(actor, domain);
+        long expected = previous == null ? -1 : previous.generation();
+        data.configHistory().stage(actor, domain, live, value, expected);
+        return expected + 1;
     }
 
     private static void workspace(ServerPlayer player, long requestId, CompoundTag request) {

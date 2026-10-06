@@ -33,16 +33,10 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 import net.schwarz.rotasutils.server.BoardHandlers;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * The physical quest billboard players interact with. The model is 3 blocks wide and 2 tall; this
- * block is the bottom-middle cell and {@link QuestBoardPartBlock}s fill the other five, so the whole
- * board can be aimed at and clicked, not only the centre cell.
- */
 public class QuestBoardBlock extends BaseEntityBlock implements SimpleWaterloggedBlock {
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
 
-    /** [2D facing][column][row]: the board's shape as seen from each of its cells. */
     private static final VoxelShape[][][] SHAPES = buildShapes();
 
     public QuestBoardBlock(Properties properties) {
@@ -71,7 +65,6 @@ public class QuestBoardBlock extends BaseEntityBlock implements SimpleWaterlogge
         return shapes;
     }
 
-    /** The whole board's shape in the local coordinates of the cell at {@code column}/{@code row}. */
     public static VoxelShape shapeFor(Direction facing, int column, int row) {
         return SHAPES[facing.get2DDataValue()][column][row];
     }
@@ -97,7 +90,6 @@ public class QuestBoardBlock extends BaseEntityBlock implements SimpleWaterlogge
         Level level = context.getLevel();
         BlockPos pos = context.getClickedPos();
         Direction facing = context.getHorizontalDirection().getOpposite();
-        // The board needs its whole 3x2 footprint free; otherwise it is not placed at all.
         for (int column = 0; column < QuestBoardGeometry.COLUMNS; column++) {
             for (int row = 0; row < QuestBoardGeometry.ROWS; row++) {
                 if (QuestBoardGeometry.isMain(column, row)) continue;
@@ -121,7 +113,6 @@ public class QuestBoardBlock extends BaseEntityBlock implements SimpleWaterlogge
         }
     }
 
-    /** Fills every free cell of the footprint with a part; returns quietly past anything in the way. */
     static void placeParts(Level level, BlockPos pos, BlockState state) {
         Direction facing = state.getValue(FACING);
         for (int column = 0; column < QuestBoardGeometry.COLUMNS; column++) {
@@ -162,7 +153,6 @@ public class QuestBoardBlock extends BaseEntityBlock implements SimpleWaterlogge
         if (!(level.getBlockEntity(pos) instanceof QuestBoardBlockEntity boardEntity)) {
             return InteractionResult.PASS;
         }
-        // Boards placed before the 3x2 footprint existed gain their parts the first time they are used.
         placeParts(level, pos, state);
         BoardHandlers.onInteract(serverPlayer, boardEntity);
         return InteractionResult.CONSUME;
@@ -172,8 +162,6 @@ public class QuestBoardBlock extends BaseEntityBlock implements SimpleWaterlogge
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
         if (!state.is(newState.getBlock()) && !level.isClientSide) {
             if (level.getBlockEntity(pos) instanceof QuestBoardBlockEntity boardEntity) {
-                // The board config itself is kept so the admin can re-place the board
-                // without losing its quest pool; only the world link is dropped.
                 BoardHandlers.onBroken(level, boardEntity);
             }
             removeParts(level, pos, state.getValue(FACING));

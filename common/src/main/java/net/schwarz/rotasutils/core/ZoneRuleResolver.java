@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.core;
 
 import java.util.*;
 
-/** Pure deterministic stack resolver shared by commands, UI diagnostics, and runtime adapters. */
 public final class ZoneRuleResolver {
     private ZoneRuleResolver() {}
     public static ResolvedZoneRules resolve(Collection<ZoneDef> zones, String dimension, double x, double y, double z) {
@@ -24,11 +23,6 @@ public final class ZoneRuleResolver {
         return new ResolvedZoneRules(stack.isEmpty()?"":stack.get(0).id(),pvp,spawn,taken,dealt,healing,keep,xp,respawn,sources);
     }
 
-    /**
-     * The hostile-spawning rule alone, for the spawn hot path: the same winner {@link #resolve} picks
-     * (highest priority, then id) without sorting or building the full rule set. True when no zone here
-     * overrides it.
-     */
     public static boolean hostileSpawningEnabled(Collection<ZoneDef> zones, String dimension, double x, double y, double z) {
         ZoneDef decider = null;
         for (ZoneDef zone : zones) {

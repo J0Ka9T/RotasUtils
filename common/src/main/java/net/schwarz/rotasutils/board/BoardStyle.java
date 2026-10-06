@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.board;
 
-/** Visual presets selectable from the billboard's Appearance tab. */
 public enum BoardStyle {
     WOODEN_VILLAGE("Wooden Village Board", 0xFF8B6A3F, 0xFFD9B679, false),
     MEDIEVAL_GUILD("Medieval Guild Board", 0xFF5C3A21, 0xFFE0C07A, false),
@@ -37,7 +36,6 @@ public enum BoardStyle {
         return accentColor;
     }
 
-    /** Digital styles render the scrolling screen effect instead of paper posters. */
     public boolean animated() {
         return animated;
     }

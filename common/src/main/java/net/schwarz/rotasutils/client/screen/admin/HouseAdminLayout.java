@@ -5,12 +5,10 @@ import net.schwarz.rotasutils.client.screen.Ui;
 import java.util.List;
 import java.util.Objects;
 
-/** Calculated geometry shared by housing screen rendering and hit testing. */
 public final class HouseAdminLayout {
     public static final int DEFAULT_PAD = Ui.PAD;
     public static final int DEFAULT_GAP = Ui.GAP;
     public static final int ROW_HEIGHT = Ui.ROW;
-    /** Smallest height at which a clickable control remains usable at GUI scale. */
     public static final int MIN_BUTTON_HEIGHT = 16;
     private static final int MIN_MARGIN = 16;
     private static final int SETTINGS_SECTION_HEIGHT = 12;
@@ -36,7 +34,6 @@ public final class HouseAdminLayout {
         }
     }
 
-    /** A bounded line budget for text that must stay inside a calculated region. */
     public record TextRegion(Rect bounds, int lineHeight, int maxLines) {
         public TextRegion {
             Objects.requireNonNull(bounds, "bounds");
@@ -93,16 +90,11 @@ public final class HouseAdminLayout {
         }
     }
 
-    /** Three action hit boxes sized to stay inside the overview action column. */
     public record OverviewControls(Rect wand, Rect create, Rect settings) {
         public List<Rect> all() {
             return List.of(wand, create, settings);
         }
 
-        /**
-         * Controls that the screen may register as widgets. Zero-height slots are
-         * deliberate deferrals for narrow viewports, rather than tiny buttons.
-         */
         public List<Rect> rendered() {
             return all().stream()
                     .filter(HouseAdminLayout::renderableButton)
@@ -127,12 +119,10 @@ public final class HouseAdminLayout {
     public record Settings(Rect panel, Rect header, Rect content, Rect fields, Rect tierViewport,
                            Rect actions, Rect footer, int tierContentHeight, boolean tierScrollable,
                            int tierRowHeight) {
-        /** Six calculated input rows: currency, payment, reminder, grace, and membership pairs. */
         public List<Rect> fieldRows() {
             return settingsFieldRows(fields);
         }
 
-        /** Dedicated heading bands for Currency, Billing, and Membership. */
         public List<Rect> sectionBands() {
             return settingsSectionBands(fields);
         }
@@ -143,7 +133,6 @@ public final class HouseAdminLayout {
                     && fields.contains(row.right() - 1, row.bottom() - 1));
         }
 
-        /** Heading band above the independently scrollable tier rows. */
         public Rect tierHeading() {
             int height = Math.max(1, Math.min(SETTINGS_SECTION_HEIGHT,
                     tierViewport.y() - content.y()));
@@ -159,7 +148,6 @@ public final class HouseAdminLayout {
         return overview(width, height, 0);
     }
 
-    /** The label count is accepted for callers that calculate rows from data; labels never alter geometry. */
     public static Overview overview(int width, int height, int ignoredLabelLength) {
         Rect panel = panel(width, height);
         int pad = boundedPad(panel);
@@ -235,6 +223,9 @@ public final class HouseAdminLayout {
         return rect != null && rect.width() > 0 && rect.height() >= MIN_BUTTON_HEIGHT;
     }
 
+    public static final int FORM_FIELDS_HEIGHT = 74;
+    private static final int FORM_SELECTION_MAX_HEIGHT = 92;
+
     public static Form houseForm(int width, int height, boolean edit) {
         Rect panel = panel(width, height);
         int pad = boundedPad(panel);
@@ -245,10 +236,6 @@ public final class HouseAdminLayout {
         int bottom = Math.max(top + 3, footer.y() - gap);
         int total = Math.max(3, bottom - top);
 
-        // At the smallest real GUI scale there is not enough vertical room for
-        // both a readable selection card and three form bands. Keep the data
-        // entry controls and submit action at usable heights, and defer the
-        // read-only selection card until the viewport has room for it.
         if (total < 64) {
             int compactGap = Math.min(gap, 4);
             int actionsHeight = total >= MIN_BUTTON_HEIGHT
@@ -284,8 +271,6 @@ public final class HouseAdminLayout {
 
         int actionsHeight = Math.max(1, Math.min(24, total / 4));
         int validationHeight = Math.max(1, Math.min(16, total / 8));
-        // Tenancy status is useful on the full editor, but it is deliberately
-        // omitted from compact forms so it cannot consume the validation band.
         int tenancyHeight = edit && total >= 160
                 ? Math.min(32, Math.max(22, total / 6)) : 0;
         int bandGap = gap;
@@ -325,6 +310,10 @@ public final class HouseAdminLayout {
         int fieldSelectionHeight = Math.max(2, upperHeight - fieldSelectionGap);
         int fieldsHeight = Math.max(1, fieldSelectionHeight / 2);
         int selectionHeight = Math.max(1, fieldSelectionHeight - fieldsHeight);
+        if (fieldSelectionHeight >= FORM_FIELDS_HEIGHT + 60) {
+            fieldsHeight = FORM_FIELDS_HEIGHT;
+            selectionHeight = Math.min(FORM_SELECTION_MAX_HEIGHT, fieldSelectionHeight - fieldsHeight);
+        }
         Rect content = new Rect(header.x(), top, header.width(), total);
         Rect fields = new Rect(content.x(), content.y(), content.width(), fieldsHeight);
         Rect selection = new Rect(content.x(), fields.bottom() + fieldSelectionGap, content.width(), selectionHeight);

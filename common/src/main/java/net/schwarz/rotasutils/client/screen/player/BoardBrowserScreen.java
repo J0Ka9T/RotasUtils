@@ -23,16 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** The quest browser shown when a player opens a billboard. */
 @Environment(EnvType.CLIENT)
 public class BoardBrowserScreen extends RotasScreen {
-    /** Row height of one contract notice, including the gap below it. */
     private static final int CARD_HEIGHT = 66;
 
-    /**
-     * The one filter control on this screen. Replaces the old rank cycler: players ask
-     * "what can I take right now", not "show me only C-rank".
-     */
     private enum Filter {
         ALL("rotasutils.board.filter.all"),
         AVAILABLE("rotasutils.board.filter.available"),
@@ -43,10 +37,8 @@ public class BoardBrowserScreen extends RotasScreen {
         Filter(String key) {
             this.key = key;
         }
-
     }
 
-    /** Display-only ordering. The server remains authoritative for what is offered. */
     private enum SortMode {
         SMART("Smart"),
         LEVEL("Level"),
@@ -65,29 +57,18 @@ public class BoardBrowserScreen extends RotasScreen {
         }
     }
 
-    /** What the board says about one quest, shared by the filter and the card renderer. */
     private record Status(String text, int color, boolean acceptable, boolean accepted) {
     }
 
     private final String boardId;
     private final String returnNpc;
-    /**
-     * Quest ids the server decided this player may see, already rotated and filtered.
-     * The client narrows this further for search and the filter tabs but never widens it.
-     */
     private final List<String> offered = new ArrayList<>();
     private final List<String> visible = new ArrayList<>();
     private ScrollPanel list;
     private EditBox search;
-    /*
-     * View preferences outlive one visit: a player who sorts by level and filters to
-     * "available" means it for the session, not for one board opening. They are client-side
-     * display state only - the server decides what is in the list either way.
-     */
     private static Filter filter = Filter.ALL;
     private static SortMode sortMode = SortMode.SMART;
     private static String searchText = "";
-    /** The board's configured opening sound plays once, not on every tab rebuild. */
     private boolean opened;
 
     public BoardBrowserScreen(String boardId, List<String> offered) {
@@ -131,7 +112,6 @@ public class BoardBrowserScreen extends RotasScreen {
         int tabWidth = Math.max(64, Math.min(130, (contentWidth - 240) / 3));
         QuestBoardSummary counts = summary();
         for (Filter option : Filter.values()) {
-            // Counts on the tabs tell a player where the contracts are before they click.
             int count = switch (option) {
                 case ALL -> counts.total();
                 case AVAILABLE -> counts.available();
@@ -177,8 +157,6 @@ public class BoardBrowserScreen extends RotasScreen {
         registerPanel(list);
         refreshRows();
 
-        // Action bar: navigation on the left, player tools on the right. Widths shrink together
-        // on narrow windows instead of the two groups drawing over each other.
         List<Component> leftLabels = new ArrayList<>();
         List<Runnable> leftActions = new ArrayList<>();
         List<Integer> leftWidths = new ArrayList<>();
@@ -198,7 +176,6 @@ public class BoardBrowserScreen extends RotasScreen {
         List<Component> rightLabels = new ArrayList<>();
         List<Runnable> rightActions = new ArrayList<>();
         List<Integer> rightWidths = new ArrayList<>();
-        // Party desk, shown only where the board allows party actions.
         if (ClientState.partyEnabled() && board != null
                 && (board.allowPartyCreate() || board.allowPartyJoin())) {
             String labelKey = ClientState.progress().partyId() == null
@@ -257,7 +234,6 @@ public class BoardBrowserScreen extends RotasScreen {
         refreshRows();
     }
 
-    /** Availability as the board presents it; the server still re-checks on accept. */
     private Status statusOf(QuestDef quest) {
         PlayerProgress progress = ClientState.progress();
         ActiveQuest active = progress.active(quest.id());
@@ -293,8 +269,6 @@ public class BoardBrowserScreen extends RotasScreen {
         }
 
         String query = searchText.trim().toLowerCase(Locale.ROOT);
-        // The server already applied rotation and availability; this is display-side
-        // narrowing only, so no client filter can reveal a quest the server withheld.
         for (String questId : offered) {
             QuestDef quest = ClientState.quest(questId);
             if (quest == null || !quest.published()) {
@@ -409,7 +383,6 @@ public class BoardBrowserScreen extends RotasScreen {
         }
         Ui.pin(graphics, x + 18, y + 8, quest.rank().argb());
 
-        // Rank seal, then the quest icon, then the text block.
         Ui.rankSeal(graphics, x + 32, y + 33, 16, quest.rank().display(), Ui.PARCHMENT_ALT);
         Ui.icon(graphics, quest.icon(), x + 56, y + 24);
 
@@ -443,8 +416,6 @@ public class BoardBrowserScreen extends RotasScreen {
 
         ActiveQuest active = ClientState.progress().active(questId);
         if (active != null) {
-            // An accepted contract shows how far in it is, which is what a player scanning
-            // the board actually needs from a row they have already taken.
             int required = 0;
             int done = 0;
             for (int i = 0; i < quest.objectives().size(); i++) {
@@ -483,7 +454,7 @@ public class BoardBrowserScreen extends RotasScreen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (hasControlDown() && keyCode == 70 && search != null) { // Ctrl+F
+        if (hasControlDown() && keyCode == 70 && search != null) {
             setFocused(search);
             search.setFocused(true);
             return true;
@@ -514,8 +485,6 @@ public class BoardBrowserScreen extends RotasScreen {
 
         int contentX = guiLeft + 10;
         int contentWidth = guiWidth - 20;
-        // Emergency notice wins the subtitle; otherwise the subtitle is the at-a-glance count
-        // that used to sit in the action bar and collide with its buttons.
         QuestBoardSummary summary = summary();
         String subtitle = emergency()
                 ? L.t("rotasutils.board.emergency")

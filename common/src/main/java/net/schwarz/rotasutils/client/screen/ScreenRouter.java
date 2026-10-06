@@ -15,17 +15,10 @@ import net.schwarz.rotasutils.client.screen.player.BoardBrowserScreen;
 import net.schwarz.rotasutils.client.screen.player.MainMenuScreen;
 import net.schwarz.rotasutils.client.screen.player.SkillTreeScreen;
 
-/** Maps the server's screen ids onto client screens and routes world-selection results. */
 @Environment(EnvType.CLIENT)
 public final class ScreenRouter {
-    /** The screen that started a world selection, reopened when the pick comes back. */
     private static RotasScreen pendingPickScreen;
-    /**
-     * A screen that arrived while the world was still loading. Vanilla's loading-terrain screen closes
-     * itself once chunks arrive and would wipe anything opened on top of it, so it waits for {@link #tick}.
-     */
     private static Screen deferred;
-    /** What arrived since the last refresh, as a mask of the kinds below. */
     private static int refreshPending;
     public static final int CONTENT = 1;
     public static final int PROGRESS = 2;
@@ -62,6 +55,10 @@ public final class ScreenRouter {
             case "sockets" -> new net.schwarz.rotasutils.client.screen.player.SocketScreen(payload);
             case "runes" -> new net.schwarz.rotasutils.client.screen.player.RuneScreen(payload);
             case "house" -> new net.schwarz.rotasutils.client.screen.player.HouseScreen(payload);
+            case "sell" -> new net.schwarz.rotasutils.client.screen.player.SellScreen(payload);
+            case "worth" -> new net.schwarz.rotasutils.client.screen.admin.WorthScreen(payload);
+            case "settings" -> new net.schwarz.rotasutils.client.screen.admin.SettingsPanelScreen(payload);
+            case "trade" -> new net.schwarz.rotasutils.client.screen.player.TradeScreen(payload);
             case "house_create" -> new net.schwarz.rotasutils.client.screen.admin.HouseCreateScreen();
             case "house_quick" -> new net.schwarz.rotasutils.client.screen.admin.HouseQuickSettingsScreen(
                     Minecraft.getInstance().screen, payload.getString("house"), payload.getString("name"),
@@ -73,6 +70,7 @@ public final class ScreenRouter {
             case "world_events" -> new net.schwarz.rotasutils.client.screen.admin.WorldEventAdminScreen(payload);
             case "mine_admin" -> new net.schwarz.rotasutils.client.screen.admin.MineAdminScreen(payload);
             case "nemesis_admin" -> new net.schwarz.rotasutils.client.screen.admin.NemesisAdminScreen(payload);
+            case "block_log" -> new net.schwarz.rotasutils.client.screen.admin.BlockLogScreen(payload);
             case "mob_drops" -> new net.schwarz.rotasutils.client.screen.admin.MobDropScreen(payload);
             case "board_browser" -> new BoardBrowserScreen(payload.getString("board_id"),
                     net.schwarz.rotasutils.util.Nbt.loadStrings(payload, "visible"), payload.getString("npc"));
@@ -85,7 +83,8 @@ public final class ScreenRouter {
                     net.schwarz.rotasutils.util.Nbt.loadStrings(payload, "offers"));
             case "npc_config" -> new net.schwarz.rotasutils.client.screen.admin.NpcEditorScreen(
                     payload.getString("npc_id"), null);
-            case "quest_creator" -> new QuestCreatorScreen(payload.getString("quest_id"), null);
+            case "quest_creator" -> new QuestCreatorScreen(payload.getString("quest_id"),
+                    net.minecraft.client.Minecraft.getInstance().screen instanceof RotasScreen current ? current : null);
             case "skill_editor" -> new SkillEditorScreen(payload.getString("category_id"), null);
             case "level_manager" -> new LevelManagerScreen(null);
             case "zone_manager" -> new net.schwarz.rotasutils.client.screen.admin.ZoneManagerScreen(null);
@@ -122,15 +121,10 @@ public final class ScreenRouter {
         }
     }
 
-    /** Drops a screen queued for a world the player has since left. */
     public static void clearDeferred() {
         deferred = null;
     }
 
-    /**
-     * Asks the open screen to refresh. Several packets can land in one tick (content, progress, party,
-     * kernel); they share one refresh at the end of the tick instead of one rebuild each.
-     */
     public static void refreshCurrent() {
         refresh(CONTENT | PROGRESS | PARTY | KERNEL);
     }
@@ -139,7 +133,6 @@ public final class ScreenRouter {
         refreshPending |= kinds;
     }
 
-    /** Reopens the screen that asked for a world selection and hands it the value. */
     public static void deliverPick(String screenKey, String fieldKey, String value) {
         RotasScreen screen = pendingPickScreen;
         pendingPickScreen = null;

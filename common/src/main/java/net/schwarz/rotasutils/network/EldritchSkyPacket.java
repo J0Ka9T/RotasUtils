@@ -9,7 +9,6 @@ import net.minecraft.world.level.Level;
 import net.schwarz.rotasutils.Rotasutils;
 import net.schwarz.rotasutils.sky.EldritchSkyTransition;
 
-/** S2C snapshot of the eldritch sky for one dimension. */
 public final class EldritchSkyPacket {
     public static final ResourceLocation ID = Rotasutils.id("sync_eldritch_sky");
 

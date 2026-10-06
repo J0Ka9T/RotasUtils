@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The season editor lists every setting, writes back what was typed, and fits in one packet. */
 class SeasonSettingsEditorTest {
     private static JsonObject defaults() {
         return JsonParser.parseString(new SeasonRules().toJson()).getAsJsonObject();
@@ -37,7 +36,6 @@ class SeasonSettingsEditorTest {
         for (SettingsTree.Row row : SettingsTree.rows(defaults())) {
             List<String> path = row.path();
             if (SeasonSettingsCatalog.hidden(path.subList(0, 1))) continue;
-            // Keys inside maps (card ids, event ids, class names, ranks) are data, not settings.
             if (isMapEntry(path)) continue;
             if (!SeasonSettingsCatalog.named(path)) unnamed.add(row.joined());
         }
@@ -46,7 +44,7 @@ class SeasonSettingsEditorTest {
 
     private static boolean isMapEntry(List<String> path) {
         String joined = String.join(".", path);
-        if (joined.startsWith("classSynergy.")) return true; // job -> stat -> multiplier, all data
+        if (joined.startsWith("classSynergy.")) return true;
         for (String map : List.of("rankExp.", "rankThresholds.", "rankPerks.", "classSynergy.", "drops.ranks.",
                 "drops.grades.", "nemesis.epithets.", "worldEvents.types.", "cards.entries.")) {
             String prefix = map.substring(0, map.length() - 1);
@@ -128,8 +126,6 @@ class SeasonSettingsEditorTest {
         String json = defaults().toString();
         byte[] packed = CompressedText.compress(json);
         assertEquals(json, CompressedText.decompress(packed));
-        // A serverbound custom payload is capped at 32767 bytes; leave room for the action name and
-        // a season that grew several times over.
         assertTrue(packed.length < 8_000, "compressed season is " + packed.length + " bytes");
     }
 

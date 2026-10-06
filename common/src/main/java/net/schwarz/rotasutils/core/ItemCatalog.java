@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Immutable item, rarity, set and loot snapshot published with the rest of the kernel content. */
 public final class ItemCatalog {
     private final Map<ContentId, ItemDefinitions.Profile> profiles;
     private final Map<ContentId, ItemDefinitions.Rarity> rarities;
@@ -19,7 +18,6 @@ public final class ItemCatalog {
         }
         this.profiles = Map.copyOf(profiles); this.rarities = Map.copyOf(rarities);
         this.sets = Map.copyOf(sets); this.loot = Map.copyOf(loot);
-        // A profile belongs to at most one set; the set listing and the profile field must agree.
         sets.forEach((id, set) -> set.pieces().forEach(piece -> {
             ContentId previous = membership.put(piece, id);
             if (previous != null) { throw new IllegalArgumentException("Item " + piece + " belongs to two sets"); }
@@ -38,7 +36,6 @@ public final class ItemCatalog {
     public Map<ContentId, ItemDefinitions.LootTable> loot() { return loot; }
     public ContentId setOf(ContentId profile) { return membership.get(profile); }
 
-    /** Set bonuses earned by the given piece counts, keyed by set. */
     public Map<ContentId, List<ItemDefinitions.SetBonus>> bonuses(Map<ContentId, Integer> owned) {
         Map<ContentId, List<ItemDefinitions.SetBonus>> result = new HashMap<>();
         owned.forEach((id, count) -> {

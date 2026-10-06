@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Explicit, bounded file exchange. Export never rewrites an input file. */
 public final class ConfigFiles {
     private ConfigFiles() { }
 

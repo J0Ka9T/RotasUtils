@@ -23,9 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Server-side consequences of Celestial visuals: bolt and lance hits, the comet's path, bind, supernova. */
 final class CelestialBehaviour implements CelestialFxEntity.Behaviour {
-    /** Creatures each comet already struck, so a dash hits a target once. */
     private final Map<Integer, Set<Integer>> cometHits = new ConcurrentHashMap<>();
 
     @Override
@@ -92,7 +90,6 @@ final class CelestialBehaviour implements CelestialFxEntity.Behaviour {
         }
     }
 
-    /** Living, hostile-to-the-caster creatures within {@code r} of {@code at}. */
     static List<LivingEntity> victims(Level level, @Nullable LivingEntity owner, Vec3 at, double r) {
         return level.getEntitiesOfClass(LivingEntity.class, new AABB(at, at).inflate(r),
                 e -> e.isAlive() && e.position().distanceToSqr(at) <= r * r && enemy(owner, e));

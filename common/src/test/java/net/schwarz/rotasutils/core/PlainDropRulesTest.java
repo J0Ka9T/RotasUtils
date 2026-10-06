@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Drops for the mobs nobody configured: the default rule, per-entity rules and the ignore list. */
 class PlainDropRulesTest {
     @Test void theShippedDefaultPaysLessThanAConfiguredMonsterAndOnlyForHostiles() {
         SeasonRules.PlainDrop plain = new SeasonRules().drops.plain;

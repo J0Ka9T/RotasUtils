@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The refinement promises: a safe range, a real risk above it, and numbers an admin can retune. */
 class RefineMathTest {
     private final double[] chances = {1.0, 1.0, 1.0, 1.0, 0.60, 0.40, 0.40, 0.20, 0.20, 0.10};
 

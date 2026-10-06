@@ -9,7 +9,6 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.random.RandomGenerator;
 
-/** Parsing and pure math for item profiles, rarities, sets and loot tables. */
 public final class ItemDefinitions {
     private ItemDefinitions() { }
 
@@ -21,7 +20,6 @@ public final class ItemDefinitions {
             range(base, -100000, 100000, "modifier base");
             range(perLevel, -10000, 10000, "modifier per_level");
         }
-        /** Value at an item level, scaled by the rarity multiplier and clamped to the stored bounds. */
         public double at(int level, double rarityMultiplier) {
             double value = (base + perLevel * (level - 1)) * rarityMultiplier;
             if (!Double.isFinite(value)) { throw new IllegalArgumentException("Non-finite item modifier"); }
@@ -33,7 +31,6 @@ public final class ItemDefinitions {
 
     public record Requirement(int minLevel, Map<String, Double> stats) {
         public Requirement { stats = Map.copyOf(stats); }
-        /** Returns the first unmet requirement, or an empty string when the holder qualifies. */
         public String unmet(int level, Function<String, Double> values) {
             if (level < minLevel) { return net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.req.level", minLevel); }
             for (var entry : new TreeMap<>(stats).entrySet()) {
@@ -59,7 +56,6 @@ public final class ItemDefinitions {
 
     public record ItemSet(ContentId id, String label, List<ContentId> pieces, List<SetBonus> bonuses) {
         public ItemSet { pieces = List.copyOf(pieces); bonuses = List.copyOf(bonuses); }
-        /** Highest bonus tier satisfied by a piece count, ordered so ties cannot double-apply. */
         public List<SetBonus> active(int owned) {
             return bonuses.stream().filter(bonus -> owned >= bonus.pieces()).toList();
         }
@@ -72,10 +68,6 @@ public final class ItemDefinitions {
 
     public record LootTable(ContentId id, int minRolls, int maxRolls, List<LootEntry> entries) {
         public LootTable { entries = List.copyOf(entries); }
-        /**
-         * Number of entries to draw. The multiplier comes from the monster tier and is applied to the
-         * rolled count, never to the table bounds, so a tier cannot exceed the hard 64-roll ceiling.
-         */
         public int rolls(RandomGenerator random, double multiplier) {
             if (!Double.isFinite(multiplier) || multiplier < 0) { throw new IllegalArgumentException("Invalid loot multiplier"); }
             int base = minRolls == maxRolls ? minRolls : random.nextInt(minRolls, maxRolls + 1);
@@ -177,7 +169,6 @@ public final class ItemDefinitions {
         return new LootTable(id, min, max, entries);
     }
 
-    /** Chooses a rarity from the profile weights, ignoring rarities the pack no longer defines. */
     public static ContentId rarity(Profile profile, Map<ContentId, Rarity> known, RandomGenerator random) {
         Map<ContentId, Integer> pool = new TreeMap<>();
         profile.rarities().forEach((id, weight) -> { if (known.containsKey(id)) { pool.put(id, weight); } });
@@ -185,7 +176,6 @@ public final class ItemDefinitions {
         return MonsterDefinitions.weighted(pool, random);
     }
 
-    /** Sums modifier layers per attribute and operation so an item never carries duplicate modifiers. */
     public static Map<String, Double> derive(List<Modifier> modifiers, int level, double rarityMultiplier, Operation operation) {
         Map<String, Double> result = new TreeMap<>();
         for (Modifier modifier : modifiers) {

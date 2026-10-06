@@ -168,7 +168,6 @@ final class AdminCommands {
         RotasData.get(source.getServer()).audit(java.time.Instant.now() + " actor=" + RotasPermissions.actor(source) + " action=" + action);
     }
 
-    /** Lines from config import and review are built in English; the phrase table shows them in Thai. */
     private static void say(CommandSourceStack source, String line) { source.sendSuccess(() -> Component.literal(ThaiText.phrase(line)), false); }
     private static int started(CommandSourceStack source, boolean started) {
         if (!started) { throw new IllegalStateException(ThaiText.t("rotasutils.cmd.admin.op_running")); }

@@ -6,11 +6,6 @@ import net.schwarz.rotasutils.util.Nbt;
 
 import java.util.Locale;
 
-/**
- * Shared attribute bonus types used by the four {@link CoreStat}s, titles, cards, equipment and jobs.
- *
- * <p>Character stats themselves are fixed in {@link CoreStat}; this class only holds the building blocks.</p>
- */
 public final class CharacterStat {
     public enum Operation {
         ADD(AttributeModifier.Operation.ADDITION),
@@ -31,10 +26,6 @@ public final class CharacterStat {
     private CharacterStat() {
     }
 
-    /**
-     * One bonus. {@code attribute} is a Minecraft attribute id or a logical combat value
-     * ({@code rotas:defense}, {@code rotas:evasion}, {@code rotas:magic_power}); {@code cap} bounds the total bonus.
-     */
     public record Effect(String attribute, double perPoint, Operation operation, boolean percent, String label, double cap) {
         public Effect {
             attribute = attribute == null ? "" : attribute.trim();

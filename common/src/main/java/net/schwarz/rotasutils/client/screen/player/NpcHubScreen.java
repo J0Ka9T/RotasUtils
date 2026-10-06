@@ -20,14 +20,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * One screen for every service NPC (smith, alchemist, inn, priest, bank, bounties, collector...). The server sends
- * the entries with their price and whether they are open to this player right now; a paid entry takes two clicks.
- */
 @Environment(EnvType.CLIENT)
 public class NpcHubScreen extends RotasScreen {
     private static final int ROW = 34;
-    /** Scroll kept per NPC, so buying ten things in a row does not jump back to the top each time. */
     private static final Map<String, Integer> SCROLL = new HashMap<>();
 
     private record Row(boolean header, String section, CompoundTag entry) {

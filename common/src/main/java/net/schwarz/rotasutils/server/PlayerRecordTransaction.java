@@ -25,7 +25,6 @@ public final class PlayerRecordTransaction implements KernelContext.Transaction 
     private final net.minecraft.nbt.CompoundTag originalRpg;
     private final net.schwarz.rotasutils.progress.RpgProfile rpg;
     private final Thread owner = Thread.currentThread();
-    /** Staged stacks are delivered only after the record write succeeds. */
     private final List<ItemStack> items = new ArrayList<>();
     private final ServerPlayer recipient;
     private String seed;
@@ -138,7 +137,6 @@ public final class PlayerRecordTransaction implements KernelContext.Transaction 
     }
 
     private String seed() {
-        // Without a reward receipt the caller gets a stable per-player seed rather than a random one.
         return seed != null ? seed : "player|" + player.playerId();
     }
 

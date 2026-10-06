@@ -13,14 +13,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * RED contract for the future {@code NpcDialogueScreen.presentationLayout(int, int, int)} helper.
- *
- * <p>The screen must expose a pure layout decision so the presentation can be reasoned about
- * without instantiating the screen: given the viewport and how many options the server offered,
- * it returns the shared {@code NpcConversationLayout}. Reflection keeps this test compiling
- * before the method exists, so the missing method is the only thing that fails.</p>
- */
 class NpcDialoguePresentationTest {
     private static final String SCREEN_CLASS =
             "net.schwarz.rotasutils.client.screen.player.NpcDialogueScreen";

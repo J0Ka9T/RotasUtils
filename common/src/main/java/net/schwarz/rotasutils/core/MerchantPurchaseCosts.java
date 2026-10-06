@@ -4,7 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Aggregates repeated payment entries before any inventory or wallet mutation. */
 public record MerchantPurchaseCosts(Map<String, Long> currencies, Map<String, Long> items) {
     public MerchantPurchaseCosts {
         currencies = Map.copyOf(currencies);

@@ -28,23 +28,6 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 
 import java.util.List;
 
-/**
- * Shows where level zones are: every border to an admin holding the Zone Wand (or who pinned borders
- * on in the zone manager), and to players only the nearby borders they should know about - see
- * {@link #renderPlayerBorders}.
- *
- * <p>Every zone border in this dimension within render distance is drawn, so zones can be found
- * without first selecting one. The working zone - the one stored on the wand, which is the zone the
- * next click grows - is bright; the rest are dimmer. A border is a translucent curtain standing on
- * the terrain (see {@link ZoneBorderGeometry}), in the zone's own colour ({@link ZoneColors}: zones that
- * touch or nest never share one; the label still names the danger), fading upward and hidden by hills
- * like real geometry, with a faint copy of its ground line drawn through terrain. Each zone gets a
- * floating label at its border point nearest the camera. Spheres and exact-height boxes are 3D
- * volumes (arenas, caves), so they also keep a wireframe.</p>
- *
- * <p>An unfinished Box or Outline on the wand is previewed in light yellow. Buffers are reused, so
- * holding the wand allocates almost nothing per frame.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class ZoneOutlineRenderer {
     private static final float CURTAIN_ALPHA = 0.32f;
@@ -64,7 +47,6 @@ public final class ZoneOutlineRenderer {
     private ZoneOutlineRenderer() {
     }
 
-    /** Called from the client level renderer once the world is drawn. */
     public static void render(PoseStack poseStack, Camera camera) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) {
@@ -156,11 +138,6 @@ public final class ZoneOutlineRenderer {
         }
     }
 
-    /**
-     * Admin label: "> Village  Lv 1-3  Safe  P2  [Locked]  (off)". The arrow marks the zone that governs
-     * the camera position (the one whose band and rules apply there), P is its priority - which zone wins
-     * where they overlap - and the lock, dungeon and off flags show at a glance which zones stop players.
-     */
     private static String adminLabel(ZoneDef zone, boolean governsHere) {
         StringBuilder text = new StringBuilder();
         if (governsHere) {
@@ -181,21 +158,10 @@ public final class ZoneOutlineRenderer {
         return text.toString();
     }
 
-    // Player view ------------------------------------------------------------------------------------
-
-    /** Beyond this many blocks a player sees no border at all. */
-    private static final double PLAYER_NEAR = 28.0;
-    /** Inside this many blocks the border is at full strength. */
+private static final double PLAYER_NEAR = 28.0;
     private static final double PLAYER_FULL = 6.0;
-    /** Labels only for borders this close, so a busy area does not fill the sky with text. */
     private static final double PLAYER_LABEL = 18.0;
 
-    /**
-     * What a player sees: the borders of nearby zones they should know about before stepping in - locked
-     * for them (red, with the first missing requirement), marked Dangerous or Deadly (danger colour), or
-     * set to always show. A border fades in as the player approaches and is gone past {@link #PLAYER_NEAR}
-     * blocks; the zone the player already stands in draws nothing (the zone chip covers it).
-     */
     private static void renderPlayerBorders(Minecraft minecraft, PoseStack poseStack, Camera camera) {
         java.util.Collection<ZoneDef> zones = ClientZoneView.zones();
         if (zones.isEmpty()) {
@@ -268,7 +234,6 @@ public final class ZoneOutlineRenderer {
         }
     }
 
-    /** Zones with a border here: enabled ones in this dimension, plus the working zone even when off. */
     private static boolean drawable(ZoneDef zone, String dimension, boolean focus) {
         if (zone.areas().isEmpty() && zone.excludedAreas().isEmpty()) {
             return false;
@@ -300,7 +265,6 @@ public final class ZoneOutlineRenderer {
             int o = i * PanelBuffer.STRIDE;
             int r = (int) p[o + 8], g = (int) p[o + 9], b = (int) p[o + 10];
             int a = (int) (alpha * p[o + 11] * 255);
-            // A hair above the ground so the line does not z-fight with the grass it sits on.
             vertex(buffer, pose, cam, p[o], p[o + 2] + 0.03, p[o + 1], r, g, b, a);
             vertex(buffer, pose, cam, p[o + 4], p[o + 6] + 0.03, p[o + 5], r, g, b, a);
         }
@@ -358,7 +322,6 @@ public final class ZoneOutlineRenderer {
         return area.distance(cam.x, cam.y, cam.z) <= minecraft.options.getEffectiveRenderDistance() * 16.0;
     }
 
-    /** A line of text floating above a border point, readable through terrain, scaled with distance. */
     private static void drawLabel(Minecraft minecraft, PoseStack poseStack, Camera camera, String text, int argb,
                                   double x, double groundY, double z, float size) {
         Vec3 cam = camera.getPosition();
@@ -381,7 +344,6 @@ public final class ZoneOutlineRenderer {
         }
     }
 
-    /** The box an unfinished Box would make if the aimed block were the second corner. */
     private static ZoneArea previewBox(Minecraft minecraft, ItemStack wand, List<BlockPos> pending, int bottom, int top) {
         if (pending.isEmpty() || ZoneWandItem.mode(wand) != ZoneWandItem.Mode.BOX) {
             return null;
@@ -398,11 +360,9 @@ public final class ZoneOutlineRenderer {
     private static java.util.Map<String, int[]> colours = java.util.Map.of();
     private static long coloursSignature = Long.MIN_VALUE;
 
-    /** The zone's own colour; recomputed only when the synced zone set changes. */
     private static int[] zoneColor(ZoneDef zone) {
         long signature = ClientState.zones().size();
         for (ZoneDef each : ClientState.zones().values()) {
-            // Zones are replaced with new instances on every sync, so identity tracks any change.
             signature = signature * 31 + System.identityHashCode(each);
         }
         if (signature != coloursSignature) {
@@ -432,10 +392,6 @@ public final class ZoneOutlineRenderer {
         return null;
     }
 
-    /**
-     * The zone to highlight: the one stamped on the wand by the server, else the one open in the
-     * editor, else the highest-priority zone the player stands in.
-     */
     private static ZoneDef workingZone(Minecraft minecraft, ItemStack wand, String dimension) {
         ZoneDef stamped = ClientState.zone(ZoneWandItem.zone(wand));
         if (stamped != null) {
@@ -458,7 +414,6 @@ public final class ZoneOutlineRenderer {
         return here;
     }
 
-    /** Reused flat store of curtain panels, tracking each zone's panel nearest the camera. */
     private static final class PanelBuffer implements ZoneBorderGeometry.CurtainSink {
         static final int STRIDE = 12;
         private static final int MAX_PANELS = 16384;
@@ -477,7 +432,6 @@ public final class ZoneOutlineRenderer {
             camZ = camera.z;
         }
 
-        /** Starts one zone: its colour, its opacity and a fresh nearest-point search. */
         void begin(int[] rgb, float alpha) {
             color = rgb;
             opacity = alpha;

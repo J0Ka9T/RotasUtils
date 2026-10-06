@@ -18,12 +18,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/**
- * A form for one season-rules block, built from the block's own class: every public field becomes a
- * row (toggle, number, text, fixed choice, comma list), and anything nested opens the JSON editor.
- * A field added to the rules class shows up here without touching this screen. Names and hints come
- * from {@link SeasonSettingsCatalog}, the same catalogue the season editor uses.
- */
 @Environment(EnvType.CLIENT)
 public class ReflectFormScreen extends SimpleFieldScreen {
     private final Class<?> template;
@@ -37,10 +31,6 @@ public class ReflectFormScreen extends SimpleFieldScreen {
     private final java.util.Map<String, String> helps = new java.util.HashMap<>();
     private final java.util.Map<String, String> arrayErrors = new java.util.HashMap<>();
 
-    /**
-     * @param path     season path of the block, e.g. {@code worldEvents.types.x}, for names and hints
-     * @param id       the entry's id when it has one; {@code null} for a block without an id
-     */
     public ReflectFormScreen(String title, Screen parent, Class<?> template, JsonObject values, Set<String> excluded,
                              List<String> path, String id, boolean editableId, Consumer<ReflectFormScreen> onSave) {
         super(title, parent);
@@ -167,7 +157,6 @@ public class ReflectFormScreen extends SimpleFieldScreen {
         onSave.accept(this);
     }
 
-    /** Shown on the action bar, which stays visible above an open screen. */
     static void warn(String text) {
         var player = net.minecraft.client.Minecraft.getInstance().player;
         if (player != null) player.displayClientMessage(Ui.text(text), true);

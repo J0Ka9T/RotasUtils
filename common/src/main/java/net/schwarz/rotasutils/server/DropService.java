@@ -16,28 +16,12 @@ import net.schwarz.rotasutils.util.ThaiText;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Drops by monster rank.
- *
- * <p>The rule a player has to remember is one sentence: ordinary monsters pay coins, a miniboss
- * pays common or medium loot, and a boss pays rare or epic loot. The loot is the items themselves -
- * there is no container to collect and open first - so a kill needs no follow-up action at all.
- *
- * <p>Every number behind that sentence lives in {@code season.json} under {@code drops} and reloads
- * with {@code /rotas season reload}. A monster profile that already names its own loot table keeps
- * that table as well: this only ever adds to a hand-built drop.
- */
 public final class DropService {
-    /** Kill lines are only listed up to here, so a boss payout cannot flood the chat. */
     private static final int MAX_CHAT_LINES = 6;
 
     private DropService() {
     }
 
-    /**
-     * Called once per confirmed monster death, for the player credited with the kill. Never throws
-     * into the kill path: a failed drop must not stop the rest of the reward.
-     */
     public static void onMonsterKilled(ServerPlayer killer, Mob mob, MonsterState state) {
         RotasData data = RotasData.get(killer.server);
         SeasonRules.DropRules rules = SeasonService.rules(data).drops;
@@ -45,23 +29,16 @@ public final class DropService {
             return;
         }
         MonsterRank rank = state.rank();
-        // An entity an administrator gave its own line keeps it even when it was leveled automatically:
-        // that is the whole point of the per-entity rules, which need no Mob Setup behind them.
         SeasonRules.RankDrop rule = perEntity(rules, mob);
         if (rule == null) {
             rule = rules.ranks.get(rank.name());
         }
         if (rule == null) {
-            // A rank the configuration does not describe drops nothing; that is how one is turned off.
             return;
         }
         pay(killer, data, rules, rule, mob, state.level());
     }
 
-    /**
-     * Called for a mob that has no Mob Setup at all - no profile, no level band, nothing. Without this
-     * such a kill paid nothing, which is why a pack's own mobs felt worthless next to configured ones.
-     */
     public static void onPlainMobKilled(ServerPlayer killer, net.minecraft.world.entity.LivingEntity entity) {
         if (!(entity instanceof Mob mob)) {
             return;
@@ -87,12 +64,10 @@ public final class DropService {
             }
             rule = rules.plain.rule;
         }
-        // A mob with no level band still scales its coins by something; its own health is the honest proxy.
         int level = (int) Math.max(1, Math.min(100, Math.round(mob.getMaxHealth() / 4.0)));
         pay(killer, data, rules, rule, mob, level);
     }
 
-    /** The rule an administrator wrote for this entity type, or null when they wrote none. */
     private static SeasonRules.RankDrop perEntity(SeasonRules.DropRules rules, Mob mob) {
         if (rules.plain == null || rules.plain.byEntity == null || rules.plain.byEntity.isEmpty()) {
             return null;
@@ -101,15 +76,16 @@ public final class DropService {
         return rules.plain.byEntity.get(id);
     }
 
-    /** Rolls one rule and hands the result to the player. Shared by every kill path. */
     private static void pay(ServerPlayer killer, RotasData data, SeasonRules.DropRules rules,
                             SeasonRules.RankDrop rule, Mob mob, int level) {
         RandomSource random = killer.getRandom();
         List<ItemStack> drop = new ArrayList<>();
         var event = WorldEventService.at(mob);
         long coins = 0;
+        double bonusDrop = CombatStats.get(killer.getUUID()).dropRate();
+        double dropScale = 1.0 + Math.max(0, bonusDrop);
         if (random.nextDouble() < rule.coinChance) {
-            coins += Math.round(coins(level, rule, random) * (event == null ? 1.0 : event.coinMultiplier));
+            coins += Math.round(coins(level, rule, random) * (event == null ? 1.0 : event.coinMultiplier) * dropScale);
         }
         var lines = new java.util.Random(mob.getUUID().getLeastSignificantBits() ^ System.nanoTime());
         for (String line : rule.items) {
@@ -125,14 +101,12 @@ public final class DropService {
         double lootChance = net.schwarz.rotasutils.core.FarmingMath.boosted(rule.lootChance,
                 FarmingService.lootLuck(killer, data), FarmingService.comboLoot(killer, data),
                 BestiaryService.loot(data, data.progress(killer.getUUID()), entityId),
-                event == null ? 1.0 : event.lootMultiplier);
+                (event == null ? 1.0 : event.lootMultiplier) * dropScale);
         DropGrade grade = rollGrade(rule, lootChance, random);
         if (grade != null) {
             drop.addAll(DropLoot.roll(data, grade, mob.getUUID() + "|" + grade.key()));
         }
-        // An item an administrator switched off must not come back through this mod's own tables.
         drop.removeIf(stack -> DropFilterService.blocked(data, mob, stack));
-        // Every coin from this kill - the rule's own and any a grade paid - lands as one pile on the ground.
         for (ItemStack stack : drop) {
             coins += net.schwarz.rotasutils.item.GoldCoins.amount(stack);
         }
@@ -158,7 +132,6 @@ public final class DropService {
         RotasNetwork.syncProgress(killer);
     }
 
-    /** The grade this kill pays, or null when it pays coins only. */
     private static DropGrade rollGrade(SeasonRules.RankDrop rule, double lootChance, RandomSource random) {
         if (rule.grades == null || rule.grades.length == 0 || random.nextDouble() >= lootChance) {
             return null;
@@ -166,10 +139,6 @@ public final class DropService {
         return DropGrade.byKey(rule.grades[random.nextInt(rule.grades.length)]);
     }
 
-    /**
-     * Coins: {@code coinMin..coinMax} plus {@code coinPerLevel} per monster level, times the rank's multiplier.
-     * No stack cap: coins are one pile of any size.
-     */
     static long coins(int level, SeasonRules.RankDrop rule, RandomSource random) {
         int min = Math.max(0, rule.coinMin);
         int max = Math.max(min, rule.coinMax);
@@ -177,7 +146,6 @@ public final class DropService {
         return Math.max(1, Math.round(base * Math.max(0, rule.coinMultiplier)));
     }
 
-    /** One chat line per stack, so the player sees what a kill paid without opening their bag. */
     private static void announce(ServerPlayer player, List<ItemStack> drop) {
         for (int i = 0; i < drop.size() && i < MAX_CHAT_LINES; i++) {
             ItemStack stack = drop.get(i);

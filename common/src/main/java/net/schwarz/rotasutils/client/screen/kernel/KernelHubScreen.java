@@ -19,17 +19,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * The kernel console: one screen for every runtime system the kernel owns.
- *
- * <p>Layout is list-then-detail rather than a grid of cards, because every section here is "choose
- * one of these, then act on it". The section rail on the left is the only navigation; the actions at
- * the bottom belong to the selected row and change with it, so no screen ever shows a button that
- * cannot do anything.</p>
- *
- * <p>Selection survives a refresh: the server pushes a new snapshot after every action, and the
- * screen rebuilds against it while keeping the row the player was reading.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class KernelHubScreen extends RotasScreen {
     public enum Section {
@@ -61,7 +50,6 @@ public final class KernelHubScreen extends RotasScreen {
         }
     }
 
-    /** Kept across rebuilds so a server refresh does not throw the reader back to the top. */
     private static final Map<Section, String> SELECTED = new EnumMap<>(Section.class);
     private static Section lastSection = Section.CHARACTER;
     private static int itemLevel = 1;
@@ -82,7 +70,6 @@ public final class KernelHubScreen extends RotasScreen {
     private int tradeScroll;
     private final List<Row> rows = new ArrayList<>();
 
-    /** One list entry: an ID to act on, a name to read, and its current state. */
     private record Row(String id, String title, String subtitle, String tag, int tagColor) { }
 
     public KernelHubScreen(Section section) {
@@ -204,9 +191,7 @@ public final class KernelHubScreen extends RotasScreen {
         return rows.isEmpty() ? "" : rows.get(0).id();
     }
 
-    // Rows -----------------------------------------------------------------
-
-    private void buildRows() {
+private void buildRows() {
         rows.clear();
         switch (section) {
             case CHARACTER -> { }
@@ -269,9 +254,7 @@ public final class KernelHubScreen extends RotasScreen {
         }
     }
 
-    // Actions --------------------------------------------------------------
-
-    private void buildActions() {
+private void buildActions() {
         int y = guiTop + guiHeight - 28;
         int right = guiLeft + guiWidth - Ui.PAD;
         String id = selectedId();
@@ -416,9 +399,7 @@ public final class KernelHubScreen extends RotasScreen {
         send("kernel_monster", payload);
     }
 
-    // Detail ---------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!ClientKernelState.ready()) {
             Ui.panel(graphics, listX, contentTop, guiLeft + guiWidth - Ui.PAD - listX, contentHeight);
@@ -448,7 +429,6 @@ public final class KernelHubScreen extends RotasScreen {
         }
     }
 
-    /** Empty states name the reason and the next step instead of saying "nothing found". */
     private String emptyList() {
         return switch (section) {
             case QUESTS -> t("rotasutils.kernel.empty.quests");
@@ -494,7 +474,6 @@ public final class KernelHubScreen extends RotasScreen {
         return net.schwarz.rotasutils.client.screen.L.t(key, args);
     }
 
-    /** "daily" becomes its Thai word when one exists; unknown reset policies show as authored. */
     private static String resetLabel(String reset) {
         String key = "rotasutils.kernel.reset." + reset.toLowerCase(Locale.ROOT);
         return net.schwarz.rotasutils.util.ThaiText.has(key) ? t(key) : reset.toLowerCase(Locale.ROOT);
@@ -696,7 +675,6 @@ public final class KernelHubScreen extends RotasScreen {
         Ui.wrapped(graphics, text, x, y, inner, RotasTheme.TEXT_FAINT);
     }
 
-    /** Label on the left, value on the right, one row of the 4px grid apart. */
     private int line(GuiGraphics graphics, int x, int y, int inner, String label, String value) {
         Ui.label(graphics, label, x, y, RotasTheme.TEXT_FAINT);
         Ui.labelRight(graphics, Ui.truncate(value, inner - font.width(label) - 12), x + inner, y, Ui.TEXT);
@@ -739,7 +717,6 @@ public final class KernelHubScreen extends RotasScreen {
         return colon >= 0 ? id.substring(colon + 1) : id;
     }
 
-    /** Opens the console and asks the server for a fresh snapshot. */
     public static Screen openSelected(Section section, String id, Screen parent) {
         SELECTED.put(section, id);
         return open(section, parent);

@@ -40,7 +40,6 @@ class MonsterStateTest {
         assertEquals(4.0, loaded.attributes().get("minecraft:generic.max_health").add());
         assertEquals(4096L, loaded.runtime().getLong("cooldown:rotas:affix/strong:HURT"));
         assertEquals("3", loaded.runtime().getString("var:rpg.rage"));
-        // A profile without a reward stays loadable and reports no reward rather than an empty ID.
         MonsterState rewardless = new MonsterState(new ContentId("rotas:monster/zombie"), new ContentId("rotas:tier/normal"), 1, 0, 1, false,
                 List.of(), Map.of(), null, "", "");
         assertNull(MonsterState.load(rewardless.save()).reward());
@@ -105,7 +104,6 @@ class MonsterStateTest {
                 List.of(), Map.of(), null, "", ""));
         assertThrows(IllegalArgumentException.class, () -> new MonsterState(new ContentId("rotas:m"), new ContentId("rotas:t"), 1, 0, Double.NaN, false,
                 List.of(), Map.of(), null, "", ""));
-        // Duplicate affixes would double-apply their attributes and hooks.
         assertThrows(IllegalArgumentException.class, () -> new MonsterState(new ContentId("rotas:m"), new ContentId("rotas:t"), 1, 0, 1, false,
                 List.of(new ContentId("rotas:a"), new ContentId("rotas:a")), Map.of(), null, "", ""));
 
@@ -122,7 +120,6 @@ class MonsterStateTest {
         for (int i = 0; i < 129; i++) { tooManyKeys.putLong("key" + i, i); }
         assertThrows(IllegalArgumentException.class, () -> state.runtime(tooManyKeys));
 
-        // A rejected runtime write leaves the previous bounded runtime untouched.
         CompoundTag accepted = new CompoundTag();
         accepted.putString("var:rpg.note", "x".repeat(16384));
         state.runtime(accepted);

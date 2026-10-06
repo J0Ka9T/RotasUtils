@@ -1,9 +1,5 @@
 package net.schwarz.rotasutils.client.cinematic;
 
-/**
- * Easing and keyframe curves for the cinematic: cubic Beziers and monotone cubic (PCHIP) keyframe
- * tracks instead of linear steps, plus smooth value noise for camera shake and drift.
- */
 public final class Curves {
     private Curves() {
     }
@@ -26,12 +22,10 @@ public final class Curves {
         return x * x * x * (x * (x * 6 - 15) + 10);
     }
 
-    /** Where {@code x} sits between {@code a} and {@code b}, clamped to 0..1. */
     public static double window(double x, double a, double b) {
         return b == a ? (x >= b ? 1 : 0) : clamp01((x - a) / (b - a));
     }
 
-    /** A CSS-style cubic Bezier easing through (0,0) and (1,1) with control points (x1,y1), (x2,y2). */
     public static double bezier(double t, double x1, double y1, double x2, double y2) {
         t = clamp01(t);
         double lo = 0, hi = 1, u = t;
@@ -55,17 +49,14 @@ public final class Curves {
         return 3 * v * v * u * p1 + 3 * v * u * u * p2 + u * u * u;
     }
 
-    /** A slow start and a hard finish: the shape of a controlled build-up. */
     public static double easeIn(double t) {
         return bezier(t, 0.55, 0.0, 0.85, 0.35);
     }
 
-    /** A fast start that settles gently: the shape of a snap. */
     public static double snap(double t) {
         return bezier(t, 0.05, 0.9, 0.2, 1.0);
     }
 
-    /** Monotone cubic keyframes: passes through every key and never overshoots between them. */
     public static final class Track {
         private final double[] times;
         private final double[] values;
@@ -80,7 +71,6 @@ public final class Curves {
             this.slopes = tangents(this.times, this.values);
         }
 
-        /** Convenience: alternating time, value pairs. */
         public static Track of(double... pairs) {
             int n = pairs.length / 2;
             double[] t = new double[n], v = new double[n];
@@ -143,7 +133,6 @@ public final class Curves {
         }
     }
 
-    /** Smooth 1D value noise in about -1..1, deterministic per seed. */
     public static double noise(double x, int seed) {
         int i = (int) Math.floor(x);
         double f = x - i;
@@ -151,7 +140,6 @@ public final class Curves {
         return lerp(a, b, f * f * (3 - 2 * f));
     }
 
-    /** Two octaves, for camera shake that is neither a sine nor a jitter. */
     public static double fbm(double x, int seed) {
         return noise(x, seed) * 0.65 + noise(x * 2.13 + 7.1, seed + 101) * 0.35;
     }

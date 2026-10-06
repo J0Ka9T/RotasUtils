@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Collections;
 import net.schwarz.rotasutils.stat.CharacterStat;
 
-/** Curated, editable starting points for the combat and profession layout. */
 public final class JobArchetypes {
     public record Archetype(String id, String name, String description, boolean main,
                             int color, Item icon, List<String> items, List<String> activities) { }
@@ -32,17 +31,11 @@ public final class JobArchetypes {
         job.setColor(source.color());
         job.setIcon(new ItemStack(source.icon()));
         job.itemSelectors().addAll(source.items());
-        job.masteryActivities().addAll(source.activities());
         addBalance(job);
         applySeason(job, new net.schwarz.rotasutils.level.SeasonRules());
         return job;
     }
 
-    /**
-     * Season setup for a template job: sub jobs get the power curve (90 * level^1.8, cap 20), their profession
-     * rate and a starter unlock table. Only jobs made from a template are touched; the table is a starting
-     * point for admins, who should add one unlock per level.
-     */
     public static boolean applySeason(JobDef job, net.schwarz.rotasutils.level.SeasonRules rules) {
         double rate = switch (job.id()) {
             case "miner" -> 0.08;
@@ -50,7 +43,6 @@ public final class JobArchetypes {
             case "fisher", "rancher" -> 0.12;
             case "chef" -> 0.144;
             case "alchemy" -> 0.35;
-            // The brief's x2.0 made the first levels a two-craft affair; x1.5 keeps a little effort.
             case "blacksmith" -> 1.5;
             default -> -1;
         };
@@ -74,12 +66,7 @@ public final class JobArchetypes {
                     "FISH #minecraft:fishes 1", "FISH minecraft:tropical_fish 5", "FISH minecraft:pufferfish 6",
                     "FISH minecraft:ink_sac 7", "FISH minecraft:nautilus_shell 10", "FISH minecraft:name_tag 11",
                     "FISH minecraft:saddle 12", "FISH minecraft:enchanted_book 15", "FISH minecraft:bow 16");
-            case "chef" -> production(job,
-                    "CRAFT minecraft:bread 1", "SMELT minecraft:cooked_beef 1", "SMELT minecraft:cooked_chicken 1",
-                    "SMELT minecraft:cooked_porkchop 2", "SMELT minecraft:baked_potato 2", "CRAFT minecraft:cookie 3",
-                    "CRAFT minecraft:mushroom_stew 5", "CRAFT minecraft:pumpkin_pie 6", "CRAFT minecraft:beetroot_soup 7",
-                    "SMELT minecraft:cooked_salmon 8", "CRAFT minecraft:cake 10", "CRAFT minecraft:golden_carrot 12",
-                    "CRAFT minecraft:rabbit_stew 15", "CRAFT minecraft:golden_apple 18");
+            case "chef" -> { }
             case "alchemy" -> production(job,
                     "BREW minecraft:potion 1", "CRAFT minecraft:blaze_powder 4", "CRAFT minecraft:fermented_spider_eye 5",
                     "CRAFT minecraft:glistering_melon_slice 6", "CRAFT minecraft:magma_cream 8", "BREW minecraft:splash_potion 10",
@@ -103,18 +90,8 @@ public final class JobArchetypes {
         for (String row : rows) job.production().add(JobDef.ProductionEntry.decode(row));
     }
 
-    /**
-     * Strengths and weaknesses per template. Combat uses Epic Fight 20.14.17 and magic uses Iron's
-     * Spells 3.16.1 attribute IDs, verified against the RotasCommu jars; on a server without either
-     * mod those modifiers are skipped by {@code CharacterStatService} and flagged in the job screen.
-     */
-    /** The combat jobs every world starts with, in picker order. */
     public static final List<String> STARTER_JOBS = List.of("archer", "fighter", "tank", "rogue", "wizard");
 
-    /**
-     * Each combat job's signature buff. These use the mod's own combat stats (defense, dodge, magic power)
-     * or vanilla attributes, so they work on a server without Epic Fight or Iron's Spells.
-     */
     public static List<JobAttributeModifier> signature(String id) {
         String defense = net.schwarz.rotasutils.server.CombatStats.DEFENSE;
         String evasion = net.schwarz.rotasutils.server.CombatStats.EVASION;
@@ -184,7 +161,6 @@ public final class JobArchetypes {
         return new JobAttributeModifier(translated("rotasutils.job.mod." + slug(label), label), attribute, amount, operation);
     }
 
-    /** Thai text for a template string when the mod ships one; the English original otherwise. */
     private static String translated(String key, String english) {
         return net.schwarz.rotasutils.util.ThaiText.has(key) ? net.schwarz.rotasutils.util.ThaiText.t(key) : english;
     }

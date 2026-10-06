@@ -12,11 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Hoppers and item pipes take a sealed furnace or brewing result only on behalf of a player who holds the sub-role:
- * the last player to open the station. Without this a hopper would be a free way around the slot lock. Vanilla
- * hoppers and Forge's sided item handler both ask {@code canTakeItemThroughFace}.
- */
 @Mixin({AbstractFurnaceBlockEntity.class, BrewingStandBlockEntity.class})
 public abstract class ProductionStationMixin {
     @Inject(method = "canTakeItemThroughFace", at = @At("RETURN"), cancellable = true)

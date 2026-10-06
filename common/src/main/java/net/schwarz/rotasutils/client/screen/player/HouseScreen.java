@@ -12,16 +12,10 @@ import net.schwarz.rotasutils.client.screen.Ui;
 
 import java.util.UUID;
 
-/**
- * The player's house (บ้าน): what it costs, when rent is next taken, and who may build in it.
- *
- * <p>Opened with {@code /rotas house} or from the main menu, on the house the player stands in or
- * else their own. Every button is one server action; the server re-checks it and reopens this screen
- * on the result. Giving a house back asks for a second click, since nothing is refunded.</p>
- */
 @Environment(EnvType.CLIENT)
 public class HouseScreen extends RotasScreen {
     private static final int MAX_LISTED = 5;
+    private static final int FINDER_ROW = 24;
 
     private final CompoundTag state;
     private boolean confirmLeave;
@@ -72,7 +66,6 @@ public class HouseScreen extends RotasScreen {
         addRenderableWidget(Ui.boardButton(L.c("rotasutils.house.player.close"), button -> onClose())
                 .bounds(contentX, barY, 90, 24).build());
 
-        // Switch between the houses this player owns or belongs to.
         ListTag mine = state.getList("mine", Tag.TAG_COMPOUND);
         int switchY = guiTop + guiHeight - 64;
         int switchX = contentX;
@@ -91,8 +84,22 @@ public class HouseScreen extends RotasScreen {
             switchX += 104;
         }
         if (!found()) {
+            ListTag open = state.getList("available", Tag.TAG_COMPOUND);
+            for (int i = 0; i < Math.min(open.size(), finderRows()); i++) {
+                String id = open.getCompound(i).getString("id");
+                addRenderableWidget(Ui.boardButton(L.c("rotasutils.house.finder.view"), press -> {
+                    CompoundTag payload = new CompoundTag();
+                    payload.putString("house", id);
+                    send("open_house", payload);
+                }).bounds(contentX + contentWidth - 70, finderTop() + i * FINDER_ROW - 3, 58, 18).build());
+            }
             return;
         }
+        addRenderableWidget(Ui.boardButton(L.c("rotasutils.house.finder.browse"), press -> {
+            CompoundTag payload = new CompoundTag();
+            payload.putString("house", "*");
+            send("open_house", payload);
+        }).bounds(guiLeft + 16, guiTop + 16, 104, 18).build());
         if (state.getBoolean("admin")) {
             addRenderableWidget(Ui.boardButton(L.c("rotasutils.house.player.admin"), press -> minecraft.setScreen(
                     new net.schwarz.rotasutils.client.screen.admin.HouseQuickSettingsScreen(this, state.getString("id"),
@@ -142,7 +149,6 @@ public class HouseScreen extends RotasScreen {
         if (!owner()) {
             return;
         }
-        // Members: remove the listed ones, add players standing nearby, buy another slot.
         ListTag members = state.getList("members", Tag.TAG_COMPOUND);
         int y = guiTop + 70;
         for (int i = 0; i < Math.min(MAX_LISTED, members.size()); i++) {
@@ -170,6 +176,14 @@ public class HouseScreen extends RotasScreen {
         }
     }
 
+    private int finderTop() {
+        return guiTop + 74;
+    }
+
+    private int finderRows() {
+        return Math.max(1, Math.min(6, (guiHeight - 84 - 74 - 12) / FINDER_ROW));
+    }
+
     @Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, Ui.BOARD_SCRIM_TOP, Ui.BOARD_SCRIM_BOTTOM);
@@ -187,12 +201,29 @@ public class HouseScreen extends RotasScreen {
         int contentWidth = guiWidth - 24;
         int centerX = guiLeft + guiWidth / 2;
         if (!found()) {
-            Ui.scaledCentered(graphics, L.t("rotasutils.house.player.title"), centerX, guiTop + 22, 1.3f, Ui.INK);
-            Ui.wrapped(graphics, L.t("rotasutils.house.player.none"), contentX + 12, guiTop + 54, contentWidth - 24, Ui.INK_SOFT);
+            ListTag open = state.getList("available", Tag.TAG_COMPOUND);
+            Ui.scaledCentered(graphics, L.t(open.isEmpty() ? "rotasutils.house.player.title" : "rotasutils.house.finder.title"),
+                    centerX, guiTop + 22, 1.3f, Ui.INK);
+            if (open.isEmpty()) {
+                Ui.wrapped(graphics, L.t("rotasutils.house.player.none"), contentX + 12, guiTop + 54, contentWidth - 24, Ui.INK_SOFT);
+                Ui.wrapped(graphics, L.t("rotasutils.house.finder.empty"), contentX + 12, guiTop + 90, contentWidth - 24, Ui.INK_FADE);
+                return;
+            }
+            Ui.label(graphics, L.t("rotasutils.house.finder.intro"), contentX + 12, guiTop + 50, Ui.INK_SOFT);
+            long gold = state.getLong("gold");
+            for (int i = 0; i < Math.min(open.size(), finderRows()); i++) {
+                CompoundTag entry = open.getCompound(i);
+                int rowY = finderTop() + i * FINDER_ROW;
+                int distance = entry.getInt("distance");
+                String where = distance >= 0 ? L.t("rotasutils.house.finder.metres", distance) : L.t("rotasutils.house.finder.other_world");
+                Ui.label(graphics, Ui.truncate(entry.getString("name"), contentWidth / 2 - 24), contentX + 12, rowY - 2, Ui.INK);
+                Ui.label(graphics, entry.getString("size") + "  -  " + where, contentX + 12, rowY + 8, Ui.INK_FADE);
+                Ui.labelRight(graphics, L.t("rotasutils.house.finder.cost", entry.getLong("deposit"), entry.getLong("maintenance")),
+                        contentX + contentWidth - 78, rowY + 3, gold >= entry.getLong("deposit") ? Ui.INK_GOOD : Ui.INK_BAD);
+            }
             return;
         }
-        // Leave room on both sides for the admin button in the top-right corner.
-        int titleRoom = state.getBoolean("admin") ? contentWidth - 300 : contentWidth - 40;
+        int titleRoom = state.getBoolean("admin") ? contentWidth - 300 : contentWidth - 250;
         Ui.scaledCentered(graphics, Ui.truncate(state.getString("name"), Math.max(60, (int) (titleRoom / 1.3f))),
                 centerX, guiTop + 22, 1.3f, Ui.INK);
 

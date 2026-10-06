@@ -1,18 +1,14 @@
 package net.schwarz.rotasutils.level;
 
-
-/** Non-quest experience sources, each independently configurable in the level manager. */
 public enum XpSource {
     QUEST_COMPLETE("Quest Completion", 0, false, false),
     OPTIONAL_OBJECTIVE("Optional Objective", 0, false, false),
     FIRST_COMPLETION("First Quest Completion", 0, false, false),
-    /** Combat XP is calculated from the killed entity's live combat attributes. */
     MOB_KILL("Monster Kills", 0, true, true),
     BOSS_KILL("Boss Kills", 0, true, true),
     PLAYER_KILL("Player Kills", 0, true, false),
     ASSIST("Assists", 0, true, false),
     DUNGEON_COMPLETE("Dungeon Completion", 0, false, false),
-    /** Zones, waystones, new monsters and distance: see ExplorationService. */
     DISCOVERY("Location Discovery", 0, false, true),
     ADVANCEMENT("Advancements", 0, false, true),
     MINING("Mining", 0, true, false),

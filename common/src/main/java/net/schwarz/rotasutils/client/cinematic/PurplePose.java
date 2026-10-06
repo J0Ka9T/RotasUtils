@@ -3,26 +3,16 @@ package net.schwarz.rotasutils.client.cinematic;
 import net.minecraft.world.phys.Vec3;
 import net.schwarz.rotasutils.ability.PurpleTimings;
 
-/**
- * The caster's body through Hollow Purple, as pure numbers (radians, model pixels), in the same {@link RedPose.Pose}
- * the Red pose uses, staged the way the technique is drawn: both arms held out wide, an open palm under each
- * energy (Blue on the left, Red on the right); the hands swept together in front for the merge; then the left arm
- * dropped to the side and the right held straight out with Purple floating before the fingers; and a short, sharp
- * flick of that one arm to fire it.
- */
 public final class PurplePose {
     private PurplePose() {
     }
 
-    /** World positions of the effect sockets: both fists, the directions the arms point, the point between them. */
     public record Sockets(Vec3 handL, Vec3 handR, Vec3 dirL, Vec3 dirR, Vec3 mid, Vec3 chest, Vec3 eye) {
     }
 
-    /** How far each arm is turned out from straight ahead (radians): the hands' separation is set by this. */
     private static final Curves.Track SPREAD = Curves.Track.of(0, 1.05, 4.6, 1.05, 6.2, 0.80, 7.6, 0.45, 8.4, 0.0, 8.7, -0.34,
             8.95, -0.34, 9.8, -0.28, 12.0, -0.28);
 
-    /** 0..1: the left arm let down to the side once Purple exists; the right arm alone holds and fires it. */
     private static double lowered(double t) {
         return Curves.smootherstep(Curves.window(t, PurpleTimings.BORN + 0.25, PurpleTimings.BORN + 1.1));
     }
@@ -43,7 +33,6 @@ public final class PurplePose {
         double react = Curves.smoothstep(Curves.window(t, PurpleTimings.REACT, PurpleTimings.COLLAPSE))
                 * (1 - Curves.window(t, PurpleTimings.SILENCE - 0.3, PurpleTimings.SILENCE));
         double stable = Curves.window(t, PurpleTimings.STABLE, PurpleTimings.STABLE + 0.05) * (1 - snap);
-        // Complete stillness, but for breath: none at all in the silence and once stable.
         double alive = 1 - Math.max(stable, Curves.window(t, PurpleTimings.SILENCE - 0.2, PurpleTimings.SILENCE));
         double breath = Math.sin(t * 1.7) * alive * (1 - snap);
         double tremble = 0.018 * react * Math.sin(t * 43);
@@ -52,7 +41,6 @@ public final class PurplePose {
 
         double twist = lerp(0, 0.16, snap);
         double lean = lerp(0.06 * stance, 0.2, snap) + 0.008 * breath;
-        // Held out wide the arms sit a little below the shoulder; they come level as the hands close.
         double armX = lerp(-1.50, -1.22, Curves.clamp01(spread)) * raise;
         double rArmX = lerp(armX, -1.80, snap) + 0.012 * breath + tremble;
         double lArmX = lerp(lerp(armX, 0.10, down), 0.75, snap) + 0.012 * breath - tremble;
@@ -74,10 +62,7 @@ public final class PurplePose {
                 rLegX * keep, rLegZ * keep, lLegX * keep, lLegZ * keep);
     }
 
-    // Sockets ----------------------------------------------------------------------------------------
-
-    /** The end of an arm's {@code length} pixels in model space, with the pose's rotations (Rx, then Ry, then Rz). */
-    private static double[] arm(RedPose.Pose p, boolean right, double length) {
+private static double[] arm(RedPose.Pose p, boolean right, double length) {
         double rx = right ? p.rArmX() : p.lArmX(), ry = right ? p.rArmY() : p.lArmY(), rz = right ? p.rArmZ() : p.lArmZ();
         double side = right ? -1 : 1;
         double px = side * Math.cos(p.bodyYaw()) * 5.0, pz = -side * Math.sin(p.bodyYaw()) * 5.0, py = 2.0 + p.dy();
@@ -95,10 +80,6 @@ public final class PurplePose {
         return RedPose.toWorld(m[0], m[1], m[2], feet, yawDeg);
     }
 
-    /**
-     * Where Purple is: born between the touching hands, then carried out in front of the right hand, which alone
-     * holds it. It sits nearer the fingers the smaller it is squeezed.
-     */
     public static Vec3 core(Sockets s, double t) {
         Vec3 held = s.handR().add(s.dirR().scale(0.2 + PurpleProfile.coreRadius(t))).add(0, 0.02, 0);
         double k = Curves.smoothstep(Curves.window(t, PurpleTimings.BORN, PurpleTimings.BORN + 0.5));

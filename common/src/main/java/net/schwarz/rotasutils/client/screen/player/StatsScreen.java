@@ -23,13 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Spending level-up stat points.
- *
- * <p>Four fixed stats, every point worth the same. Points are planned first with + and -, shown as
- * "now -> after", and only sent when the player presses Confirm, so a stray click never spends a point.
- * A respec gives every point back for a flat price.</p>
- */
 @Environment(EnvType.CLIENT)
 public class StatsScreen extends RotasScreen {
     private static final int ROW_HEIGHT = 48;
@@ -148,8 +141,7 @@ public class StatsScreen extends RotasScreen {
         return (int) Math.round(ClientState.progress().rpg().stats().getOrDefault(stat.id(), 0.0));
     }
 
-
-    private void confirm() {
+private void confirm() {
         if (pending.isEmpty()) {
             return;
         }
@@ -163,9 +155,7 @@ public class StatsScreen extends RotasScreen {
         rebuild();
     }
 
-    // Rows -----------------------------------------------------------------
-
-    private int plusX(int rowX, int rowWidth) {
+private int plusX(int rowX, int rowWidth) {
         return rowX + rowWidth - 12 - CONTROL;
     }
 

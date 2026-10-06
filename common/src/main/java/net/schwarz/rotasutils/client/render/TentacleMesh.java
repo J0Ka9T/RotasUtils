@@ -8,15 +8,6 @@ import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-/**
- * One tentacle as a tapered tube along a living curve: it pushes out along {@code forward}, splays
- * along {@code spread}, writhes in two crossing waves that travel toward the tip, and curls at the
- * end. With a {@code target} it lashes toward that point instead, bending hardest near the tip.
- *
- * <p>Texture layout: {@code u} goes once around the tube (the underside, with the suckers, is the
- * second half), {@code v} runs from base (0) to tip (1), so one texture carries the whole length.
- * Used for the void sky (hundred-block tentacles) and the tentacle rift (a few blocks).</p>
- */
 @Environment(EnvType.CLIENT)
 public final class TentacleMesh {
     private static final int SEGMENTS = 40;
@@ -35,30 +26,22 @@ public final class TentacleMesh {
         }
     }
 
-    /** The shape of one tentacle for one frame. All vectors are in the caller's space. */
     public static final class Shape {
         public final Vector3f base = new Vector3f();
         public final Vector3f forward = new Vector3f();
         public final Vector3f spread = new Vector3f();
-        /** Any unit vector not parallel to {@link #forward}; sets which way the suckers face. */
         public final Vector3f up = new Vector3f(0, 1, 0);
-        /** Full length and base radius. */
         public float length;
         public float radius;
-        /** 0..1 how much of it is out. */
         public float grown = 1f;
-        /** How far it splays sideways relative to how far it reaches out. */
         public float splay = 0.5f;
-        /** Writhing strength as a share of the length. */
         public float writhe = 0.16f;
         public float time;
         public float phase;
-        /** Where it lashes to, and how far into the lash it is (0 none, 1 struck). */
         public final Vector3f target = new Vector3f();
         public float lash;
     }
 
-    /** Builds the curve for {@code shape}; call before {@link #emit}. */
     public void build(Shape shape) {
         Vector3f side1 = new Vector3f();
         shape.forward.cross(shape.up, side1);
@@ -75,30 +58,24 @@ public final class TentacleMesh {
         for (int i = 0; i <= SEGMENTS; i++) {
             float s = i / (float) SEGMENTS;
             Vector3f p = points[i].set(shape.base);
-            // Reach and splay.
             p.add(new Vector3f(shape.forward).mul(length * s));
             p.add(new Vector3f(shape.spread).mul(length * s * shape.splay));
-            // Two crossing waves travelling toward the tip, strongest near it.
             float falloff = (float) Math.pow(s, 1.4);
             float w1 = (float) Math.sin(s * 7.0 - t * 1.3 + shape.phase) * amplitude * falloff;
             float w2 = (float) Math.cos(s * 5.2 - t * 1.05 + shape.phase * 1.7) * amplitude * falloff * 0.8f;
             p.add(new Vector3f(side1).mul(w1)).add(new Vector3f(side2).mul(w2));
-            // The tip curls round on itself, slowly turning.
             float curl = (float) Math.pow(s, 3.0) * shape.length * 0.14f;
             double angle = t * 0.7 + shape.phase * 2.3;
             p.add(new Vector3f(side1).mul((float) Math.cos(angle) * curl))
                     .add(new Vector3f(side2).mul((float) Math.sin(angle) * curl));
-            // Lashing: the far part of the tentacle is pulled onto a line to the target.
             if (shape.lash > 0f) {
                 float pull = shape.lash * (float) Math.pow(s, 1.6);
                 Vector3f onLine = new Vector3f(shape.target).sub(shape.base).mul(s).add(shape.base);
                 p.lerp(onLine, pull);
             }
-            // Taper to a point, with a slow swallowing ripple along the body.
             float ripple = 1f + 0.07f * (float) Math.sin(s * 30.0 - t * 2.4 + shape.phase);
             radii[i] = shape.radius * (float) Math.pow(1f - 0.93f * s, 0.85) * ripple;
         }
-        // Frames: tangent from neighbours, normals kept facing "up" so the suckers stay underneath.
         Vector3f tangent = new Vector3f();
         for (int i = 0; i <= SEGMENTS; i++) {
             Vector3f ahead = points[Math.min(SEGMENTS, i + 1)];
@@ -117,10 +94,6 @@ public final class TentacleMesh {
         }
     }
 
-    /**
-     * Writes the tube as quads in an entity vertex format (position, colour, uv, overlay, light,
-     * normal). Colours multiply the texture.
-     */
     public void emit(VertexConsumer vc, Matrix4f pose, Matrix3f normalPose, int light,
                      float r, float g, float b, float a) {
         Vector3f n0 = new Vector3f();
@@ -153,7 +126,6 @@ public final class TentacleMesh {
                 .normal(normalPose, scratch.x, scratch.y, scratch.z).endVertex();
     }
 
-    /** The tip of the last built curve, e.g. to spawn particles where it strikes. */
     public Vector3f tip() {
         return points[SEGMENTS];
     }

@@ -14,12 +14,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-/**
- * Reusable "pick a type, then edit its fields" editor.
- *
- * <p>Requirements, rewards and skill effects all share this shape, so they share
- * this screen instead of each carrying their own.
- */
 @Environment(EnvType.CLIENT)
 public class TypedEntryScreen<T extends Enum<T>> extends RotasScreen {
     private final T[] types;
@@ -93,7 +87,6 @@ public class TypedEntryScreen<T extends Enum<T>> extends RotasScreen {
         boolean selected = type == current;
         int usable = rowWidth - 6;
         Ui.rowCard(graphics, x, y, usable, rowHeight - 2, hovered, selected);
-        // Radio dot makes it obvious that exactly one type is active.
         Ui.disc(graphics, x + 11, y + rowHeight / 2 - 1, 4, selected ? Ui.ACCENT : Ui.BORDER_SUBTLE);
         if (selected) {
             Ui.disc(graphics, x + 11, y + rowHeight / 2 - 1, 2, Ui.PANEL_INSET);

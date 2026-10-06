@@ -17,32 +17,17 @@ import net.schwarz.rotasutils.waystone.Waystone;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Warp pillars.
- *
- * <p>Deliberately small for the player: right-click a pillar and everything happens in one screen.
- * An unrecorded pillar is recorded on that first click for a fixed price, and every pillar already
- * recorded is one click away. There is no command to learn, no item to carry and nothing to bind.
- *
- * <p>Both prices are taken here, not on the client: the screen only shows what a warp will cost.
- */
 public final class WaystoneService {
-    /** Price cap of a single warp, so a cross-world hop cannot cost more than a player can hold. */
     private static final long MAX_WARP_COST = 100_000;
 
     private WaystoneService() {
     }
 
-    /* ---- world ----------------------------------------------------------- */
-
-    /** Registers a freshly placed pillar. Pillars are named by number; an admin can rename them. */
-    public static void onPlaced(Level level, BlockPos pos, ServerPlayer placer) {
+public static void onPlaced(Level level, BlockPos pos, ServerPlayer placer) {
         if (level.isClientSide || level.getServer() == null) {
             return;
         }
         RotasData data = RotasData.get(level.getServer());
-        // onUse and warp both check this; registering here regardless meant pillars placed while the
-        // feature was off still consumed the world's waystone limit.
         if (!data.serverSettings().waystonesEnabled()) {
             return;
         }
@@ -64,7 +49,6 @@ public final class WaystoneService {
         }
     }
 
-    /** The lowest numbered default name no live pillar is using. */
     private static String nextName(RotasData data) {
         for (int number = 1; number <= RotasData.WAYSTONE_LIMIT + 1; number++) {
             String candidate = ThaiText.t("rotasutils.waystone.default_name", number);
@@ -89,13 +73,7 @@ public final class WaystoneService {
         RotasData.get(level.getServer()).removeWaystone(Waystone.idOf(level, pos));
     }
 
-    /* ---- interaction ----------------------------------------------------- */
-
-    /**
-     * One right-click. An unknown pillar is recorded first (and paid for); either way the warp list
-     * opens, so a player never has to know which of the two just happened.
-     */
-    public static void onUse(ServerPlayer player, Level level, BlockPos pos) {
+public static void onUse(ServerPlayer player, Level level, BlockPos pos) {
         RotasData data = RotasData.get(player.server);
         if (!data.serverSettings().waystonesEnabled()) {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.waystone.disabled"));
@@ -104,7 +82,6 @@ public final class WaystoneService {
         String id = Waystone.idOf(level, pos);
         Waystone waystone = data.waystone(id);
         if (waystone == null) {
-            // A pillar placed before this system existed, or by a world edit: adopt it on first use.
             onPlaced(level, pos, null);
             waystone = data.waystone(id);
             if (waystone == null) {
@@ -128,7 +105,6 @@ public final class WaystoneService {
         open(player, id);
     }
 
-    /** Opens the warp list with everything the screen needs already worked out server-side. */
     public static void open(ServerPlayer player, String standingOn) {
         RotasData data = RotasData.get(player.server);
         PlayerProgress progress = data.progress(player.getUUID());
@@ -157,7 +133,6 @@ public final class WaystoneService {
         RotasNetwork.openScreen(player, "waystone", payload);
     }
 
-    /** Recorded pillars that still stand; broken ones are dropped from the record on the way past. */
     private static List<String> known(RotasData data, PlayerProgress progress) {
         List<String> ids = new ArrayList<>();
         for (String id : List.copyOf(progress.waystones())) {
@@ -171,7 +146,6 @@ public final class WaystoneService {
         return ids;
     }
 
-    /** Flat price plus a distance charge inside one dimension; across dimensions, the flat price. */
     public static long warpCost(RotasData data, ServerPlayer player, Waystone target) {
         long flat = data.serverSettings().waystoneWarpCost();
         if (!target.dimension().equals(player.level().dimension().location().toString())) {
@@ -182,9 +156,7 @@ public final class WaystoneService {
         return Math.min(MAX_WARP_COST, flat + Math.max(0, distance));
     }
 
-    /* ---- warping --------------------------------------------------------- */
-
-    public static void warp(ServerPlayer player, String id) {
+public static void warp(ServerPlayer player, String id) {
         RotasData data = RotasData.get(player.server);
         if (!data.serverSettings().waystonesEnabled()) {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.waystone.disabled"));
@@ -203,7 +175,6 @@ public final class WaystoneService {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.waystone.no_world"));
             return;
         }
-        // The pillar may have been mined while the screen was open; the record is cleaned up here.
         if (!level.getBlockState(target.pos()).is(net.schwarz.rotasutils.registry.RotasRegistry.WAYSTONE.get())) {
             data.removeWaystone(id);
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.waystone.gone"));
@@ -230,10 +201,6 @@ public final class WaystoneService {
         open(player, target.id());
     }
 
-    /**
-     * Where a player arrives. The pillar itself is two blocks tall, so the arrival spot is the first
-     * free pair of blocks beside it; failing that, the top of the pillar, which is never inside it.
-     */
     private static BlockPos landing(ServerLevel level, BlockPos pillar) {
         for (net.minecraft.core.Direction side : net.minecraft.core.Direction.Plane.HORIZONTAL) {
             BlockPos candidate = pillar.relative(side);
@@ -245,9 +212,7 @@ public final class WaystoneService {
         return pillar.above(2);
     }
 
-    /* ---- administration -------------------------------------------------- */
-
-    public static void rename(ServerPlayer player, String id, String name) {
+public static void rename(ServerPlayer player, String id, String name) {
         RotasData data = RotasData.get(player.server);
         if (!BoardService.isAdmin(player, data)) {
             RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.waystone.admin_only"));
@@ -265,10 +230,7 @@ public final class WaystoneService {
         open(player, id);
     }
 
-    /* ---- money ----------------------------------------------------------- */
-
-    /** Takes gold, or leaves the wallet untouched and returns false. */
-    private static boolean charge(ServerPlayer player, RotasData data, PlayerProgress progress, long cost) {
+private static boolean charge(ServerPlayer player, RotasData data, PlayerProgress progress, long cost) {
         if (cost <= 0) {
             return true;
         }

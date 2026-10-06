@@ -30,17 +30,11 @@ import net.schwarz.rotasutils.server.SeasonService;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Admin screens for the systems that were command-only: mining sites, nemeses, and per-player tools
- * (give a card, reset daily missions). Each action does exactly what its {@code /rotas} command does,
- * re-checked on the server; the caller has already checked admin permission. Every mining or nemesis
- * change re-sends the screen state, so the screen never shows stale data.
- */
 public final class AdminWorldActions {
     public static final Set<String> ACTIONS = Set.of(
             "mine_admin_open", "mine_create", "mine_delete", "mine_save", "mine_add_look", "mine_unadd_look",
             "mine_scan", "mine_refill",
-            "nemesis_admin_open", "nemesis_remove", "nemesis_summon",
+            "nemesis_admin_open", "nemesis_remove", "nemesis_summon", "block_log_open", "block_log_tp", "block_log_inspect",
             "player_tool_card", "player_tool_daily_reset");
 
     private AdminWorldActions() {
@@ -74,6 +68,22 @@ public final class AdminWorldActions {
                     openMines(player, data, site.id());
                 }
                 case "nemesis_admin_open" -> openNemeses(player, data);
+                case "block_log_open" -> openBlockLog(player, payload);
+                case "block_log_inspect" -> {
+                    boolean on = net.schwarz.rotasutils.server.BlockBreakLog.toggleInspect(player);
+                    RotasNetwork.feedback(player, true, on ? "Inspect on: right-click a block to see its history"
+                            : "Inspect off");
+                    openBlockLog(player, payload);
+                }
+                case "block_log_tp" -> {
+                    ServerLevel level = level(player, payload.getString("dim"));
+                    if (level == null) {
+                        RotasNetwork.feedback(player, false, "Unknown dimension");
+                        return;
+                    }
+                    player.teleportTo(level, payload.getInt("x") + 0.5, payload.getInt("y") + 1, payload.getInt("z") + 0.5,
+                            player.getYRot(), player.getXRot());
+                }
                 case "nemesis_remove" -> {
                     int id = payload.getInt("id");
                     boolean done = NemesisService.remove(player.server, data, id);
@@ -110,9 +120,7 @@ public final class AdminWorldActions {
         }
     }
 
-    // ---- Mining sites ---------------------------------------------------------------------------
-
-    private static void openMines(ServerPlayer player, RotasData data, String select) {
+private static void openMines(ServerPlayer player, RotasData data, String select) {
         CompoundTag state = new CompoundTag();
         ListTag sites = new ListTag();
         long now = System.currentTimeMillis() / 1000L;
@@ -228,7 +236,22 @@ public final class AdminWorldActions {
         return id == null ? null : player.server.getLevel(ResourceKey.create(Registries.DIMENSION, id));
     }
 
-    // ---- Nemeses --------------------------------------------------------------------------------
+private static void openBlockLog(ServerPlayer player, CompoundTag payload) {
+        String mode = payload.getString("mode").isEmpty() ? "all" : payload.getString("mode");
+        int hours = Math.max(0, payload.getInt("hours"));
+        int radius = Math.max(0, payload.getInt("radius"));
+        CompoundTag state = new CompoundTag();
+        state.putString("filter", payload.getString("filter"));
+        state.putString("mode", mode);
+        state.putInt("hours", hours);
+        state.putInt("radius", radius);
+        state.putBoolean("inspect", net.schwarz.rotasutils.server.BlockBreakLog.inspecting(player));
+        state.putInt("total", net.schwarz.rotasutils.server.BlockBreakLog.size());
+        state.put("rows", net.schwarz.rotasutils.server.BlockBreakLog.rows(new net.schwarz.rotasutils.server.BlockBreakLog.Query(
+                payload.getString("filter"), mode, hours, radius,
+                player.level().dimension().location().toString(), player.blockPosition())));
+        RotasNetwork.openScreen(player, "block_log", state);
+    }
 
     private static void openNemeses(ServerPlayer player, RotasData data) {
         CompoundTag state = new CompoundTag();
@@ -252,9 +275,7 @@ public final class AdminWorldActions {
         RotasNetwork.openScreen(player, "nemesis_admin", state);
     }
 
-    // ---- Player tools ---------------------------------------------------------------------------
-
-    private static void giveCard(ServerPlayer player, CompoundTag payload) {
+private static void giveCard(ServerPlayer player, CompoundTag payload) {
         ServerPlayer target = target(player, payload.getString("player"));
         String id = payload.getString("card");
         if (target == null) return;
@@ -268,7 +289,6 @@ public final class AdminWorldActions {
         RotasNetwork.feedback(player, true, "Gave " + CardIndex.name(id) + " to " + target.getGameProfile().getName());
     }
 
-    /** An online player by name, or the admin themselves when the name is empty. */
     private static ServerPlayer target(ServerPlayer player, String name) {
         if (name == null || name.isBlank()) return player;
         ServerPlayer target = player.server.getPlayerList().getPlayerByName(name.trim());

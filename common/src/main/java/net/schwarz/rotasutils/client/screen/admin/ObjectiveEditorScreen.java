@@ -15,7 +15,6 @@ import net.schwarz.rotasutils.quest.objective.ObjectiveType;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Edits one objective: its type, its type-specific fields and its flow flags. */
 @Environment(EnvType.CLIENT)
 public class ObjectiveEditorScreen extends RotasScreen {
     private final QuestDef draft;
@@ -137,6 +136,10 @@ public class ObjectiveEditorScreen extends RotasScreen {
         labels.add("Alternative group: " + (objective.alternativeGroup().isBlank()
                 ? "(none)" : objective.alternativeGroup()));
         actions.add("text:altgroup");
+        labels.add("Choice - picks story path: " + (objective.opens().isBlank() ? "(not a choice)" : objective.opens()));
+        actions.add("text:opens");
+        labels.add("Only on story path: " + (objective.path().isBlank() ? "(every path)" : objective.path()));
+        actions.add("text:path");
         labels.add("Objective time limit (s): " + objective.timeLimitSeconds());
         actions.add("text:timelimit");
         labels.add("--- Type-specific fields ---");
@@ -226,6 +229,8 @@ public class ObjectiveEditorScreen extends RotasScreen {
             case "amount" -> String.valueOf(objective.requiredAmount());
             case "step" -> String.valueOf(objective.step());
             case "altgroup" -> objective.alternativeGroup();
+            case "opens" -> objective.opens();
+            case "path" -> objective.path();
             case "timelimit" -> String.valueOf(objective.timeLimitSeconds());
             default -> "";
         };
@@ -248,6 +253,8 @@ public class ObjectiveEditorScreen extends RotasScreen {
             case "amount" -> objective.params().put("amount", Integer.parseInt(value.trim()));
             case "step" -> objective.setStep(Integer.parseInt(value.trim()));
             case "altgroup" -> objective.setAlternativeGroup(value);
+            case "opens" -> objective.setOpens(value);
+            case "path" -> objective.setPath(value);
             case "timelimit" -> objective.setTimeLimitSeconds(Integer.parseInt(value.trim()));
             default -> {
             }

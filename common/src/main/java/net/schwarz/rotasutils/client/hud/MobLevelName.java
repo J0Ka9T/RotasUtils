@@ -9,24 +9,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.schwarz.rotasutils.client.ClientState;
 
-/**
- * Recolours a Rotas-leveled mob's nameplate by how its level compares to the viewer's.
- *
- * <p>The server writes the level into the mob's custom name (the name template), and the client
- * reads it back out of the same template, so no per-mob networking is needed. The scale is the
- * classic MMO one: far below the viewer is grey, near is green, on par is white, above is orange
- * and far above is red. Only mobs whose name actually carries a level are touched; a name another
- * mod set is left exactly as it was.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class MobLevelName {
     private MobLevelName() {
     }
 
-    /**
-     * Entity type's display name; when the mod ships no translation (the raw key comes back),
-     * falls back to the id path in title case, e.g. {@code sin_summoned_sword} -> "Sin Summoned Sword".
-     */
     public static String displayName(Entity entity) {
         String name = entity.getType().getDescription().getString();
         String key = entity.getType().getDescriptionId();
@@ -47,18 +34,12 @@ public final class MobLevelName {
         return out.isEmpty() ? name : out.toString();
     }
 
-    /**
-     * True for entities that should never get a mob plate or target frame: MISC-category entities
-     * (summoned weapons, golems, displays) and anything owned by another entity (pets, summons).
-     * Covers mobs leveled before the server-side filter existed.
-     */
     public static boolean isNonCombatant(Entity entity) {
         return entity.getType().getCategory() == net.minecraft.world.entity.MobCategory.MISC
                 || (entity instanceof net.minecraft.world.entity.OwnableEntity ownable && ownable.getOwnerUUID() != null)
                 || (entity instanceof net.minecraft.world.entity.TraceableEntity traceable && traceable.getOwner() != null);
     }
 
-    /** Classic difficulty ramp, keyed on {@code mobLevel - viewerLevel} (RGB, no alpha). */
     public static int colorFor(int delta) {
         if (delta >= 30) {
             return 0xB56CFF;
@@ -96,11 +77,6 @@ public final class MobLevelName {
 
     public static String health(double current, double maximum) { return compact(current) + " / " + compact(maximum); }
 
-    /**
-     * Extracts the level from {@code text} using the configured {@code format}, or -1 when the
-     * text does not match. Pure so the parsing is unit-tested against the real templates. The
-     * compiled pattern is cached because this runs for every nameplate the renderer draws.
-     */
     public static int levelFrom(String text, String format) {
         if (text == null || format == null || text.isEmpty() || format.isEmpty()) {
             return -1;
@@ -147,19 +123,16 @@ public final class MobLevelName {
         return regex.toString();
     }
 
-    /** The rank and built-in affixes the server marked on this mob's name; NONE for anything else. */
     public static net.schwarz.rotasutils.core.MobAffix.Mark mark(Entity entity) {
         Component name = entity == null ? null : entity.getCustomName();
         return name == null ? net.schwarz.rotasutils.core.MobAffix.Mark.NONE
                 : net.schwarz.rotasutils.core.MobAffix.decode(name.getStyle().getInsertion());
     }
 
-    /** {@code "★★"} for an elite: one pip per rank step, so rank reads at a glance without words. */
     public static String stars(net.schwarz.rotasutils.core.MonsterRank rank) {
         return "★".repeat(Math.max(0, rank.stars()));
     }
 
-    /** True for a leveled mob's name, which {@link MobPlateRenderer} draws instead of the vanilla tag. */
     public static boolean replacedByPlate(Entity entity, Component name) {
         if (name == null || entity == null || entity instanceof Player) {
             return false;
@@ -168,10 +141,6 @@ public final class MobLevelName {
         return levelFrom(name.getString(), format) >= 1;
     }
 
-    /**
-     * The name to draw: a difficulty-coloured copy for a leveled mob, or the input untouched when
-     * colouring is off, the view is unavailable, or the name does not carry a level.
-     */
     public static Component color(Component name, Entity entity) {
         if (name == null || entity == null || entity instanceof Player) {
             return name;

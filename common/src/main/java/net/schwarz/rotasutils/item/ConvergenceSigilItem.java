@@ -21,10 +21,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/**
- * Operator-only: opens a convergence a few blocks ahead - four rifts that clash and bring the
- * Tetrarch. Needs open ground: a clear centre and footing for each of the four rifts around it.
- */
 public final class ConvergenceSigilItem extends Item {
     private static final double AHEAD = RiftConvergenceEntity.RADIUS + 3;
     private static final int COOLDOWN_TICKS = RiftConvergenceEntity.END;
@@ -62,7 +58,6 @@ public final class ConvergenceSigilItem extends Item {
             }
             heights[i] = spot.getY() - centre.getY();
         }
-        // The Tetrarch will face whoever called it.
         Vec3 toPlayer = serverPlayer.position().subtract(Vec3.atBottomCenterOf(centre));
         float yaw = (float) Math.toDegrees(Math.atan2(-toPlayer.x, toPlayer.z));
         RiftConvergenceEntity.begin(serverLevel, Vec3.atBottomCenterOf(centre), yaw, heights);
@@ -70,7 +65,6 @@ public final class ConvergenceSigilItem extends Item {
         return InteractionResultHolder.consume(held);
     }
 
-    /** The nearest standing spot within {@code range} blocks up or down: sturdy floor, two blocks of air. */
     private static BlockPos floor(ServerLevel level, BlockPos near, int range) {
         for (int dy = 0; dy <= range; dy++) {
             for (int sign : new int[]{-1, 1}) {

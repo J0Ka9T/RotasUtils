@@ -11,18 +11,9 @@ import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.item.GoldCoins;
 import net.schwarz.rotasutils.network.RotasNetwork;
 
-/**
- * The gold wallet and the coin items that go in and out of it.
- *
- * <p>A kill drops its coins on the ground for the killer; picking them up puts them in the wallet.
- * Coins taken out of the wallet are one stack of any size, and coins picked up off the ground join the
- * stack already in the bag, so a player never has more than one coin slot.</p>
- */
 public final class GoldCoinService {
     public static final String CURRENCY = "rotas:gold";
-    /** Largest single withdrawal. */
     public static final int MAX_WITHDRAWAL = 1_000_000;
-    /** Kill coins belong to the killer for this long, then anyone may take them. */
     private static final int OWNER_LOCK_TICKS = 60 * 20;
 
     private GoldCoinService() {}
@@ -48,7 +39,6 @@ public final class GoldCoinService {
         return true;
     }
 
-    /** Adds gold to the wallet; false when it would pass the wallet limit. */
     public static boolean deposit(ServerPlayer player, long amount) {
         RotasData data = RotasData.get(player.server);
         var progress = data.progress(player.getUUID());
@@ -91,7 +81,6 @@ public final class GoldCoinService {
         return true;
     }
 
-    /** Joins the coin stack already in the bag, or takes a free slot. False when neither works. */
     private static boolean addToBag(ServerPlayer player, ItemStack coins) {
         var items = player.getInventory().items;
         for (ItemStack existing : items) {
@@ -105,17 +94,12 @@ public final class GoldCoinService {
         return player.getInventory().add(coins) && coins.isEmpty();
     }
 
-    /**
-     * Picking up coins. Kill coins go to the wallet; other loose coins join the bag's coin stack. Returns
-     * true when the pickup was handled here and vanilla must not add the item as well.
-     */
     public static boolean pickUp(ServerPlayer player, ItemEntity entity) {
         ItemStack stack = entity.getItem();
         if (!GoldCoins.is(stack) || entity.hasPickUpDelay()) {
             return false;
         }
         if (!GoldCoins.mayTake(stack, player.getUUID()) && entity.getAge() < OWNER_LOCK_TICKS) {
-            // Someone else's kill: leave it on the ground, and do not let vanilla hand it over either.
             return true;
         }
         long amount = GoldCoins.amount(stack);
@@ -138,7 +122,6 @@ public final class GoldCoinService {
         return true;
     }
 
-    /** Drops a kill's coins at {@code (x, y, z)}; only {@code owner} can pick them up. */
     public static void dropLoot(ServerPlayer owner, net.minecraft.server.level.ServerLevel level,
                                 double x, double y, double z, long amount) {
         if (amount <= 0) {

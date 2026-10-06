@@ -8,10 +8,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Right after the world is drawn, and after a shader pack has composited it, but before the hand:
- * where the eldritch sky is drawn while a pack is on, so the pack cannot recolour, fog or cover it.
- */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererSkyOverlayMixin {
     @Inject(method = "renderLevel", at = @At(value = "INVOKE", shift = At.Shift.AFTER,

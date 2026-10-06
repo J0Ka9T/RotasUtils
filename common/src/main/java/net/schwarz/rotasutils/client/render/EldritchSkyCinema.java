@@ -12,24 +12,10 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 
-/**
- * What the rift does to the player rather than to the sky: the camera shake and the sound.
- *
- * <p>The shake is applied to the view the same way vanilla's hurt tilt is, so the whole world trembles
- * together - terrain, sky and rift - instead of the sky sliding against the horizon. It is slow and
- * roll-heavy like a film quake, and scaled by the vanilla Distortion Effects option, so a player who
- * turned screen effects off gets none.</p>
- *
- * <p>Sounds are cues fired when the openness crosses a stage boundary, in either direction, plus two
- * looping layers under the open vortex. A jump in openness (joining mid-event, a server resync) only
- * resyncs; it never replays a backlog of cues.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class EldritchSkyCinema {
     private static final RandomSource RANDOM = RandomSource.create();
 
-    // Synthesized for the rift by scripts/gen_rift_sounds.py; declared in assets/rotasutils/sounds.json.
-    // Played by location on the client only, so they need no registry entry.
     private static final SoundEvent OMEN = event("rift.omen");
     private static final SoundEvent HEARTBEAT = event("rift.heartbeat");
     private static final SoundEvent CRACK = event("rift.crack");
@@ -48,15 +34,11 @@ public final class EldritchSkyCinema {
     private static Hum hum;
     private static Hum drone;
     private static float humVolume;
-    /** Sound ticks since the sky last reported; the loops fade if the sky stops rendering. */
     private static int silentTicks;
 
     private EldritchSkyCinema() { }
 
-    // Camera ----------------------------------------------------------------------------------------
-
-    /** Called after vanilla's hurt tilt: adds the quake to the view. */
-    public static void shake(PoseStack pose, float partialTick) {
+public static void shake(PoseStack pose, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || minecraft.options == null) return;
         EldritchSkyEnvironment env = EldritchSkyClientState.environment(partialTick);
@@ -70,22 +52,13 @@ public final class EldritchSkyCinema {
         pose.mulPose(Axis.YP.rotationDegrees(amplitude * 0.4f * wave(t, 1.7, 2.9)));
     }
 
-    /** Smooth quake motion: two sines at an irrational ratio never line up into a visible loop. */
     private static float wave(float t, double hz, double phase) {
         return (float) (0.62 * Math.sin(t * Math.PI * 2.0 * hz + phase)
                 + 0.38 * Math.sin(t * Math.PI * 2.0 * hz * 1.61 + phase * 2.0));
     }
 
-    // Embers ----------------------------------------------------------------------------------------
+private static float emberLastOpenness = -1f;
 
-    private static float emberLastOpenness = -1f;
-
-    /**
-     * Once per client tick: embers shed by the cracks drift down around the player. A light drizzle while
-     * the sky cracks, thick while it strains, a burst at the split, a few on each surge while it is open,
-     * and a heavy fall again through the collapse. Only open sky sheds them, and the vanilla Particles
-     * option thins them out.
-     */
     public static void tickEmbers(Minecraft minecraft) {
         if (minecraft.level == null || minecraft.player == null || minecraft.isPaused()) {
             emberLastOpenness = -1f;
@@ -129,10 +102,7 @@ public final class EldritchSkyCinema {
         }
     }
 
-    // Sound -----------------------------------------------------------------------------------------
-
-    /** Once per rendered sky frame, before any early return, so the loops can also fade out. */
-    public static void tickSounds(EldritchSkyEnvironment env) {
+public static void tickSounds(EldritchSkyEnvironment env) {
         silentTicks = 0;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || !env.active()) {
@@ -161,21 +131,18 @@ public final class EldritchSkyCinema {
         crackle(env, o);
         if (last < 0f || Math.abs(o - last) > 0.15f) return;
 
-        // Opening. The strain's riser is timed to peak on the split (1.65 s at the 14 s opening).
         if (up(last, o, 0.03f)) play(OMEN, 1.0f, 1.0f);
         if (up(last, o, 0.16f)) play(CRACK, 1.0f, 1.0f);
         if (up(last, o, 0.24f)) play(CRACK, 0.75f, 0.85f);
         if (up(last, o, 0.30f)) play(STRAIN, 1.0f, 1.0f);
         if (up(last, o, 0.42f)) play(SPLIT, 1.0f, 1.0f);
 
-        // Closing. The collapse is a riser cut off by the implosion 4.15 s later, at the 11 s close.
         if (down(last, o, 0.80f)) play(COLLAPSE, 1.0f, 1.0f);
         if (down(last, o, 0.42f)) play(IMPLODE, 1.0f, 1.0f);
         if (down(last, o, 0.16f)) play(SEAL, 0.9f, 1.0f);
         if (down(last, o, 0.03f)) play(VANISH, 0.8f, 1.0f);
     }
 
-    /** A heartbeat on every beat of the omen's light, quickening with it. */
     private static void heartbeat(float o) {
         double beat = EldritchRiftRenderer.heartbeat();
         boolean audible = o > 0.03f && o < 0.45f;
@@ -186,7 +153,6 @@ public final class EldritchSkyCinema {
         lastHeartbeat = beat;
     }
 
-    /** Distant electrical crackle while the sky strains, on surges, and through the collapse. */
     private static void crackle(EldritchSkyEnvironment env, float o) {
         float split = EldritchSkyCelestial.smoothstep(0.40f, 0.68f, o);
         float strain = EldritchSkyCelestial.smoothstep(0.28f, 0.40f, o) * (1f - split);
@@ -218,7 +184,6 @@ public final class EldritchSkyCinema {
                 0.0, 0.0, 0.0, true));
     }
 
-    /** A loop under the open tear; follows the vortex's strength and stops itself once it has faded. */
     private static final class Hum extends AbstractTickableSoundInstance {
         private final float peak;
 

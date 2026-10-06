@@ -13,13 +13,6 @@ import net.schwarz.rotasutils.client.screen.L;
 import net.schwarz.rotasutils.client.screen.RotasScreen;
 import net.schwarz.rotasutils.client.screen.Ui;
 
-/**
- * The salvage bench: every weapon and piece of armour in the bag, with what breaking it would give.
- *
- * <p>Breaking is permanent, so a row is first selected and then broken with a separate button - a
- * single click never destroys an item. Worn pieces are never listed; the server only offers the main
- * inventory, and re-reads the slot before it breaks anything.</p>
- */
 @Environment(EnvType.CLIENT)
 public class SalvageScreen extends RotasScreen {
     private static final int ROWS = 8;
@@ -119,7 +112,6 @@ public class SalvageScreen extends RotasScreen {
         }
     }
 
-    /** {@code "120 gold, 2-3 Oridecon, 1 card"}. */
     private static String payout(CompoundTag row) {
         StringBuilder text = new StringBuilder();
         text.append(row.getLong("gold")).append(" ").append(L.t("rotasutils.track.gold"));

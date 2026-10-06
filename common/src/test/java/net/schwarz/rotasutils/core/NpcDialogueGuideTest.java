@@ -146,7 +146,6 @@ class NpcDialogueGuideTest {
         assertEquals(1, gifts.gifts());
     }
 
-    /** True when the document reports this problem key and severity, carrying every given argument. */
     private static boolean hasProblem(JsonObject document, String key, boolean blocking, String... args) {
         outer:
         for (NpcDialogueGuide.Problem problem : NpcDialogueGuide.problems(document)) {

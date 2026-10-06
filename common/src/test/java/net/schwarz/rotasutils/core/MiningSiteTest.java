@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Mining sites: a node runs dry, counts down, comes back, and survives a restart. */
 class MiningSiteTest {
     @Test void aWorkedNodeIsSpentUntilItsTimeIsUp() {
         MiningSite.Node node = new MiningSite.Node(42L, "minecraft:iron_ore", 0);

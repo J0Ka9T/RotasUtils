@@ -13,13 +13,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * The zones the server lets this player see in their current dimension (public views: no requirements,
- * rules or spawns) and which of them are locked for this player, with the first missing requirement.
- * Fed by the server's {@code zone_view} packet; drives the zone chip, the entry banner and the approach
- * borders. The zone the player stands in is worked out here with the same rule the server uses
- * ({@link ZoneDef#select}), so the chip always names the zone that levels the mobs around them.
- */
 @Environment(EnvType.CLIENT)
 public final class ClientZoneView {
     private static final Map<String, ZoneDef> ZONES = new LinkedHashMap<>();
@@ -54,7 +47,6 @@ public final class ClientZoneView {
         currentId = null;
     }
 
-    /** Zones of the player's current dimension; empty until the first view arrives or in another dimension. */
     public static Collection<ZoneDef> zones() {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || !minecraft.level.dimension().location().toString().equals(dimension)) {
@@ -67,7 +59,6 @@ public final class ClientZoneView {
         return id == null ? null : ZONES.get(id);
     }
 
-    /** The first requirement still locking this zone for the player, or null when it is open to them. */
     public static String lock(String id) {
         return LOCKS.get(id);
     }
@@ -76,12 +67,10 @@ public final class ClientZoneView {
         return LOCKS.containsKey(id);
     }
 
-    /** The zone the player stands in right now, or null in the wilderness. */
     public static ZoneDef current() {
         return zone(currentId);
     }
 
-    /** Client tick: notices zone crossings and hands them to the HUD for the entry banner. */
     public static void tick(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null) {
             return;
@@ -91,7 +80,6 @@ public final class ClientZoneView {
                 minecraft.player.getX(), minecraft.player.getY(), minecraft.player.getZ());
         String topId = top == null ? "" : top.id();
         if (currentId == null) {
-            // First fix after joining or changing dimension: announce where the player is.
             currentId = topId;
             if (top != null) {
                 ZoneHud.onZoneChanged(null, top);
@@ -105,7 +93,6 @@ public final class ClientZoneView {
         }
     }
 
-    /** Forget the standing zone so the next tick re-announces it, e.g. after a dimension change. */
     public static void resetPosition() {
         currentId = null;
     }

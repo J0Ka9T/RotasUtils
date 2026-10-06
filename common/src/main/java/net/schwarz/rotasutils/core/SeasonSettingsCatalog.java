@@ -5,11 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Sections, names and hints for the season editor. The editor lists whatever {@code season.json}
- * holds (see {@link SettingsTree}); this only decides where a value is shown and what it is called.
- * A value with no name here is still listed, under its own key, so a new setting is never hidden.
- */
 public final class SeasonSettingsCatalog {
     public record Section(String id, String title, String blurb) { }
 
@@ -46,7 +41,6 @@ public final class SeasonSettingsCatalog {
             new Section("npcServices","NPC บริการ", "ช่างตีเหล็ก นักปรุงยา โรงเตี๊ยม นักบวช หมอดู ธนาคาร ค่าหัว นักสะสม และโรงประมูล"),
             new Section(OTHER,"อื่น ๆ", "ค่าที่ยังไม่มีหมวด"));
 
-    /** Internal bookkeeping nobody should edit by hand. */
     private static final Set<String> HIDDEN = Set.of();
 
     private static final Map<String, String> TOP_SECTION = topSections();
@@ -61,7 +55,6 @@ public final class SeasonSettingsCatalog {
         return path.size() == 1 && HIDDEN.contains(path.get(0));
     }
 
-    /** The section a row belongs to, decided by its top-level key. */
     public static String sectionOf(List<String> path) {
         if (path.isEmpty()) return OTHER;
         return TOP_SECTION.getOrDefault(path.get(0), OTHER);
@@ -74,7 +67,6 @@ public final class SeasonSettingsCatalog {
         return SECTIONS.get(SECTIONS.size() - 1);
     }
 
-    /** Whether a name was written for this row, rather than one made from its key. */
     public static boolean named(List<String> path) {
         if (isSectionRoot(path)) return true;
         return LABELS.containsKey(String.join(".", path)) || KEY_LABELS.containsKey(lastKey(path))
@@ -95,7 +87,6 @@ public final class SeasonSettingsCatalog {
         return humanize(key);
     }
 
-    /** Fixed options for a text value, clicked through instead of typed; empty when it is free text. */
     public static List<String> choices(List<String> path) {
         String joined = String.join(".", path);
         if (joined.equals("refine.onFail")) return List.of("DOWNGRADE", "RESET_TO_SAFE", "BREAK", "KEEP");
@@ -108,10 +99,6 @@ public final class SeasonSettingsCatalog {
         };
     }
 
-    /**
-     * Which registry a text value (or each item of a text list) names, so the editor can offer a
-     * searchable picker instead of typing ids by hand. Null when the value is free text.
-     */
     public static net.schwarz.rotasutils.data.ParamSpec.ParamKind picker(List<String> path) {
         String key = lastKey(path);
         String parent = path.size() > 1 ? path.get(path.size() - 2) : "";
@@ -141,8 +128,6 @@ public final class SeasonSettingsCatalog {
         String joined = String.join(".", path);
         String help = HELP.get(joined);
         if (help != null) return help;
-        // Entries inside maps and lists (an event type, a tier, a card) are named by pattern:
-        // "*" is any one key, a leading "**" any number of keys. The most specific pattern wins.
         String best = null;
         int bestScore = -1;
         for (Map.Entry<String, String> entry : HELP.entrySet()) {
@@ -157,7 +142,6 @@ public final class SeasonSettingsCatalog {
         return HELP.getOrDefault("*." + lastKey(path), "");
     }
 
-    /** The most specific wildcard entry ("a.*.b") of {@code map} that fits the path, or null. */
     private static String patterned(Map<String, String> map, List<String> path) {
         String best = null;
         int bestScore = -1;
@@ -172,13 +156,12 @@ public final class SeasonSettingsCatalog {
         return best;
     }
 
-    /** Literal keys matched, or -1 when the pattern does not fit the path. */
     static int matchScore(String[] pattern, List<String> path) {
         boolean anyPrefix = pattern.length > 0 && pattern[0].equals("**");
         int start = anyPrefix ? 1 : 0;
         int length = pattern.length - start;
         if (anyPrefix ? path.size() < length : path.size() != length) return -1;
-        if (!anyPrefix && length == 2 && pattern[0].equals("*")) return -1; // the old "*.key" form, handled last
+        if (!anyPrefix && length == 2 && pattern[0].equals("*")) return -1;
         int offset = path.size() - length;
         int score = 0;
         for (int i = 0; i < length; i++) {
@@ -190,7 +173,6 @@ public final class SeasonSettingsCatalog {
         return score + (anyPrefix ? 0 : 100);
     }
 
-    /** A nested object that is a whole section, such as {@code farming}; the section title names it. */
     private static boolean isSectionRoot(List<String> path) {
         return path.size() == 1 && sectionOf(path).equals(path.get(0));
     }
@@ -207,7 +189,6 @@ public final class SeasonSettingsCatalog {
         return true;
     }
 
-    /** {@code comboWindowSeconds} reads as {@code Combo window seconds}. */
     static String humanize(String key) {
         StringBuilder out = new StringBuilder();
         for (int index = 0; index < key.length(); index++) {
@@ -233,8 +214,8 @@ public final class SeasonSettingsCatalog {
             map.put(key, "repeatable");
         }
         for (String key : List.of("tierXp", "tierMaxLevel", "craftGraceLevels", "craftPenaltyPerLevel", "craftMaxPenalty",
-                "firstCraftMultiplier", "lockRecipes", "subCapToOverflow", "lockSmelting", "lockBrewing", "lockStarterRows",
-                "gatherFreeLevel", "gatherDropChance", "gatherMaxCount", "gatherFishFallback")) map.put(key, "production");
+                "firstCraftMultiplier", "lockRecipes", "subCapToOverflow", "maxLevelToOverflow", "lockSmelting", "lockBrewing", "lockStarterRows",
+                "gatherFreeLevel", "gatherDropChance", "gatherMaxCount", "gatherFishFallback", "subJobSwitchXpLoss")) map.put(key, "production");
         for (String key : List.of("crafterFee", "crafterPriceMultiplier", "crafterDailyLimit", "crafterHideMarker")) {
             map.put(key, "crafter");
         }
@@ -245,7 +226,6 @@ public final class SeasonSettingsCatalog {
         for (String key : List.of("pvpDamageMultiplier", "pvpStatEfficiency", "pvpEvasionScale",
                 "pvpMaxHitShare")) map.put(key, "pvp");
         for (Section section : SECTIONS) {
-            // Sections named after a nested object: every value inside it lands there.
             if (!map.containsValue(section.id()) && !section.id().equals(OTHER)) map.put(section.id(), section.id());
         }
         return map;
@@ -293,11 +273,13 @@ public final class SeasonSettingsCatalog {
         map.put("firstCraftMultiplier", "ตัวคูณคราฟต์ครั้งแรก");
         map.put("lockRecipes", "ล็อกสูตรที่อาชีพรองยังไม่ปลด");
         map.put("subCapToOverflow", "อาชีพรองเต็มแล้วเปลี่ยน EXP เป็นเหรียญ");
+        map.put("maxLevelToOverflow", "เลเวลสูงสุดแล้วเปลี่ยน EXP เป็นเหรียญ");
         map.put("lockSmelting", "ล็อกของหลอมที่อาชีพรองยังไม่ปลด");
         map.put("lockBrewing", "ล็อกยาที่อาชีพรองยังไม่ปลด");
         map.put("lockStarterRows", "ล็อกสูตรเลเวล 1 ด้วย");
         map.put("gatherFreeLevel", "เก็บของ: เลเวลที่ทุกคนเก็บได้เต็ม");
         map.put("gatherDropChance", "เก็บของ: โอกาสได้ของเมื่อไม่มีอาชีพรอง");
+        map.put("subJobSwitchXpLoss", "อาชีพรอง: EXP ที่เสียเมื่อเปลี่ยน");
         map.put("gatherMaxCount", "เก็บของ: จำนวนสูงสุดต่อกอง");
         map.put("gatherFishFallback", "ตกปลา: ของที่ได้แทนเมื่อปลาหลุด");
         map.put("crafterFee", "ค่าจ้างระดับ A,B,C,D");
@@ -318,6 +300,25 @@ public final class SeasonSettingsCatalog {
         map.put("stats.intMagic", "INT: พลังเวทย์ต่อแต้ม");
         map.put("stats.agiAttackSpeed", "AGI: ความเร็วโจมตีต่อแต้ม");
         map.put("stats.agiDodge", "AGI: โอกาสหลบต่อแต้ม");
+        map.put("stats.vitDefense", "VIT: เกราะต่อแต้ม");
+        map.put("stats.vitRegen", "VIT: ฟื้นเลือดต่อวินาทีต่อแต้ม");
+        map.put("stats.dexCrit", "DEX: โอกาสคริติคอลต่อแต้ม");
+        map.put("stats.dexCritDamage", "DEX: ดาเมจคริติคอลต่อแต้ม");
+        map.put("stats.dexArmorPen", "DEX: เจาะเกราะต่อแต้ม");
+        map.put("stats.intCdr", "INT: ลดคูลดาวน์ต่อแต้ม");
+        map.put("stats.lukLuck", "LUK: ค่าโชคต่อแต้ม");
+        map.put("stats.lukCrit", "LUK: โอกาสคริติคอลต่อแต้ม");
+        map.put("stats.lukDropRate", "LUK: อัตราดรอปต่อแต้ม");
+        map.put("stats.maxDodge", "เพดาน: หลบหลีกสูงสุด (Evasion)");
+        map.put("stats.maxCritChance", "เพดาน: โอกาสคริติคอลสูงสุด (Crit Chance)");
+        map.put("stats.maxCritDamage", "เพดาน: ดาเมจคริติคอลสูงสุด (Crit Damage)");
+        map.put("stats.maxRegen", "เพดาน: ฟื้นเลือด/วินาทีสูงสุด (Regen)");
+        map.put("stats.maxArmorPen", "เพดาน: เจาะเกราะสูงสุด (Armor Pen)");
+        map.put("stats.maxCdr", "เพดาน: ลดคูลดาวน์สูงสุด (CDR)");
+        map.put("stats.maxDropRate", "เพดาน: โบนัสดรอปสูงสุด (Drop Rate)");
+        map.put("stats.maxLifeSteal", "เพดาน: ดูดเลือดสูงสุด (Life Steal)");
+        map.put("stats.maxDamageReduction", "เพดาน: ลดดาเมจสูงสุด (Damage Reduction)");
+        map.put("stats.maxStaminaRegen", "เพดาน: ฟื้นสตามินาสูงสุด (Stamina Regen)");
         map.put("defenseScale", "ค่าคงที่พลังป้องกัน");
         map.put("magicBonusMaxRatio", "โบนัสเวทสูงสุด (เท่าของพลังฐาน)");
         map.put("pvpDamageMultiplier", "PvP: ตัวคูณดาเมจ");
@@ -589,7 +590,6 @@ public final class SeasonSettingsCatalog {
         return map;
     }
 
-    /** Names by key alone, for values that repeat inside maps and lists. */
     private static Map<String, String> keyLabels() {
         Map<String, String> map = new LinkedHashMap<>();
         map.put("enabled", "เปิดใช้");
@@ -691,6 +691,7 @@ public final class SeasonSettingsCatalog {
         map.put("firstCraftMultiplier", "ผลิตของชิ้นนี้ครั้งแรกได้ EXP กี่เท่า ปกติ 2-5");
         map.put("lockRecipes", "เปิด = ของในตารางปลดล็อกอาชีพ หยิบจากช่องผลิตได้เมื่อถึงเลเวลเท่านั้น");
         map.put("subCapToOverflow", "เปิด = อาชีพรองที่ตันแล้ว EXP ที่ได้จะเปลี่ยนเป็นเหรียญ");
+        map.put("maxLevelToOverflow", "เปิด = ผู้เล่นเลเวลสูงสุดแล้ว EXP ที่ได้จะเปลี่ยนเป็นเหรียญ แทนที่จะหายไปเปล่า ๆ");
         map.put("lockSmelting", "เปิด = ของที่เผาในตารางอาชีพ หยิบได้เฉพาะอาชีพรองนั้นเมื่อถึงเลเวล");
         map.put("lockBrewing", "เปิด = ยาที่ต้มในตารางอาชีพ หยิบได้เฉพาะอาชีพรองนั้นเมื่อถึงเลเวล");
         map.put("lockStarterRows", "เปิด = แม้ของเลเวล 1 ก็ต้องเป็นอาชีพรองนั้นถึงทำได้");
@@ -713,6 +714,25 @@ public final class SeasonSettingsCatalog {
         map.put("stats.intMagic", "0.01 = +1% ดาเมจเวทย์ต่อแต้ม");
         map.put("stats.agiAttackSpeed", "0.005 = +0.5% ความเร็วโจมตีต่อแต้ม");
         map.put("stats.agiDodge", "0.002 = +0.2% โอกาสหลบต่อแต้ม (รวมทุกอย่างไม่เกิน 50%)");
+        map.put("stats.vitDefense", "0.02 = +2 เกราะที่แต้มเต็ม");
+        map.put("stats.vitRegen", "0.00005 = ฟื้น 0.5% ของเลือดสูงสุดต่อวินาทีที่แต้มเต็ม (สูงสุด 5%)");
+        map.put("stats.dexCrit", "0.004 = +0.4% โอกาสคริติคอลต่อแต้ม");
+        map.put("stats.dexCritDamage", "0.02 = +2% ดาเมจคริติคอลต่อแต้ม จากฐาน x1.5");
+        map.put("stats.dexArmorPen", "0.003 = +0.3% เจาะเกราะต่อแต้ม (เพิกเฉยเกราะ/พลังป้องกัน)");
+        map.put("stats.intCdr", "0.002 = +0.2% ลดคูลดาวน์สกิลและเวทต่อแต้ม");
+        map.put("stats.lukLuck", "0.05 = +5 โชค (ของดรอปและตกปลา) ที่แต้มเต็ม");
+        map.put("stats.lukCrit", "0.003 = +0.3% โอกาสคริติคอลต่อแต้ม");
+        map.put("stats.lukDropRate", "0.005 = +0.5% ตัวคูณอัตราดรอปของมอนสเตอร์และการ์ด");
+        map.put("stats.maxDodge", "โอกาสหลบหลีกสูงสุดรวมจากการคำนวณทั้งหมด 0.50 = 50%");
+        map.put("stats.maxCritChance", "โอกาสติดคริติคอลสูงสุดรวมทั้งหมด 0.60 = 60%");
+        map.put("stats.maxCritDamage", "ดาเมจคริติคอลเพิ่มเติมสูงสุด 3.00 = +300% (รวมฐานเป็น x4.5)");
+        map.put("stats.maxRegen", "ฟื้นฟูเลือดต่อวินาทีสูงสุด (% ของเลือดสูงสุด) 0.05 = 5%/วินาที");
+        map.put("stats.maxArmorPen", "อัตราเจาะเกราะสูงสุด 0.40 = 40% (มองข้ามเกราะเหยื่อสูงสุด 40%)");
+        map.put("stats.maxCdr", "ลดคูลดาวน์สกิลสูงสุด 0.35 = 35%");
+        map.put("stats.maxDropRate", "โบนัสตัวคูณอัตราดรอปสูงสุด 1.00 = +100% (ดรอปคูณ 2 เท่า)");
+        map.put("stats.maxLifeSteal", "อัตราดูดเลือดสูงสุดจากการโจมตี 0.10 = 10% (ฮีลสูงสุด 10% ของ HP ต่อฮิต)");
+        map.put("stats.maxDamageReduction", "ลดความเสียหายแท้จริงสูงสุด 0.30 = 30%");
+        map.put("stats.maxStaminaRegen", "โบนัสความเร็วฟื้นฟูสตามินาสูงสุด (Epic Fight) 0.50 = +50%");
         map.put("pvpStatEfficiency", "โบนัสโจมตีจากสเตตัสนับใน PvP แค่ไหน 1 = เต็ม ปกติ 0.5");
         map.put("pvpEvasionScale", "โอกาสหลบคูณเท่านี้เมื่อโดนผู้เล่นตี ปกติ 0.5");
         map.put("pvpMaxHitShare", "ตีครั้งเดียวไม่เกินกี่ส่วนของ HP เหยื่อ 0.35 = 35%, 0 = ไม่จำกัด");
@@ -1025,6 +1045,7 @@ public final class SeasonSettingsCatalog {
         map.put("rankThresholds", "สัดส่วนของแต้มแรงค์รวมทั้งซีซั่น");
         map.put("horse.rates", "ธรรมดา, ไม่ธรรมดา, หายาก, มหากาพย์, ตำนาน");
         map.put("gatherDropChance", "0-1 ต่อกอง สำหรับผู้ที่ไม่มีอาชีพรองที่เก็บของนั้น");
+        map.put("subJobSwitchXpLoss", "0-1 สัดส่วน EXP ของอาชีพรองเดิมที่หายไปเมื่อเปลี่ยนอาชีพรอง");
         map.put("crafterFee", "ค่าจ้างต่อชิ้นก่อนคูณตัวคูณราคา");
         map.put("tierXp", "4 ค่า คั่นด้วยจุลภาค");
         map.put("tierMaxLevel", "4 ค่า คั่นด้วยจุลภาค เรียงจากน้อยไปมาก");

@@ -18,18 +18,12 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
-/** Board quest pools, rotation and per-player filtering. */
 public final class BoardService {
-    /**
-     * The RANDOM rotation's current pick per player and board. It is rolled when the board opens
-     * and reused until the next open, so an accept validates against the list the player was shown.
-     */
     private static final Map<UUID, Map<String, List<String>>> RANDOM_PICKS = new HashMap<>();
 
     private BoardService() {
     }
 
-    /** Drops a player's RANDOM pick for this board so the next view rolls a fresh selection. */
     public static void reroll(ServerPlayer player, BoardConfig board) {
         Map<String, List<String>> picks = RANDOM_PICKS.get(player.getUUID());
         if (picks != null) {
@@ -41,12 +35,10 @@ public final class BoardService {
         RANDOM_PICKS.remove(playerId);
     }
 
-    /** Drops every player's remembered board rolls when the server stops. */
     public static void clear() {
         RANDOM_PICKS.clear();
     }
 
-    /** Whether the player may open the board at all. */
     public static String openBlockedReason(ServerPlayer player, RotasData data, BoardConfig board) {
         if (!board.visible() && !isAdmin(player, data)) {
             return net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.board.hidden");
@@ -88,17 +80,10 @@ public final class BoardService {
         return RotasPermissions.allowed(player.createCommandSourceStack(), RotasPermissions.Capability.EDIT);
     }
 
-    /**
-     * Full server operator, a stricter tier than {@link #isAdmin}.
-     *
-     * <p>Content editing (quests, boards, skills) is open to admins, but settings that
-     * change who may use a board and what it permits are operator-only.
-     */
     public static boolean isOperator(ServerPlayer player) {
         return player.hasPermissions(4);
     }
 
-    /** Full quest id pool for the board, before rotation and per-player filtering. */
     public static List<String> pool(RotasData data, BoardConfig board) {
         Set<String> ids = new LinkedHashSet<>(board.questIds());
         for (QuestDef quest : data.quests().values()) {
@@ -118,18 +103,10 @@ public final class BoardService {
         return new ArrayList<>(ids);
     }
 
-    /** True when the board currently offers the quest to this player. */
     public static boolean offers(RotasData data, BoardConfig board, QuestDef quest, ServerPlayer player) {
         return visibleQuests(player, data, board).contains(quest.id());
     }
 
-    /**
-     * The quest ids this board shows this player right now.
-     *
-     * <p>Rotation is resolved first (cached on the board for time-based modes,
-     * recomputed per player for level-based and random modes), then per-player
-     * visibility rules run.
-     */
     public static List<String> visibleQuests(ServerPlayer player, RotasData data, BoardConfig board) {
         List<String> rotated = resolveRotation(player, data, board);
         PlayerProgress progress = data.progress(player.getUUID());
@@ -149,7 +126,6 @@ public final class BoardService {
             }
             result.add(questId);
         }
-        // A pinned featured quest always sorts first when it survived filtering.
         String featured = board.featuredQuestId();
         if (!featured.isEmpty() && result.remove(featured)) {
             result.add(0, featured);
@@ -166,8 +142,6 @@ public final class BoardService {
         int slots = Math.min(board.rotationSlots(), pool.size());
 
         if (rotation == BoardConfig.Rotation.RANDOM) {
-            // The pick must stay stable between showing the board and validating an accept;
-            // rolling on every call rejects most accepts as "does not offer that quest".
             Map<String, List<String>> picks = RANDOM_PICKS.computeIfAbsent(player.getUUID(), id -> new HashMap<>());
             List<String> kept = new ArrayList<>(picks.getOrDefault(board.id(), List.of()));
             kept.retainAll(pool);
@@ -217,12 +191,10 @@ public final class BoardService {
             board.rotatedSelection().addAll(shuffled.subList(0, Math.min(slots, shuffled.size())));
             data.setDirty();
         }
-        // Drop ids that were deleted since the last rotation.
         board.rotatedSelection().removeIf(id -> data.quest(id) == null);
         return new ArrayList<>(board.rotatedSelection());
     }
 
-    /** Forces an immediate re-roll, used by the board manager's Rotate Now button. */
     public static void forceRotation(RotasData data, BoardConfig board) {
         board.rotatedSelection().clear();
         board.setLastRotation(0);

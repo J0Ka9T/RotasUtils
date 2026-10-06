@@ -11,7 +11,6 @@ import net.schwarz.rotasutils.quest.QuestDef;
 import net.schwarz.rotasutils.skill.SkillCategory;
 import java.util.*;
 
-/** Adapts versioned configuration drafts to the existing content stores. */
 public final class ConfigService {
     private ConfigService() { }
 
@@ -64,6 +63,7 @@ public final class ConfigService {
                 default -> throw new IllegalArgumentException("Unknown domain");
             };
         }
+        if (domain.startsWith("quest/")) { return live; }
         return merge(data.configHistory().retained(domain), live);
     }
 
@@ -129,7 +129,13 @@ public final class ConfigService {
                 String id = domain.substring(domain.indexOf('/') + 1);
                 if (!id.equals(value.getString("id"))) { issues.add(issue(domain, "id", "Document id must match its domain")); }
                 if (domain.startsWith("quest/")) {
-                    var quest = QuestDef.load(value); normalized = quest.save(); issues.addAll(Validation.validateQuest(data, quest));
+                    var quest = QuestDef.load(value); normalized = quest.save();
+                    var questIssues = Validation.validateQuest(data, quest);
+                    if (!quest.published()) {
+                        questIssues = questIssues.stream().map(i -> i.severity() == Validation.Severity.ERROR
+                                ? new Validation.Issue(Validation.Severity.WARNING, i.targetKind(), i.targetId(), i.field(), i.message()) : i).toList();
+                    }
+                    issues.addAll(questIssues);
                 } else if (domain.startsWith("board/")) {
                     var board = BoardConfig.load(value); normalized = board.save(); issues.addAll(Validation.validateBoard(data, board));
                 } else if (domain.startsWith("npc/")) {
@@ -180,7 +186,6 @@ public final class ConfigService {
         var issues = validate(data, domain, draft.value());
         if (issues.stream().anyMatch(i -> i.severity() == Validation.Severity.ERROR)) { throw new IllegalArgumentException(issues.get(0).field() + ": " + issues.get(0).message()); }
         CompoundTag value = draft.value();
-        // Parse all values before committing the bounded history entry.
         Object parsed = domain.equals("settings") ? ServerSettings.load(value) : domain.equals("progression") ? LevelConfig.load(value)
                 : domain.startsWith("quest/") ? QuestDef.load(value) : domain.startsWith("board/") ? BoardConfig.load(value)
                 : domain.startsWith("npc/") ? net.schwarz.rotasutils.npc.NpcDef.load(value)
@@ -189,13 +194,12 @@ public final class ConfigService {
         if (parsed instanceof ServerSettings settings) { data.setServerSettings(settings); }
         else if (parsed instanceof LevelConfig levels) {
             data.setLevelConfig(levels);
-            // The EXP curve and stat numbers live in the season rules; keep season.json in step so a restart
-            // does not bring the old numbers back.
             try { SeasonConfigFile.write(server, levels.season()); }
             catch (java.io.IOException failure) { net.schwarz.rotasutils.Rotasutils.LOG.error("season.json could not be written", failure); }
         }
         else if (parsed instanceof QuestDef quest) {
             var old = data.quest(quest.id()); if (old != null) { quest.setVersion(old.version()); }
+            quest.freezeObjectiveKeys();
             if (quest.published()) { quest.bumpVersion(); }
             data.putQuest(quest);
             data.boards().values().forEach(board -> {
@@ -204,7 +208,6 @@ public final class ConfigService {
             });
         } else if (parsed instanceof BoardConfig board) { data.putBoard(board); }
         else if (parsed instanceof net.schwarz.rotasutils.npc.NpcDef npc) {
-            // One entity, one NPC: applying a binding releases whoever held it before.
             if (npc.bound()) {
                 data.npcs().values().forEach(other -> {
                     if (!other.id().equals(npc.id()) && npc.entityUuid().equals(other.entityUuid())) {
@@ -244,11 +247,6 @@ public final class ConfigService {
         if (!restored.save().equals(proposed.save())) { throw new IllegalStateException("Board access and rotation rules require operator level 4"); }
     }
 
-    /**
-     * Run Command rewards and skill effects execute at operator level 4, which is above the default
-     * administrator level. Letting an admin add or rewrite one would let them run any command, so that
-     * needs level 4; an admin may still edit everything else on content that already carries commands.
-     */
     public static void checkCommandPermission(net.minecraft.commands.CommandSourceStack source, String domain, CompoundTag value) {
         if (source.hasPermission(4)) { return; }
         RotasData data = RotasData.get(source.getServer());
@@ -263,7 +261,6 @@ public final class ConfigService {
         if (changed) { throw new IllegalStateException("Adding or changing a Run Command reward or effect requires operator level 4"); }
     }
 
-    /** Sorted command lines a quest runs on completion; empty for null. */
     public static List<String> commands(QuestDef quest) {
         List<String> lines = new ArrayList<>();
         if (quest == null) { return lines; }
@@ -277,7 +274,6 @@ public final class ConfigService {
         return lines;
     }
 
-    /** Sorted command lines every node in a skill category runs on unlock; empty for null. */
     public static List<String> commands(SkillCategory category) {
         List<String> lines = new ArrayList<>();
         if (category == null) { return lines; }
@@ -293,7 +289,6 @@ public final class ConfigService {
         return lines;
     }
 
-    /** The administrator level decides who reaches every other editor, so only a level-4 operator may change it. */
     public static void checkSettingsPermission(net.minecraft.commands.CommandSourceStack source, String domain, CompoundTag value) {
         if (!domain.equals("settings") || source.hasPermission(4)) { return; }
         if (ServerSettings.load(value).adminOpLevel() != RotasData.get(source.getServer()).serverSettings().adminOpLevel()) {

@@ -14,15 +14,8 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/**
- * A list of labelled fields backed by getter/setter pairs.
- *
- * <p>Used by the small settings screens so each of them is a handful of field
- * declarations rather than its own layout code.
- */
 @Environment(EnvType.CLIENT)
 public abstract class SimpleFieldScreen extends RotasScreen {
-    /** One editable field. {@code kind} controls how a click behaves. */
     protected record Field(String label, Kind kind, Supplier<String> getter, Consumer<String> setter) {
         enum Kind {
             TEXT, INT, DOUBLE, TOGGLE, PICK_RANK, PICK_QUEST, PICK_DIMENSION, ACTION
@@ -127,7 +120,6 @@ public abstract class SimpleFieldScreen extends RotasScreen {
     private void rebuildFields() { clearWidgets(); clearPanels(); buildContent(); }
     protected void activate(Field field) { field.setter().accept("open"); }
 
-    /** A picture shown next to a field's value, such as the chosen item or mob. Empty for none. */
     protected net.minecraft.world.item.ItemStack fieldIcon(Field field) { return net.minecraft.world.item.ItemStack.EMPTY; }
 
     @Override

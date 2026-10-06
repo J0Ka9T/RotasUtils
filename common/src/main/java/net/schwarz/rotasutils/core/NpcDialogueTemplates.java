@@ -6,19 +6,7 @@ import com.google.gson.JsonObject;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Ready-made conversations for the NPC dialogue editor.
- *
- * <p>Authoring a dialogue by hand means walking the schema one JSON path at a time, and the common
- * shapes - greet, offer a quest, pay it out, open a shop, take a gift - are the same every time.
- * Each template is a complete, schema-valid document the admin can drop in and then edit, so the
- * first working conversation takes one click instead of a dozen nested "add entry" steps.</p>
- *
- * <p>Every template is parsed by {@link NpcInteractions#parse} in the tests, so a template can never
- * ship as an invalid starting point.</p>
- */
 public final class NpcDialogueTemplates {
-    /** The shapes an admin can start from; the editor names them in the player's language. */
     public enum Template {
         BLANK,
         GREETER,
@@ -30,7 +18,6 @@ public final class NpcDialogueTemplates {
         QUEST_SHOP
     }
 
-    /** The quest every quest template points at; an admin retargets it in the guided editor. */
     public static final String DEFAULT_QUEST = "rotas:quest/daily_hunt";
 
     private NpcDialogueTemplates() {
@@ -40,7 +27,6 @@ public final class NpcDialogueTemplates {
         return body(template == null ? Template.BLANK : template);
     }
 
-    /** A document with the flags every template shares; gifts are added where they matter. */
     private static JsonObject doc(String start, JsonArray nodes, JsonArray gifts) {
         JsonObject json = new JsonObject();
         json.addProperty("start", start);
@@ -149,7 +135,6 @@ public final class NpcDialogueTemplates {
         return array;
     }
 
-    /** Template text is written in Thai, the language the whole interface uses. */
     private static String tx(String key) {
         return net.schwarz.rotasutils.util.ThaiText.t("rotasutils.dialogue.default." + key);
     }

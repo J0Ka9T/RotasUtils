@@ -13,33 +13,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Resolves where a mob is standing to a level band and feeds the monster environment facts.
- *
- * <p>Location decides danger, never the nearby player:</p>
- * <ol>
- *   <li>inside a zone, the highest-priority zone's band applies (ties break by zone id);</li>
- *   <li>outside every zone, the wilderness band starts at the distance-from-spawn floor and spans
- *       {@link MobLevelConfig#bandSpread()} levels above it;</li>
- *   <li>within a zone's {@code transition_blocks} of its edge, the wilderness band is blended toward
- *       the zone band, so a town is not ringed by a sudden wall of difficulty.</li>
- * </ol>
- *
- * <p>{@link #environment(Mob)} is registered once at mod init as the {@code MonsterService}
- * provider. {@link #resolve} is pure and unit-tested; only {@link #region} and
- * {@link #environment} touch a live server.</p>
- */
 public final class ZoneService {
     private ZoneService() {
     }
 
-    /**
-     * The level band a position resolves to.
-     *
-     * @param id       containing zone id; empty in the wilderness and in a transition ring
-     * @param nearZone id of the zone whose transition ring the position is in, else empty
-     * @param blend    0 in open wilderness, 1 inside a zone, in between inside a transition ring
-     */
     public record Region(String id, String name, int level, int min, int max, double distance,
                          ZoneDef.Danger danger, int recommendedMin, int recommendedMax,
                          double xpMultiplier, boolean safe, String nearZone, double blend) {
@@ -52,10 +29,6 @@ public final class ZoneService {
         }
     }
 
-    /**
-     * MonsterService environment provider. Never throws: an unloaded/server-less mob simply gets
-     * neutral facts so a spawn is never rejected because a zone lookup failed.
-     */
     public static MonsterService.Environment environment(Mob mob) {
         MinecraftServer server = mob.getServer();
         if (server == null || mob.level().isClientSide() || !(mob.level() instanceof ServerLevel level)) {
@@ -75,9 +48,6 @@ public final class ZoneService {
             numbers.put("region.xp_multiplier", region.xpMultiplier());
             return new MonsterService.Environment(region.id(), numbers);
         } catch (RuntimeException failure) {
-            // The mob is about to be leveled from this band and the result is persisted, so a
-            // transient failure must not brand it level 1 forever - fall back to the configured
-            // spawn level instead.
             return neutral(RotasData.get(server).levelConfig().mobLevel().spawnLevel());
         }
     }
@@ -93,13 +63,11 @@ public final class ZoneService {
                 "region.level", band, "region.min", band, "region.max", band, "region.distance", 0.0));
     }
 
-    /** The level band for a live world position. */
     public static Region region(RotasData data, ServerLevel level, double x, double y, double z) {
         return resolve(data.zones().values(), level.dimension().location().toString(), x, y, z,
                 spawnDistance(level, x, z), data.levelConfig().mobLevel());
     }
 
-    /** Pure band resolution; see the class javadoc for the order of rules. */
     public static Region resolve(Collection<ZoneDef> zones, String dimension, double x, double y, double z,
                                  double spawnDistance, MobLevelConfig config) {
         ZoneDef zone = select(zones, dimension, x, y, z);
@@ -124,7 +92,6 @@ public final class ZoneService {
                 floor, ceiling, 1.0, false, "", 0.0);
     }
 
-    /** Wilderness level floor: spawn level plus one level per {@code level_per_blocks}, capped. */
     public static int wildernessFloor(MobLevelConfig config, double spawnDistance) {
         long floor = config.spawnLevel();
         if (config.levelPerBlocks() > 0 && Double.isFinite(spawnDistance) && spawnDistance > 0) {
@@ -133,20 +100,14 @@ public final class ZoneService {
         return (int) Math.max(1, Math.min(config.maxLevel(), floor));
     }
 
-    /** Stable level for one mob in a resolved band. */
     public static int levelFor(UUID mob, Region region) {
         return MonsterThreat.levelInBand(mob, region.min(), region.max());
     }
 
-    /** Highest-priority enabled zone containing the position, or null. Pure. */
     public static ZoneDef select(Collection<ZoneDef> zones, String dimension, double x, double y, double z) {
         return ZoneDef.select(zones, dimension, x, y, z);
     }
 
-    /**
-     * The zone whose transition ring holds a position that no zone contains: highest priority, then
-     * the closest edge, then zone id. Whole-dimension zones have no edge and never form a ring.
-     */
     static ZoneDef nearestRing(Collection<ZoneDef> zones, String dimension, double x, double y, double z) {
         ZoneDef best = null;
         double bestGap = Double.MAX_VALUE;
@@ -174,7 +135,6 @@ public final class ZoneService {
         return (int) Math.round(from + (to - from) * clamped);
     }
 
-    /** Horizontal distance from the level's shared spawn point. */
     public static double spawnDistance(ServerLevel level, double x, double z) {
         BlockPos spawn = level.getSharedSpawnPos();
         double dx = x - spawn.getX();

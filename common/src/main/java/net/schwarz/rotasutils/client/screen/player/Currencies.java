@@ -5,7 +5,6 @@ import net.fabricmc.api.Environment;
 
 import java.util.Locale;
 
-/** Player-facing currency names and compact amounts for the shop and stable screens. */
 @Environment(EnvType.CLIENT)
 public final class Currencies {
     private Currencies() {
@@ -22,7 +21,6 @@ public final class Currencies {
         };
     }
 
-    /** 1,234 / 12.3K / 4.5M: short enough for a price chip. */
     public static String amount(long value) {
         long abs = Math.abs(value);
         if (abs >= 10_000_000) return String.format(Locale.ROOT, "%.1fM", value / 1_000_000.0);

@@ -13,7 +13,6 @@ import net.schwarz.rotasutils.network.AdminResponseReceiver;
 import net.schwarz.rotasutils.network.ClientAdminNetwork;
 import java.util.UUID;
 
-/** Server-confirmed save, review and apply for existing configuration editors. */
 @Environment(EnvType.CLIENT)
 public final class ConfigReviewScreen extends RotasScreen implements AdminResponseReceiver {
     private final UUID session = UUID.randomUUID();
@@ -28,6 +27,7 @@ public final class ConfigReviewScreen extends RotasScreen implements AdminRespon
 
     public ConfigReviewScreen(Screen parent, String action, CompoundTag payload) {
         super("Review configuration", parent); this.action = action; this.payload = payload.copy();
+        quick = !action.isEmpty();
     }
     public ConfigReviewScreen(Screen parent, String domain) {
         this(parent, "", new CompoundTag()); this.domain = domain;
@@ -35,13 +35,15 @@ public final class ConfigReviewScreen extends RotasScreen implements AdminRespon
     public ConfigReviewScreen(Screen parent, String action, CompoundTag payload, CompoundTag baseline) {
         this(parent, action, payload); editingBaseline = baseline.copy();
     }
+    private java.util.function.Consumer<CompoundTag> onApplied;
+    private boolean quick;
+    public ConfigReviewScreen quick(java.util.function.Consumer<CompoundTag> onApplied) {
+        this.quick = true; this.onApplied = onApplied; message = "Saving..."; return this;
+    }
 
     @Override protected void buildContent() {
         guiWidth = Ui.fill(width, 700); guiHeight = Ui.fill(height, 430);
         guiLeft = (width - guiWidth) / 2; guiTop = (height - guiHeight) / 2;
-        // A retained draft from an earlier editing round can no longer match live values
-        // after an immediate change (bind, release, assignment); the editor flow offers
-        // a direct discard so an admin can start over instead of being stuck on Apply.
         boolean hasDraft = loaded && state.getLong("generation") >= 0;
         int buttons = 4 + (domain == null && hasDraft ? 1 : 0);
         int col = (guiWidth - 24 - (buttons - 1) * 4) / buttons;
@@ -85,9 +87,44 @@ public final class ConfigReviewScreen extends RotasScreen implements AdminRespon
     @Override public void receive(long id, CompoundTag response) {
         if (id != request || !response.hasUUID("ui") || !session.equals(response.getUUID("ui"))) { return; }
         pending = false; loaded = true; state = response; message = response.getString("message");
-        reviewed = response.getBoolean("reviewed"); rebuild();
+        reviewed = response.getBoolean("reviewed");
+        if (quick && !sentCommit) {
+            sentCommit = true; request(response.getBoolean("APPLY") ? "commit" : "stage"); return;
+        }
+        if (quick) {
+            boolean applied = response.getBoolean("applied");
+            if (applied && onApplied != null && response.contains("live")) { onApplied.accept(response.getCompound("live")); }
+            report(applied, response.getString("message"), applied ? new net.minecraft.nbt.ListTag() : response.getList("lines", 8));
+            goBack();
+            return;
+        }
+        rebuild();
     }
-    @Override public void failed(String error) { pending = false; message = error; if (minecraft != null) { rebuild(); } }
+    private boolean sentCommit;
+    @Override public void failed(String error) {
+        pending = false; message = error;
+        if (quick && minecraft != null) { report(false, error, new net.minecraft.nbt.ListTag()); goBack(); return; }
+        if (minecraft != null) { rebuild(); }
+    }
+
+    private void report(boolean ok, String text, net.minecraft.nbt.ListTag lines) {
+        var player = minecraft == null ? null : minecraft.player;
+        if (player == null) { return; }
+        var style = ok ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.RED;
+        player.displayClientMessage(Ui.text(text == null || text.isBlank() ? (ok ? "Saved." : "Save failed.") : text).withStyle(style), false);
+        for (int i = 0; i < Math.min(6, lines.size()); i++) {
+            String line = lines.getString(i);
+            if (!line.startsWith("WARNING") && !line.equals("No staged differences.")) {
+                player.displayClientMessage(Ui.text(" - " + line).withStyle(net.minecraft.ChatFormatting.YELLOW), false);
+            }
+        }
+    }
+
+    @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (!quick || parentScreen() == null) { super.render(graphics, mouseX, mouseY, partialTick); return; }
+        parentScreen().render(graphics, -1, -1, partialTick);
+        graphics.drawCenteredString(font, Ui.text("Saving..."), width / 2, 8, 0xFFFFFFFF);
+    }
     private void rebuild() { clearWidgets(); clearPanels(); buildContent(); }
     @Override public void tick() { if (pending && System.currentTimeMillis() - sentAt > 15000) { failed("Request timed out. Reopen review to check the saved draft before retrying."); } }
     @Override protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {

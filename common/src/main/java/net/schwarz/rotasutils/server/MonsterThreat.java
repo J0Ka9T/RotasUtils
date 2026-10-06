@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.server;
 
 import java.util.UUID;
 
-/** Pure, bounded monster threat and location-level calculations. */
 public final class MonsterThreat {
     private MonsterThreat() {
     }
@@ -24,13 +23,6 @@ public final class MonsterThreat {
         return Math.max(1, Math.min(maximum, Math.round(rating)));
     }
 
-    /**
-     * A stable level anywhere in the band, weighted toward the middle.
-     *
-     * <p>Two hash-derived uniform rolls are averaged (a triangular distribution), so a "5-20" zone
-     * really spawns level 5 and level 20 mobs, just less often than level 12s. The same UUID always
-     * lands on the same level, so a reload or a wand re-level never rerolls a mob.</p>
-     */
     public static int levelInBand(UUID id, int minimum, int maximum) {
         if (minimum < 1 || maximum < minimum) throw new IllegalArgumentException("Invalid monster level band");
         if (minimum == maximum) return minimum;

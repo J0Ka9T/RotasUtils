@@ -31,7 +31,6 @@ CRYSTAL = [
     "................",
 ]
 
-# The spark an enriched ore carries on top of the plain crystal.
 SPARK = [
     "................",
     "................",

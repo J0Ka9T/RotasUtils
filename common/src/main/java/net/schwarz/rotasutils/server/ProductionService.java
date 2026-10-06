@@ -36,34 +36,17 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.ToIntFunction;
 
-/**
- * Sub-job production: the EXP a sub job earns from crafting, smelting, mining, harvesting, fishing and brewing, and
- * the gates that make the sub-role matter.
- *
- * <p>Each job has an unlock table. The level an item unlocks at decides its tier (A 1-4, B 5-9, C 10-14,
- * D 15-19), the tier decides the base EXP, and the job's profession rate scales it. Outgrown tiers pay less,
- * the first craft of an item pays triple, and a maxed sub job turns its EXP into overflow currency.</p>
- *
- * <p>The same table decides access. A crafting, smelting or brewing result in any job's table can only be taken by
- * a player whose sub job is that job at the unlock level; hoppers under a station act for the last player who
- * opened it. Mining, harvesting and fishing stay open to everyone, but without the role most drops are lost.</p>
- */
 public final class ProductionService {
     private static final String FRACTION = "rpg.season.prodfrac";
     private static final long PLACED_MEMORY_MILLIS = 6 * 60 * 60 * 1000L;
     private static final int PLACED_LIMIT = 8192;
     private static final int STATION_LIMIT = 4096;
-    /** Blocks players placed recently; re-mining them pays nothing, so place-and-mine loops earn no EXP. */
     private static final Map<Long, Long> PLACED = new LinkedHashMap<>(256, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest) {
             return size() > PLACED_LIMIT;
         }
     };
-    /**
-     * The last player to open each furnace or brewing stand. Automation takes sealed results on their behalf. Kept in
-     * memory only: after a restart a station refuses automation until someone opens it again.
-     */
     private static final Map<Long, UUID> STATION_OWNERS = new LinkedHashMap<>(256, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<Long, UUID> eldest) {
@@ -75,20 +58,16 @@ public final class ProductionService {
     private ProductionService() {
     }
 
-    /** An item or block as the unlock table sees it: a registry id plus a tag test. */
     public interface Target {
         String id();
 
         boolean inTag(ResourceLocation tag);
     }
 
-    /** Whether a player may take, or fully gather, one production target. */
     public record Access(State state, String jobName, int level) {
         public enum State { FREE, GRANTED, LOCKED }
 
-        /** No enabled job seals the target. */
         public static final Access FREE = new Access(State.FREE, "", 0);
-        /** The player's sub job holds the target at a high enough level. */
         public static final Access GRANTED = new Access(State.GRANTED, "", 0);
 
         public boolean locked() {
@@ -112,7 +91,6 @@ public final class ProductionService {
         };
     }
 
-    /** The table row for this target: an exact id beats a tag, and a higher unlock level beats a lower one. */
     public static JobDef.ProductionEntry match(JobDef job, Activity activity, Target target) {
         JobDef.ProductionEntry best = null;
         for (JobDef.ProductionEntry entry : job.production()) {
@@ -128,9 +106,11 @@ public final class ProductionService {
         return best;
     }
 
+    private static final java.util.Map<String, java.util.Optional<ResourceLocation>> TAGS = new java.util.concurrent.ConcurrentHashMap<>();
+
     private static boolean matches(String selector, Target target) {
         if (selector.startsWith("#")) {
-            ResourceLocation tag = ResourceLocation.tryParse(selector.substring(1));
+            ResourceLocation tag = TAGS.computeIfAbsent(selector, s -> java.util.Optional.ofNullable(ResourceLocation.tryParse(s.substring(1)))).orElse(null);
             return tag != null && target.inTag(tag);
         }
         return selector.equals(target.id());
@@ -140,11 +120,6 @@ public final class ProductionService {
         return job.masteryCurve().levelAt(progress.rpg().masteryXp(job.id()));
     }
 
-    /**
-     * Who may take or fully gather a target. Rows below {@code minLockedLevel} seal nothing. The target is granted
-     * when the sub job has a sealing row the player has reached; otherwise it is locked by the player's own sub job
-     * when that job has a row, or else by the easiest job that has one, so the message names the most useful role.
-     */
     public static Access access(Iterable<JobDef> jobs, String subJob, ToIntFunction<JobDef> levelOf,
                                 Activity activity, Target target, int minLockedLevel) {
         JobDef lockedBy = null;
@@ -174,7 +149,6 @@ public final class ProductionService {
         return access(data.jobs().values(), progress.subJob(), job -> subLevel(progress, job), activity, target, minLockedLevel);
     }
 
-    /** Pays production EXP to the player's sub job for {@code count} units of one activity. */
     public static void produced(ServerPlayer player, Activity activity, Target target, int count) {
         RotasData data = RotasData.get(player.server);
         if (!SeasonService.active(data) || count <= 0) {
@@ -189,20 +163,37 @@ public final class ProductionService {
         if (entry == null) {
             return;
         }
-        SeasonRules rules = SeasonService.rules(data);
-        int level = subLevel(progress, job);
-        if (level < entry.unlockLevel()) {
+        award(player, data, progress, job, entry.unlockLevel(), activity.name().toLowerCase(Locale.ROOT) + ":" + target.id(), count);
+    }
+
+    public static void producedAt(ServerPlayer player, String jobId, int unlockLevel, String firstKey, int count) {
+        RotasData data = RotasData.get(player.server);
+        if (!SeasonService.active(data) || count <= 0) {
             return;
         }
-        int tier = SeasonMath.tierIndex(entry.unlockLevel(), rules.tierMaxLevel);
+        PlayerProgress progress = data.progress(player.getUUID());
+        JobDef job = data.job(progress.subJob());
+        if (job == null || !job.enabled() || !job.id().equals(jobId) || job.productionXpRate() <= 0) {
+            return;
+        }
+        award(player, data, progress, job, unlockLevel, firstKey, count);
+    }
+
+    private static void award(ServerPlayer player, RotasData data, PlayerProgress progress, JobDef job, int unlockLevel,
+                              String firstKey, int count) {
+        SeasonRules rules = SeasonService.rules(data);
+        int level = subLevel(progress, job);
+        if (level < unlockLevel) {
+            return;
+        }
+        int tier = SeasonMath.tierIndex(unlockLevel, rules.tierMaxLevel);
         double unit = rules.tierXp[tier] * job.productionXpRate()
                 * SeasonMath.craftMultiplier(level, rules.tierMaxLevel[tier], rules.craftGraceLevels,
                 rules.craftPenaltyPerLevel, rules.craftMaxPenalty);
         double xp = unit * Math.min(64, count);
-        if (SeasonService.claimFirstCraft(progress, activity.name().toLowerCase(Locale.ROOT) + ":" + target.id())) {
+        if (SeasonService.claimFirstCraft(progress, firstKey)) {
             xp += unit * (rules.firstCraftMultiplier - 1);
         }
-        // Keep the fraction: a Chef's tier A dish is 3.6 EXP, which would round away over many crafts.
         long millis = Math.round(xp * 1000) + fraction(progress);
         long whole = millis / 1000;
         progress.questVariables().put(FRACTION, Long.toString(millis % 1000));
@@ -221,6 +212,10 @@ public final class ProductionService {
             int before = now - grant.levelsGained();
             long unlocked = job.production().stream()
                     .filter(row -> row.unlockLevel() > before && row.unlockLevel() <= now).count();
+            var book = TradeConfig.byJob(job.id());
+            if (book != null) {
+                unlocked += book.recipes().stream().filter(r -> !r.secret() && r.level() > before && r.level() <= now).count();
+            }
             player.sendSystemMessage(ThaiText.c("rotasutils.msg.season.sub_level", job.name(), now, unlocked)
                     .withStyle(ChatFormatting.GOLD));
             player.level().playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.4f);
@@ -235,9 +230,7 @@ public final class ProductionService {
         }
     }
 
-    // Hard locks: crafting, smelting and brewing results ---------------------------------------------
-
-    private static boolean hardLockOn(SeasonRules rules, Activity activity) {
+private static boolean hardLockOn(SeasonRules rules, Activity activity) {
         return switch (activity) {
             case CRAFT -> rules.lockRecipes;
             case SMELT -> rules.lockSmelting;
@@ -250,15 +243,10 @@ public final class ProductionService {
         return rules.lockStarterRows ? 1 : 2;
     }
 
-    /** A plain water bottle is the brewing stand's input, so a player can always take their own back. */
     private static boolean plainWater(ItemStack stack) {
         return stack.is(Items.POTION) && PotionUtils.getPotion(stack) == Potions.WATER;
     }
 
-    /**
-     * True when a crafting, smelting or brewing result is sealed to a sub-role this player lacks. The player is shown
-     * the sealed scroll saying which role holds it.
-     */
     public static boolean takeLocked(ServerPlayer player, Activity activity, ItemStack result) {
         if (result.isEmpty() || (activity == Activity.BREW && plainWater(result))) {
             return false;
@@ -266,6 +254,12 @@ public final class ProductionService {
         RotasData data = RotasData.instance();
         if (data == null || !SeasonService.active(data)) {
             return false;
+        }
+        if (stationOnly(activity, result)) {
+            String trade = TradeConfig.sealedBy(String.valueOf(BuiltInRegistries.ITEM.getKey(result.getItem())));
+            sealed(player, activity, result, new Access(Access.State.LOCKED,
+                    ThaiText.t("rotasutils.trade.station." + (trade == null ? "chef" : trade)), 0));
+            return true;
         }
         SeasonRules rules = SeasonService.rules(data);
         if (!hardLockOn(rules, activity)) {
@@ -279,15 +273,15 @@ public final class ProductionService {
         return true;
     }
 
-    /** Remembers who opened a furnace or brewing stand, so its hopper can act for them. */
+    private static boolean stationOnly(Activity activity, ItemStack result) {
+        return (activity == Activity.CRAFT || activity == Activity.SMELT)
+                && TradeConfig.sealed(String.valueOf(BuiltInRegistries.ITEM.getKey(result.getItem())));
+    }
+
     public static void rememberStation(Level level, BlockPos pos, UUID player) {
         STATION_OWNERS.put(key(level, pos), player);
     }
 
-    /**
-     * Hopper and item-pipe extraction of a station result: allowed when the result is not sealed, or when the last
-     * player to open the station holds the role. An unknown owner fails closed.
-     */
     public static boolean automationMayTake(Level level, BlockPos pos, Activity activity, ItemStack stack) {
         if (level == null || level.isClientSide || stack.isEmpty() || (activity == Activity.BREW && plainWater(stack))) {
             return true;
@@ -295,6 +289,9 @@ public final class ProductionService {
         RotasData data = RotasData.instance();
         if (data == null || !SeasonService.active(data)) {
             return true;
+        }
+        if (stationOnly(activity, stack)) {
+            return false;
         }
         SeasonRules rules = SeasonService.rules(data);
         if (!hardLockOn(rules, activity)) {
@@ -308,16 +305,10 @@ public final class ProductionService {
         return !access.locked();
     }
 
-    // Soft gathering: mining, harvesting and fishing --------------------------------------------------
-
-    private static Access gatherAccess(RotasData data, ServerPlayer player, Activity activity, Target target) {
+private static Access gatherAccess(RotasData data, ServerPlayer player, Activity activity, Target target) {
         return access(data, data.progress(player.getUUID()), activity, target, SeasonService.rules(data).gatherFreeLevel + 1);
     }
 
-    /**
-     * The drops of a block broken by a player without the sub-role that gathers it: each stack survives only by
-     * chance and keeps at most the capped count. Returns null when the drops stand as they are.
-     */
     public static List<ItemStack> thinBlockDrops(ServerPlayer player, BlockState state, List<ItemStack> drops) {
         if (drops == null || drops.isEmpty() || player.isCreative()) {
             return null;
@@ -359,7 +350,6 @@ public final class ProductionService {
         return kept;
     }
 
-    /** A catch for a player without the Fisher role: usually swapped for the fallback fish, never above the cap. */
     public static ItemStack thinCatch(ServerPlayer player, ItemStack caught) {
         if (caught.isEmpty()) {
             return caught;
@@ -382,7 +372,6 @@ public final class ProductionService {
                 ? new ItemStack(BuiltInRegistries.ITEM.get(fallback)) : ItemStack.EMPTY;
     }
 
-    /** Sends the sealed scroll, at most once every two seconds per player. */
     private static void sealed(ServerPlayer player, Activity activity, ItemStack stack, Access access) {
         long now = System.currentTimeMillis();
         Long last = LOCK_MESSAGES.get(player.getUUID());
@@ -393,7 +382,6 @@ public final class ProductionService {
         RotasNetwork.sealedCraft(player, activity.name(), stack, access.jobName(), access.level());
     }
 
-    /** Crops at full age, melons, pumpkins, cocoa and nether wart count as a harvest. */
     public static boolean harvestable(BlockState state) {
         if (state.getBlock() instanceof CropBlock crop) {
             return crop.isMaxAge(state);
@@ -411,7 +399,6 @@ public final class ProductionService {
         PLACED.put(key(level, pos), System.currentTimeMillis());
     }
 
-    /** True when a player placed this block recently; mining it again pays no production EXP. */
     public static boolean recentlyPlaced(Level level, BlockPos pos) {
         Long placed = PLACED.remove(key(level, pos));
         return placed != null && System.currentTimeMillis() - placed < PLACED_MEMORY_MILLIS;

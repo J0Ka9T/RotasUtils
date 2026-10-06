@@ -25,28 +25,11 @@ import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
-/**
- * The Clash of Heavens, painted on the sky dome.
- *
- * <p>The sky sinks towards night; four rifts tear open around the horizon in turn - violet north, gold
- * east, crimson south, and the dark rift west, which drinks the light around it - each in its own
- * painted rim, swirl, bloom and rays. Each throws a beam up to the zenith: three of light, one of
- * darkness edged in pale fire. Where they meet the four fight: the meeting point is shoved back and
- * forth by whichever beam is winning, arcs of lightning jump between them, rings of force ripple across
- * the heavens and shards of every colour rain down the sky. Then they are dragged together, the heart
- * shrinks to a point, and it bursts: a white flash, a four-coloured ring racing out to every horizon, a
- * four-pointed star burned into the zenith - and the rifts seal one by one.</p>
- *
- * <p>Everything is drawn from the synced clock ({@link SkyClash}), so every player sees the same clash.
- * Drawn in the sky pass, the land stands in front of it.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class SkyClashRenderer {
     private static final String[] FOLDERS = {"", "gold/", "red/", ""};
-    /** Violet, gold, crimson, and the dark rift's pale edge fire. */
     private static final float[][] COLOURS = {
             {0.60f, 0.45f, 1f}, {1f, 0.80f, 0.32f}, {1f, 0.25f, 0.14f}, {0.66f, 0.50f, 1f}};
-    /** Texture tint per rift; the dark rift wears the violet textures burned down to a bruise. */
     private static final float[][] TINTS = {{1f, 1f, 1f}, {1f, 1f, 1f}, {1f, 1f, 1f}, {0.42f, 0.26f, 0.62f}};
     private static final int DARK = 3;
 
@@ -67,7 +50,6 @@ public final class SkyClashRenderer {
     private SkyClashRenderer() {
     }
 
-    /** From the server: a clash began at game tick {@code startTick} in {@code dim}. */
     public static void set(ResourceLocation dim, long startTick, long clashSeed) {
         dimension = dim;
         start = startTick;
@@ -75,7 +57,6 @@ public final class SkyClashRenderer {
         lastCueTick = startTick - 1;
     }
 
-    /** Ticks into the running clash, or a negative number when there is none here. */
     static float time(float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || dimension == null || start == Long.MIN_VALUE
@@ -90,14 +71,11 @@ public final class SkyClashRenderer {
         return time(partialTick) >= 0f;
     }
 
-    // Sound and quake cues ----------------------------------------------------------------------------
-
-    public static void tick(Minecraft minecraft) {
+public static void tick(Minecraft minecraft) {
         if (minecraft.level == null || minecraft.player == null || time(0f) < 0f) {
             return;
         }
         long now = minecraft.level.getGameTime();
-        // Catch up on every tick since the last, but never replay a whole clash after a hitch.
         for (long tick = Math.max(lastCueTick + 1, now - 20); tick <= now; tick++) {
             cue((int) (tick - start));
         }
@@ -158,10 +136,7 @@ public final class SkyClashRenderer {
         CameraQuake.impulse(degrees, 0, 1);
     }
 
-    // HUD ----------------------------------------------------------------------------------------------
-
-    /** The detonation's white-out over the whole screen. */
-    public static void renderHud(GuiGraphics graphics, float partialTick) {
+public static void renderHud(GuiGraphics graphics, float partialTick) {
         float t = time(partialTick);
         if (t < SkyClash.DETONATE - 6 || t > SkyClash.DETONATE + 50) {
             return;
@@ -174,15 +149,12 @@ public final class SkyClashRenderer {
         }
     }
 
-    // Sky ----------------------------------------------------------------------------------------------
-
-    public static void render(PoseStack pose, float partialTick, boolean blockedByFluid) {
+public static void render(PoseStack pose, float partialTick, boolean blockedByFluid) {
         float t = time(partialTick);
         if (t < 0f || blockedByFluid) {
             return;
         }
         if (ShaderPackCompat.active()) {
-            // A shader pack would recolour or cover the sky pass; draw after its frame instead.
             SkyShaderOverlay.deferClash(pose, partialTick);
             return;
         }
@@ -192,7 +164,6 @@ public final class SkyClashRenderer {
         RenderSystem.disableCull();
         try {
             float[] clash = clashPoint(t);
-            // Darkness first, with ordinary blending.
             RenderSystem.defaultBlendFunc();
             RenderSystem.setShader(GameRenderer::getPositionColorShader);
             BufferBuilder b = begin();
@@ -203,7 +174,6 @@ public final class SkyClashRenderer {
             for (int i = 0; i < 4; i++) {
                 abyss(m, t, i);
             }
-            // Then light, added.
             additive();
             for (int i = 0; i < 4; i++) {
                 rift(m, t, i);
@@ -223,7 +193,6 @@ public final class SkyClashRenderer {
             detonation(b, m, t, clash);
             BufferUploader.drawWithShader(b.end());
             core(m, t, clash);
-            // Painted light over it all: flares, seal crown, rays, shockwaves.
             SkyClashFinale.render(m, t, clash);
         } finally {
             RenderSystem.defaultBlendFunc();
@@ -234,10 +203,7 @@ public final class SkyClashRenderer {
         }
     }
 
-    // Timeline shapes -----------------------------------------------------------------------------------
-
-    /** How open rift {@code i} is: 0 shut, 1 fully open (it overshoots a little as it tears). */
-    static float open(float t, int i) {
+static float open(float t, int i) {
         float k = (t - SkyClash.RIFT_OPEN - i * SkyClash.RIFT_STAGGER) / 22f;
         if (k <= 0f) {
             return 0f;
@@ -249,34 +215,28 @@ public final class SkyClashRenderer {
         return smooth((t - SkyClash.SEAL - i * 10) / 24f);
     }
 
-    /** How far beam {@code i} has reached, 0 to 1. */
     static float reach(float t, int i) {
         return smooth((t - SkyClash.BEAM_START - i * SkyClash.BEAM_STAGGER) / SkyClash.BEAM_TRAVEL);
     }
 
-    /** How violent the struggle is: 0 as the beams meet, 1 at the crescendo's height. */
     static float heat(float t) {
         return 0.35f * smooth((t - SkyClash.CLASH) / 120f) + 0.65f * smooth((t - SkyClash.CRESCENDO) / 70f);
     }
 
-    /** How hard beam {@code i} is pushing right now, 0 to 1. */
     private static float push(float t, int i) {
         float phase = hash(seed + i * 7919L) * 6.28f;
         float wave = 0.5f + 0.5f * (float) Math.sin(t * 0.045f * (1f + 0.27f * i) + phase)
                 * (float) Math.cos(t * 0.013f + i * 1.9f);
-        // At the crescendo all four push flat out.
         float c = smooth((t - SkyClash.CRESCENDO) / 50f);
         return wave + (1f - wave) * c;
     }
 
-    /** Where the beams meet: overhead, shoved away from whichever beams are winning. */
     static float[] clashPoint(float t) {
         float x = 0f, z = 0f;
         float settle = 1f - smooth((t - SkyClash.CRESCENDO - 20) / 40f);
         for (int i = 0; i < 4; i++) {
             float yaw = (float) Math.toRadians(SkyClash.RIFT_YAW[i]);
             float p = (push(t, i) - 0.5f) * 0.22f * settle;
-            // A beam that wins drives the meeting point away from its own rift.
             x -= -Math.sin(yaw) * p;
             z -= Math.cos(yaw) * p;
         }
@@ -292,13 +252,10 @@ public final class SkyClashRenderer {
         return out;
     }
 
-    // Veil and darkness ----------------------------------------------------------------------------------
-
-    private static float veilStrength(float t) {
+private static float veilStrength(float t) {
         return 0.66f * smooth(t / SkyClash.DARKEN) * (1f - smooth((t - SkyClash.SEAL - 40) / 90f));
     }
 
-    /** The whole sky sinks towards a bruised night. */
     private static void veil(BufferBuilder b, Matrix4f m, float t) {
         float a = veilStrength(t);
         if (a <= 0.01f) {
@@ -319,7 +276,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** The dark rift eats the light of the sky around it. */
     private static void darkRiftShadow(BufferBuilder b, Matrix4f m, float t) {
         float o = open(t, DARK);
         if (o <= 0.01f) {
@@ -329,7 +285,6 @@ public final class SkyClashRenderer {
         fan(b, m, d, 26f * Math.min(1f, o), R_RIFT + 2f, 0f, 0f, 0.01f, 0.72f * Math.min(1f, o), 0f);
     }
 
-    /** The dark rift's beam: a river of nothing. */
     private static void darkBeam(BufferBuilder b, Matrix4f m, float t, float[] clash) {
         float reach = reach(t, DARK) * beamFade(t);
         if (reach <= 0.01f) {
@@ -339,9 +294,7 @@ public final class SkyClashRenderer {
         beamPath(b, m, t, DARK, clash, reach, w, 0f, 0f, 0.02f, 0.92f, R_BEAM + 1f, 0f);
     }
 
-    // Rifts --------------------------------------------------------------------------------------------
-
-    private static void abyss(Matrix4f m, float t, int i) {
+private static void abyss(Matrix4f m, float t, int i) {
         float o = open(t, i);
         if (o <= 0.01f) {
             return;
@@ -368,17 +321,13 @@ public final class SkyClashRenderer {
         float sealFlash = (float) Math.exp(-Math.abs(t - SkyClash.SEAL - i * 10 - 18) / 4f);
         float bright = Math.min(1f, o) * (1f + 0.4f * heat);
 
-        // The sky around it stained its colour.
         textured(m, texture(i, "rift_bloom"), d, w * 3.2f, h * 3.2f, 0f, R_RIFT + 1.5f, tint[0], tint[1], tint[2],
                 0.28f * bright);
-        // Bloom: light bleeding far past the rift, as a camera sees it. A shader pack's own bloom never
-        // reaches this sky (it is drawn after the pack), so it is stronger there.
         float bloom = bloomStrength();
         textured(m, texture(i, "rift_bloom"), d, w * 6.5f, h * 4.5f, 0f, R_RIFT + 1.7f, tint[0], tint[1], tint[2],
                 0.40f * bright * bloom);
         textured(m, texture(i, "rift_glow"), d, h * 2.2f, h * 2.2f, 0f, R_RIFT + 1.6f, tint[0], tint[1], tint[2],
                 0.55f * bright * beating * bloom);
-        // The swirl inside the slit.
         textured(m, texture(i, "rift_vortex"), d, w * 0.36f, h * 0.8f, t * 0.04f * (i % 2 == 0 ? 1 : -1),
                 R_RIFT, tint[0], tint[1], tint[2], 0.9f * Math.min(1f, o));
         textured(m, texture(i, "rift_bloom"), d, w * 1.15f, h * 1.15f, 0f, R_RIFT - 0.3f, tint[0], tint[1], tint[2],
@@ -389,7 +338,6 @@ public final class SkyClashRenderer {
         float hot = Math.min(1f, 0.35f + 0.5f * heat + birth + sealFlash);
         textured(m, texture(i, "rift_rim_hot"), d, w, h, 0f, R_RIFT - 0.8f, 1f, 1f, 1f,
                 hot * Math.min(1f, o + sealFlash));
-        // Rays turning slowly behind it, and rings breathing out of it.
         textured(m, texture(i, "rift_rays"), d, h * 2.4f, h * 2.4f, t * 0.006f + i, R_RIFT + 1f, tint[0], tint[1],
                 tint[2], (0.3f + 0.3f * heat) * Math.min(1f, o));
         float ring = ((t + i * 13) % 50f) / 50f;
@@ -399,17 +347,13 @@ public final class SkyClashRenderer {
                 Math.min(1f, 0.25f + birth + sealFlash) * Math.min(1f, o + sealFlash));
     }
 
-    /** Bloom layers at full strength over a shader pack (whose own bloom never reaches this sky), softer without. */
     private static float bloomStrength() {
         return ShaderPackCompat.overlay() ? 1f : 0.6f;
     }
 
-    // Night --------------------------------------------------------------------------------------------
-
-    private static final int STARS = 420;
+private static final int STARS = 420;
     private static final float[] WHITE = {1f, 1f, 1f};
 
-    /** As the sky darkens, stars come out: soft points that twinkle, a few with a hot white heart. */
     private static void stars(BufferBuilder b, Matrix4f m, float t) {
         float on = veilStrength(t) / 0.66f * (1f - (float) Math.exp(-Math.max(0f, t - SkyClash.DETONATE) / 6f)
                 * (t >= SkyClash.DETONATE ? 1f : 0f));
@@ -420,7 +364,6 @@ public final class SkyClashRenderer {
         for (int j = 0; j < STARS; j++) {
             long h = seed ^ (j * 0x9E3779B97F4A7C15L);
             float yaw = hash(h) * 360f;
-            // Denser low in the sky, thinning towards the zenith where the clash burns.
             float elevation = 4f + 84f * (float) Math.pow(hash(h + 1), 1.4);
             EldritchSkyCelestial.direction(yaw, elevation, d);
             float size = 0.18f + 0.45f * hash(h + 2) * hash(h + 2);
@@ -434,7 +377,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** Each rift is born with a flash of its own colour and a ring of force rolling out of it. */
     private static void riftBirths(BufferBuilder b, Matrix4f m, float t) {
         for (int i = 0; i < 4; i++) {
             float since = t - SkyClash.RIFT_OPEN - i * SkyClash.RIFT_STAGGER;
@@ -450,7 +392,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** As the clash is crushed to a point before it bursts, rings of light rush inward to it. */
     private static void implosion(BufferBuilder b, Matrix4f m, float t, float[] clash) {
         float on = smooth((t - SkyClash.DETONATE + 44) / 12f) * (t < SkyClash.DETONATE ? 1f : 0f);
         if (on <= 0.01f) {
@@ -463,7 +404,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** After the blast, four clouds of the rifts' colours drift outward and slowly fade: the heavens' scars. */
     private static void aftermath(BufferBuilder b, Matrix4f m, float t, float[] clash) {
         float since = t - SkyClash.DETONATE;
         if (since < 0f) {
@@ -482,9 +422,7 @@ public final class SkyClashRenderer {
         }
     }
 
-    // Beams --------------------------------------------------------------------------------------------
-
-    private static float beamFade(float t) {
+private static float beamFade(float t) {
         return 1f - smooth((t - SkyClash.DETONATE) / 5f);
     }
 
@@ -499,7 +437,6 @@ public final class SkyClashRenderer {
         float w = (1f + 0.55f * push) * (1f + 0.7f * heat) * flicker;
         float[] c = COLOURS[i];
         if (i == DARK) {
-            // Only its edges burn: pale fire along both banks of the dark river.
             beamPath(b, m, t, i, clash, reach, 0.35f * w, c[0], c[1], c[2], 0.75f, R_BEAM, 1.9f * w);
             beamPath(b, m, t, i, clash, reach, 0.35f * w, c[0], c[1], c[2], 0.75f, R_BEAM, -1.9f * w);
             beamPath(b, m, t, i, clash, reach, 4.5f * w, c[0] * 0.5f, c[1] * 0.4f, c[2] * 0.7f, 0.25f, R_BEAM + 0.5f, 0f);
@@ -508,7 +445,6 @@ public final class SkyClashRenderer {
             beamPath(b, m, t, i, clash, reach, 1.6f * w, c[0], c[1], c[2], 0.85f, R_BEAM, 0f);
             beamPath(b, m, t, i, clash, reach, 0.45f * w, 1f, 1f, 1f, 0.95f, R_BEAM - 0.3f, 0f);
         }
-        // Pulses racing up the beam into the clash.
         float[] from = riftDir(t, i);
         for (int p = 0; p < 4; p++) {
             float s = fract(t * (0.018f + 0.02f * heat) + p / 4f + i * 0.13f);
@@ -527,10 +463,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /**
-     * A beam along the great circle from rift {@code i} to the clash, drawn to {@code reach}, {@code width}
-     * degrees wide (soft-edged), shifted sideways by {@code offset} degrees and wavering as it goes.
-     */
     private static void beamPath(BufferBuilder b, Matrix4f m, float t, int i, float[] clash, float reach, float width,
                                  float r, float g, float bl, float alpha, float radius, float offset) {
         float[] from = riftDir(t, i);
@@ -546,7 +478,6 @@ public final class SkyClashRenderer {
                 side = cross(p, new float[]{0, 1, 0});
             }
             normalize(side);
-            // Thicker where it strains against the others.
             float swell = 1f + 0.6f * smooth((s - 0.75f) / 0.25f) * heat(t);
             float half = (float) Math.tan(Math.toRadians(width * 0.5f * swell));
             float shift = (float) Math.tan(Math.toRadians(offset));
@@ -566,13 +497,11 @@ public final class SkyClashRenderer {
             prevL = l;
             prevR = rr;
         }
-        // The spearhead as it climbs.
         if (reach < 0.999f && alpha > 0.3f && offset == 0f) {
             fan(b, m, prevC, width * 1.4f, radius - 0.4f, r, g, bl, Math.min(1f, alpha + 0.2f), 0f);
         }
     }
 
-    /** Beams sway as they strain, most in the middle, not at either end. */
     private static void wobble(float[] p, float[] from, float[] to, float s, float t, int i) {
         float amp = (0.6f + 2.2f * heat(t)) * (float) Math.sin(Math.PI * s);
         float w = amp * (float) Math.sin(s * 9f - t * 0.35f + i * 1.7f);
@@ -588,10 +517,7 @@ public final class SkyClashRenderer {
         normalize(p);
     }
 
-    // The struggle -------------------------------------------------------------------------------------
-
-    /** Lightning jumping between neighbouring beams near the clash, and tendrils torn off it. */
-    private static void arcs(BufferBuilder b, Matrix4f m, float t, float[] clash) {
+private static void arcs(BufferBuilder b, Matrix4f m, float t, float[] clash) {
         if (t < SkyClash.CLASH || t >= SkyClash.DETONATE) {
             return;
         }
@@ -609,7 +535,6 @@ public final class SkyClashRenderer {
             float[] col = mix(COLOURS[i], COLOURS[j], 0.5f);
             bolt(b, m, a, c, h, 2.2f, col, 0.9f);
         }
-        // Tendrils flung out of the clash into the sky as it grows violent.
         int tendrils = (int) (heat * 5);
         for (int n = 0; n < tendrils; n++) {
             long h = seed ^ (bucket * 0x2545F4914F6CDD1DL) ^ (n * 0x9E3779B97F4A7C15L);
@@ -624,7 +549,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** A jagged lightning bolt between two sky directions. */
     private static void bolt(BufferBuilder b, Matrix4f m, float[] from, float[] to, long h, float jag, float[] c, float alpha) {
         int steps = 12;
         float[] prev = from;
@@ -648,7 +572,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** Rings of force rippling out across the heavens from the clash. */
     private static void shockRings(BufferBuilder b, Matrix4f m, float t, float[] clash) {
         if (t < SkyClash.CLASH || t >= SkyClash.DETONATE + 10) {
             return;
@@ -665,7 +588,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** Shards of every colour raining down the sky from the clash. */
     private static void shards(BufferBuilder b, Matrix4f m, float t, float[] clash) {
         float on = smooth((t - SkyClash.CLASH) / 30f) * (1f - smooth((t - SkyClash.DETONATE - 80) / 40f));
         if (on <= 0.01f) {
@@ -694,26 +616,21 @@ public final class SkyClashRenderer {
         }
     }
 
-    // The detonation -----------------------------------------------------------------------------------
-
-    private static void detonation(BufferBuilder b, Matrix4f m, float t, float[] clash) {
+private static void detonation(BufferBuilder b, Matrix4f m, float t, float[] clash) {
         float since = t - SkyClash.DETONATE;
         if (since < 0f) {
             return;
         }
-        // The ring racing out to every horizon, and a white one behind it.
         float k = Math.min(1f, since / 70f);
         ring(b, m, clash, 2f + 100f * easeOut(k), 3f + 5f * k, R_CORE + 3f, 0.95f * (1f - k) * (1f - k), 0f);
         float k2 = Math.min(1f, Math.max(0f, since - 8f) / 80f);
         if (since > 8f) {
             ring(b, m, clash, 1f + 90f * easeOut(k2), 1.2f, R_CORE + 3.2f, 0.7f * (1f - k2), 1f);
         }
-        // The whole sky flashes.
         float flash = (float) Math.exp(-since / 6f);
         if (flash > 0.02f) {
             fan(b, m, clash, 170f, R_VEIL - 1f, 1f, 0.97f, 0.92f, 0.85f * flash, 0.55f * flash);
         }
-        // A four-pointed star burned into the zenith, fading slowly.
         float scar = smooth(since / 10f) * (1f - smooth((since - 60f) / 110f));
         if (scar > 0.01f) {
             float[] b0 = new float[3], b1 = new float[3];
@@ -732,14 +649,12 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** The heart of the clash: four suns wrestling, then shrinking to a point before they burst. */
     private static void core(Matrix4f m, float t, float[] clash) {
         float on = smooth((t - SkyClash.CLASH + 10) / 20f) * beamFade(t);
         if (on <= 0.01f) {
             return;
         }
         float heat = heat(t);
-        // Before it bursts, it is crushed down to a point, brighter and brighter.
         float crush = smooth((t - SkyClash.DETONATE + 40) / 38f);
         float scale = (1f + 0.5f * heat) * (1f - 0.8f * crush);
         float[] b0 = new float[3], b1 = new float[3];
@@ -750,7 +665,6 @@ public final class SkyClashRenderer {
         textured(m, texture(0, "rift_rays"), clash, 22f * scale, 22f * scale, -t * 0.013f, R_CORE + 0.9f, 1f, 1f, 1f,
                 (0.35f + 0.4f * heat) * on);
         for (int i = 0; i < 4; i++) {
-            // Each sun leans towards its own beam, as far as it is winning.
             float yaw = (float) Math.toRadians(SkyClash.RIFT_YAW[i]);
             float[] horizontal = {(float) -Math.sin(yaw), 0f, (float) Math.cos(yaw)};
             float azimuth = (float) Math.atan2(dot(horizontal, b1), dot(horizontal, b0));
@@ -760,7 +674,6 @@ public final class SkyClashRenderer {
             textured(m, texture(i, "rift_glow"), at, size, size, t * 0.02f * (i % 2 == 0 ? 1 : -1) + i, R_CORE - i * 0.1f,
                     tint[0], tint[1], tint[2], on);
         }
-        // Bloom round the collision point.
         float bloom = bloomStrength();
         textured(m, texture(1, "rift_glow"), clash, 48f * scale, 48f * scale, 0f, R_CORE + 1.2f, 1f, 0.95f, 0.9f,
                 (0.35f + 0.35f * heat) * on * bloom);
@@ -775,9 +688,7 @@ public final class SkyClashRenderer {
         BufferUploader.drawWithShader(b.end());
     }
 
-    // Drawing ------------------------------------------------------------------------------------------
-
-    private static BufferBuilder begin() {
+private static BufferBuilder begin() {
         BufferBuilder buffer = Tesselator.getInstance().getBuilder();
         buffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
         return buffer;
@@ -791,10 +702,6 @@ public final class SkyClashRenderer {
         return Rotasutils.id("textures/environment/" + FOLDERS[rift] + name + ".png");
     }
 
-    /**
-     * A texture laid on the sky around {@code d}, {@code halfW} by {@code halfH} degrees, upright,
-     * turned by {@code spin} radians, tinted and faded.
-     */
     private static void textured(Matrix4f m, ResourceLocation location, float[] d, float halfW, float halfH, float spin,
                                  float radius, float r, float g, float b, float alpha) {
         if (alpha <= 0.004f || halfW <= 0.01f || halfH <= 0.01f) {
@@ -839,7 +746,6 @@ public final class SkyClashRenderer {
         buffer.vertex(m, px / len * radius, py / len * radius, pz / len * radius).uv(u, v).color(r, g, b, a).endVertex();
     }
 
-    /** A soft round disc of light (or shadow) on the sky, {@code radiusDeg} across. */
     private static void fan(BufferBuilder b, Matrix4f m, float[] d, float radiusDeg, float radius, float r, float g,
                             float bl, float alpha, float edgeAlpha) {
         if (alpha <= 0.01f) {
@@ -858,7 +764,6 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** A soft ring on the sky around {@code d}; its colour turns through the four rifts round it, or is white. */
     private static void ring(BufferBuilder b, Matrix4f m, float[] d, float radiusDeg, float widthDeg, float radius,
                              float alpha, float white) {
         if (alpha <= 0.01f) {
@@ -881,11 +786,9 @@ public final class SkyClashRenderer {
         }
     }
 
-    /** The colour of the rift whose side of the sky the ring is passing through at {@code azimuth}. */
     private static float[] compassColour(float[] d, float[] b0, float[] b1, float azimuth) {
         float[] p = around(d, b0, b1, azimuth, 30f);
         float yaw = EldritchSkyCelestial.wrapDegrees((float) Math.toDegrees(Math.atan2(-p[0], p[2])));
-        // Rifts sit at 180 (violet), 270 (gold), 0 (crimson), 90 (dark): blend the two nearest.
         float[] order = {0f, 90f, 180f, 270f};
         int[] rift = {2, 3, 0, 1};
         int k = (int) (yaw / 90f) % 4;
@@ -893,7 +796,6 @@ public final class SkyClashRenderer {
         return mix(COLOURS[rift[k]], COLOURS[rift[(k + 1) % 4]], smooth(f));
     }
 
-    /** A soft line on the sky. */
     private static void segment(BufferBuilder b, Matrix4f m, float[] a, float[] c, float widthDeg, float radius,
                                 float r, float g, float bl, float alpha) {
         float[] side = cross(a, sub(c, a));
@@ -908,7 +810,6 @@ public final class SkyClashRenderer {
         quad(b, m, a, ar, cr, c, radius, r, g, bl, alpha, 0f, 0f, alpha);
     }
 
-    /** A line bright at {@code head} and fading to nothing at {@code tail}. */
     private static void segmentFade(BufferBuilder b, Matrix4f m, float[] head, float[] tail, float widthDeg, float radius,
                                     float[] c, float alpha) {
         float[] side = cross(head, sub(tail, head));
@@ -922,7 +823,6 @@ public final class SkyClashRenderer {
         quad(b, m, head, hr, tail, tail, radius, c[0], c[1], c[2], alpha, 0f, 0f, 0f);
     }
 
-    /** A blade of light from {@code base} tapering to a point at {@code tip}. */
     private static void taper(BufferBuilder b, Matrix4f m, float[] base, float[] tip, float widthDeg, float radius,
                               float[] c, float alpha) {
         int steps = 12;
@@ -965,10 +865,7 @@ public final class SkyClashRenderer {
         b.vertex(m, p[0] * k, p[1] * k, p[2] * k).color(r, g, bl, Math.max(0f, Math.min(1f, a))).endVertex();
     }
 
-    // Sphere maths ---------------------------------------------------------------------------------------
-
-    /** An upright tangent basis at {@code d}: right is level with the horizon wherever it can be. */
-    private static void basis(float[] d, float[] right, float[] up) {
+private static void basis(float[] d, float[] right, float[] up) {
         if (Math.abs(d[1]) < 0.985f) {
             right[0] = d[2];
             right[1] = 0f;
@@ -986,7 +883,6 @@ public final class SkyClashRenderer {
         up[2] = u[2];
     }
 
-    /** The direction {@code angleDeg} away from {@code d}, heading {@code azimuth} radians round it. */
     private static float[] around(float[] d, float[] b0, float[] b1, float azimuth, float angleDeg) {
         double r = Math.toRadians(angleDeg);
         float c = (float) Math.cos(r), s = (float) Math.sin(r);
@@ -1043,9 +939,7 @@ public final class SkyClashRenderer {
         return new float[]{a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f};
     }
 
-    // Easing and hashing ---------------------------------------------------------------------------------
-
-    private static float smooth(float t) {
+private static float smooth(float t) {
         t = Math.max(0f, Math.min(1f, t));
         return t * t * (3f - 2f * t);
     }

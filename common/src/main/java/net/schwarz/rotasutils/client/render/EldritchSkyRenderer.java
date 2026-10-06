@@ -12,14 +12,12 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 
-/** V4 Apotheosis renderer. Every primitive is a world-fixed direction on the celestial sphere. */
 @Environment(EnvType.CLIENT)
 public final class EldritchSkyRenderer {
     private static final float[] A = new float[3];
     private static final float[] B = new float[3];
     private static final float[] C = new float[3];
     private static final float[] D = new float[3];
-    /** The pre-texture rift built from flat colored quads (crowns, bands, strips); kept for comparison. */
     static final boolean LEGACY_RIFT_LAYERS = false;
     private static long cachedSeed = Long.MIN_VALUE;
     private static EldritchSkyGeometry cachedGeometry;
@@ -40,14 +38,10 @@ public final class EldritchSkyRenderer {
         EldritchSkyEnvironment env = EldritchSkyClientState.environment(partialTick);
         EldritchSkyPalette.beginFrame();
         var snapshot = EldritchSkyClientState.current();
-        // Sound first: the loops must be able to fade out on the frames that draw nothing.
-        // Once per frame: the shader-pack overlay pass re-enters here after the sky pass.
         if (!ShaderPackCompat.overlay()) EldritchSkyCinema.tickSounds(env);
         if (isFoggy || blockedByFluid) return;
         if (!env.active() || env.openness() <= 0f) return;
         if (ShaderPackCompat.active()) {
-            // Packs recolour, fog or paint their own sky over the sky pass (tested: Complementary, Solas,
-            // Photon, Noble); draw it after the world instead, where it still picks up the pack's bloom.
             SkyShaderOverlay.defer(pose, partialTick);
             return;
         }
@@ -65,8 +59,6 @@ public final class EldritchSkyRenderer {
         boolean overlay = ShaderPackCompat.overlay();
         RenderSystem.depthMask(false);
         if (overlay) {
-            // Drawn over the finished frame: pushed out past the terrain and depth-tested against it,
-            // so blocks still stand in front of the sky.
             pose.pushPose();
             float blocks = net.minecraft.client.Minecraft.getInstance().options.getEffectiveRenderDistance() * 16f;
             float stretch = Math.max(1f, blocks * 1.6f / 100f);
@@ -99,7 +91,6 @@ public final class EldritchSkyRenderer {
                     if (i == 3) {
                         EldritchSkyTentacleRenderer.render(pose, env);
                     } else {
-                        // Offset each herald's loop so the three do not move as clones.
                         EldritchSkyHeraldRenderer.render(pose, env, FOUR_PALETTES[i], 0.70f, i * 2.3f);
                     }
                 }
@@ -110,24 +101,18 @@ public final class EldritchSkyRenderer {
             boolean reaching = snapshot != null
                     && net.schwarz.rotasutils.sky.EldritchSkyTransition.tentacles(snapshot.variant);
             if (!herald && !reaching) {
-                // The herald variant replaces the shadowy presence with the figure itself.
                 EldritchSkyPresenceRenderer.render(pose, geometry, env);
             }
-            // Stars, galaxy, aurora and meteors: the sky is spectacular in every direction,
-            // not only where the tear is.
             EldritchSkyMajestyRenderer.render(pose.last().pose(), env);
             RenderSystem.enableBlend();
             RenderSystem.setShader(GameRenderer::getPositionColorShader);
             if (!LEGACY_RIFT_LAYERS) {
-                // The tear is painted from textures; the flat-quad rings and strips below are the old look.
                 EldritchRiftRenderer.render(pose.last().pose(), geometry, env);
                 if (herald) {
-                    // Last, so the figure stands in front of the tear it walks out of.
                     EldritchSkyHeraldRenderer.render(pose, env,
                             net.schwarz.rotasutils.sky.EldritchSkyTransition.palette(snapshot.variant));
                 }
                 if (snapshot != null && net.schwarz.rotasutils.sky.EldritchSkyTransition.tentacles(snapshot.variant)) {
-                    // Last, so the tentacles reach out in front of the tear.
                     EldritchSkyTentacleRenderer.render(pose, env);
                 }
                 return;
@@ -178,10 +163,6 @@ public final class EldritchSkyRenderer {
         return FOUR_SKIES[index];
     }
 
-    /**
-     * Skips a rift only when it is well behind the camera. Its veil reaches 64 degrees and its herald
-     * stands in front of it, so a tighter cut made them pop in and out while turning.
-     */
     private static boolean visible(EldritchSkyGeometry geometry) {
         EldritchSkyCelestial.direction(geometry.focalYawDeg(), geometry.focalElevationDeg(), FOCAL_DIRECTION);
         var look = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getLookVector();

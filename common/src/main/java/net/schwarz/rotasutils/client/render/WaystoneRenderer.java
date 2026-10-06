@@ -14,19 +14,8 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.schwarz.rotasutils.block.WaystoneBlockEntity;
 
-/**
- * What makes a warp pillar a landmark rather than a block: a crystal core turning inside the crown,
- * a ring of shards orbiting it, and a second ring on a tilted plane running the other way, all
- * rising and falling on a slow sine.
- *
- * <p>Costs are kept honest for something drawn every frame per visible pillar. One cached block
- * state; eleven small block draws up close and seven further out, since the fine ring stops being
- * readable long before the core does; nothing read from the world. The animation comes from the
- * game time, so every client sees the same phase with nothing synchronised.
- */
 @Environment(EnvType.CLIENT)
 public class WaystoneRenderer implements BlockEntityRenderer<WaystoneBlockEntity> {
-    /** Height above the plinth's origin: the middle of the crown's ring, three blocks up. */
     private static final float CORE_HEIGHT = 2.55f;
     private static final float CORE_SCALE = 0.42f;
 
@@ -37,15 +26,12 @@ public class WaystoneRenderer implements BlockEntityRenderer<WaystoneBlockEntity
     private static final int INNER_SHARDS = 4;
     private static final float INNER_SCALE = 0.09f;
     private static final float INNER_RADIUS = 0.30f;
-    /** Tilt of the inner ring's plane, so the two orbits read as separate rather than concentric. */
     private static final float INNER_TILT = 62.0f;
 
-    /** Degrees per tick. A core turn takes eight seconds; the rings run slower and opposed. */
     private static final float CORE_SPIN = 360.0f / 160.0f;
     private static final float OUTER_SPIN = -360.0f / 260.0f;
     private static final float INNER_SPIN = 360.0f / 190.0f;
 
-    /** Past this, the fine ring is dropped: at that range it is a flicker, not a shape. */
     private static final double DETAIL_DISTANCE_SQR = 32.0 * 32.0;
 
     private static final BlockState CRYSTAL = Blocks.AMETHYST_BLOCK.defaultBlockState();
@@ -66,7 +52,6 @@ public class WaystoneRenderer implements BlockEntityRenderer<WaystoneBlockEntity
         }
         float time = waystone.getLevel().getGameTime() % 24000L + partialTick;
         float bob = (float) Math.sin(time * 0.045f) * 0.07f;
-        // The crystal is its own light source in the fiction, so it is drawn at full brightness.
         int glow = LightTexture.FULL_BRIGHT;
 
         poses.pushPose();
@@ -107,7 +92,6 @@ public class WaystoneRenderer implements BlockEntityRenderer<WaystoneBlockEntity
         poses.popPose();
     }
 
-    /** Whether the camera is near enough for the tilted ring to be worth drawing. */
     private boolean closeEnoughForDetail(WaystoneBlockEntity waystone) {
         var camera = context.getBlockEntityRenderDispatcher().camera;
         return camera != null && camera.getPosition().distanceToSqr(
@@ -116,7 +100,6 @@ public class WaystoneRenderer implements BlockEntityRenderer<WaystoneBlockEntity
                 waystone.getBlockPos().getZ() + 0.5) < DETAIL_DISTANCE_SQR;
     }
 
-    /** Draws the crystal centred on the current pose at {@code scale}. */
     private void drawCrystal(PoseStack poses, MultiBufferSource buffers, int light, float scale) {
         poses.pushPose();
         poses.scale(scale, scale, scale);
@@ -125,7 +108,6 @@ public class WaystoneRenderer implements BlockEntityRenderer<WaystoneBlockEntity
         poses.popPose();
     }
 
-    /** Keeps the crown visible from across a plaza, which is the point of a landmark. */
     @Override
     public int getViewDistance() {
         return 128;

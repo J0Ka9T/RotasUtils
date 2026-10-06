@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** The shipped sample packs must keep compiling through the same registry a server uses. */
 class ExamplePacksTest {
     private static Path examples() {
         Path direct = Path.of("examples");
@@ -40,7 +39,6 @@ class ExamplePacksTest {
             assertTrue(prepared.valid(), pack + ": " + prepared.issues());
             all.addAll(sources);
         }
-        // The samples are also meant to coexist: installing all of them at once must still compile.
         var combined = registry.prepare(all);
         assertTrue(combined.valid(), combined.issues().toString());
         var snapshot = combined.snapshot();
@@ -51,7 +49,6 @@ class ExamplePacksTest {
         assertFalse(snapshot.monsters().profiles().isEmpty(), "monster sample defines profiles");
     }
 
-    /** The requirement adapters a live server registers; the samples may reference them. */
     private static final class KernelAdaptersFixture {
         static Map<String, java.util.function.Function<com.google.gson.JsonObject, ConditionEngine.Condition>> conditions() {
             Map<String, java.util.function.Function<com.google.gson.JsonObject, ConditionEngine.Condition>> adapters = new java.util.HashMap<>();

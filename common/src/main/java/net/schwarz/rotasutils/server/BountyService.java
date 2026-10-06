@@ -20,12 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.SplittableRandom;
 
-/**
- * Bounty contracts from a bounty master. Each day the board shows the same few contracts to everyone, picked from
- * {@code npcServices.bounties} by the date; a player holds one at a time, hunts it, and turns it in for gold and EXP.
- * The contract is copied into the player's server-only variables when taken, so an admin editing the pool never
- * changes a hunt already under way.
- */
 public final class BountyService {
     private static final String P = "rpg.bounty.";
 
@@ -41,7 +35,6 @@ public final class BountyService {
     private BountyService() {
     }
 
-    /** Today's board: the same contracts for everyone, reshuffled at the day boundary. */
     public static List<Contract> today(SeasonRules.NpcServiceRules rules, long day) {
         List<Contract> all = new ArrayList<>();
         for (int i = 0; i < rules.bounties.length; i++) all.add(new Contract(i, rules.bounties[i]));
@@ -92,7 +85,6 @@ public final class BountyService {
         data.setDirty();
     }
 
-    /** Pays a finished contract. Null on success, otherwise why not. */
     public static String turnIn(ServerPlayer player, RotasData data) {
         PlayerProgress progress = data.progress(player.getUUID());
         Active active = active(progress);
@@ -120,7 +112,6 @@ public final class BountyService {
         return target.equals(id.toString());
     }
 
-    /** Counts a kill toward the killer's contract. */
     public static void onKill(ServerPlayer killer, RotasData data, LivingEntity victim) {
         PlayerProgress progress = data.peek(killer.getUUID());
         if (progress == null) return;

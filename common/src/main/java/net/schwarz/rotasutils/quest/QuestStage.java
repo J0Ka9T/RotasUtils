@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/** Serializable stage membership and branching metadata for a canonical quest. */
 public record QuestStage(String key, String label, List<String> objectiveKeys,
                          List<Branch> branches, String rewardId) {
     private static final Pattern KEY_PATTERN = Pattern.compile("[a-z0-9_./-]{1,96}");

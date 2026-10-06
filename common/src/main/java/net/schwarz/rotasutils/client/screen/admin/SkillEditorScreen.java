@@ -20,11 +20,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Visual skill tree editor, kept to a handful of actions: add a skill (under the selected one, already
- * linked), edit it, link it, delete it. Which skills are starting points is worked out from the links,
- * so there is no root flag or link type to manage here; those live in the skill's advanced settings.
- */
 @Environment(EnvType.CLIENT)
 public class SkillEditorScreen extends RotasScreen {
     private static final int NODE_SIZE = 26;
@@ -41,7 +36,6 @@ public class SkillEditorScreen extends RotasScreen {
     private boolean panning;
     private String selectedNodeId = "";
     private String draggingNodeId = "";
-    /** While on, clicking another skill links it to (or unlinks it from) the selected skill. */
     private boolean linking;
     private String lastClickId = "";
     private long lastClickTime;
@@ -56,7 +50,6 @@ public class SkillEditorScreen extends RotasScreen {
         this.categoryId = categoryId;
     }
 
-    /** Holds an unsaved draft of this skill tree: never rebuilt by a push, but warns when someone else changes it. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
@@ -138,17 +131,12 @@ public class SkillEditorScreen extends RotasScreen {
         return selectedNodeId.isEmpty() ? null : draft.node(selectedNodeId);
     }
 
-    /**
-     * A skill with no prerequisite links is a starting point; everything else is reached through its
-     * links. Deriving this keeps a tree valid without asking the admin to understand "root" nodes.
-     */
     private void updateStartingSkills() {
         for (SkillNode node : draft.nodes().values()) {
             node.setRoot(prerequisites(node).isEmpty());
         }
     }
 
-    /** Links that must be satisfied before {@code node} can be taken. */
     static List<SkillConnection> prerequisites(SkillNode node) {
         List<SkillConnection> result = new ArrayList<>();
         for (SkillConnection connection : node.connections()) {
@@ -170,7 +158,6 @@ public class SkillEditorScreen extends RotasScreen {
         SkillNode node = new SkillNode(Ids.unique("skill", taken), draft.id());
         int x = after == null ? snap((int) -panX) : after.x();
         int y = after == null ? snap((int) -panY) : after.y() + GRID;
-        // Step sideways until the spot is free, so a new skill never hides under an existing one.
         for (int attempt = 0; attempt < 32 && occupied(x, y); attempt++) {
             x += GRID;
         }
@@ -194,7 +181,6 @@ public class SkillEditorScreen extends RotasScreen {
         return false;
     }
 
-    /** Makes {@code target} require the selected skill, or removes that requirement if it exists. */
     private void toggleLink(SkillNode target) {
         SkillNode source = selected();
         if (source == null || source == target) {
@@ -202,7 +188,6 @@ public class SkillEditorScreen extends RotasScreen {
         }
         boolean removed = target.connections().removeIf(connection -> connection.fromId().equals(source.id()));
         if (!removed) {
-            // A two-way requirement would lock both skills forever.
             source.connections().removeIf(connection -> connection.fromId().equals(target.id()));
             target.connections().add(new SkillConnection(source.id()));
         }
@@ -237,9 +222,7 @@ public class SkillEditorScreen extends RotasScreen {
         return Math.round(value / (float) GRID) * GRID;
     }
 
-    // Rendering ------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(canvasLeft, canvasTop, canvasLeft + canvasWidth, canvasTop + canvasHeight,
                 draft.backgroundColor());
@@ -369,9 +352,7 @@ public class SkillEditorScreen extends RotasScreen {
         return null;
     }
 
-    // Interaction ----------------------------------------------------------
-
-    @Override
+@Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (Ui.inside((int) mouseX, (int) mouseY, canvasLeft, canvasTop, canvasWidth, canvasHeight)) {
             SkillNode node = nodeAt(mouseX, mouseY);
@@ -445,7 +426,6 @@ public class SkillEditorScreen extends RotasScreen {
         return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
-    /** Sub-editors call this after mutating a node. */
     public void markChanged() {
         updateStartingSkills();
         rebuild();

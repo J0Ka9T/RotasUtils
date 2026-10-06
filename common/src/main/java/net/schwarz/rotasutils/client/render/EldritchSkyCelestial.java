@@ -1,18 +1,5 @@
 package net.schwarz.rotasutils.client.render;
 
-/**
- * Pure angular math shared by every eldritch sky layer.
- *
- * <p>Sky geometry is authored in world celestial coordinates - compass yaw plus elevation above
- * the horizon - instead of screen space. Yaw 0 faces south and yaw 90 faces west, matching
- * {@code Entity#calculateViewVector}, and positive elevation is upward. Renderers hand these
- * directions straight to the camera-rotated {@code renderSky} pose stack, so the rupture stays
- * fixed in the heavens while the player turns and the whole-sky corruption can be sampled in
- * every direction. No layer ever undoes or replaces the camera pose.</p>
- *
- * <p>Everything here is deterministic and free of Minecraft types, so the whole model can be
- * unit tested without a client.</p>
- */
 public final class EldritchSkyCelestial {
     public static final float MIN_ELEVATION = -90f;
     public static final float MAX_ELEVATION = 90f;
@@ -20,7 +7,6 @@ public final class EldritchSkyCelestial {
     private EldritchSkyCelestial() {
     }
 
-    /** Writes the unit direction of a celestial coordinate into {@code out} as x, y, z. */
     public static void direction(float yawDeg, float elevationDeg, float[] out) {
         double yaw = Math.toRadians(yawDeg);
         double elevation = Math.toRadians(clamp(elevationDeg, MIN_ELEVATION, MAX_ELEVATION));
@@ -30,11 +16,6 @@ public final class EldritchSkyCelestial {
         out[2] = (float) (Math.cos(yaw) * horizontal);
     }
 
-    /**
-     * Maps a tangent-space angular offset onto the celestial sphere. The optional roll rotates
-     * the local horizontal/vertical axes before projection, which gives crowns genuinely
-     * different axes without using a flat plane.
-     */
     public static void around(float centerYawDeg, float centerElevationDeg, float horizontalDeg,
                               float verticalDeg, float rollDeg, float[] out) {
         double yaw = Math.toRadians(centerYawDeg);
@@ -73,7 +54,6 @@ public final class EldritchSkyCelestial {
         out[2] = (float) (centerZ * cosAngular + tangentZ * sinAngular);
     }
 
-    /** Writes a point on an elliptical spherical ring around a celestial direction. */
     public static void ring(float centerYawDeg, float centerElevationDeg, float horizontalRadiusDeg,
                             float verticalRadiusDeg, float angleRad, float axisDeg, float[] out) {
         around(centerYawDeg, centerElevationDeg,
@@ -87,7 +67,6 @@ public final class EldritchSkyCelestial {
                 && Float.isFinite(vector[0]) && Float.isFinite(vector[1]) && Float.isFinite(vector[2]);
     }
 
-    /** Converts a tangent-plane horizontal offset into a yaw offset at the given elevation. */
     public static float yawOffset(float tangentDeg, float elevationDeg) {
         double horizontal = Math.cos(Math.toRadians(clamp(elevationDeg, -80f, 80f)));
         return (float) (tangentDeg / Math.max(0.18, Math.abs(horizontal)));
@@ -118,13 +97,11 @@ public final class EldritchSkyCelestial {
         return wrapped < 0f ? wrapped + 360f : wrapped;
     }
 
-    /** Wraps a yaw difference into -180..180 so angles can be compared and blended. */
     public static float wrap180(float degrees) {
         float wrapped = wrapDegrees(degrees);
         return wrapped > 180f ? wrapped - 360f : wrapped;
     }
 
-    /** Deterministic 0..1 hash of the event seed; stable across platforms and sessions. */
     public static float hash01(long seed) {
         long z = seed + 0x9E37_79B9_7F4A_7C15L;
         z = (z ^ (z >>> 30)) * 0xBF58_476D_1CE4_E5B9L;
@@ -133,7 +110,6 @@ public final class EldritchSkyCelestial {
         return (z >>> 40) * 0x1.0p-24f;
     }
 
-    /** Deterministic -1..1 hash, for signed per-feature variation. */
     public static float hashSigned(long seed) {
         return hash01(seed) * 2f - 1f;
     }

@@ -25,11 +25,6 @@ import net.minecraftforge.registries.RegistryObject;
 import net.schwarz.rotasutils.Rotasutils;
 import net.schwarz.rotasutils.entity.CelestialFxEntity;
 
-/**
- * The Abyss school (ความมืด) for Iron's Spells: darkness magic - shadow bolts, grasping tendrils,
- * an anti-light ray, a black sun, a black hole and the Oblivion ultimate. Own power/resistance
- * attributes, damage type and focus (crying obsidian). Visuals: AbyssFxRenderer.
- */
 public final class AbyssMagic {
     public static final ResourceLocation SCHOOL_ID = new ResourceLocation(Rotasutils.MOD_ID, "abyss");
     public static final ResourceKey<DamageType> DAMAGE_TYPE =

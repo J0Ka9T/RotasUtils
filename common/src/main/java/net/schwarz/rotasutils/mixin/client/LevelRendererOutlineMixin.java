@@ -12,13 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Draws the selected level zone's outline once the world is rendered.
- *
- * <p>Injected at the end of {@link LevelRenderer#renderLevel} so the outline is drawn in the same
- * camera space as the world, and only while the Zone Wand is held (the renderer makes that check
- * itself, so this hook stays cheap for every other frame).</p>
- */
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererOutlineMixin {
     @Inject(method = "renderLevel", at = @At("TAIL"))
@@ -27,9 +20,13 @@ public abstract class LevelRendererOutlineMixin {
                                         Matrix4f projection, CallbackInfo ci) {
         net.schwarz.rotasutils.client.hud.MobPlateRenderer.render(poseStack, camera, partialTick);
         ZoneOutlineRenderer.render(poseStack, camera);
+        net.schwarz.rotasutils.client.QuestNavigator.render(poseStack, camera);
         net.schwarz.rotasutils.client.render.RiftFxRenderer.render(poseStack, camera, partialTick);
         net.schwarz.rotasutils.client.render.CeroFxRenderer.render(poseStack, camera, partialTick);
         net.schwarz.rotasutils.client.cinematic.RedVfxRenderer.render(poseStack, camera, partialTick, projection);
         net.schwarz.rotasutils.client.cinematic.PurpleVfxRenderer.render(poseStack, camera, partialTick, projection);
+        net.schwarz.rotasutils.client.cinematic.ProjectionVfxRenderer.render(poseStack, camera, partialTick, projection);
+        net.schwarz.rotasutils.client.cinematic.StargunVfxRenderer.render(poseStack, camera, partialTick, projection);
+        net.schwarz.rotasutils.client.cinematic.PurpleDissolve.render(poseStack, camera, partialTick);
     }
 }

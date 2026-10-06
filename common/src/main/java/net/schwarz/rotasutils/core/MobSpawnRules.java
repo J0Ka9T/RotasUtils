@@ -6,22 +6,12 @@ import com.google.gson.JsonObject;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-/**
- * Where and how the mobs of one monster profile (a Mob Setup) spawn.
- *
- * <p>Two things read these rules. The spawn gate checks every natural and world-generation spawn of
- * the profile's mobs and cancels the ones the rules forbid; spawners, eggs, commands and the extra
- * spawns below are never blocked. The spawn director adds extra spawns near players when
- * {@link Extra#enabled()} is on, which is how a mob that "never spawns naturally" can still live in
- * one zone only. This class is pure so the rules are unit-tested without a world.</p>
- */
 public record MobSpawnRules(boolean natural, Where where, Set<String> zones, Set<String> dimensions, Time time,
                             int minY, int maxY, int maxNearby, Extra extra) {
     public enum Where { ANYWHERE, ONLY_IN_ZONES, NOT_IN_ZONES }
 
     public enum Time { ANY, DAY, NIGHT }
 
-    /** Extra spawns added near players, on top of (or instead of) normal spawning. */
     public record Extra(boolean enabled, int perMinute, int groupMax, boolean vanillaRules) {
         public Extra {
             perMinute = clamp(perMinute, 1, MAX_PER_MINUTE);
@@ -34,7 +24,6 @@ public record MobSpawnRules(boolean natural, Where where, Set<String> zones, Set
     public static final int MAX_PER_MINUTE = 60;
     public static final int MAX_GROUP = 8;
     public static final int MAX_NEARBY = 256;
-    /** Crowd cap for extra spawns when the profile sets no limit, so they can never flood an area. */
     public static final int DEFAULT_EXTRA_CAP = 8;
     public static final Extra NO_EXTRA = new Extra(false, 6, 1, true);
     public static final MobSpawnRules DEFAULT = new MobSpawnRules(true, Where.ANYWHERE, Set.of(), Set.of(), Time.ANY,
@@ -54,10 +43,6 @@ public record MobSpawnRules(boolean natural, Where where, Set<String> zones, Set
         }
     }
 
-    /**
-     * One candidate spawn position: its dimension, every zone that contains it, day or night, and height.
-     * {@code timed} is false in dimensions with a fixed clock (Nether, End), where day and night mean nothing.
-     */
     public record Place(String dimension, Set<String> zones, boolean day, int y, boolean timed) {
         public Place {
             zones = Set.copyOf(zones);
@@ -68,7 +53,6 @@ public record MobSpawnRules(boolean natural, Where where, Set<String> zones, Set
         }
     }
 
-    /** Where, when and at what height the mobs may appear, regardless of how they spawn. */
     public boolean placeAllowed(Place place) {
         if (!dimensions.isEmpty() && !dimensions.contains(place.dimension())) {
             return false;
@@ -95,13 +79,11 @@ public record MobSpawnRules(boolean natural, Where where, Set<String> zones, Set
         return extra.enabled() && placeAllowed(place);
     }
 
-    /** True when normal spawning of these mobs differs from vanilla at all, so the gate must look. */
     public boolean restrictsNatural() {
         return !natural || where != Where.ANYWHERE || !dimensions.isEmpty() || time != Time.ANY
                 || minY > LOWEST_Y || maxY < HIGHEST_Y || maxNearby > 0;
     }
 
-    /** How many of these mobs may be around before the director stops adding more. */
     public int extraCap() {
         return maxNearby > 0 ? maxNearby : DEFAULT_EXTRA_CAP;
     }

@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "rotasutils:cooking_station",
+    "rotasutils:smeltery",
+    "rotasutils:smithing_bench",
+    "rotasutils:alchemy_table",
+    "rotasutils:tannery",
+    "rotasutils:fishmonger",
+    "rotasutils:mill"
+  ]
+}

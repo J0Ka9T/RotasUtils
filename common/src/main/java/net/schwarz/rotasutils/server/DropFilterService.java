@@ -15,16 +15,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/**
- * Which ordinary drops are switched off.
- *
- * <p>A server can stop one item dropping everywhere, or stop it dropping from one kind of mob, without
- * rewriting a loot table or shipping a data pack. The decision is read at the moment a mob would spawn
- * the item, so it applies to vanilla loot, to modded mobs and to anything a data pack added.</p>
- *
- * <p>Everything is stored in {@code season.json} under {@code drops.filter} and is written back the
- * moment an administrator changes it, so a restart keeps it.</p>
- */
 public final class DropFilterService {
     private DropFilterService() {
     }
@@ -40,7 +30,6 @@ public final class DropFilterService {
         return rules.filter;
     }
 
-    /** True when this item must not drop from this entity. An empty entity id asks about every mob. */
     public static boolean blocked(RotasData data, String entityId, String itemId) {
         SeasonRules.DropFilter filter = filter(data);
         if (filter == null || !filter.enabled || itemId == null || itemId.isBlank()) {
@@ -62,7 +51,6 @@ public final class DropFilterService {
         return false;
     }
 
-    /** The same question for a live drop, which is how the mixin asks it. */
     public static boolean blocked(RotasData data, Entity entity, ItemStack stack) {
         if (data == null || entity == null || stack == null || stack.isEmpty()) {
             return false;
@@ -78,13 +66,11 @@ public final class DropFilterService {
         return String.valueOf(BuiltInRegistries.ITEM.getKey(stack.getItem()));
     }
 
-    /** Items blocked for every mob, in the order they were blocked. */
     public static List<String> blockedGlobally(RotasData data) {
         SeasonRules.DropFilter filter = filter(data);
         return filter == null ? List.of() : List.of(filter.blocked);
     }
 
-    /** Items blocked only for one entity. */
     public static List<String> blockedFor(RotasData data, String entityId) {
         SeasonRules.DropFilter filter = filter(data);
         if (filter == null || entityId == null) {
@@ -94,10 +80,6 @@ public final class DropFilterService {
         return items == null ? List.of() : List.of(items);
     }
 
-    /**
-     * Switches one item on or off for every mob. Returns false when the item id is not an item, or the
-     * list is full - a bounded list is what keeps a mistake from growing without limit.
-     */
     public static boolean setGlobal(MinecraftServer server, RotasData data, String itemId, boolean dropsNormally) {
         SeasonRules.DropFilter filter = filter(data);
         if (filter == null || !isItem(itemId)) {
@@ -118,7 +100,6 @@ public final class DropFilterService {
         return save(server, data, "drop filter global " + itemId + " drops=" + dropsNormally);
     }
 
-    /** Switches one item on or off for one kind of mob. */
     public static boolean setForEntity(MinecraftServer server, RotasData data, String entityId,
                                        String itemId, boolean dropsNormally) {
         SeasonRules.DropFilter filter = filter(data);
@@ -149,7 +130,6 @@ public final class DropFilterService {
         return save(server, data, "drop filter " + entity + " " + itemId + " drops=" + dropsNormally);
     }
 
-    /** Lets every item drop from one mob again. */
     public static boolean clearEntity(MinecraftServer server, RotasData data, String entityId) {
         SeasonRules.DropFilter filter = filter(data);
         if (filter == null || filter.byEntity.remove(normalise(entityId)) == null) {
@@ -158,7 +138,6 @@ public final class DropFilterService {
         return save(server, data, "drop filter cleared " + entityId);
     }
 
-    /** Turns the whole filter on or off without losing the lists. */
     public static boolean setEnabled(MinecraftServer server, RotasData data, boolean enabled) {
         SeasonRules.DropFilter filter = filter(data);
         if (filter == null) {
@@ -173,7 +152,6 @@ public final class DropFilterService {
         return filter != null && filter.enabled;
     }
 
-    /** Every item id the game knows, sorted. Used by the item browser when it has no client registry. */
     public static List<String> allItems() {
         List<String> ids = new ArrayList<>();
         BuiltInRegistries.ITEM.keySet().forEach(key -> ids.add(key.toString()));
@@ -181,10 +159,6 @@ public final class DropFilterService {
         return ids;
     }
 
-    /**
-     * Saves one drop table from the editor. {@code target} is {@code rank:NAME}, {@code entity:<id>} or
-     * {@code grade:<key>}; an empty {@code json} removes a mob's own table. Returns an error, or null.
-     */
     public static String saveTable(MinecraftServer server, RotasData data, String target, String json) {
         SeasonRules.DropRules drops = SeasonService.rules(data).drops;
         int colon = target == null ? -1 : target.indexOf(':');
@@ -249,7 +223,6 @@ public final class DropFilterService {
         return Double.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
     }
 
-    /** Keeps item lines that name a real item, at most 64 of them. */
     private static String[] lines(String[] items) {
         if (items == null) {
             return new String[0];
@@ -265,7 +238,6 @@ public final class DropFilterService {
         try {
             SeasonConfigFile.write(server, data.levelConfig().season());
         } catch (java.io.IOException failure) {
-            // The change is live either way; a file that could not be written is the admin's to fix.
             Rotasutils.LOG.error("season.json could not be written after a drop filter change: {}",
                     failure.getMessage());
         }

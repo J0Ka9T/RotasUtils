@@ -10,7 +10,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Every editable season value explains itself in the editor's info bar. */
 class SeasonHelpCoverageTest {
     @Test
     void everyValueHasAHint() {

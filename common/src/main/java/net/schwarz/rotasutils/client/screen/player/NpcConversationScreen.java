@@ -28,13 +28,11 @@ public final class NpcConversationScreen extends RotasScreen {
 
     private static final int HEART_FULL = 0xFFFF6FA3;
     private static final int HEART_EMPTY = 0xFF5E4048;
-    /** Least time between two typing blips, so fast text ticks softly instead of buzzing. */
     private static final long BLIP_MS = 55L;
 
     private final CompoundTag snapshot;
     private final List<Row> rows = new ArrayList<>();
     private final List<String> speechLines = new ArrayList<>();
-    /** What the NPC says, one page per line the admin wrote; shown one at a time. */
     private final List<String> pages = new ArrayList<>();
     private int page;
     private long lastBlip;
@@ -128,7 +126,6 @@ public final class NpcConversationScreen extends RotasScreen {
         renderSnapshotFeedback(graphics);
     }
 
-    /** Wraps the current page into lines and starts typing it out. */
     private void loadPage() {
         speechLines.clear();
         speechChars = 0;
@@ -148,7 +145,6 @@ public final class NpcConversationScreen extends RotasScreen {
         return page >= pages.size() - 1;
     }
 
-    /** Next page if there is one; true when it advanced. */
     private boolean advancePage() {
         if (lastPage()) return false;
         page++;
@@ -188,7 +184,6 @@ public final class NpcConversationScreen extends RotasScreen {
         if (snapshot.getBoolean("romance")) renderAffection(graphics, x + width - pad, y + 9);
         renderSpeech(graphics, x + pad, y + 32, y + height - 7);
         blip();
-        // Waiting for the player: a bobbing arrow while more pages follow.
         if (fullyRevealed() && !lastPage()) {
             int bob = (int) ((System.currentTimeMillis() / 250) % 2);
             Ui.labelRight(graphics, "▼", x + width - pad, y + height - 14 + bob, DIALOGUE_EDGE);
@@ -198,7 +193,6 @@ public final class NpcConversationScreen extends RotasScreen {
         }
     }
 
-    /** Five hearts and the stage of the relationship, right-aligned in the name row. */
     private void renderAffection(GuiGraphics graphics, int right, int y) {
         int affection = snapshot.getInt("affection");
         String tier = L.t("rotasutils.affection.tier." + snapshot.getString("tier"));
@@ -210,7 +204,6 @@ public final class NpcConversationScreen extends RotasScreen {
         }
     }
 
-    /** A soft tick as letters appear - a voice for the text, never faster than {@link #BLIP_MS}. */
     private void blip() {
         if (fullyRevealed()) return;
         int shown = revealedChars();

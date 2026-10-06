@@ -7,33 +7,30 @@ import net.schwarz.rotasutils.util.Nbt;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-/** A quest a player currently has accepted, plus their per-objective counters. */
 public final class ActiveQuest {
     private static final Pattern KEY_PATTERN = Pattern.compile("[a-z0-9_./-]{1,96}");
     private static final int MAX_STAGE = 15;
 
     private final String questId;
-    /** Version of the template at accept time, used to migrate on republish. */
     private int questVersion;
     private long startedAtEpochSeconds;
-    /** 0 when the quest has no time limit. */
     private long deadlineEpochSeconds;
     private int[] progress;
     private boolean[] completed;
     private UUID partyId;
-    /** Counts objective ticks contributed by this player for contribution-based rewards. */
     private int contribution;
     private boolean turnInReady;
-    /** Set once the player has been warned that the deadline is close; never re-warns. */
     private boolean deadlineWarned;
     private int stage;
     private final Map<String, Integer> keyedProgress = new LinkedHashMap<>();
     private final Set<String> keyedComplete = new LinkedHashSet<>();
+    private List<String> objectiveKeys = List.of();
 
     public ActiveQuest(String questId, int questVersion, int objectiveCount) {
         this.questId = questId;
@@ -162,10 +159,25 @@ public final class ActiveQuest {
         }
     }
 
-    /**
-     * Grows or shrinks the counters to match a republished template, keeping the
-     * counters that still line up. Player progress is never silently discarded.
-     */
+    public boolean remap(List<String> keys) {
+        if (objectiveKeys.equals(keys) && progress.length == keys.size()) {
+            return false;
+        }
+        int[] newProgress = new int[keys.size()];
+        boolean[] newCompleted = new boolean[keys.size()];
+        for (int i = 0; i < keys.size(); i++) {
+            int old = objectiveKeys.isEmpty() ? i : objectiveKeys.indexOf(keys.get(i));
+            if (old >= 0 && old < progress.length) {
+                newProgress[i] = progress[old];
+                newCompleted[i] = completed[old];
+            }
+        }
+        progress = newProgress;
+        completed = newCompleted;
+        objectiveKeys = List.copyOf(keys);
+        return true;
+    }
+
     public void resize(int newCount) {
         if (newCount == progress.length) {
             return;
@@ -206,6 +218,9 @@ public final class ActiveQuest {
         if (!keyedComplete.isEmpty()) {
             tag.put("key_complete", Nbt.saveStrings(keyedComplete));
         }
+        if (!objectiveKeys.isEmpty()) {
+            tag.put("obj_keys", Nbt.saveStrings(objectiveKeys));
+        }
         return tag;
     }
 
@@ -233,6 +248,10 @@ public final class ActiveQuest {
         }
         for (String key : Nbt.loadStrings(tag, "key_complete")) {
             quest.setComplete(key, true);
+        }
+        List<String> keys = Nbt.loadStrings(tag, "obj_keys");
+        if (keys.size() == quest.progress.length) {
+            quest.objectiveKeys = List.copyOf(keys);
         }
         return quest;
     }

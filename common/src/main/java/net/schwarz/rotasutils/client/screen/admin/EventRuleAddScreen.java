@@ -17,14 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Adding a rule for one mod, or for one exact id.
- *
- * <p>The left column is the event to narrow; the right column is every mod in this pack that could
- * possibly be the subject of it, read from the client's own registries. That is what makes the
- * catalogue fit the pack it is installed in: the namespaces offered are the ones actually present,
- * not a list this mod shipped and guessed at.</p>
- */
 @Environment(EnvType.CLIENT)
 public class EventRuleAddScreen extends RotasScreen {
     private static final int ROWS = 10;
@@ -41,7 +33,6 @@ public class EventRuleAddScreen extends RotasScreen {
         super(L.t("rotasutils.event.add_title"), parent);
     }
 
-    /** Namespaces of whatever this event is about: entities, items or blocks. */
     private void loadNamespaces() {
         List<String> ids = new ArrayList<>();
         switch (picked.subject()) {

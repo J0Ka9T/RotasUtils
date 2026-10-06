@@ -17,19 +17,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/**
- * Titles (ฉายา): earning them, wearing them, and keeping a unique one unique.
- *
- * <p>Nothing here is bought. A title is the record of something a player did, so every check reads a
- * tally that the act itself wrote - a kill, a level, a quest, a refine. A title marked unique is
- * claimed exactly once on the server thread, so the first player to meet its condition keeps it and
- * everyone who gets there afterwards is told they were too late.</p>
- */
 public final class TitleService {
     private TitleService() {
     }
 
-    /** Installs the starter titles once per world; a later deletion is respected. */
     public static void seedDefaults(RotasData data) {
         if (!data.titlesSeeded()) {
             if (data.titles().isEmpty()) {
@@ -41,6 +32,61 @@ public final class TitleService {
         }
         seedBatch(data, "nemesis_v1", nemesisTitles());
         seedBatch(data, "expansion_v2", expansionTitles());
+        seedBatch(data, "roles_v3", roleTitles());
+        migrateDragons(data);
+        migrateBuffs(data);
+    }
+
+    private static void migrateDragons(RotasData data) {
+        if (data.titleBatchSeeded("dragons_v1")) {
+            return;
+        }
+        TitleDef slayer = data.title("rotas:dragon_slayer");
+        if (slayer != null && slayer.condition() == TitleDef.Condition.KILL_ENTITY
+                && slayer.target().equalsIgnoreCase("minecraft:ender_dragon")) {
+            TitleDef fresh = TitleBuffs.upgrade(dragonSlayer());
+            slayer.setTarget(fresh.target());
+            slayer.setDescription(fresh.description());
+            if (slayer.effects().isEmpty()) {
+                slayer.setRarity(fresh.rarity());
+                fresh.effects().forEach(slayer::addEffect);
+            }
+        }
+        seedBatch(data, "dragons_v1", List.of(enderDragonBane()));
+    }
+
+    private static void migrateBuffs(RotasData data) {
+        if (data.titleBatchSeeded("buffs_v1")) {
+            return;
+        }
+        List<TitleDef> raw = new ArrayList<>(defaultsRaw());
+        raw.addAll(nemesisTitlesRaw());
+        raw.addAll(expansionTitlesRaw());
+        raw.addAll(roleTitlesRaw());
+        for (TitleDef original : raw) {
+            TitleDef current = data.title(original.id());
+            if (current == null || !sameEffects(current, original) || current.rarity() != original.rarity()) {
+                continue;
+            }
+            TitleDef upgraded = TitleBuffs.upgrade(TitleDef.load(original.save()));
+            current.setRarity(upgraded.rarity());
+            current.effects().clear();
+            upgraded.effects().forEach(current::addEffect);
+        }
+        data.markTitleBatchSeeded("buffs_v1");
+        data.setDirty();
+    }
+
+    private static boolean sameEffects(TitleDef a, TitleDef b) {
+        if (a.effects().size() != b.effects().size()) {
+            return false;
+        }
+        for (int i = 0; i < a.effects().size(); i++) {
+            if (!a.effects().get(i).save().equals(b.effects().get(i).save())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static CharacterStat.Effect percent(String attribute, double amount, String label) {
@@ -51,8 +97,11 @@ public final class TitleService {
         return new CharacterStat.Effect(attribute, amount, CharacterStat.Operation.ADD, false, label, 0);
     }
 
-    /** Titles for bounties, breeding, the bestiary, travel, trade, stubbornness and collecting titles. */
     public static List<TitleDef> expansionTitles() {
+        return TitleBuffs.upgrade(expansionTitlesRaw());
+    }
+
+    private static List<TitleDef> expansionTitlesRaw() {
         List<TitleDef> titles = new ArrayList<>();
         TitleDef bountyHunter = title("rotas:bounty_hunter", "นักล่าค่าหัว", "ส่งงานค่าหัว 10 งาน", 0xFFD9A441,
                 TitleDef.Condition.BOUNTY, "", 10, false);
@@ -122,10 +171,6 @@ public final class TitleService {
         return titles;
     }
 
-    /**
-     * Installs titles added after a world was first seeded, once per batch. A world that already has the
-     * batch keeps whatever an administrator did to it since, deletions included.
-     */
     private static void seedBatch(RotasData data, String batch, List<TitleDef> titles) {
         if (data.titleBatchSeeded(batch)) {
             return;
@@ -141,8 +186,93 @@ public final class TitleService {
         data.markTitleBatchSeeded(batch);
     }
 
-    /** Titles earned by ending nemeses; the unique one is the server's own history. */
+    public static List<TitleDef> roleTitles() {
+        return TitleBuffs.upgrade(roleTitlesRaw());
+    }
+
+    private static List<TitleDef> roleTitlesRaw() {
+        List<TitleDef> titles = new ArrayList<>();
+        Object[][] roles = {
+                {"farmer", "ชาวนามืออาชีพ", "ปรมาจารย์แห่งทุ่งนา", 0xFF86C05C, flat("minecraft:generic.max_health", 2, "พลังชีวิต")},
+                {"miner", "นักขุดมืออาชีพ", "ราชาแห่งเหมือง", 0xFF9AA5B1, flat(CombatStats.DEFENSE, 2, "พลังป้องกัน")},
+                {"fisher", "ชาวประมงมืออาชีพ", "เจ้าแห่งสายน้ำ", 0xFF5AA9E6, flat("minecraft:generic.luck", 0.5, "โชค")},
+                {"rancher", "คนเลี้ยงสัตว์มืออาชีพ", "ผู้พิทักษ์ฝูงสัตว์", 0xFFC9975B, percent("minecraft:generic.movement_speed", 0.03, "ความเร็ว")},
+                {"chef", "เชฟมืออาชีพ", "เชฟระดับตำนาน", 0xFFE3A857, flat("minecraft:generic.max_health", 2, "พลังชีวิต")},
+                {"alchemy", "นักปรุงยามืออาชีพ", "จอมเล่นแร่แปรธาตุ", 0xFFB07CE8, flat(CombatStats.MAGIC_ATTACK, 3, "พลังเวท")},
+                {"blacksmith", "ช่างตีเหล็กมืออาชีพ", "ช่างตีเหล็กแห่งตำนาน", 0xFFD9774A, flat(CombatStats.DEFENSE, 3, "พลังป้องกัน")},
+        };
+        for (Object[] role : roles) {
+            String job = (String) role[0];
+            int color = (Integer) role[3];
+            TitleDef pro = title("rotas:" + job + "_pro", (String) role[1], "ฝึกอาชีพรองจนถึงเลเวล 10", color,
+                    TitleDef.Condition.SUB_LEVEL, job, 10, false);
+            pro.setRarity(TitleDef.Rarity.UNCOMMON);
+            titles.add(pro);
+            TitleDef master = title("rotas:" + job + "_master", (String) role[2], "ฝึกอาชีพรองจนถึงเลเวล 20", color,
+                    TitleDef.Condition.SUB_LEVEL, job, 20, false);
+            master.setRarity(TitleDef.Rarity.EPIC);
+            master.addEffect((CharacterStat.Effect) role[4]);
+            titles.add(master);
+        }
+        titles.add(stat("rotas:craftsman", "ช่างฝีมือ", "เก็บผลงานจากโต๊ะอาชีพ 50 ชิ้น", 0xFFC9975B, "crafted", 50,
+                TitleDef.Rarity.UNCOMMON, null));
+        titles.add(stat("rotas:grand_artisan", "ปรมาจารย์งานฝีมือ", "เก็บผลงานจากโต๊ะอาชีพ 500 ชิ้น", 0xFFE0AC4C, "crafted", 500,
+                TitleDef.Rarity.EPIC, flat("minecraft:generic.luck", 0.5, "โชค")));
+        titles.add(stat("rotas:chef_of_town", "เชฟประจำเมือง", "ปรุงอาหารที่เตาทำอาหาร 100 จาน", 0xFFE3A857, "crafted.chef", 100,
+                TitleDef.Rarity.RARE, null));
+        titles.add(stat("rotas:smelter_hand", "ช่างหลอมแร่", "หลอมแร่ที่เตาหลอม 100 ชุด", 0xFF9AA5B1, "crafted.miner", 100,
+                TitleDef.Rarity.RARE, null));
+        titles.add(stat("rotas:fishmonger", "พ่อค้าปลาตัวยง", "แปรรูปปลาที่โต๊ะพ่อค้าปลา 100 ชุด", 0xFF5AA9E6, "crafted.fisher", 100,
+                TitleDef.Rarity.RARE, null));
+        titles.add(stat("rotas:tanner", "ช่างฟอกหนัง", "ทำของที่โรงฟอกหนัง 100 ชิ้น", 0xFFC9975B, "crafted.rancher", 100,
+                TitleDef.Rarity.RARE, null));
+        titles.add(stat("rotas:famed_brewer", "นักปรุงยาเลื่องชื่อ", "ต้มยาที่โต๊ะนักเล่นแร่ 100 ชุด", 0xFFB07CE8, "crafted.alchemy", 100,
+                TitleDef.Rarity.RARE, null));
+        titles.add(stat("rotas:first_hammer", "ช่างตีเหล็กมือหนึ่ง", "ตีของที่โต๊ะช่างตีเหล็ก 100 ชิ้น", 0xFFD9774A, "crafted.blacksmith", 100,
+                TitleDef.Rarity.RARE, null));
+        titles.add(stat("rotas:star_hunter", "นักล่าดาว", "ได้ของระดับดาว 25 ชิ้น", 0xFFE3E7EC, "stars", 25,
+                TitleDef.Rarity.UNCOMMON, null));
+        titles.add(stat("rotas:golden_star", "ผู้ถือดาวทอง", "ได้ของระดับทอง 10 ชิ้น", 0xFFFFD24A, "gold_stars", 10,
+                TitleDef.Rarity.RARE, flat("minecraft:generic.luck", 0.3, "โชค")));
+        TitleDef kingOfStars = stat("rotas:star_king", "ราชาแห่งดวงดาว", "ได้ของระดับดาว 500 ชิ้น", 0xFFFFD24A, "stars", 500,
+                TitleDef.Rarity.LEGENDARY, flat("minecraft:generic.max_health", 2, "พลังชีวิต"));
+        kingOfStars.addEffect(flat("minecraft:generic.luck", 0.5, "โชค"));
+        titles.add(kingOfStars);
+        titles.add(stat("rotas:gourmet", "นักชิมเลิศรส", "กินอาหารระดับดาว 25 ครั้ง", 0xFFE3A857, "star_meals", 25,
+                TitleDef.Rarity.RARE, flat("minecraft:generic.max_health", 1, "พลังชีวิต")));
+        titles.add(stat("rotas:pit_digger", "นักขุดเหมือง", "ขุดจุดแร่ในเหมือง 50 จุด", 0xFF9AA5B1, "nodes", 50,
+                TitleDef.Rarity.UNCOMMON, null));
+        titles.add(stat("rotas:lord_of_the_pit", "เจ้าแห่งเหมือง", "ขุดจุดแร่ในเหมือง 1,000 จุด", 0xFFE0AC4C, "nodes", 1000,
+                TitleDef.Rarity.EPIC, flat(CombatStats.DEFENSE, 2, "พลังป้องกัน")));
+        titles.add(stat("rotas:rich_finder", "ผู้พบเส้นแร่อุดม", "ขุดแร่อุดม 20 จุด", 0xFFFFD24A, "rich_nodes", 20,
+                TitleDef.Rarity.RARE, null));
+        titles.add(stat("rotas:double_vein", "เส้นแร่ทวีคูณ", "ขุดแร่ได้สองเท่า 100 ครั้ง", 0xFFB07CE8, "rich_veins", 100,
+                TitleDef.Rarity.RARE, null));
+        titles.add(title("rotas:peddler", "พ่อค้าเร่", "ขายของได้เงิน 5,000", 0xFFC9975B,
+                TitleDef.Condition.TRADE, "", 5_000, false));
+        TitleDef tycoon = title("rotas:tycoon", "เจ้าสัว", "ขายของได้เงิน 1,000,000", 0xFFFFD24A,
+                TitleDef.Condition.TRADE, "", 1_000_000, false);
+        tycoon.setRarity(TitleDef.Rarity.LEGENDARY);
+        tycoon.addEffect(flat("minecraft:generic.luck", 1, "โชค"));
+        titles.add(tycoon);
+        return titles;
+    }
+
+    private static TitleDef stat(String id, String name, String description, int color, String counter, long amount,
+                                 TitleDef.Rarity rarity, CharacterStat.Effect effect) {
+        TitleDef title = title(id, name, description, color, TitleDef.Condition.STAT, counter, amount, false);
+        title.setRarity(rarity);
+        if (effect != null) {
+            title.addEffect(effect);
+        }
+        return title;
+    }
+
     public static List<TitleDef> nemesisTitles() {
+        return TitleBuffs.upgrade(nemesisTitlesRaw());
+    }
+
+    private static List<TitleDef> nemesisTitlesRaw() {
         List<TitleDef> titles = new ArrayList<>();
         titles.add(title("rotas:avenger", "ผู้ล้างแค้น", "ปราบศัตรูคู่แค้น 1 ตัว", 0xFFE2695C,
                 TitleDef.Condition.NEMESIS, "", 1, false));
@@ -156,20 +286,13 @@ public final class TitleService {
         return titles;
     }
 
-    /** Titles in display order. */
     public static List<TitleDef> sorted(RotasData data) {
         List<TitleDef> titles = new ArrayList<>(data.titles().values());
         titles.sort(Comparator.comparingInt(TitleDef::order).thenComparing(TitleDef::id));
         return titles;
     }
 
-    // Tallies ------------------------------------------------------------------------------------
-
-    /**
-     * One kill. Only the entity types some title asks about are tallied, so the counters cannot grow
-     * with the entity list of a large modpack.
-     */
-    public static void onKill(ServerPlayer player, RotasData data, String entityId, boolean boss) {
+public static void onKill(ServerPlayer player, RotasData data, String entityId, boolean boss) {
         PlayerProgress progress = data.progress(player.getUUID());
         var variables = progress.questVariables();
         boolean touched = false;
@@ -182,9 +305,17 @@ public final class TitleService {
             touched = true;
         }
         String id = entityId == null ? "" : entityId.toLowerCase(Locale.ROOT);
-        if (!id.isBlank() && watches(data, TitleDef.Condition.KILL_ENTITY, id)) {
-            TitleCounters.add(variables, TitleCounters.killKey(id), 1);
-            touched = true;
+        if (!id.isBlank()) {
+            Set<String> keys = new HashSet<>();
+            for (TitleDef title : data.titles().values()) {
+                if (title.enabled() && title.condition() == TitleDef.Condition.KILL_ENTITY && title.matchesEntity(id)) {
+                    keys.add(title.counterKey());
+                }
+            }
+            for (String key : keys) {
+                TitleCounters.add(variables, key, 1);
+                touched = true;
+            }
         }
         if (touched) {
             progress.markDirty();
@@ -193,7 +324,6 @@ public final class TitleService {
         check(player, data);
     }
 
-    /** Records the best refine level this player has ever reached. */
     public static void onRefine(ServerPlayer player, RotasData data, int level) {
         PlayerProgress progress = data.progress(player.getUUID());
         long best = TitleCounters.raise(progress.questVariables(), TitleCounters.REFINE_BEST, level);
@@ -204,34 +334,40 @@ public final class TitleService {
         check(player, data);
     }
 
-    /** Anything else that can earn a title: a level, a quest, a fat wallet. */
+    public static void stat(ServerPlayer player, RotasData data, String name, long delta) {
+        if (delta <= 0 || data.titles().values().stream().noneMatch(t -> t.enabled()
+                && t.condition() == TitleDef.Condition.STAT && t.target().equalsIgnoreCase(name))) {
+            return;
+        }
+        PlayerProgress progress = data.progress(player.getUUID());
+        TitleCounters.add(progress.questVariables(), TitleCounters.statKey(name), delta);
+        progress.markDirty();
+        data.setDirty();
+        check(player, data);
+    }
+
     public static void onProgress(ServerPlayer player, RotasData data) {
         check(player, data);
     }
 
-    /** True when at least one enabled title watches this condition (and entity, when it names one). */
     private static boolean watches(RotasData data, TitleDef.Condition condition, String target) {
         for (TitleDef title : data.titles().values()) {
             if (!title.enabled() || title.condition() != condition) {
                 continue;
             }
-            if (condition != TitleDef.Condition.KILL_ENTITY || title.target().equalsIgnoreCase(target)) {
+            if (condition != TitleDef.Condition.KILL_ENTITY || title.matchesEntity(target)) {
                 return true;
             }
         }
         return false;
     }
 
-    // Earning ------------------------------------------------------------------------------------
-
-    /** Awards every title this player now qualifies for. Returns how many were earned. */
-    public static int check(ServerPlayer player, RotasData data) {
+public static int check(ServerPlayer player, RotasData data) {
         if (!mayEarnAutomatically(player, data)) {
             return 0;
         }
         PlayerProgress progress = data.progress(player.getUUID());
         int earned = 0;
-        // Earning a title can itself earn another (a title count, a level from the reward EXP), so settle it.
         for (int pass = 0; pass < 4; pass++) {
             int before = earned;
             for (TitleDef title : sorted(data)) {
@@ -254,7 +390,6 @@ public final class TitleService {
         return earned;
     }
 
-    /** Staff and creative players are skipped unless the season's title rules say otherwise. */
     public static boolean mayEarnAutomatically(ServerPlayer player, RotasData data) {
         var rules = SeasonService.rules(data).titles;
         if (!rules.staffEarnTitles && player.hasPermissions(2)) {
@@ -265,7 +400,6 @@ public final class TitleService {
 
     private static final String BLOCK_PREFIX = "title.revoked.";
 
-    /** True when an admin revoked this title from this player, so the checker leaves it alone. */
     public static boolean blocked(PlayerProgress progress, String id) {
         return "true".equals(progress.questVariables().get(BLOCK_PREFIX + id));
     }
@@ -275,10 +409,6 @@ public final class TitleService {
         else progress.questVariables().remove(BLOCK_PREFIX + id);
     }
 
-    /**
-     * Takes a title from any player, online or not, by UUID; frees a unique title and, when asked,
-     * stops the checker from handing it straight back. Returns false when they did not hold it.
-     */
     public static boolean revokeById(net.minecraft.server.MinecraftServer server, RotasData data,
                                      java.util.UUID playerId, String id, boolean block) {
         PlayerProgress progress = data.progress(playerId);
@@ -299,7 +429,6 @@ public final class TitleService {
         return held;
     }
 
-    /** What this player has done towards one title. */
     public static long progressOf(RotasData data, PlayerProgress progress, TitleDef title) {
         return switch (title.condition()) {
             case LEVEL -> progress.level();
@@ -310,16 +439,18 @@ public final class TitleService {
             case GOLD -> progress.rpg().currency(SeasonService.rules(data).currency);
             case BOUNTY, BREED, DEATH, TRADE -> TitleCounters.read(progress.questVariables(), title.counterKey());
             case BESTIARY -> progress.bestiary().size();
+            case SUB_LEVEL -> {
+                var job = data.job(title.target());
+                yield job == null ? 0 : ProductionService.subLevel(progress, job);
+            }
+            case STAT -> TitleCounters.read(progress.questVariables(), title.counterKey());
             case WAYSTONE -> progress.waystones().size();
             case TITLE_COUNT -> progress.titles().size();
             case MANUAL -> 0;
         };
     }
 
-    // Collection ---------------------------------------------------------------------------------
-
-    /** Collection points of every title this player holds. */
-    public static int collectionPoints(RotasData data, PlayerProgress progress) {
+public static int collectionPoints(RotasData data, PlayerProgress progress) {
         int[] points = SeasonService.rules(data).titles.rarityPoints;
         int total = 0;
         for (String id : progress.titles()) {
@@ -329,7 +460,6 @@ public final class TitleService {
         return total;
     }
 
-    /** The collection bonuses this player has reached; they apply whichever title is worn. */
     public static List<CharacterStat.Effect> collectionEffects(RotasData data, PlayerProgress progress) {
         int points = collectionPoints(data, progress);
         List<CharacterStat.Effect> effects = new ArrayList<>();
@@ -341,7 +471,6 @@ public final class TitleService {
         return effects;
     }
 
-    /** Once a second: a faint glow around everyone wearing a legendary title. */
     public static void tickAura(net.minecraft.server.MinecraftServer server, RotasData data) {
         if (!SeasonService.rules(data).titles.legendaryAura) return;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -352,7 +481,6 @@ public final class TitleService {
             int rgb = title.color() & 0xFFFFFF;
             var dust = new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(
                     (rgb >> 16 & 0xFF) / 255f, (rgb >> 8 & 0xFF) / 255f, (rgb & 0xFF) / 255f), 0.8f);
-            // Three motes orbiting at waist height, a third of a turn apart, stepping round once every few seconds.
             double turn = (player.serverLevel().getGameTime() % 100) / 100.0 * Math.PI * 2;
             for (int i = 0; i < 3; i++) {
                 double angle = turn + i * Math.PI * 2 / 3;
@@ -362,7 +490,6 @@ public final class TitleService {
         }
     }
 
-    /** Counts something a title may watch and checks titles right away when the player is online. */
     public static void count(net.minecraft.server.MinecraftServer server, RotasData data, java.util.UUID player,
                              String key, long amount) {
         PlayerProgress progress = data.progress(player);
@@ -373,10 +500,6 @@ public final class TitleService {
         if (online != null) check(online, data);
     }
 
-    /**
-     * Hands a title to a player. A unique title is claimed here: the second player to arrive is told
-     * somebody already holds it and earns nothing.
-     */
     public static boolean award(ServerPlayer player, RotasData data, TitleDef title, boolean announce) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (progress.hasTitle(title.id())) {
@@ -386,27 +509,32 @@ public final class TitleService {
             return false;
         }
         if (!progress.addTitle(title.id())) {
+            if (title.unique() && player.getUUID().equals(data.uniqueTitleOwner(title.id()))) {
+                data.releaseUniqueTitle(title.id());
+            }
             return false;
         }
         if (progress.activeTitle().isBlank()) {
-            // A player's first title is worn at once; after that they choose.
             progress.setActiveTitle(title.id());
         }
         data.setDirty();
         data.audit(player.getGameProfile().getName() + " earned title " + title.id());
-        // A title pays once, by rarity, so every one is worth chasing, worn or not.
         var rules = SeasonService.rules(data).titles;
         int rarity = title.rarity().ordinal();
         long gold = rules.rarityGold[rarity];
         long xp = rules.rarityXp[rarity];
-        if (gold > 0) progress.rpg().currency(GoldCoinService.CURRENCY, gold);
+        if (gold > 0) {
+            try {
+                progress.rpg().currency(GoldCoinService.CURRENCY, gold);
+            } catch (IllegalArgumentException | ArithmeticException full) {
+            }
+        }
         if (announce) {
             player.sendSystemMessage(ThaiText.c("rotasutils.msg.title.earned", title.name())
                     .withStyle(style -> style.withColor(title.color() & 0xFFFFFF)));
             player.sendSystemMessage(ThaiText.c("rotasutils.msg.title.reward", gold, xp, collectionPoints(data, progress))
                     .withStyle(net.minecraft.ChatFormatting.GRAY));
             RotasNetwork.feedback(player, true, ThaiText.t("rotasutils.msg.title.earned", title.name()));
-            // A spiral in the title's own colour; rarer titles climb higher and denser.
             Fx.spiral(player, Fx.dust(title.color() & 0xFFFFFF, 1.1f), 16 + rarity * 6, 1.0, 1.6 + rarity * 0.35);
             if (rarity >= 3) Fx.fountain(player, net.minecraft.core.particles.ParticleTypes.TOTEM_OF_UNDYING, 20 + rarity * 8);
             player.level().playSound(null, player.blockPosition(), rarity >= 3
@@ -434,7 +562,6 @@ public final class TitleService {
         return true;
     }
 
-    /** Takes a title away. A unique one goes back on the shelf for the next player to claim. */
     public static boolean revoke(ServerPlayer player, RotasData data, String id) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (!progress.removeTitle(id)) {
@@ -452,7 +579,6 @@ public final class TitleService {
         return true;
     }
 
-    /** Wears one of the player's own titles, or takes the current one off when {@code id} is empty. */
     public static boolean wear(ServerPlayer player, RotasData data, String id) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (!progress.setActiveTitle(id)) {
@@ -464,10 +590,7 @@ public final class TitleService {
         return true;
     }
 
-    // Display ------------------------------------------------------------------------------------
-
-    /** The worn title of a player, or null when they wear none. */
-    public static TitleDef worn(RotasData data, PlayerProgress progress) {
+public static TitleDef worn(RotasData data, PlayerProgress progress) {
         String id = progress.activeTitle();
         if (id == null || id.isBlank()) {
             return null;
@@ -476,13 +599,11 @@ public final class TitleService {
         return title != null && title.enabled() ? title : null;
     }
 
-    /** The effects the worn title contributes, for the stat modifier pass. */
     public static List<CharacterStat.Effect> wornEffects(RotasData data, PlayerProgress progress) {
         TitleDef title = worn(data, progress);
         return title == null ? List.of() : List.copyOf(title.effects());
     }
 
-    /** {@code "[ผู้ล่ามังกร] Name"}, for chat and the name plate. */
     public static Component decorate(RotasData data, PlayerProgress progress, Component name) {
         TitleDef title = worn(data, progress);
         if (title == null) {
@@ -493,14 +614,11 @@ public final class TitleService {
                 .append(name);
     }
 
-    // Defaults -----------------------------------------------------------------------------------
+public static List<TitleDef> defaults() {
+        return TitleBuffs.upgrade(defaultsRaw());
+    }
 
-    /**
-     * The titles a new world starts with. They are the milestones this mod can see for itself, and the
-     * three unique ones are the server's own history: the first to 100, the first +10, the first to
-     * clear a thousand bosses.
-     */
-    public static List<TitleDef> defaults() {
+    private static List<TitleDef> defaultsRaw() {
         List<TitleDef> titles = new ArrayList<>();
         titles.add(title("rotas:novice", "มือใหม่หัดเดิน", "ถึงระดับ 5", 0xFFB6A17C,
                 TitleDef.Condition.LEVEL, "", 5, false));
@@ -531,8 +649,8 @@ public final class TitleService {
         bossSlayer.addEffect(new CharacterStat.Effect(CombatStats.DEFENSE, 2.0,
                 CharacterStat.Operation.ADD, false, "พลังป้องกัน", 0));
         titles.add(bossSlayer);
-        titles.add(title("rotas:dragon_slayer", "ผู้ล่ามังกร", "สังหารเอนเดอร์ดราก้อน", 0xFFB07CE8,
-                TitleDef.Condition.KILL_ENTITY, "minecraft:ender_dragon", 1, false));
+        titles.add(dragonSlayer());
+        titles.add(enderDragonBane());
         titles.add(title("rotas:wither_bane", "ผู้สยบวิเธอร์", "สังหารวิเธอร์", 0xFF3F3F46,
                 TitleDef.Condition.KILL_ENTITY, "minecraft:wither", 1, false));
 
@@ -557,6 +675,25 @@ public final class TitleService {
         return titles;
     }
 
+    public static final String SAINTS_DRAGONS = String.join(",",
+            "saintsdragons:raevyx", "saintsdragons:stegonaut", "saintsdragons:cindervane", "saintsdragons:varasuchus",
+            "saintsdragons:ignivorus", "saintsdragons:volitans", "saintsdragons:nulljaw");
+
+    private static TitleDef dragonSlayer() {
+        TitleDef title = title("rotas:dragon_slayer", "ผู้ล่ามังกร", "สังหารมังกรจากม็อด Saints Dragons 1 ตัว (ไม่นับเอนเดอร์ดราก้อน)",
+                0xFFB07CE8, TitleDef.Condition.KILL_ENTITY, SAINTS_DRAGONS, 1, false);
+        title.setRarity(TitleDef.Rarity.EPIC);
+        title.addEffect(percent("minecraft:generic.attack_damage", 0.02, "พลังโจมตี"));
+        title.addEffect(new CharacterStat.Effect(CombatStats.CRIT_DAMAGE, 0.06, CharacterStat.Operation.ADD, true,
+                "ดาเมจคริติคอล", 0));
+        return title;
+    }
+
+    private static TitleDef enderDragonBane() {
+        return title("rotas:ender_dragon_bane", "ผู้สยบเอนเดอร์ดราก้อน", "สังหารเอนเดอร์ดราก้อน", 0xFF9B6BD6,
+                TitleDef.Condition.KILL_ENTITY, "minecraft:ender_dragon", 1, false);
+    }
+
     private static TitleDef title(String id, String name, String description, int color,
                                   TitleDef.Condition condition, String target, long amount, boolean unique) {
         TitleDef title = new TitleDef(id, name);
@@ -569,12 +706,11 @@ public final class TitleService {
         return title;
     }
 
-    /** Entity types any title is currently counting, for diagnostics and tests. */
     public static Set<String> watchedEntities(RotasData data) {
         Set<String> watched = new HashSet<>();
         for (TitleDef title : data.titles().values()) {
             if (title.enabled() && title.condition() == TitleDef.Condition.KILL_ENTITY && !title.target().isBlank()) {
-                watched.add(title.target().toLowerCase(Locale.ROOT));
+                watched.addAll(title.targets());
             }
         }
         return watched;

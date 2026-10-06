@@ -9,27 +9,13 @@ import net.schwarz.rotasutils.util.Nbt;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * An admin-defined level zone: a named slice of a dimension that gives its mobs a level band.
- *
- * <p>A zone is the union of its {@link ZoneArea areas}; an empty list means the whole dimension,
- * so "not even a shape" is a valid zone. When several zones cover one spot the highest
- * {@code priority} wins, and when none does the server falls back to the configurable
- * distance-from-spawn ramp. Zones are authored with the Zone Wand, the admin zone manager, or a
- * JSON content pack, and persisted in {@link net.schwarz.rotasutils.data.RotasData}.</p>
- *
- * <p>{@link ZoneFeatures} carries the zone's type, mob isolation, spawn points, titles, effects and
- * movement rules.</p>
- */
 public record ZoneDef(String id, String name, String dimension, List<ZoneArea> areas,
                       int levelMin, int levelMax, int priority, boolean enabled, Danger danger,
                       int recommendedMin, int recommendedMax, double xpMultiplier,
                       int transitionBlocks, boolean safe, List<ZoneArea> excludedAreas,
                       long revision, ZoneCombatRules combatRules, List<Requirement> entryRequirements,
                       ZoneFeatures features) {
-    /** Areas allowed per zone; the same order of magnitude as the other bounded lists. */
     public static final int MAX_AREAS = 16;
-    /** Entry gate rules allowed per zone; enough for a quest, a level and a faction check. */
     public static final int MAX_ENTRY_REQUIREMENTS = 16;
 
     public ZoneDef {
@@ -74,7 +60,6 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
         }
     }
 
-    /** Zone without features, for callers that predate them; features start at their defaults. */
     public ZoneDef(String id, String name, String dimension, List<ZoneArea> areas, int levelMin, int levelMax,
                    int priority, boolean enabled, Danger danger, int recommendedMin, int recommendedMax,
                    double xpMultiplier, int transitionBlocks, boolean safe, List<ZoneArea> excludedAreas,
@@ -98,13 +83,22 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
                 xpMultiplier,transitionBlocks,safe,List.of(),0,ZoneCombatRules.inherit(),List.of(),ZoneFeatures.DEFAULT);
     }
 
-    /** True when the position is inside any area, or anywhere in the dimension when it has none. */
     public boolean contains(double x, double y, double z) {
-        boolean additive = areas.isEmpty() || areas.stream().anyMatch(area -> area.contains(x,y,z));
-        return additive && excludedAreas.stream().noneMatch(area -> area.contains(x,y,z));
+        boolean additive = areas.isEmpty();
+        for (int i = 0; !additive && i < areas.size(); i++) {
+            additive = areas.get(i).contains(x, y, z);
+        }
+        if (!additive) {
+            return false;
+        }
+        for (int i = 0; i < excludedAreas.size(); i++) {
+            if (excludedAreas.get(i).contains(x, y, z)) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    /** Distance in blocks to the nearest area surface; 0 inside, and 0 for a whole-dimension zone. */
     public double distance(double x, double y, double z) {
         if (areas.isEmpty()) {
             return 0.0;
@@ -119,12 +113,10 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
         return nearest;
     }
 
-    /** True when this zone is a candidate for the given dimension. */
     public boolean appliesTo(String dimensionId) {
         return enabled && (dimension.isEmpty() || dimension.equals(dimensionId));
     }
 
-    /** True when entering this zone is gated by at least one blocking requirement. */
     public boolean hasEntryLock() {
         for (Requirement requirement : entryRequirements) {
             if (!requirement.recommendationOnly()) {
@@ -140,7 +132,6 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
         return withAreas(next);
     }
 
-    /** Same zone with a new shape list; every gameplay setting is kept. */
     public ZoneDef withAreas(List<ZoneArea> next) {
         return new ZoneDef(id, name, dimension, next, levelMin, levelMax, priority, enabled,
                 danger, recommendedMin, recommendedMax, xpMultiplier, transitionBlocks, safe, excludedAreas, revision,
@@ -157,13 +148,11 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
                 recommendedMax,xpMultiplier,transitionBlocks,safe,excludedAreas,revision,next,entryRequirements,features);
     }
 
-    /** Same zone with a new entry gate; an empty list opens the zone again. */
     public ZoneDef withEntryRequirements(List<Requirement> next) {
         return new ZoneDef(id,name,dimension,areas,levelMin,levelMax,priority,enabled,danger,recommendedMin,
                 recommendedMax,xpMultiplier,transitionBlocks,safe,excludedAreas,revision,combatRules,next,features);
     }
 
-    /** Same zone with new type, mob isolation, spawn points, titles, effects and movement rules. */
     public ZoneDef withFeatures(ZoneFeatures next) {
         return new ZoneDef(id,name,dimension,areas,levelMin,levelMax,priority,enabled,danger,recommendedMin,
                 recommendedMax,xpMultiplier,transitionBlocks,safe,excludedAreas,revision,combatRules,entryRequirements,next);
@@ -174,7 +163,6 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
                 recommendedMax,xpMultiplier,transitionBlocks,safe,excludedAreas,next,combatRules,entryRequirements,features);
     }
 
-    /** Same zone and shapes with edited settings; the recommended band is clamped to stay valid. */
     public ZoneDef withSettings(String newName, int min, int max, int newPriority, boolean isEnabled,
                                 Danger newDanger, int recMin, int recMax, double xp, int transition,
                                 boolean isSafe) {
@@ -240,22 +228,18 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
                 tag.getBoolean("safe"), excluded, tag.contains("revision") ? tag.getLong("revision") : 0,
                 tag.contains("combat_rules") ? ZoneCombatRules.load(tag.getCompound("combat_rules")) : ZoneCombatRules.inherit(),
                 entryRequirements(tag),
-                // Zones saved before features existed keep behaving exactly as before.
                 tag.contains("features") ? ZoneFeatures.load(tag.getCompound("features")) : ZoneFeatures.DEFAULT);
     }
 
-    /** Legacy zones predate the entry gate, so a missing list simply leaves the zone open. */
     private static List<Requirement> entryRequirements(CompoundTag tag) {
         return tag.contains("entry_requirements")
                 ? Nbt.loadList(tag, "entry_requirements", Requirement::load) : List.of();
     }
 
-    /** Human-readable level band, e.g. "Lv 5-20". */
     public String levelLabel() {
         return levelMin == levelMax ? "Lv " + levelMin : "Lv " + levelMin + "-" + levelMax;
     }
 
-    /** Area count summary for admin lists. */
     public String areaLabel() {
         if (areas.isEmpty()) {
             return net.schwarz.rotasutils.util.ThaiText.t("rotasutils.zone.area.whole");
@@ -268,11 +252,6 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
         return new ZoneDef(id, name, dimension, List.of(), levelMin, levelMax, 0, true);
     }
 
-    /**
-     * The zone that governs a position: the highest-priority enabled zone for the dimension that
-     * contains it (equal priority: lowest id), or null. Shared by the server (levels, rules, titles)
-     * and the client (zone chip, entry banner) so both always agree.
-     */
     public static ZoneDef select(java.util.Collection<ZoneDef> zones, String dimension, double x, double y, double z) {
         ZoneDef best = null;
         for (ZoneDef zone : zones) {
@@ -287,10 +266,34 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
         return best;
     }
 
-    /**
-     * What players may know about this zone: name, band, danger, shapes, titles and display settings.
-     * Entry requirements, combat rules, spawn points, dungeon setup and effects stay on the server.
-     */
+    public java.util.List<ZoneDef> overlapping(java.util.Collection<ZoneDef> zones) {
+        java.util.List<ZoneDef> found = new java.util.ArrayList<>();
+        for (ZoneDef other : zones) {
+            if (other.id.equals(id) || !(dimension.isEmpty() || other.dimension.isEmpty() || dimension.equals(other.dimension))) continue;
+            if (areas.isEmpty() || other.areas.isEmpty()) {
+                found.add(other);
+                continue;
+            }
+            outer:
+            for (ZoneArea mine : areas) {
+                ZoneArea.Bounds a = mine.bounds();
+                for (ZoneArea theirs : other.areas) {
+                    ZoneArea.Bounds b = theirs.bounds();
+                    if (a.minX() <= b.maxX() && b.minX() <= a.maxX() && a.minY() <= b.maxY() && b.minY() <= a.maxY()
+                            && a.minZ() <= b.maxZ() && b.minZ() <= a.maxZ()) {
+                        found.add(other);
+                        break outer;
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    public boolean beats(ZoneDef other) {
+        return priority > other.priority || priority == other.priority && id.compareTo(other.id) < 0;
+    }
+
     public ZoneDef publicView() {
         ZoneFeatures shown = ZoneFeatures.DEFAULT.withMessages(features.messages()).withDisplay(features.display())
                 .withType(features.type());
@@ -298,7 +301,6 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
                 recommendedMax, 1.0, 0, safe, excludedAreas, revision, ZoneCombatRules.inherit(), List.of(), shown);
     }
 
-    /** Sorts zones the way the manager lists them: priority then id. */
     public static int compare(ZoneDef a, ZoneDef b) {
         int byPriority = Integer.compare(b.priority(), a.priority());
         return byPriority != 0 ? byPriority : a.id().compareTo(b.id());
@@ -307,7 +309,6 @@ public record ZoneDef(String id, String name, String dimension, List<ZoneArea> a
     public enum Danger {
         SAFE, NORMAL, DANGEROUS, DEADLY;
 
-        /** "Dangerous" rather than "DANGEROUS" for admin lists and hints. */
         public String label() {
             String lower = name().toLowerCase(java.util.Locale.ROOT);
             return net.schwarz.rotasutils.util.ThaiText.label("zone_danger", this,

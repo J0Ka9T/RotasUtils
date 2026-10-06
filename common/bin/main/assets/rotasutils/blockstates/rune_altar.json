@@ -1,19 +1,12 @@
 {
   "variants": {
-    "facing=north": {
-      "model": "rotasutils:block/rune_altar"
-    },
-    "facing=east": {
-      "model": "rotasutils:block/rune_altar",
-      "y": 90
-    },
-    "facing=south": {
-      "model": "rotasutils:block/rune_altar",
-      "y": 180
-    },
-    "facing=west": {
-      "model": "rotasutils:block/rune_altar",
-      "y": 270
-    }
+    "facing=north,lit=false": { "model": "rotasutils:block/rune_altar" },
+    "facing=east,lit=false":  { "model": "rotasutils:block/rune_altar", "y": 90 },
+    "facing=south,lit=false": { "model": "rotasutils:block/rune_altar", "y": 180 },
+    "facing=west,lit=false":  { "model": "rotasutils:block/rune_altar", "y": 270 },
+    "facing=north,lit=true":  { "model": "rotasutils:block/rune_altar" },
+    "facing=east,lit=true":   { "model": "rotasutils:block/rune_altar", "y": 90 },
+    "facing=south,lit=true":  { "model": "rotasutils:block/rune_altar", "y": 180 },
+    "facing=west,lit=true":   { "model": "rotasutils:block/rune_altar", "y": 270 }
   }
 }

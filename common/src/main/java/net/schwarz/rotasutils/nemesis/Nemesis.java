@@ -11,18 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * A nemesis (ศัตรูคู่แค้น): a monster that killed a player and is remembered for it.
- *
- * <p>The record is world data and outlives the body. The body is whichever living entity currently
- * carries the nemesis tag <em>and</em> whose UUID this record names, so a stale copy that reloads with an
- * old chunk is recognised and refused. Times are wall-clock seconds, so cooldowns count down across a
- * restart instead of freezing with the world.</p>
- */
 public final class Nemesis {
     public static final int MAX_VICTIMS = 16;
 
-    /** A player this nemesis killed, and how often. */
     public record Victim(UUID id, String name, int times) {
     }
 
@@ -70,7 +61,6 @@ public final class Nemesis {
     public long nextAmbushAt() { return nextAmbushAt; }
     public Collection<Victim> victims() { return Collections.unmodifiableCollection(victims.values()); }
 
-    /** The name with its stars, as the name plate shows it. */
     public String displayName() {
         return name + " " + NemesisMath.stars(rank);
     }
@@ -80,7 +70,6 @@ public final class Nemesis {
     public void setBody(UUID value) { body = value; }
     public void setNextAmbushAt(long value) { nextAmbushAt = Math.max(0, value); }
 
-    /** Where the body was last seen, and when. */
     public void seen(String dimensionId, long blockPos, long now) {
         if (dimensionId != null && !dimensionId.isBlank()) {
             dimension = dimensionId;
@@ -93,7 +82,6 @@ public final class Nemesis {
         return player != null && victims.containsKey(player);
     }
 
-    /** Records a kill; the newest victim becomes the one it hunts. The oldest victim is forgotten past the cap. */
     public void recordVictim(UUID player, String playerName) {
         if (player == null) {
             return;
@@ -109,7 +97,6 @@ public final class Nemesis {
         target = player;
     }
 
-    /** How many times it killed this player. */
     public int timesKilled(UUID player) {
         Victim victim = player == null ? null : victims.get(player);
         return victim == null ? 0 : victim.times();

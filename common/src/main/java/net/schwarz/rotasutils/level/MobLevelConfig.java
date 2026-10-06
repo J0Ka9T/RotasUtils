@@ -7,51 +7,29 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Server-wide settings for leveling every mob, not just the ones an author gave a profile.
- *
- * <p>A mob with no matching monster profile still gets a level: the zone it spawned in (or the
- * distance-from-spawn ramp outside any zone) decides the band, a stable roll from the mob's UUID
- * picks the level inside it, and health/damage grow per level. Location, never the nearby player,
- * decides danger. The name template is applied to the
- * mob's nameplate. Everything here is editable from the admin UI and saved with the level config,
- * so a server can narrow the feature to hostiles only, exclude NPC mods or raise the spawn ramp.</p>
- */
 public final class MobLevelConfig {
     public static final int MAX_LEVEL = 100;
     public static final int MAX_BLOCKS_PER_LEVEL = 100_000;
 
     private boolean enabled = true;
     private boolean nameVisible = true;
-    /** Nameplate template; must keep {level} so the difficulty colour can read it back. */
     private String nameFormat = "{name} [Lv {level}]";
-    /** Colour the nameplate by (mob level - viewer level) instead of leaving it white. */
     private boolean colorByDelta = true;
-    /** Level outside any zone, at the spawn point. */
     private int spawnLevel = 1;
-    /** Extra blocks travelled before the fallback ramp adds one level; 0 disables the ramp. */
     private int levelPerBlocks = 0;
-    /** Hard ceiling for naturally generated monsters, clamped into 1..100. */
     private int maxLevel = 100;
-    /** Levels above the distance floor a wilderness mob may roll, so the ramp is not one flat level. */
     private int bandSpread = 3;
     public static final int MAX_BAND_SPREAD = 1000;
     private double healthPerLevel = 0.05;
     private double damagePerLevel = 0.03;
     private long baseXp = 20;
     private double xpPerLevel = 2;
-    /** Empty means every mob category; otherwise the vanilla category names such as MONSTER. */
     private final Set<String> categories = new LinkedHashSet<>();
     private final Set<String> excludeEntities = new LinkedHashSet<>(List.of(
             "minecraft:villager", "minecraft:wandering_trader", "minecraft:iron_golem", "minecraft:snow_golem"));
     private final Set<String> excludeTags = new LinkedHashSet<>();
-    /** Mod namespaces whose entities never level; NPC mods ship "mobs" that are really shopkeepers. */
     private final Set<String> excludeNamespaces = new LinkedHashSet<>(List.of(
             "easy_npc", "easynpc", "easy_npc_bundle"));
-    /**
-     * Whether MISC-category entities are skipped when no category allow-list is set. MISC holds
-     * summoned weapons, golems and marker entities rather than things a player fights.
-     */
     private boolean skipMisc = true;
 
     public boolean enabled() { return enabled; }
@@ -113,7 +91,6 @@ public final class MobLevelConfig {
         if (!excludeNamespaces.remove(key)) { excludeNamespaces.add(key); }
     }
 
-    /** Adds or removes a category filter entry; an unknown/blank value is ignored. */
     public void toggleCategory(String category) {
         if (category == null || category.isBlank()) { return; }
         String key = category.trim().toUpperCase(java.util.Locale.ROOT);
@@ -132,10 +109,6 @@ public final class MobLevelConfig {
         if (!excludeTags.remove(key)) { excludeTags.add(key); }
     }
 
-    /**
-     * Whether a mob should receive the default level. Tamed animals and known NPC namespaces are
-     * always skipped; the rest is a category allow-list and an entity/tag deny-list.
-     */
     public boolean shouldLevel(String entityId, Set<String> tags, String category, boolean tamed) {
         if (!enabled || tamed || entityId == null || !entityId.contains(":")) {
             return false;
@@ -152,15 +125,12 @@ public final class MobLevelConfig {
                 return false;
             }
         }
-        // With no explicit categories, skip MISC: summons, projectiles-as-mobs, golems and other
-        // non-creature entities are not combat monsters and must not get levels or plates.
         if (categories.isEmpty()) {
             return !skipMisc || category == null || !category.equalsIgnoreCase("misc");
         }
         return (category != null && categories.contains(category.toUpperCase(java.util.Locale.ROOT)));
     }
 
-    /** Applies the name template; unknown placeholders are left untouched. */
     public String formatName(String baseName, int level) {
         return nameFormat.replace("{name}", baseName)
                 .replace("{level}", Integer.toString(level))
@@ -209,8 +179,6 @@ public final class MobLevelConfig {
         }
         config.categories.addAll(Nbt.loadStrings(tag, "categories"));
         config.excludeTags.addAll(Nbt.loadStrings(tag, "exclude_tags"));
-        // Replace, don't merge: these two start with defaults, so merging a saved list back into them
-        // silently resurrected every default an admin had removed on the next load.
         replace(config.excludeEntities, Nbt.loadStrings(tag, "exclude_entities"), tag.contains("exclude_entities"));
         replace(config.excludeNamespaces, Nbt.loadStrings(tag, "exclude_namespaces"), tag.contains("exclude_namespaces"));
         config.skipMisc = !tag.contains("skip_misc") || tag.getBoolean("skip_misc");

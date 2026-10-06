@@ -4,7 +4,6 @@ import net.minecraft.nbt.CompoundTag;
 
 import java.util.regex.Pattern;
 
-/** Screen titles shown when a player walks into or out of a zone, with an optional sound on entry. */
 public record ZoneMessages(String enterTitle, String enterSubtitle, String leaveTitle, String sound) {
     public static final int MAX_TEXT = 64;
     public static final ZoneMessages NONE = new ZoneMessages("", "", "", "");

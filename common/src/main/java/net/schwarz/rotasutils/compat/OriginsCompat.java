@@ -16,12 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 
-/**
- * Soft bridge to Origins (Forge) so skill trees can be limited to a race.
- *
- * <p>Origins is not a compile-time dependency. When it is absent, or its API cannot be
- * linked, every lookup returns empty and race-limited trees simply stay closed.</p>
- */
 public final class OriginsCompat {
     public static final String MOD_ID = "origins";
     private static final String EMPTY_ORIGIN = "origins:empty";
@@ -42,7 +36,6 @@ public final class OriginsCompat {
         return Platform.isModLoaded(MOD_ID);
     }
 
-    /** Origin ids the player holds across every layer, e.g. {@code origins:elytrian}. */
     public static List<String> origins(ServerPlayer player) {
         if (player == null || !prepare()) {
             return List.of();
@@ -71,10 +64,6 @@ public final class OriginsCompat {
         }
     }
 
-    /**
-     * Every registered origin as id to its name serialised as component JSON. The name stays
-     * a component so the client translates it; a dedicated server has no mod language files.
-     */
     public static Map<String, String> allOrigins(MinecraftServer server) {
         if (server == null || !prepare()) {
             return Map.of();

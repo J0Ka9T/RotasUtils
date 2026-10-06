@@ -11,13 +11,6 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 
 import java.lang.reflect.Method;
 
-/**
- * Optional Iron's Spells 'n Spellbooks mana reader for the Character Hub's SPELL POINT bar.
- *
- * <p>Iron's Spells owns mana and syncs the current value into its client mirror; the maximum is a
- * regular attribute. Reflection keeps the common/Fabric build free of the mod's classes. When the
- * mod is absent or its mirror cannot be read, {@link #read} returns null and the hub shows hunger.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class SpellPointsClientCompat {
     public static final String MOD_ID = "irons_spellbooks";
@@ -45,7 +38,6 @@ public final class SpellPointsClientCompat {
             float current = value instanceof Number number ? number.floatValue() : 0f;
             return new Reading(current, (float) Math.max(1.0, instance.getValue()));
         } catch (ReflectiveOperationException | RuntimeException e) {
-            // A changed Iron's Spells API must not break the inventory; fall back to hunger for good.
             playerMana = null;
             return null;
         }

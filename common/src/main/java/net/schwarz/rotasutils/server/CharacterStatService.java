@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.item.ItemStack;
 import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.level.StatRules;
 import net.schwarz.rotasutils.progress.PlayerProgress;
@@ -24,21 +25,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Level-up stat points and the attribute bonuses they buy.
- *
- * <p>There are four fixed stats ({@link CoreStat}). A character starts with {@code startPoints}, earns
- * {@code pointsPerLevel} every level, each stat holds up to {@code maxPerStat} points, and every point is
- * worth the same. Allocations live in the player's RPG profile; bonuses are transient modifiers rebuilt on
- * login, respawn and every change.</p>
- */
 public final class CharacterStatService {
     private static final String MODIFIER_PREFIX = "rotasutils.character_stat/";
-    /** Stat points handed out so far; server-only because of the {@code rpg.} prefix. */
     private static final String GRANTED = "rpg.stats.granted";
     private static final String LEGACY_GRANTED = "rpg.season.statpts";
     private static final String LEGACY_RESPECS = "season.respecs";
-    /** Dodge never goes past this, whatever titles and AGI add up to. */
     public static final double MAX_DODGE = 0.5;
 
     public record Result(boolean success, String message) {
@@ -70,10 +61,6 @@ public final class CharacterStatService {
         return total;
     }
 
-    /**
-     * Tops the character up to the points their level has earned ({@link StatRules#pointsAt}). Points already
-     * handed out are remembered, so lowering a level never takes points back and nothing is granted twice.
-     */
     public static int grantLevelPoints(PlayerProgress progress, RotasData data) {
         int target = rules(data).pointsAt(progress.level());
         long granted = number(progress.questVariables().get(GRANTED));
@@ -99,7 +86,6 @@ public final class CharacterStatService {
         }
     }
 
-    /** Spends points on several stats at once, all or nothing. */
     public static Result allocate(ServerPlayer player, RotasData data, CompoundTag request) {
         if (request.size() > CoreStat.ALL.size()) {
             return Result.no(ThaiText.t("rotasutils.msg.stat.too_many"));
@@ -138,14 +124,12 @@ public final class CharacterStatService {
         return Result.ok(ThaiText.t("rotasutils.msg.stat.spent", total));
     }
 
-    /** Admin reset: every point comes back, free. */
     public static int reset(ServerPlayer player, RotasData data) {
         int refunded = refund(data.progress(player.getUUID()), data);
         apply(player, data);
         return refunded;
     }
 
-    /** Replaces a player's four allocations while conserving their allocated and unspent points. */
     public static Result adminSetAllocations(ServerPlayer player, RotasData data,
                                              Map<CoreStat, Integer> requested, long expectedRevision) {
         PlayerProgress progress = data.progress(player.getUUID());
@@ -206,7 +190,6 @@ public final class CharacterStatService {
         return Result.ok(ThaiText.t("rotasutils.msg.stat.admin_points_granted", amount));
     }
 
-    /** A player's own respec: every point comes back for the flat price in {@link StatRules#respecCost}. */
     public static Result respec(ServerPlayer player, RotasData data) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (allocatedTotal(progress) <= 0) {
@@ -226,7 +209,6 @@ public final class CharacterStatService {
         return Result.ok(ThaiText.t("rotasutils.msg.stat.respec_done", refunded, cost));
     }
 
-    /** Gives back every point spent on the four stats. */
     public static int refund(PlayerProgress progress, RotasData data) {
         long refunded = 0;
         for (CoreStat stat : CoreStat.ALL) {
@@ -244,10 +226,6 @@ public final class CharacterStatService {
         return granted;
     }
 
-    /**
-     * Wipes a character's level, EXP, stat points and skill trees back to a fresh level 1 character. Money,
-     * items, quests, jobs and everything else stay.
-     */
     public static void wipeProgression(PlayerProgress progress, RotasData data, int startLevel) {
         for (String id : new ArrayList<>(progress.rpg().stats().keySet())) {
             if (!isKernelStat(data, id)) {
@@ -269,11 +247,26 @@ public final class CharacterStatService {
         return data.kernel().content().stats().keySet().stream().anyMatch(key -> key.value().equals(id));
     }
 
-    /** Rebuilds this player's stat, title and job modifiers. */
+    public static final double BASE_HEALTH = 300;
+
+    public static double rarityScale(net.schwarz.rotasutils.title.TitleDef.Rarity rarity) {
+        return switch (rarity) {
+            case COMMON -> 1.0;
+            case UNCOMMON -> 1.25;
+            case RARE -> 1.5;
+            case EPIC -> 2.0;
+            case LEGENDARY -> 3.0;
+        };
+    }
+
     public static void apply(ServerPlayer player, RotasData data) {
         float healthBefore = player.getHealth();
         boolean wasFull = healthBefore >= player.getMaxHealth() - 0.01f;
         clear(player);
+        var baseHealth = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+        if (baseHealth != null && baseHealth.getBaseValue() != BASE_HEALTH) {
+            baseHealth.setBaseValue(BASE_HEALTH);
+        }
         PlayerProgress progress = data.progress(player.getUUID());
         StatRules rules = rules(data);
         List<Bonus> bonuses = new ArrayList<>();
@@ -288,23 +281,31 @@ public final class CharacterStatService {
                 bonuses.add(new Bonus(effect, effect.perPoint() * points, stat.id() + (index == 0 ? "" : "/" + index)));
             }
         }
-        // A worn title contributes its own small bonus through the same pipeline, so it is cleared and
-        // rebuilt with everything else and a title taken off never leaves a modifier behind.
         net.schwarz.rotasutils.title.TitleDef worn = TitleService.worn(data, progress);
         if (worn != null) {
             List<CharacterStat.Effect> titleEffects = worn.effects();
             for (int index = 0; index < titleEffects.size(); index++) {
                 CharacterStat.Effect effect = titleEffects.get(index);
-                bonuses.add(new Bonus(effect, effect.perPoint(), "title/" + worn.id() + "/" + index));
+                bonuses.add(new Bonus(effect, effect.perPoint() * rarityScale(worn.rarity()), "title/" + worn.id() + "/" + index));
             }
         }
-        // The whole title collection pays a little too, so every title earned counts, not just the worn one.
         List<CharacterStat.Effect> collection = TitleService.collectionEffects(data, progress);
         for (int index = 0; index < collection.size(); index++) {
             CharacterStat.Effect effect = collection.get(index);
             bonuses.add(new Bonus(effect, effect.perPoint(), "title_collection/" + index));
         }
-        double defense = 0, evasion = 0, magic = 0, magicPower = 0;
+        List<ItemStack> socketed = new ArrayList<>(EquipmentService.equipped(player));
+        socketed.add(player.getMainHandItem());
+        for (ItemStack stack : socketed) {
+            if (stack == null || stack.isEmpty()) continue;
+            for (var effect : CardService.effects(stack)) {
+                if (CombatStats.logical(effect.attribute())) {
+                    bonuses.add(new Bonus(effect, effect.perPoint(), "card/" + effect.attribute()));
+                }
+            }
+        }
+        double defense = 0, evasion = 0, magic = 0, magicPower = 0, critChance = 0, critDamage = 0, regen = 0;
+        double armorPen = 0, cooldownReduction = 0, dropRate = 0, lifeSteal = 0, damageReduction = 0, staminaRegen = 0;
         for (Bonus bonus : bonuses) {
             CharacterStat.Effect effect = bonus.effect();
             double amount = bonus.amount();
@@ -316,10 +317,18 @@ public final class CharacterStatService {
                 case CombatStats.EVASION -> evasion += amount;
                 case CombatStats.MAGIC_ATTACK -> magic += amount;
                 case CombatStats.MAGIC_POWER -> magicPower += amount;
+                case CombatStats.CRIT_CHANCE -> critChance += amount;
+                case CombatStats.CRIT_DAMAGE -> critDamage += amount;
+                case CombatStats.REGEN -> regen += amount;
+                case CombatStats.ARMOR_PEN -> armorPen += amount;
+                case CombatStats.COOLDOWN_REDUCTION -> cooldownReduction += amount;
+                case CombatStats.DROP_RATE -> dropRate += amount;
+                case CombatStats.LIFE_STEAL -> lifeSteal += amount;
+                case CombatStats.DAMAGE_REDUCTION -> damageReduction += amount;
+                case CombatStats.STAMINA_REGEN -> staminaRegen += amount;
                 default -> addModifier(player, effect.attribute(), bonus.source(), amount, effect.operation());
             }
         }
-        // Job buffs on the logical combat stats join the same totals; attribute buffs go through applyJob.
         for (JobSlot slot : JobSlot.values()) {
             JobDef job = data.job(slot == JobSlot.MAIN ? progress.mainJob() : progress.subJob());
             if (job == null || !job.enabled()) continue;
@@ -331,12 +340,46 @@ public final class CharacterStatService {
                     case CombatStats.EVASION -> evasion += amount;
                     case CombatStats.MAGIC_ATTACK -> magic += amount;
                     case CombatStats.MAGIC_POWER -> magicPower += amount;
+                    case CombatStats.CRIT_CHANCE -> critChance += amount;
+                    case CombatStats.CRIT_DAMAGE -> critDamage += amount;
+                    case CombatStats.REGEN -> regen += amount;
+                    case CombatStats.ARMOR_PEN -> armorPen += amount;
+                    case CombatStats.COOLDOWN_REDUCTION -> cooldownReduction += amount;
+                    case CombatStats.DROP_RATE -> dropRate += amount;
+                    case CombatStats.LIFE_STEAL -> lifeSteal += amount;
+                    case CombatStats.DAMAGE_REDUCTION -> damageReduction += amount;
+                    case CombatStats.STAMINA_REGEN -> staminaRegen += amount;
                     default -> { }
                 }
             }
         }
-        CombatStats.set(player.getUUID(), new CombatStats.Values(Math.max(0, defense),
-                Math.max(0, Math.min(MAX_DODGE, evasion)), Math.max(0, magic), Math.max(0, magicPower)));
+        defense += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.DEFENSE_RATING);
+        evasion += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.DODGE_CHANCE);
+        magicPower += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.MAGIC_POWER_BONUS);
+        critChance += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.CRIT_CHANCE);
+        critDamage += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.CRIT_DAMAGE);
+        regen += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.HEALTH_REGEN);
+        armorPen += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.ARMOR_PEN);
+        cooldownReduction += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.COOLDOWN_REDUCTION);
+        dropRate += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.DROP_RATE);
+        lifeSteal += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.LIFE_STEAL);
+        damageReduction += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.DAMAGE_REDUCTION);
+        staminaRegen += SkillService.combatBonus(player, data, progress, net.schwarz.rotasutils.skill.EffectType.STAMINA_REGEN);
+
+        CombatStats.set(player.getUUID(), new CombatStats.Values(
+                Math.max(0, defense),
+                Math.max(0, Math.min(rules.maxDodge, evasion)),
+                Math.max(0, magic),
+                Math.max(0, magicPower),
+                Math.max(0, Math.min(rules.maxCritChance, critChance)),
+                Math.max(0, Math.min(rules.maxCritDamage, critDamage)),
+                Math.max(0, Math.min(rules.maxRegen, regen)),
+                Math.max(0, Math.min(rules.maxArmorPen, armorPen)),
+                Math.max(0, Math.min(rules.maxCdr, cooldownReduction)),
+                Math.max(0, Math.min(rules.maxDropRate, dropRate)),
+                Math.max(0, Math.min(rules.maxLifeSteal, lifeSteal)),
+                Math.max(0, Math.min(rules.maxDamageReduction, damageReduction)),
+                Math.max(0, Math.min(rules.maxStaminaRegen, staminaRegen))));
         applyJob(player, data.job(progress.mainJob()), JobSlot.MAIN);
         applyJob(player, data.job(progress.subJob()), JobSlot.SUB);
         if (wasFull && player.getMaxHealth() > healthBefore) {
@@ -383,11 +426,6 @@ public final class CharacterStatService {
         }
     }
 
-    /**
-     * Restores the health a player logged out with. Vanilla clamps saved health to the maximum
-     * before transient stat modifiers exist, so a Vitality build would otherwise lose health on
-     * every login.
-     */
     public static void restoreHealth(ServerPlayer player, PlayerProgress progress) {
         float saved = progress.lastHealth();
         if (saved > 0 && player.isAlive()) {
@@ -395,10 +433,6 @@ public final class CharacterStatService {
         }
     }
 
-    /**
-     * The attack damage multiplier this mod's stats and jobs add to the player (0.8 = +80%), read back from the
-     * transient modifiers {@link #apply} installed. PvP uses it to count only part of a stacked attack build.
-     */
     public static double statAttackBonus(ServerPlayer player) {
         AttributeInstance instance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
         if (instance == null) {
@@ -414,7 +448,6 @@ public final class CharacterStatService {
         return Math.max(0, bonus);
     }
 
-    /** Minecraft attributes and the logical combat values both count as known stat targets. */
     public static boolean attributeExists(String id) {
         if (CombatStats.logical(id)) {
             return true;

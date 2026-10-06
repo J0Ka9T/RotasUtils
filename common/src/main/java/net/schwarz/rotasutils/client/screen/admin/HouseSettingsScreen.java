@@ -14,6 +14,7 @@ import net.schwarz.rotasutils.client.screen.RotasScreen;
 import net.schwarz.rotasutils.client.screen.ScrollPanel;
 import net.schwarz.rotasutils.client.screen.Sfx;
 import net.schwarz.rotasutils.client.screen.Ui;
+import net.schwarz.rotasutils.house.HouseConfigPresets;
 import net.schwarz.rotasutils.house.HouseAdminService;
 import net.schwarz.rotasutils.house.HouseAdminValidator;
 import net.schwarz.rotasutils.house.HouseConfig;
@@ -26,7 +27,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/** The themed, atomic editor for global rental rules and house tiers. */
 @Environment(EnvType.CLIENT)
 public final class HouseSettingsScreen extends RotasScreen {
     private static final int COMPACT_ROW_HEIGHT = 34;
@@ -65,11 +65,6 @@ public final class HouseSettingsScreen extends RotasScreen {
         return draft;
     }
 
-    /**
-     * A content refresh is a successful save only when it advances the revision
-     * captured by this request and carries the same complete candidate values.
-     * This pure seam intentionally does not consult global feedback state.
-     */
     public static boolean shouldRebaseSubmittedDraft(HouseConfig snapshot, long submittedBaseRevision,
                                                      HouseConfig submittedCandidate) {
         return snapshot != null && submittedCandidate != null
@@ -77,7 +72,6 @@ public final class HouseSettingsScreen extends RotasScreen {
                 && sameConfigValues(snapshot, submittedCandidate);
     }
 
-    /** First field-specific local error, used even while Save is disabled. */
     public static String firstLocalError(HouseConfigDraft draft) {
         if (draft == null) {
             return "";
@@ -103,8 +97,6 @@ public final class HouseSettingsScreen extends RotasScreen {
 
     @Override
     protected boolean renderPanelsAfterContent() {
-        // Tier rows and the compact settings scroller are transparent overlays;
-        // paint them after the opaque calculated panels so they remain visible.
         return true;
     }
 
@@ -189,11 +181,6 @@ public final class HouseSettingsScreen extends RotasScreen {
                 row.height(), second, secondMaxLength, secondHint, setSecond);
     }
 
-    /**
-     * The smallest supported canvas cannot display all fourteen inputs at once.
-     * Keep them as real EditBoxes, but present the groups as a compact, scrollable
-     * form so every raw value remains reachable without overlapping the Save row.
-     */
     private void buildCompactFields(HouseAdminLayout.Rect fields) {
         compactRows.add(new CompactRow("rotasutils.house.settings.currency",
                 List.of(entry("rotasutils.house.settings.currency", 128, draft::currency, draft::setCurrency))));
@@ -342,6 +329,14 @@ public final class HouseSettingsScreen extends RotasScreen {
         saveButton = addRenderableWidget(Ui.primaryButton(L.c("rotasutils.house.settings.save"), button -> save())
                 .bounds(actions.x() + addWidth + gap, actions.y(), saveWidth, Math.max(1, actions.height())).build());
         updateSaveButton();
+        int presetX = actions.x() + addWidth + gap + saveWidth + gap;
+        int presetWidth = actions.right() - presetX;
+        if (presetWidth >= 72) {
+            HouseConfigPresets.Preset next = HouseConfigPresets.ALL.get(presetIndex % HouseConfigPresets.ALL.size());
+            addRenderableWidget(Ui.button(Ui.text(text("rotasutils.house.settings.preset", "Preset: ") + next.label()), button -> applyPreset(next))
+                    .tooltip(Tooltip.create(Ui.text(next.blurb())))
+                    .bounds(presetX, actions.y(), Math.min(170, presetWidth), Math.max(1, actions.height())).build());
+        }
 
         HouseAdminLayout.Rect footer = at(layout.footer());
         addRenderableWidget(Ui.button(L.c("rotasutils.common.back"), button -> goBack())
@@ -372,6 +367,36 @@ public final class HouseSettingsScreen extends RotasScreen {
         }
         Sfx.select();
         minecraft.setScreen(new HouseTierEditScreen(this, draft, index));
+    }
+
+    private int presetIndex;
+
+    private void applyPreset(HouseConfigPresets.Preset preset) {
+        draft.setPayment(days(preset.paymentIntervalMillis()), hours(preset.paymentIntervalMillis()), minutes(preset.paymentIntervalMillis()));
+        draft.setPaymentRemainderMillis(HouseTimeFields.fromMillis(preset.paymentIntervalMillis()).remainderMillis());
+        draft.setReminder(days(preset.reminderLeadMillis()), hours(preset.reminderLeadMillis()), minutes(preset.reminderLeadMillis()));
+        draft.setReminderRemainderMillis(HouseTimeFields.fromMillis(preset.reminderLeadMillis()).remainderMillis());
+        draft.setGrace(days(preset.graceMillis()), hours(preset.graceMillis()), minutes(preset.graceMillis()));
+        draft.setGraceRemainderMillis(HouseTimeFields.fromMillis(preset.graceMillis()).remainderMillis());
+        draft.setBuyoutMultiplier(String.valueOf(preset.buyoutMultiplier()));
+        draft.setBaseMemberLimit(String.valueOf(preset.baseMemberLimit()));
+        draft.setMemberSlotPrice(String.valueOf(preset.memberSlotPrice()));
+        draft.setMaxPurchasedMemberSlots(String.valueOf(preset.maxPurchasedMemberSlots()));
+        presetIndex++;
+        Sfx.select();
+        rebuild();
+    }
+
+    private static String days(long millis) {
+        return String.valueOf(HouseTimeFields.fromMillis(millis).days());
+    }
+
+    private static String hours(long millis) {
+        return String.valueOf(HouseTimeFields.fromMillis(millis).hours());
+    }
+
+    private static String minutes(long millis) {
+        return String.valueOf(HouseTimeFields.fromMillis(millis).minutes());
     }
 
     private void addTier() {
@@ -439,23 +464,17 @@ public final class HouseSettingsScreen extends RotasScreen {
         } else if (submitted) {
             if (!submittedRejected && shouldRebaseSubmittedDraft(state.config(), submittedBaseRevision,
                     submittedCandidate)) {
-                // Only an advanced, exact candidate snapshot completes the request.
                 draft.rebase(state);
                 clearSubmission();
                 rebuild();
                 return;
             }
             if (state.config().revision() <= submittedBaseRevision) {
-                // Same-revision refreshes are unrelated to this request; do not
-                // let a global feedback flag discard or rebase the typed draft.
                 return;
             }
-            // A stale or external advanced snapshot becomes the new concurrency
-            // baseline, while the submitted raw values remain for review/retry.
             draft.rebasePreservingInput(state);
             clearSubmission();
         } else {
-            // Unsubmitted refreshes retain the exact raw fields as well.
             draft.rebasePreservingInput(state);
         }
         rebuild();
@@ -503,8 +522,6 @@ public final class HouseSettingsScreen extends RotasScreen {
             submittedRejected = true;
             validationMessage = feedback;
             if (!feedback.equals("house.stale")) {
-                // Failed validation has no content sync, so release the save gate
-                // on the next client tick while retaining the typed draft for retry.
                 clearSubmission();
             }
             updateSaveButton();

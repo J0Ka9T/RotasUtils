@@ -5,7 +5,6 @@ import net.schwarz.rotasutils.data.ParamSpec.ParamKind;
 
 import java.util.List;
 
-/** Gate conditions usable by quests, boards, skill nodes and skill categories. */
 public enum RequirementType {
     MIN_LEVEL("Minimum Level", List.of(
             new ParamSpec("level", ParamKind.INT, "Level", "1"))),

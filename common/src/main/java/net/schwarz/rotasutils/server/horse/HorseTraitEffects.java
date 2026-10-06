@@ -23,18 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * What bloodline traits do in the world. Once a second every stable horse out of the stable gets its horse
- * modifiers, and whoever rides it gets the rider modifiers; everyone else has them taken off. All modifiers are
- * transient, so a crash or a dismount never leaves one behind.
- */
 public final class HorseTraitEffects {
     private static final UUID HORSE_ARMOR = UUID.fromString("7b8f2a52-3d6e-4f0a-9d1c-6a1e0c9b4a01");
     private static final UUID HORSE_SPEED = UUID.fromString("7b8f2a52-3d6e-4f0a-9d1c-6a1e0c9b4a02");
     private static final UUID RIDER_DAMAGE = UUID.fromString("7b8f2a52-3d6e-4f0a-9d1c-6a1e0c9b4a03");
     private static final UUID RIDER_ARMOR = UUID.fromString("7b8f2a52-3d6e-4f0a-9d1c-6a1e0c9b4a04");
 
-    /** Traits of the horse each online player rides, rebuilt every second, so it never outlives a dismount. */
     private static final Map<UUID, List<HorseTrait>> RIDING = new HashMap<>();
 
     private HorseTraitEffects() {
@@ -80,7 +74,6 @@ public final class HorseTraitEffects {
         if (amount != 0) instance.addTransientModifier(new AttributeModifier(id, name, amount, operation));
     }
 
-    /** XP multiplier the player's mount adds to one award. 1 when not riding a trait horse. */
     public static double xpMultiplier(ServerPlayer player, XpSource source) {
         List<HorseTrait> traits = RIDING.get(player.getUUID());
         if (traits == null || traits.isEmpty()) return 1;
@@ -102,7 +95,6 @@ public final class HorseTraitEffects {
         return 1 + bonus;
     }
 
-    /** SUREFOOT: no fall damage for the horse or the one riding it. */
     public static EventResult onHurt(LivingEntity entity, DamageSource source, float amount) {
         if (entity.level().isClientSide || !source.is(DamageTypeTags.IS_FALL)) return EventResult.pass();
         List<HorseTrait> traits = RIDING.get(entity.getUUID());

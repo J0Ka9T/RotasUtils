@@ -33,7 +33,6 @@ class MobInfoRulesTest {
         assertEquals("very_hard", MobInfoRules.difficultyKey(8));
         assertEquals("deadly", MobInfoRules.difficultyKey(15));
         assertEquals("mythic", MobInfoRules.difficultyKey(30));
-        // Same thresholds as the colour ramp, so name and colour always agree.
         assertEquals(MobLevelName.colorFor(2), MobLevelName.colorFor(-2));
     }
 

@@ -8,11 +8,6 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * What the game's camera, lens and controls do while this client's own player is casting. Only the
- * caster is ever affected: other players watching keep their normal cameras. The hooks in the camera,
- * the field of view, the view roll, the hand and the input all ask this one class.
- */
 @Environment(EnvType.CLIENT)
 public final class CinematicDirector {
     private CinematicDirector() {
@@ -23,7 +18,6 @@ public final class CinematicDirector {
         return cast != null && cast.time(partialTick) < cast.endSeconds() ? cast : null;
     }
 
-    /** The shot to put the camera at, given the player's own camera; null when no cutscene is running. */
     public static CameraRig.Shot camera(Camera camera, float partialTick) {
         ClientCast cast = active(partialTick);
         if (cast == null) {
@@ -33,28 +27,46 @@ public final class CinematicDirector {
         Vec3 look = normal.add(Vec3.directionFromRotation(camera.getXRot(), camera.getYRot()).scale(10));
         double base = Minecraft.getInstance().options.fov().get();
         double t = cast.time(partialTick);
+        if (cast.projection()) {
+            return Projection.shot(cast, camera, partialTick, base);
+        }
+        if (cast.stargun()) {
+            Stargun.Scene scene = Stargun.scene(cast);
+            return scene == null ? null : StargunCamera.shot(t, cast.realTime(partialTick), scene, Projection::clip, normal, look, base);
+        }
         CameraRig.Frame frame = cast.frame(partialTick);
         if (cast.purple()) {
+            if (cast.dissolveFocus != null && cast.sinceImpact(t) >= 0) {
+                frame = CameraRig.Frame.of(frame.feet(), cast.target, cast.dissolveFocus);
+            }
             return PurpleCamera.shot(t, frame, PurpleCamera.Timing.of(cast), cast::followPoint, normal, look, base, (int) cast.seed);
         }
         CameraRig.kickAt = cast.max() && cast.released() ? cast.releaseAt + cast.travelSeconds : -1;
         return CameraRig.shot(t, frame, cast.socketsForCamera(t, frame), cast.followPoint(t), normal, look, base, (int) cast.seed);
     }
 
-    /** The field of view in degrees, or {@code base} when nothing is playing. */
     public static double fov(float partialTick, double base) {
         ClientCast cast = active(partialTick);
         if (cast == null) {
             return base;
         }
+        if (cast.projection()) {
+            return Projection.fov(cast, partialTick, base);
+        }
+        if (cast.stargun()) {
+            return StargunCamera.fovAt(cast.time(partialTick), base);
+        }
         return cast.purple() ? PurpleCamera.fovAt(cast.time(partialTick), base, PurpleCamera.Timing.of(cast))
                 : CameraRig.fovAt(cast.time(partialTick), base);
     }
 
-    /** Applies the shot's roll to the view matrix, right after the game's own hurt tilt. */
     public static void applyRoll(PoseStack pose, float partialTick) {
         ClientCast cast = active(partialTick);
-        if (cast != null) {
+        if (cast != null && cast.projection()) {
+            pose.mulPose(Axis.ZP.rotationDegrees((float) Projection.roll(cast, partialTick)));
+        } else if (cast != null && cast.stargun()) {
+            pose.mulPose(Axis.ZP.rotationDegrees((float) StargunCamera.rollAt(cast.time(partialTick), cast.realTime(partialTick))));
+        } else if (cast != null) {
             double roll = cast.purple() ? PurpleCamera.rollAt(cast.time(partialTick), (int) cast.seed, PurpleCamera.Timing.of(cast))
                     : CameraRig.rollAt(cast.time(partialTick), (int) cast.seed);
             pose.mulPose(Axis.ZP.rotationDegrees((float) roll));
@@ -65,8 +77,7 @@ public final class CinematicDirector {
         return active(partialTick) != null;
     }
 
-    /** True while movement, jumping, attacking and using items are locked out. */
     public static boolean locksInput() {
-        return active(0) != null;
+        return active(0) != null || Projection.holdsLocalPlayer();
     }
 }

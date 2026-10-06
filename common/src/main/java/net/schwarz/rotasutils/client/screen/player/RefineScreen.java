@@ -18,16 +18,6 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The Refine Forge (ตีบวก), in the same board style as the other Rotas screens.
- *
- * <p>The item and what the attempt does to it sit on the left; the odds, the price, the risk and the
- * four things the player can spend on it sit on the right. Below, the player either hammers at once
- * (the plain odds) or heats the forge and plays a short timing game - three strikes, a marker sweeping
- * a bar, a wide "good" zone and a narrow "perfect" one - that adds up to {@link ForgeTiming#MAX_BONUS}
- * to the chance. The marker is a pure function of the server's clock; the screen only draws it and asks
- * for a strike, and the server grades it and reopens the bench on the result.</p>
- */
 @Environment(EnvType.CLIENT)
 public class RefineScreen extends RotasScreen {
     private static final int PAD = 14;
@@ -53,9 +43,7 @@ public class RefineScreen extends RotasScreen {
         }
     }
 
-    // State ------------------------------------------------------------------------------------------
-
-    private CompoundTag session() {
+private CompoundTag session() {
         return state.contains("session", Tag.TAG_COMPOUND) ? state.getCompound("session") : null;
     }
 
@@ -90,7 +78,6 @@ public class RefineScreen extends RotasScreen {
         return out;
     }
 
-    /** Odds shown: the table plus the blessing scroll, before the forge game's bonus. */
     private double baseChance() {
         if (certificate) {
             return 1.0;
@@ -107,13 +94,11 @@ public class RefineScreen extends RotasScreen {
         return Math.min(1.0 - baseChance(), s.getDouble("bonus"));
     }
 
-    /** Server ticks since the game began: the server's clock at the payload plus the time this screen has been open. */
     private double sessionTicks() {
         CompoundTag s = session();
         return (s.getLong("now") - s.getLong("start")) + (Util.getMillis() - openedAt) / 50.0;
     }
 
-    /** Ticks into the current strike's sweep, on the same clock. */
     private double strikeTicks() {
         CompoundTag s = session();
         return (s.getLong("now") - s.getLong("strike_start")) + (Util.getMillis() - openedAt) / 50.0;
@@ -127,9 +112,7 @@ public class RefineScreen extends RotasScreen {
         return have(oreKey()) > 0 && state.getLong("gold") >= quote().getLong("cost");
     }
 
-    // Layout -----------------------------------------------------------------------------------------
-
-    private int top() {
+private int top() {
         return guiTop + 56;
     }
 
@@ -204,9 +187,7 @@ public class RefineScreen extends RotasScreen {
         send("forge_strike");
     }
 
-    // Spendable materials -----------------------------------------------------------------------------
-
-    private record Tile(String key, String label, ItemStack icon, int have) {
+private record Tile(String key, String label, ItemStack icon, int have) {
     }
 
     private List<Tile> tiles() {
@@ -258,9 +239,7 @@ public class RefineScreen extends RotasScreen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    // Drawing ----------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, Ui.BOARD_SCRIM_TOP, Ui.BOARD_SCRIM_BOTTOM);
     }
@@ -351,7 +330,6 @@ public class RefineScreen extends RotasScreen {
         }
     }
 
-    /** The band under the numbers: the timing bar and strike results while heating, the hint otherwise. */
     private void renderLower(GuiGraphics g) {
         int x = guiLeft + PAD, w = guiWidth - 2 * PAD, y = lowerY();
         if (!sessionLive()) {
@@ -382,7 +360,6 @@ public class RefineScreen extends RotasScreen {
             g.fill(mx - 3, y + 1, mx + 4, y + 3, Ui.INK);
             g.fill(mx - 3, y + 23, mx + 4, y + 25, Ui.INK);
         }
-        // What each strike earned.
         int tx = x;
         int ty = y + 34;
         for (int i = 0; i < ForgeTiming.STRIKES; i++) {
@@ -410,7 +387,6 @@ public class RefineScreen extends RotasScreen {
         return out;
     }
 
-    /** The result of the game just finished, as a plain notice over the middle for a few seconds. */
     private void renderResult(GuiGraphics g) {
         CompoundTag f = finished();
         long age = Util.getMillis() - openedAt;

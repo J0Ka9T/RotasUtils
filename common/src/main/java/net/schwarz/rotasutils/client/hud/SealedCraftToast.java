@@ -12,14 +12,6 @@ import net.schwarz.rotasutils.client.screen.Ui;
 
 import java.util.Locale;
 
-/**
- * The scroll that unrolls when the server refuses a sealed craft or thins a gathering: the item on a wax seal with a
- * lock rune, what was sealed, the sub-role that holds it, and where else to look. Display only; the server already
- * acted.
- *
- * <p>Drawn over the HUD with no screen open and over any open screen otherwise, so it is seen from inside a crafting
- * table. The animation is time based: the paper unrolls from the centre between two dowels, holds, and rolls back.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class SealedCraftToast {
     private static final long UNROLL_MS = 220;
@@ -40,11 +32,13 @@ public final class SealedCraftToast {
         String kind = activity.toLowerCase(Locale.ROOT);
         boolean gather = kind.equals("mine") || kind.equals("harvest") || kind.equals("fish");
         icon = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
-        title = L.t("rotasutils.sealed." + kind) + "  ·  " + L.t("rotasutils.sealed.needs", jobName, level);
-        detail = L.t(gather ? "rotasutils.sealed.hint_gather" : "rotasutils.sealed.hint_make", jobName);
+        boolean station = level <= 0;
+        title = L.t("rotasutils.sealed." + kind) + "  ·  " + (station ? L.t("rotasutils.sealed.at_station", jobName)
+                : L.t("rotasutils.sealed.needs", jobName, level));
+        detail = station ? L.t("rotasutils.sealed.hint_station")
+                : L.t(gather ? "rotasutils.sealed.hint_gather" : "rotasutils.sealed.hint_make", jobName);
         long now = Util.getMillis();
         boolean open = shownAt >= 0 && now - shownAt < UNROLL_MS + HOLD_MS;
-        // A repeat while the scroll is open refreshes the hold instead of replaying the unroll.
         if (open) {
             shownAt = now - UNROLL_MS;
         } else {
@@ -77,7 +71,6 @@ public final class SealedCraftToast {
         if (half > 2) {
             graphics.enableScissor(centre - half, TOP - 2, centre + half, TOP + HEIGHT + 4);
             Ui.parchment(graphics, x, TOP, width, HEIGHT, true);
-            // Ruled margins make the strip read as a written notice rather than a panel.
             graphics.fill(x + 4, TOP + 3, x + width - 4, TOP + 4, Ui.PARCHMENT_DEEP);
             graphics.fill(x + 4, TOP + HEIGHT - 4, x + width - 4, TOP + HEIGHT - 3, Ui.PARCHMENT_DEEP);
             renderSeal(graphics, x + 20, TOP + HEIGHT / 2);
@@ -90,7 +83,6 @@ public final class SealedCraftToast {
         graphics.pose().popPose();
     }
 
-    /** Wax seal with a slowly breathing gold rim, the sealed item on it and a lock rune in the corner. */
     private static void renderSeal(GuiGraphics graphics, int cx, int cy) {
         float breath = 0.5f + 0.5f * (float) Math.sin(Util.getMillis() / 260.0);
         Ui.disc(graphics, cx, cy + 1, 13, 0x442A2015);
@@ -113,7 +105,6 @@ public final class SealedCraftToast {
         graphics.pose().popPose();
     }
 
-    /** A wooden roller with gold caps; the paper is wound around it at both edges. */
     private static void dowel(GuiGraphics graphics, int x, int y) {
         int h = HEIGHT + 6;
         graphics.fill(x, y + 2, x + 4, y + h - 2, Ui.WOOD_DARK);

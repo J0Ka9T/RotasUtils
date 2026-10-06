@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.client.screen.player;
 
-/** Visual semantics for NPC actions. Classification uses protocol ids, never translated labels. */
 public final class NpcActionPresentation {
     public enum Kind { DIALOGUE, QUEST, SHOP, SERVICE, GIFT, NAVIGATION }
 

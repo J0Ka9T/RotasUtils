@@ -27,21 +27,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * The artisan's commission: a hidden NPC that makes a sub-role's crafts for the player's materials and a steep fee.
- *
- * <p>Laid out as an open grimoire on a workbench. The ledger on the left names the artisan, the craft it works and
- * the commissions left today as a row of candles; the grimoire lists what it makes under tier seals; the right page
- * shows the chosen craft inside a turning rune circle, its material sockets, the fee and the Commission button.
- * Everything comes from the server's snapshot, and every commission is re-checked there.</p>
- */
 @Environment(EnvType.CLIENT)
 public class CrafterScreen extends RotasScreen {
     private static final int ROW = 30;
     private static final int LEDGER_W = 150;
     private static final int PAGE_W = 244;
     private static final String[] TIERS = {"A", "B", "C", "D"};
-    /** Keeps the chosen craft selected when a commission reopens the screen with fresh counts. */
     private static final Map<String, String> LAST_SELECTED = new HashMap<>();
 
     private record Material(ItemStack item, int need, long have) {
@@ -147,7 +138,6 @@ public class CrafterScreen extends RotasScreen {
     private int listX() { return compact() ? guiLeft + Ui.PAD : ledgerX() + LEDGER_W + Ui.GAP * 2; }
     private int pageX() { return guiLeft + guiWidth - Ui.PAD - PAGE_W; }
     private int listW() { return pageX() - Ui.GAP * 2 - listX(); }
-    /** Narrow windows drop the ledger so the grimoire keeps its room. */
     private boolean compact() { return guiWidth < 640; }
 
     private void rebuild() {
@@ -191,14 +181,11 @@ public class CrafterScreen extends RotasScreen {
         Sfx.stamp();
     }
 
-    // Frame ----------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderBackdrop(GuiGraphics graphics) {
         graphics.fillGradient(0, 0, width, height, Ui.BOARD_SCRIM_TOP, Ui.BOARD_SCRIM_BOTTOM);
     }
 
-    /** Workbench frame, title banner between two wax seals, and the paper surfaces the content sits on. */
     @Override
     protected void renderFrame(GuiGraphics graphics) {
         Ui.woodFrame(graphics, guiLeft, guiTop, guiWidth, guiHeight);
@@ -214,7 +201,6 @@ public class CrafterScreen extends RotasScreen {
         }
         Ui.parchmentInset(graphics, listX(), top(), listW(), bottom() - top());
         Ui.parchment(graphics, pageX(), top(), PAGE_W, bottom() - top(), false);
-        // A stitched spine between the grimoire and the page.
         for (int y = top() + 6; y < bottom() - 6; y += 6) {
             graphics.fill(pageX() - Ui.GAP - 1, y, pageX() - Ui.GAP + 1, y + 3, Ui.GOLD_DARK);
         }
@@ -223,9 +209,7 @@ public class CrafterScreen extends RotasScreen {
                 Ui.PARCHMENT_ALT, Ui.DANGER_SOFT, Ui.INK_GOOD, Ui.BAD);
     }
 
-    // Grimoire rows --------------------------------------------------------------------------------
-
-    private void renderRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
+private void renderRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
         Offer offer = shown.get(index);
         boolean chosen = offer == selected;
         int cardW = w - 6;
@@ -264,9 +248,7 @@ public class CrafterScreen extends RotasScreen {
         }
     }
 
-    // Content --------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!compact()) {
             renderLedger(graphics, mouseX, mouseY);
@@ -304,7 +286,6 @@ public class CrafterScreen extends RotasScreen {
             Ui.labelCentered(graphics, Ui.truncate(title, LEDGER_W - 12), cx, textY + 11, Ui.INK_FADE);
         }
 
-        // The job sigil: the role's colour inside a gold ring, its icon on top.
         int sigilY = textY + 42;
         Ui.disc(graphics, cx, sigilY + 1, 14, 0x442A2015);
         Ui.disc(graphics, cx, sigilY, 14, Ui.GOLD_DARK);
@@ -327,7 +308,6 @@ public class CrafterScreen extends RotasScreen {
         Ui.label(graphics, wallet, cx - walletW / 2 + 10, y + h - 18, Ui.INK);
     }
 
-    /** Commissions left today as candles: lit ones flicker, spent ones are bare wax. */
     private void renderCandles(GuiGraphics graphics, int cx, int y) {
         int limit = payload.getInt("limit");
         int left = payload.getInt("left");
@@ -365,7 +345,6 @@ public class CrafterScreen extends RotasScreen {
         }
         Ui.labelCentered(graphics, Ui.truncate(selected.name(), PAGE_W - 24), cx, y + 8, Ui.INK);
 
-        // Rune circle: settles in when a craft is chosen, then its runes keep turning slowly.
         long now = Util.getMillis();
         float settle = selectedAt < 0 ? 1f : Math.min(1f, (now - selectedAt) / 350f);
         int base = bottom() - top() > 330 ? 30 : 22;
@@ -394,7 +373,6 @@ public class CrafterScreen extends RotasScreen {
         }
         ItemStack tooltip = Ui.inside(mouseX, mouseY, cx - 16, cy - 16, 32, 32) ? selected.result() : ItemStack.EMPTY;
 
-        // Material sockets, two to a row.
         int noteY = bottom() - 94;
         int rowY = cy + r + 12;
         Ui.ribbon(graphics, x + 10, rowY, PAGE_W - 20,

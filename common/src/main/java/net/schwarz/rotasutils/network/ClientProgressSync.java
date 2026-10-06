@@ -23,7 +23,6 @@ public final class ClientProgressSync {
 
     private ClientProgressSync() { }
 
-    /** Drops chunk assembly and connection state so the next server starts from nothing. */
     public static void reset() {
         RECEIVER.clear();
         CHUNKS.clear();

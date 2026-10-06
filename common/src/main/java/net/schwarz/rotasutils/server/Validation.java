@@ -27,12 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Content validation.
- *
- * <p>Each issue carries the target it came from so the UI can jump straight to the
- * offending setting when the admin clicks the row.
- */
 public final class Validation {
     private Validation() {
     }
@@ -41,13 +35,7 @@ public final class Validation {
         ERROR, WARNING, INFO
     }
 
-    /**
-     * @param targetKind one of {@code quest}, {@code board}, {@code category}, {@code node}, {@code level}
-     * @param targetId   id of the object the issue belongs to
-     * @param field      optional field key so the editor can focus the exact control
-     */
     public record Issue(Severity severity, String targetKind, String targetId, String field, String message) {
-
         public CompoundTag save() {
             CompoundTag tag = new CompoundTag();
             tag.putString("severity", severity.name());
@@ -92,9 +80,7 @@ public final class Validation {
         return issues;
     }
 
-    // Quests ---------------------------------------------------------------
-
-    public static List<Issue> validateQuest(RotasData data, QuestDef quest) {
+public static List<Issue> validateQuest(RotasData data, QuestDef quest) {
         List<Issue> issues = new ArrayList<>();
         if (quest.id().isBlank()) {
             issues.add(new Issue(Severity.ERROR, "quest", quest.id(), "id", "Quest has no id."));
@@ -166,6 +152,31 @@ public final class Validation {
                 }
             }
         }
+        Set<String> paths = new HashSet<>();
+        quest.objectives().forEach(objective -> { if (!objective.opens().isEmpty()) paths.add(objective.opens()); });
+        for (int i = 0; i < quest.objectives().size(); i++) {
+            Objective objective = quest.objectives().get(i);
+            if (!objective.path().isEmpty() && !paths.contains(objective.path())) {
+                issues.add(new Issue(Severity.WARNING, "quest", quest.id(), "objective." + i + ".path",
+                        "Objective " + (i + 1) + " is on path '" + objective.path() + "', but no choice picks that path."));
+            }
+            if (!objective.opens().isEmpty() && !objective.path().isEmpty()) {
+                issues.add(new Issue(Severity.ERROR, "quest", quest.id(), "objective." + i + ".path",
+                        "Objective " + (i + 1) + " is a choice; choices cannot also belong to a path."));
+            }
+        }
+        for (int i = 0; i < quest.rewards().size(); i++) {
+            String path = quest.rewards().get(i).path();
+            if (!path.isEmpty() && !paths.contains(path)) {
+                issues.add(new Issue(Severity.WARNING, "quest", quest.id(), "reward." + i + ".path",
+                        "Reward " + (i + 1) + " is for path '" + path + "', but no choice picks that path."));
+            }
+        }
+        if (quest.followUp() && data.quests().values().stream().noneMatch(other -> other.rewards().stream()
+                .anyMatch(r -> r.type() == RewardType.UNLOCK_QUEST && quest.id().equals(r.params().getString("quest", ""))))) {
+            issues.add(new Issue(Severity.WARNING, "quest", quest.id(), "follow_up",
+                    "Follow-up quest, but no quest has an Unlock Quest reward for it, so nobody will receive it."));
+        }
         if (quest.published() && quest.boardIds().isEmpty()) {
             boolean onAnyBoard = false;
             for (BoardConfig board : data.boards().values()) {
@@ -176,9 +187,10 @@ public final class Validation {
                     break;
                 }
             }
-            if (!onAnyBoard) {
+            boolean fromNpc = data.npcs().values().stream().anyMatch(npc -> npc.questIds().contains(quest.id()));
+            if (!onAnyBoard && !fromNpc && !quest.followUp()) {
                 issues.add(new Issue(Severity.WARNING, "quest", quest.id(), "boards",
-                        "Quest is published but assigned to no board, so players cannot find it."));
+                        "Quest is published but no board or NPC hands it out, so players cannot find it."));
             }
         }
         if (quest.requiredLevel() > quest.recommendedLevel() && quest.recommendedLevel() > 0) {
@@ -192,15 +204,7 @@ public final class Validation {
         return issues;
     }
 
-    // Boards ---------------------------------------------------------------
-
-    // NPCs -----------------------------------------------------------------
-
-    /**
-     * Checks one NPC. An unbound NPC is a draft rather than a fault, so it is reported as a
-     * warning: an admin routinely writes the dialogue before walking out to bind the entity.
-     */
-    public static List<Issue> validateNpc(RotasData data, net.schwarz.rotasutils.npc.NpcDef npc) {
+public static List<Issue> validateNpc(RotasData data, net.schwarz.rotasutils.npc.NpcDef npc) {
         List<Issue> issues = new ArrayList<>();
         if (npc.id().isBlank()) {
             issues.add(new Issue(Severity.ERROR, "npc", npc.id(), "id", "NPC has no id."));
@@ -310,9 +314,7 @@ public final class Validation {
         }
     }
 
-    // Boards ---------------------------------------------------------------
-
-    public static List<Issue> validateBoard(RotasData data, BoardConfig board) {
+public static List<Issue> validateBoard(RotasData data, BoardConfig board) {
         List<Issue> issues = new ArrayList<>();
         if (board.name().isBlank()) {
             issues.add(new Issue(Severity.WARNING, "board", board.id(), "name", "Board has no name."));
@@ -338,9 +340,7 @@ public final class Validation {
         return issues;
     }
 
-    // Skills ---------------------------------------------------------------
-
-    public static List<Issue> validateCategory(RotasData data, SkillCategory category, Set<String> seenNodeIds) {
+public static List<Issue> validateCategory(RotasData data, SkillCategory category, Set<String> seenNodeIds) {
         List<Issue> issues = new ArrayList<>();
         if (category.nodes().isEmpty()) {
             issues.add(new Issue(Severity.WARNING, "category", category.id(), "nodes",
@@ -468,9 +468,7 @@ public final class Validation {
         return issues;
     }
 
-    // Quest chains ---------------------------------------------------------
-
-    private static List<Issue> validateQuestChains(RotasData data) {
+private static List<Issue> validateQuestChains(RotasData data) {
         List<Issue> issues = new ArrayList<>();
         for (QuestDef quest : data.quests().values()) {
             Set<String> seen = new HashSet<>();
@@ -501,10 +499,7 @@ public final class Validation {
         return false;
     }
 
-    // Shared ---------------------------------------------------------------
-
-    /** Checks that every registry-backed parameter resolves to something real. */
-    private static List<Issue> validateParams(RotasData data, String kind, String targetId, String prefix,
+private static List<Issue> validateParams(RotasData data, String kind, String targetId, String prefix,
                                               Params params, List<ParamSpec> specs) {
         List<Issue> issues = new ArrayList<>();
         for (ParamSpec spec : specs) {
@@ -586,7 +581,6 @@ public final class Validation {
                     }
                 }
                 default -> {
-                    // Free-form fields need no registry check.
                 }
             }
         }

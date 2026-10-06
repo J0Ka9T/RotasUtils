@@ -24,11 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * The auction house: players list an item at a fixed price, anyone buys it at an auctioneer, and the seller is paid
- * straight into their wallet (online or not) less the house fee. Unsold items come back to a claim box when they
- * expire. Listings live in their own save file so the item snapshots never touch the progress record.
- */
 public final class AuctionService {
     public static final class Listing {
         public String id;
@@ -63,7 +58,6 @@ public final class AuctionService {
 
     public static final class Store extends SavedData {
         final Map<String, Listing> listings = new LinkedHashMap<>();
-        /** Items waiting to be collected: expired listings. */
         final Map<UUID, List<ItemStack>> claims = new LinkedHashMap<>();
 
         @Override
@@ -110,6 +104,9 @@ public final class AuctionService {
         }
     }
 
+    static final int MAX_ITEM_BYTES = 24 * 1024;
+    static final int MAX_SCREEN_BYTES = 600 * 1024;
+
     private AuctionService() {
     }
 
@@ -125,7 +122,6 @@ public final class AuctionService {
         return SeasonService.rules(data).npcServices;
     }
 
-    /** Moves expired listings into their sellers' claim boxes. */
     static void sweep(Store store) {
         long now = now();
         var iterator = store.listings.values().iterator();
@@ -157,6 +153,7 @@ public final class AuctionService {
         payload.putLong("max_price", rules.auctionMaxPrice);
         ListTag listings = new ListTag();
         long now = now();
+        int budget = MAX_SCREEN_BYTES;
         for (Listing listing : store.listings.values()) {
             CompoundTag row = new CompoundTag();
             row.putString("id", listing.id);
@@ -165,6 +162,8 @@ public final class AuctionService {
             row.put("item", listing.item.save(new CompoundTag()));
             row.putLong("price", listing.price);
             row.putLong("left", Math.max(0, listing.expires - now));
+            budget -= row.sizeInBytes();
+            if (budget < 0) break;
             listings.add(row);
         }
         payload.put("listings", listings);
@@ -192,6 +191,7 @@ public final class AuctionService {
         Store store = store(player.server);
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) return "ถือของที่จะขายไว้ในมือ";
+        if (held.save(new CompoundTag()).sizeInBytes() > MAX_ITEM_BYTES) return "ของชิ้นนี้ข้อมูลใหญ่เกินไป ลงขายไม่ได้";
         if (price < 1 || price > rules.auctionMaxPrice) return "ราคาต้องอยู่ระหว่าง 1 ถึง " + rules.auctionMaxPrice;
         long mine = store.listings.values().stream().filter(listing -> listing.seller.equals(player.getUUID())).count();
         if (mine >= rules.auctionMaxListings) return "ลงขายได้สูงสุด " + rules.auctionMaxListings + " ชิ้น";

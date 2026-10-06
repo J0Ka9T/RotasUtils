@@ -9,13 +9,6 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The sockets (รู) on a weapon or a piece of armour, and the cards sitting in them.
- *
- * <p>Both live in a {@code RotasSockets} compound on the stack, next to the refine level, so an item
- * carries its whole history by itself. A socket is punched once and never disappears; a card put into
- * one can be taken out again, which is what makes a socketed item worth trading.</p>
- */
 public final class ItemSockets {
     public static final String TAG = "RotasSockets";
     private static final String COUNT = "count";
@@ -24,7 +17,6 @@ public final class ItemSockets {
     private ItemSockets() {
     }
 
-    /** How many sockets this item has. */
     public static int count(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return 0;
@@ -36,7 +28,6 @@ public final class ItemSockets {
         return Math.max(0, tag.getCompound(TAG).getInt(COUNT));
     }
 
-    /** The cards in this item's sockets, in socket order. */
     public static List<String> cards(ItemStack stack) {
         List<String> cards = new ArrayList<>();
         if (stack == null || stack.isEmpty()) {
@@ -53,15 +44,10 @@ public final class ItemSockets {
         return cards;
     }
 
-    /** Free sockets left on this item. */
     public static int free(ItemStack stack) {
         return Math.max(0, count(stack) - cards(stack).size());
     }
 
-    /**
-     * Punches one more socket, up to {@code max}. Returns the new socket count, or 0 when the item takes
-     * no sockets at all - it must be something the game treats as a weapon or as armour.
-     */
     public static int punch(ItemStack stack, int max) {
         if (!ItemRefine.categoryOf(stack).refinable()) {
             return 0;
@@ -74,7 +60,6 @@ public final class ItemSockets {
         return current + 1;
     }
 
-    /** Puts a card in the first free socket. False when there is no room. */
     public static boolean insert(ItemStack stack, String cardId) {
         if (cardId == null || cardId.isBlank() || free(stack) <= 0) {
             return false;
@@ -85,7 +70,6 @@ public final class ItemSockets {
         return true;
     }
 
-    /** Takes the card out of one socket and returns its id, or null when that socket was empty. */
     public static String remove(ItemStack stack, int socket) {
         List<String> cards = cards(stack);
         if (socket < 0 || socket >= cards.size()) {

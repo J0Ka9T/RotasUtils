@@ -1,0 +1,8 @@
+{
+  "width": "q.screen_width / 6",
+  "height": "q.screen_height / 6",
+  "depth": false,
+  "color_buffers": [
+    { "format": "RGBA16F", "linear": true }
+  ]
+}

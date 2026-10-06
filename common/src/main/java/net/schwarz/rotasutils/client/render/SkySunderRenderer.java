@@ -28,22 +28,6 @@ import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
-/**
- * The Sundering, painted over the eldritch rift.
- *
- * <p>A great golden seal - octagram, rune bands, hexagram heart - writes itself around the tear with a
- * burning pen-point racing round each ring, while a second band of runes writes itself the other way.
- * The seal tightens and spins up; eight spears of light shoot from its rim into the rift's heart; veins
- * of white fire spread out across the tear and the heart swells to a blinding star. It draws in on
- * itself for a breath - and breaks: a lens-flare that fills the sky, a crown of god-rays, two
- * shockwaves rolling to the horizon, the seal flung outward and the sky's pieces tumbling away as
- * glinting shards. Golden motes drift down while the wound heals, and a small seal settles over the
- * scar like a wax stamp before it fades.</p>
- *
- * <p>Every layer is a painted texture ({@code scripts/gen_sunder_textures.py}) mapped onto meshes
- * curved over the sky dome and blended additively, driven only by the synced clock ({@link SkySunder})
- * and the rift's seed, so every player sees the same sundering.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class SkySunderRenderer {
     private static final ResourceLocation SEAL = tex("seal");
@@ -56,7 +40,6 @@ public final class SkySunderRenderer {
     private static final ResourceLocation SHARDS = tex("shards");
     private static final ResourceLocation MOTE = tex("mote");
 
-    // Dome radii: all in front of the rift (which sits at 90.6-97.4), back to front.
     private static final float R_BACK = 90.2f;
     private static final float R_SEAL = 89.8f;
     private static final float R_CRACK = 89.4f;
@@ -67,7 +50,6 @@ public final class SkySunderRenderer {
     private static final float[] FOUR_YAWS = {180f, 270f, 0f, 90f};
     private static final float FOUR_ELEVATION = 34f;
 
-    /** Degrees: the seal's radius, a little wider than the rift is tall. */
     private static final float SEAL_RADIUS = 36f;
     private static final int LANCES = 8;
     private static final int SHARD_COUNT = 56;
@@ -91,7 +73,6 @@ public final class SkySunderRenderer {
         return Rotasutils.id("textures/environment/sunder/" + name + ".png");
     }
 
-    /** From the server: a sundering began at game tick {@code startTick} in {@code dim}. */
     public static void set(ResourceLocation dim, long startTick, long riftSeed) {
         dimension = dim;
         start = startTick;
@@ -99,7 +80,6 @@ public final class SkySunderRenderer {
         lastCueTick = startTick - 1;
     }
 
-    /** Ticks into the running sundering, or a negative number when there is none here. */
     private static float time(float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || dimension == null || start == Long.MIN_VALUE
@@ -110,14 +90,10 @@ public final class SkySunderRenderer {
         return t >= 0 && t < SkySunder.END ? t : -1f;
     }
 
-    // Timeline shape ----------------------------------------------------------------------------------
-
-    /** How far the seal's rings have been written, 0..1. */
-    private static float write(float t, float from) {
+private static float write(float t, float from) {
         return easeInOut(clamp01((t - from) / 26f));
     }
 
-    /** The seal's size as a fraction of {@link #SEAL_RADIUS}: unfolds with overshoot, tightens, gasps, bursts. */
     private static float sealScale(float t) {
         int brk = SkySunder.BREAK;
         if (t >= brk) {
@@ -130,20 +106,16 @@ public final class SkySunderRenderer {
         return (0.55f + 0.45f * unfold) * tighten * gasp;
     }
 
-    /** The seal's spin in degrees: slow and stately, then winding up hard before the break. */
     private static float sealSpin(float t) {
         float wind = smooth(SkySunder.BIND, SkySunder.BREAK, t);
         return t * 0.9f + wind * wind * wind * 140f;
     }
 
-    /** How hard everything is straining towards the break, 0..1. */
     private static float charge(float t) {
         return smooth(SkySunder.BIND, SkySunder.BREAK, t);
     }
 
-    // Sound and quake cues ----------------------------------------------------------------------------
-
-    public static void tick(Minecraft minecraft) {
+public static void tick(Minecraft minecraft) {
         if (minecraft.level == null || minecraft.player == null || time(0f) < 0f) {
             return;
         }
@@ -245,17 +217,13 @@ public final class SkySunderRenderer {
         CameraQuake.impulse(degrees, 0, 1);
     }
 
-    // HUD ----------------------------------------------------------------------------------------------
-
-    /** A warm dimming before the break, then the white-gold flash. */
-    public static void renderHud(GuiGraphics graphics, float partialTick) {
+public static void renderHud(GuiGraphics graphics, float partialTick) {
         float t = time(partialTick);
         int b = SkySunder.BREAK;
         if (t < 0f || t > b + 50) {
             return;
         }
         if (t < b) {
-            // A breath of anticipation: the world darkens a touch as the heart burns.
             float dim = smooth(b - 16, b - 1, t) * 0.28f;
             int a = (int) (dim * 255);
             if (a > 0) {
@@ -264,7 +232,6 @@ public final class SkySunderRenderer {
             return;
         }
         float after = t - b;
-        // Short and bright, so the break itself is seen through it, then a warm golden wash.
         float alpha = 0.8f * (float) Math.exp(-after / 3.5f) + 0.16f * (float) Math.exp(-after / 30f);
         int a = (int) (clamp01(alpha) * 255);
         if (a > 0) {
@@ -272,9 +239,7 @@ public final class SkySunderRenderer {
         }
     }
 
-    // Sky ----------------------------------------------------------------------------------------------
-
-    public static void render(PoseStack pose, float partialTick, boolean blockedByFluid) {
+public static void render(PoseStack pose, float partialTick, boolean blockedByFluid) {
         float t = time(partialTick);
         if (t < 0f || blockedByFluid) {
             return;
@@ -320,12 +285,9 @@ public final class SkySunderRenderer {
         float charge = charge(t);
         float seal = SEAL_RADIUS * scale * sealScale(t);
         float spin = sealSpin(t);
-        // The seal lives until the break, then is flung outward and fades.
-        // The whole seal lives until the break; then it is torn into wedges (see below).
         float sealLife = t < brk ? smooth(0f, 8f, t) : 0f;
         float pulse = 0.85f + 0.15f * (float) Math.sin(t * 0.45f) + 0.25f * charge * (float) Math.sin(t * 1.7f);
 
-        // Soft light behind everything: the seal's own glow, then the lingering afterglow.
         BufferBuilder b = begin(GLOW);
         tint(1f, 0.74f, 0.32f);
         disc(b, m, 0f, 0f, seal * 1.25f, 0f, 1f, 0f, 1f, sealLife * (0.18f + 0.22f * charge), R_BACK);
@@ -335,7 +297,6 @@ public final class SkySunderRenderer {
         }
         end(b);
 
-        // The seal, written ring by ring; the outer rune band writes itself the other way.
         if (sealLife > 0.003f) {
             b = begin(SEAL);
             tint(1f, 1f, 1f);
@@ -345,25 +306,21 @@ public final class SkySunderRenderer {
             float runeSize = seal * 1.28f;
             disc(b, m, 0f, 0f, runeSize, -spin * 1.6f + 90f, write(t, 12f), 0.78f, 1f,
                     sealLife * pulse * 0.9f, R_SEAL - 0.1f);
-            // A thin ghost of the rune band ahead of it, to give the seal depth.
             disc(b, m, 0f, 0f, runeSize * 1.12f, spin * 0.7f, write(t, 18f), 0.78f, 1f,
                     sealLife * 0.35f, R_SEAL - 0.2f);
             end(b);
         }
 
-        // The veins of light across the tear, spreading out from the heart.
         if (t >= SkySunder.CRACK && after < 14f) {
             float reach = easeOut(clamp01((t - SkySunder.CRACK) / (brk - 4f - SkySunder.CRACK)));
             float flick = 0.75f + 0.25f * (float) Math.sin(t * 2.7f) * (float) Math.sin(t * 1.3f + 1f);
             float alpha = (after < 0f ? flick * (0.6f + 0.4f * charge) : 1.4f * (1f - after / 14f));
             b = begin(CRACKS);
             tint(1f, 1f, 1f);
-            // Stretched upright to lie along the tear.
             crackDisc(b, m, 30f * scale, hash(local) * 360f, reach, alpha, R_CRACK);
             end(b);
         }
 
-        // Spears of light from the seal's rim into the heart.
         if (after < 8f) {
             b = begin(GLOW);
             for (int i = 0; i < LANCES; i++) {
@@ -390,7 +347,6 @@ public final class SkySunderRenderer {
             end(b);
         }
 
-        // Flares: the pen-points writing the seal, the lance strikes, and the heart.
         b = begin(FLARE);
         tint(1f, 0.95f, 0.82f);
         for (int ring = 0; ring < 2; ring++) {
@@ -421,11 +377,9 @@ public final class SkySunderRenderer {
             return;
         }
 
-        // The break.
         float sealAtBreak = SEAL_RADIUS * scale * sealScale(brk - 0.01f);
         float spinAtBreak = sealSpin(brk);
 
-        // A cross of light burned through the heavens: a pillar through the zenith, a fainter beam across.
         float crossGrow = easeOut(clamp01(after / 5f));
         float crossFade = (float) Math.exp(-after / 28f);
         if (crossFade > 0.01f) {
@@ -445,7 +399,6 @@ public final class SkySunderRenderer {
             end(b);
         }
 
-        // The sky itself cracks: a vast web racing out across the dome, then gone.
         float skyCrack = (float) Math.exp(-after / 16f) * smooth(0f, 2f, after);
         if (skyCrack > 0.01f) {
             b = begin(CRACKS);
@@ -455,8 +408,6 @@ public final class SkySunderRenderer {
             end(b);
         }
 
-        // The ghost of the seal thrown across the whole sky, and the seal itself torn into wedges that
-        // fly outward, spinning, their broken edges burning.
         float ghost = smooth(2f, 12f, after) * (float) Math.exp(-after / 45f);
         float torn = (float) Math.exp(-after / 16f);
         b = begin(SEAL);
@@ -497,7 +448,6 @@ public final class SkySunderRenderer {
             }
             disc(b, m, 0f, 0f, size, ring * 50f, 1f, 0f, 1f, alpha, R_BURST - 0.1f);
         }
-        // Small shockwaves from the chain of detonations round the seal.
         tint(1f, 0.88f, 0.6f);
         for (int k = 0; k < 8; k++) {
             float since = after - chainDelay(k);
@@ -512,7 +462,6 @@ public final class SkySunderRenderer {
         }
         end(b);
 
-        // The chain of detonations: each point of the octagram bursts in turn, racing round the circle.
         b = begin(FLARE);
         tint(1f, 0.95f, 0.8f);
         for (int k = 0; k < 8; k++) {
@@ -532,7 +481,6 @@ public final class SkySunderRenderer {
         shards(m, after, local, scale);
         motes(m, after, local, scale);
 
-        // Sealed: a small seal settles over the scar and fades.
         float stamp = smooth(40f, 60f, after) * (1f - smooth(120f, SkySunder.END - brk, after));
         if (stamp > 0.003f) {
             b = begin(SEAL);
@@ -543,7 +491,6 @@ public final class SkySunderRenderer {
         }
     }
 
-    /** The rift's heart: a star that swells with the charge, draws in, then fills the sky at the break. */
     private static void heart(BufferBuilder b, Matrix4f m, float t, float scale) {
         int brk = SkySunder.BREAK;
         float charge = charge(t);
@@ -566,15 +513,10 @@ public final class SkySunderRenderer {
         sprite(b, m, 0f, 0f, size * 0.7f, 45f + t * 0.4f, alpha * 0.6f, R_FRONT - 0.15f);
     }
 
-    /** When octagram point {@code k} detonates after the break: racing round the circle. */
     private static float chainDelay(int k) {
         return 3f + k * 1.6f;
     }
 
-    /**
-     * A ring texture broken into {@code pieces} wedges, each flung out along its own middle with a spin
-     * of its own and falling a little as it goes.
-     */
     private static void tearApart(BufferBuilder b, Matrix4f m, float radius, float rollDeg, int pieces,
                                   float inner, float outer, float after, long local, float alpha, float dome) {
         if (alpha <= 0.003f) {
@@ -594,7 +536,6 @@ public final class SkySunderRenderer {
         }
     }
 
-    /** Part of a disc texture, from {@code f0} to {@code f1} of the way round, rotated and moved. */
     private static void sector(BufferBuilder b, Matrix4f m, float cx, float cy, float radius, float rollDeg,
                                float f0, float f1, float inner, float outer, float alpha, float dome) {
         int angular = Math.max(2, (int) Math.ceil(72 * (f1 - f0)));
@@ -607,7 +548,6 @@ public final class SkySunderRenderer {
             float c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
             float cr0 = (float) Math.cos(a0 + roll), sr0 = (float) Math.sin(a0 + roll);
             float cr1 = (float) Math.cos(a1 + roll), sr1 = (float) Math.sin(a1 + roll);
-            // Broken edges burn brighter than the middle of each piece.
             float e0 = 1f + 0.8f * edgeGlow(s, angular), e1 = 1f + 0.8f * edgeGlow(s + 1, angular);
             for (int k = 0; k < radial; k++) {
                 float q0 = inner + (outer - inner) * k / radial;
@@ -624,7 +564,6 @@ public final class SkySunderRenderer {
         return step == 0 || step == steps ? 1f : 0f;
     }
 
-    /** Streaks of light falling down the sky after the break, each with a bright head. */
     private static void rainOfLight(Matrix4f m, float after, long local, float scale) {
         if (after > 110f) {
             return;
@@ -653,7 +592,6 @@ public final class SkySunderRenderer {
         return SkySunder.BIND + lance * 3;
     }
 
-    /** Glinting shards of the broken sky, thrown out, tumbling, then falling away. */
     private static void shards(Matrix4f m, float after, long local, float scale) {
         if (after > 130f) {
             return;
@@ -676,7 +614,6 @@ public final class SkySunderRenderer {
             float y = sy + (float) Math.sin(heading) * travel - fall;
             float size = (1.8f + hash(h ^ 5L) * 4.2f) * scale * (1f - 0.35f * age);
             float roll = hash(h ^ 7L) * 360f + hashSigned(h ^ 6L) * 9f * after;
-            // Tumbling: the shard turns edge-on and back, catching the light as it faces us.
             float tumble = (float) Math.cos(hash(h ^ 8L) * 6.28f + after * (0.15f + hash(h ^ 9L) * 0.25f));
             float glint = (float) Math.pow(Math.abs(tumble), 6.0);
             float alpha = (1f - age) * (1f - age) * (0.55f + 1.2f * glint);
@@ -692,7 +629,6 @@ public final class SkySunderRenderer {
         end(b);
     }
 
-    /** Golden motes drifting down out of the healing wound. */
     private static void motes(Matrix4f m, float after, long local, float scale) {
         float fadeOut = 1f - smooth(SkySunder.END - SkySunder.BREAK - 60, SkySunder.END - SkySunder.BREAK, after);
         if (fadeOut <= 0f) {
@@ -716,14 +652,7 @@ public final class SkySunderRenderer {
         end(b);
     }
 
-    // Meshes: positions in degrees around the rift's centre (x across, y up) -------------------------
-
-    /**
-     * A texture mapped onto a disc curved over the dome: polar grid, so large seals bend with the sky.
-     * {@code sweep} writes it in around the circle from {@code rollDeg} with a soft leading edge;
-     * {@code inner} skips the empty middle of ring textures.
-     */
-    private static void disc(BufferBuilder b, Matrix4f m, float cx, float cy, float radius, float rollDeg,
+private static void disc(BufferBuilder b, Matrix4f m, float cx, float cy, float radius, float rollDeg,
                              float sweep, float inner, float outer, float alpha, float domeRadius) {
         if (alpha <= 0.003f || sweep <= 0f || radius <= 0f) {
             return;
@@ -761,7 +690,6 @@ public final class SkySunderRenderer {
         vertex(b, m, domeRadius, 0.5f + 0.5f * cosUv * q, 0.5f - 0.5f * sinUv * q, alpha);
     }
 
-    /** The whole ring written so far is lit; the last {@code soft} of it fades in at the pen-point. */
     private static float sweepFade(float along, float sweep, float soft) {
         if (sweep >= 1f) {
             return 1f;
@@ -769,7 +697,6 @@ public final class SkySunderRenderer {
         return 1f - smooth(sweep - soft, sweep, along);
     }
 
-    /** The crack texture spread from the heart: lit out to {@code reach} with a hot soft front. */
     private static void crackDisc(BufferBuilder b, Matrix4f m, float radius, float rollDeg, float reach,
                                   float alpha, float domeRadius) {
         if (alpha <= 0.003f || reach <= 0f) {
@@ -806,18 +733,15 @@ public final class SkySunderRenderer {
 
     private static void crackVertex(BufferBuilder b, Matrix4f m, float radius, float q, float cosUv, float sinUv,
                                     float cosPos, float sinPos, float alpha, float domeRadius) {
-        // Squeezed across and stretched up so the veins follow the tall tear.
         at(cosPos * q * radius * 0.62f, sinPos * q * radius * 1.15f);
         vertex(b, m, domeRadius, 0.5f + 0.5f * cosUv * q, 0.5f - 0.5f * sinUv * q, Math.max(0f, alpha));
     }
 
-    /** A square texture centred at (x, y), rotated, bent onto the dome on a 4x4 grid. */
     private static void sprite(BufferBuilder b, Matrix4f m, float x, float y, float halfSize, float rollDeg,
                                float alpha, float domeRadius) {
         quadSprite(b, m, x, y, halfSize, halfSize, rollDeg, 0f, 0f, 1f, 1f, alpha, domeRadius, 4);
     }
 
-    /** One of the four shards in the atlas, squashed across by {@code tumble} as it turns. */
     private static void shard(BufferBuilder b, Matrix4f m, float x, float y, float halfSize, float tumble,
                               float rollDeg, int cell, float alpha, float domeRadius) {
         float u0 = (cell & 1) * 0.5f, v0 = (cell >> 1) * 0.5f;
@@ -853,7 +777,6 @@ public final class SkySunderRenderer {
         vertex(b, m, domeRadius, u0 + (u1 - u0) * fx, v0 + (v1 - v0) * fy, alpha);
     }
 
-    /** A soft beam from one point to another: the glow texture's middle row stretched along it. */
     private static void beam(BufferBuilder b, Matrix4f m, float x0, float y0, float x1, float y1, float halfWidth,
                              float a0, float a1, float domeRadius) {
         float dx = x1 - x0, dy = y1 - y0;
@@ -862,7 +785,6 @@ public final class SkySunderRenderer {
             return;
         }
         float nx = -dy / len * halfWidth, ny = dx / len * halfWidth;
-        // Rounded caps: the ends sample towards the texture's edge so they soften out.
         at(x0 - nx, y0 - ny);
         vertex(b, m, domeRadius, 0.35f, 0f, a0);
         at(x0 + nx, y0 + ny);
@@ -873,9 +795,7 @@ public final class SkySunderRenderer {
         vertex(b, m, domeRadius, 0.5f, 0f, a1);
     }
 
-    // GL plumbing --------------------------------------------------------------------------------------
-
-    private static BufferBuilder begin(ResourceLocation location) {
+private static BufferBuilder begin(ResourceLocation location) {
         AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(location);
         texture.setFilter(true, false);
         GlStateManager._bindTexture(texture.getId());
@@ -906,7 +826,6 @@ public final class SkySunderRenderer {
     private static void vertex(BufferBuilder b, Matrix4f m, float radius, float u, float v, float alpha) {
         float a = clamp01(alpha);
         if (entityPath) {
-            // Eyes blend additively on colour only, so fade by darkening.
             b.vertex(m, P[0] * radius, P[1] * radius, P[2] * radius).color(tintR * a, tintG * a, tintB * a, 1f)
                     .uv(u, v).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(LightTexture.FULL_BRIGHT)
                     .normal(-P[0], -P[1], -P[2]).endVertex();
@@ -915,9 +834,7 @@ public final class SkySunderRenderer {
         b.vertex(m, P[0] * radius, P[1] * radius, P[2] * radius).uv(u, v).color(tintR, tintG, tintB, a).endVertex();
     }
 
-    // Maths --------------------------------------------------------------------------------------------
-
-    private static float smooth(float from, float to, float value) {
+private static float smooth(float from, float to, float value) {
         return EldritchSkyCelestial.smoothstep(from, to, value);
     }
 

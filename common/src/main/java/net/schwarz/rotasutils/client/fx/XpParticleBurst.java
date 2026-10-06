@@ -9,10 +9,6 @@ import net.minecraft.util.Mth;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/**
- * Small particle burst that rises from the XP bar when XP is gained.
- * Complements FloatingXpText with visual sparkle.
- */
 @Environment(EnvType.CLIENT)
 public final class XpParticleBurst {
     private static final Deque<XpParticle> particles = new ArrayDeque<>();
@@ -21,10 +17,6 @@ public final class XpParticleBurst {
     private XpParticleBurst() {
     }
 
-    /**
-     * Spawn a burst of particles at the given position.
-     * {@code count} particles, {@code spread} horizontal spread, {@code rise} max vertical rise.
-     */
     public static void spawn(int centerX, int centerY, int count, int spread, int rise, int color) {
         for (int i = 0; i < count && particles.size() < MAX_PARTICLES; i++) {
             particles.add(new XpParticle(centerX, centerY, spread, rise, color));
@@ -70,7 +62,7 @@ public final class XpParticleBurst {
             float progress = age / (float) DURATION;
             float alpha = 1f - progress;
             float easedX = dx * progress;
-            float easedY = dy * progress * progress; // accelerate upward
+            float easedY = dy * progress * progress;
 
             int px = startX + (int) easedX;
             int py = startY + (int) easedY;

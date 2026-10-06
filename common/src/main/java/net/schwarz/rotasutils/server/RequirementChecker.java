@@ -22,12 +22,6 @@ import net.schwarz.rotasutils.skill.SkillNode;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Evaluates requirements server side.
- *
- * <p>Every gate in RotasUtils funnels through here, so the client's rendered
- * requirement list and the server's accept check can never disagree.
- */
 public final class RequirementChecker {
     private RequirementChecker() {
     }
@@ -49,10 +43,6 @@ public final class RequirementChecker {
         return true;
     }
 
-    /**
-     * The first blocking requirement this player fails, or null when every one passes.
-     * The label is the human-readable line, so callers can explain what is still missing.
-     */
     public static String firstBlockedLabel(ServerPlayer player, RotasData data, List<Requirement> requirements) {
         for (Requirement requirement : requirements) {
             CheckResult result = check(player, data, requirement);
@@ -158,14 +148,13 @@ public final class RequirementChecker {
                         ThaiText.t("rotasutils.msg.req.you_spent", have));
             }
             case CONNECTED_SKILLS -> {
-                // Evaluated against the owning node by SkillService; standalone it always passes.
                 yield CheckResult.pass(ThaiText.t("rotasutils.msg.req.connected"));
             }
             case HAS_ITEM -> {
                 ResourceLocation itemId = params.getId("item");
                 int amount = Math.max(1, params.getInt("amount", 1));
                 Item item = itemId == null ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId);
-                if (item == null) {
+                if (item == null || item == net.minecraft.world.item.Items.AIR) {
                     yield CheckResult.fail(ThaiText.t("rotasutils.msg.req.item"),
                             ThaiText.t("rotasutils.msg.req.item_missing", params.getString("item", "")));
                 }
@@ -258,7 +247,6 @@ public final class RequirementChecker {
         return total;
     }
 
-    /** Removes {@code amount} of {@code item}; returns how many were actually taken. */
     public static int consumeItem(ServerPlayer player, Item item, int amount) {
         int remaining = amount;
         for (ItemStack stack : player.getInventory().items) {

@@ -26,13 +26,6 @@ import net.schwarz.rotasutils.skill.SkillNode;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Full contract page.
- *
- * <p>Split in two so a player never has to scroll to answer "what do I do" and
- * "may I take it": the left sheet is the story and the objectives, the right sheet
- * is everything that gates or pays the contract.
- */
 @Environment(EnvType.CLIENT)
 public class QuestDetailScreen extends RotasScreen {
     private record Line(String text, int color, int indent, boolean heading,
@@ -102,7 +95,6 @@ public class QuestDetailScreen extends RotasScreen {
         QuestDef quest = quest();
         setHeader(quest == null ? "Contract" : quest.name());
 
-        // 13px lines leave room for Thai marks above and below each line of text.
         storyPanel = new ScrollPanel(storyX, columnY + 14, storyWidth, columnHeight - 14, LINE_HEIGHT).parchment();
         termsPanel = new ScrollPanel(termsX, columnY + 14, termsWidth, columnHeight - 14, LINE_HEIGHT).parchment();
         registerPanel(storyPanel);
@@ -129,8 +121,6 @@ public class QuestDetailScreen extends RotasScreen {
                     .tooltip(blocked.isEmpty() ? null
                             : net.minecraft.client.gui.components.Tooltip.create(Component.literal(blocked)))
                     .build());
-            // A contract the server would refuse is shown as unavailable, with the reason beside
-            // the button, instead of letting the player click and read an error afterwards.
             accept.active = blocked.isEmpty();
         } else if (active.turnInReady()) {
             addRenderableWidget(Ui.boardPrimaryButton(L.c("rotasutils.quest.turn_in"), button -> {
@@ -142,7 +132,6 @@ public class QuestDetailScreen extends RotasScreen {
                 goBack();
             }).bounds(contentX + contentWidth - 180, barY, 180, 24).build());
         } else {
-            // Tracking is a client-side view choice, so it never round-trips to the server.
             addRenderableWidget(Ui.boardButton(L.c(ClientQuestTracker.isTracked(questId)
                             ? "rotasutils.quest.untrack" : "rotasutils.quest.track"), button -> {
                 ClientQuestTracker.toggle(questId);
@@ -152,7 +141,6 @@ public class QuestDetailScreen extends RotasScreen {
                     .tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(
                             L.t("rotasutils.quest.track_hint"))))
                     .build());
-            // Abandoning throws away progress, so it asks first.
             addRenderableWidget(Ui.dangerButton(L.c("rotasutils.quest.abandon"), button ->
                     minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(yes -> {
                         if (!yes) {
@@ -170,7 +158,6 @@ public class QuestDetailScreen extends RotasScreen {
         }
     }
 
-    /** Why the server would refuse an accept right now, or "" when it would not. */
     private String acceptBlockedReason(QuestDef quest) {
         PlayerProgress progress = ClientState.progress();
         if (progress.level() < quest.requiredLevel()) {
@@ -191,8 +178,6 @@ public class QuestDetailScreen extends RotasScreen {
         payload.putString("quest", questId);
         payload.putString("board", boardId);
         send("accept_quest", payload);
-        // The contract a player just took is the one they want on the HUD; the server
-        // may still refuse the accept, and the tracker simply shows nothing if it does.
         ClientQuestTracker.track(questId);
         goBack();
     }
@@ -232,11 +217,12 @@ public class QuestDetailScreen extends RotasScreen {
         story.add(Line.blank());
         story.add(Line.heading(L.t("rotasutils.quest.objectives")));
         if (active != null) {
-            // An accepted contract leads with where it stands, not with its rules.
             int required = 0;
             int done = 0;
             for (int i = 0; i < quest.objectives().size(); i++) {
-                if (quest.objectives().get(i).optional()) {
+                Objective counted = quest.objectives().get(i);
+                if (counted.optional() || !QuestService.onPath(quest, active, i)
+                        || (!counted.opens().isEmpty() && !QuestService.decided(quest, active, counted.step()))) {
                     continue;
                 }
                 required++;
@@ -270,8 +256,17 @@ public class QuestDetailScreen extends RotasScreen {
         if (quest.objectives().isEmpty()) {
             story.add(Line.indented(L.t("rotasutils.quest.objectives.none"), Ui.INK_FADE));
         }
+        java.util.Set<String> chosenPaths = active == null ? java.util.Set.of() : QuestService.chosenPaths(quest, active);
         for (int i = 0; i < quest.objectives().size(); i++) {
             Objective objective = quest.objectives().get(i);
+            if (!objective.path().isEmpty() && !chosenPaths.contains(objective.path())) {
+                continue;
+            }
+            boolean decided = active != null && !objective.opens().isEmpty()
+                    && QuestService.decided(quest, active, objective.step());
+            if (decided && !active.isComplete(i)) {
+                continue;
+            }
             if (objective.hidden() && active == null) {
                 story.add(Line.indented("? " + L.t("rotasutils.quest.objectives.hidden"), Ui.INK_FADE));
                 continue;
@@ -279,7 +274,8 @@ public class QuestDetailScreen extends RotasScreen {
             boolean done = active != null && active.isComplete(i);
             int have = active == null ? 0 : active.progress(i);
             String suffix = objective.requiredAmount() > 1 ? "  " + have + "/" + objective.requiredAmount() : "";
-            String prefix = objective.optional() ? L.t("rotasutils.quest.optional") + " " : "";
+            String prefix = (objective.optional() ? L.t("rotasutils.quest.optional") + " " : "")
+                    + (objective.opens().isEmpty() || decided ? "" : "[?] ");
             String text = mark(done) + " " + prefix + objective.displayText() + suffix;
             if (active != null && objective.type() == ObjectiveType.DELIVER_ITEM && !done) {
                 story.add(Line.clickable(text + "   [" + L.t("rotasutils.quest.deliver") + "]", "deliver", i));
@@ -418,7 +414,6 @@ public class QuestDetailScreen extends RotasScreen {
             return;
         }
         if (!line.action().isEmpty()) {
-            // Actionable lines always look like a control, not only on hover.
             Ui.parchment(graphics, x + 2 + line.indent() - 4, y, rowWidth - 10 - line.indent() + 4, rowHeight - 1, hovered);
         }
         Ui.label(graphics, Ui.truncate(line.text(), rowWidth - line.indent() - 12),
@@ -489,7 +484,6 @@ public class QuestDetailScreen extends RotasScreen {
 
         Ui.ribbon(graphics, storyX, columnY, storyWidth, L.t("rotasutils.quest.contract"));
         Ui.ribbon(graphics, termsX, columnY, termsWidth, L.t("rotasutils.quest.terms"));
-        // Centred in the action bar, between the Back button and the main action.
         renderFeedback(graphics, guiLeft + (guiWidth - feedbackWidth()) / 2, guiTop + guiHeight - 29,
                 net.schwarz.rotasutils.client.screen.RotasTheme.SURFACE_HIGH, Ui.DANGER_SOFT, Ui.GOOD, Ui.BAD);
     }

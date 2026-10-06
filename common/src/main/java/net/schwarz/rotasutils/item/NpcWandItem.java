@@ -18,13 +18,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/**
- * The NPC Wand: point at a mob and click to make it an NPC or edit it.
- *
- * <p>Clicks on mobs are handled in {@code RotasEvents.onInteractEntity}, which runs before the mob's
- * own interaction, so a villager's trade menu or an Easy NPC dialog never opens on top of the
- * editor. This class only handles clicking the air, which opens the NPC list.</p>
- */
 public class NpcWandItem extends Item {
     public NpcWandItem(Properties properties) {
         super(properties);

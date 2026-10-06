@@ -15,12 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Merchant trading. A purchase verifies funds, stock and limits, then commits the wallet, the stock
- * counter, the purchase counter and the item movement together on the server thread. If the record
- * write is rejected the removed cost items are given back and the stock reservation is released, so a
- * failed trade cannot destroy items or leak stock.
- */
 public final class MerchantService {
     public enum Result { TRADED, UNKNOWN_TRADE, UNAVAILABLE, INSUFFICIENT_FUNDS, MISSING_ITEMS, OUT_OF_STOCK, LIMIT_REACHED }
 
@@ -36,7 +30,6 @@ public final class MerchantService {
         return merchant;
     }
 
-    /** Remaining stock for a trade in the current window; -1 when the trade is unlimited. */
     public int remaining(ContentId merchant, MerchantDefinitions.Trade trade) {
         if (!trade.limited()) { return -1; }
         long window = trade.window(now());
@@ -50,7 +43,6 @@ public final class MerchantService {
         return MerchantDefinitions.purchases(stored, trade.window(now()));
     }
 
-    /** Trades a player can see and use right now, with their remaining stock. */
     public List<String> list(ServerPlayer player, ContentId id) {
         var merchant = merchant(id);
         var context = new KernelPlayerContext(player, Map.of());
@@ -75,7 +67,6 @@ public final class MerchantService {
         return buy(player, id, tradeKey, count, 0);
     }
 
-    /** Currency costs after a rank discount (0..0.9), rounded up so a discount never makes a trade free. */
     public static long discounted(long amount, double discount) {
         double safe = Double.isFinite(discount) ? Math.max(0, Math.min(0.9, discount)) : 0;
         return Math.max(1, (long) Math.ceil(amount * (1 - safe)));
@@ -97,8 +88,6 @@ public final class MerchantService {
         int alreadyBought = purchased(player, id, trade);
         if (trade.perPlayerLimit() > 0 && (long) alreadyBought + count > trade.perPlayerLimit()) { refused++; return Result.LIMIT_REACHED; }
 
-        // Validate content before anything is reserved or removed: a malformed or unknown
-        // cost item id must refuse the trade outright, not throw halfway through payment.
         for (var cost : trade.costs()) {
             if (cost.item() != null && costItem(cost.item()) == null) {
                 refused++;
@@ -125,7 +114,6 @@ public final class MerchantService {
                 return Result.MISSING_ITEMS;
             }
         }
-        // Stock is reserved before anything is removed so two purchases in one tick cannot oversell.
         if (trade.limited() && !data.addCounter(MerchantDefinitions.stockKey(id, trade.key()), window, trade.stock(), count)) {
             refused++;
             return Result.OUT_OF_STOCK;
@@ -162,7 +150,6 @@ public final class MerchantService {
         return Result.TRADED;
     }
 
-    /** Returns removed cost items and releases the stock reservation after a rejected trade. */
     private void compensate(ServerPlayer player, List<ItemStack> inventoryBefore, RotasData data, ContentId id,
                             MerchantDefinitions.Trade trade, long window, int count) {
         compensations++;
@@ -174,13 +161,11 @@ public final class MerchantService {
             String key = MerchantDefinitions.stockKey(id, trade.key());
             long used = data.counter(key, window);
             data.addCounter(key, window, trade.stock(), 0);
-            // addCounter cannot subtract, so the released amount is written back directly.
             data.releaseCounter(key, window, Math.max(0, used - count));
         }
         Rotasutils.LOG.warn("RPG merchant trade rolled back for {}", player.getGameProfile().getName());
     }
 
-    /** Resolves a cost item id, or null when the id is malformed or absent from the registry. */
     private static net.minecraft.world.item.Item costItem(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
         if (location == null || !BuiltInRegistries.ITEM.containsKey(location)) {
@@ -194,7 +179,6 @@ public final class MerchantService {
         var inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
-            // RPG stacks carry their own data, so they never satisfy a plain item cost.
             if (stack.is(target) && !ItemFactory.isRpgItem(stack)) { total += stack.getCount(); }
         }
         return total;
@@ -224,7 +208,6 @@ public final class MerchantService {
         return "Merchants trades=" + trades + " refused=" + refused + " rollbacks=" + compensations;
     }
 
-    /** Serialised snapshot of a trade for the admin surface. */
     public CompoundTag describe(ContentId id, MerchantDefinitions.Trade trade) {
         CompoundTag tag = new CompoundTag();
         tag.putString("merchant", id.value());

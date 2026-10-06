@@ -8,7 +8,6 @@ import net.schwarz.rotasutils.level.XpSourceConfig;
 
 import java.util.List;
 
-/** Tuning for a single experience source. */
 @Environment(EnvType.CLIENT)
 public class XpSourceScreen extends SimpleFieldScreen {
     private final XpSourceConfig config;

@@ -68,7 +68,6 @@ public final class ContentHistory {
         return draft;
     }
 
-    /** Imports a validated disk snapshot without publishing it or replacing another draft. */
     public void importDraft(String actor, ContentRegistry.Prepared prepared, long expected) {
         requireValid(prepared);
         if (expected != revision()) { throw new IllegalStateException("Live content changed during import; import again"); }

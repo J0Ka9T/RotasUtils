@@ -24,26 +24,6 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * The ExoElectric Disintegrator's ray: a crimson column 20 blocks across and up to 320 long.
- * <ul>
- *   <li><b>Body</b>: a textured tube of racing red-and-black plasma streaks, scrolling away from the
- *       muzzle.</li>
- *   <li><b>Rim</b>: additive white-hot shell whose brightness follows the view angle (a Fresnel
- *       term), so the silhouette always burns white while the middle shows the red interior. It
- *       reads correctly from the side and from the wielder's own eyes looking straight down it.</li>
- *   <li><b>Nose</b>: the ray swells from the muzzle through an elliptical, white-flooded dome.</li>
- *   <li><b>Core</b>: a thin blinding white-cyan line down the axis.</li>
- *   <li><b>Muzzle</b>: a towering vertical light pillar and horizontal lens streak, crimson bloom.</li>
- * </ul>
- * The charge phase gathers red light, rings and motes at the muzzle before the ray erupts.
- *
- * <p>Two things colour it. <b>Heat</b>: the ordinary beam runs from crimson through orange to a
- * bleached white as it nears the vent, so the wielder can see the gun cooking before it cuts out.
- * <b>Mode</b>: the Annihilation Lance is twice as wide and burns gold-white with a violet haze, adds
- * a wall of shock racing down its length and a far heavier muzzle. Both are read from the beam each
- * frame; nothing about them is synced.</p>
- */
 @Environment(EnvType.CLIENT)
 public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
     public static final ResourceLocation PLASMA = new ResourceLocation(Rotasutils.MOD_ID, "textures/entity/exo_beam.png");
@@ -88,11 +68,9 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
     private final float[] ice = {0.85f, 1f, 1f};
     private final float[] rim = {1f, 0.9f, 0.9f};
     private final float[] blood = {1f, 0.12f, 0.16f};
-    /** Where a cooking beam's crimson ends up, and the lance's own two colours. */
     private static final float[] COOKING = {1f, 0.62f, 0.18f};
     private static final float[] LANCE_HOT = {1f, 0.86f, 0.42f};
     private static final float[] LANCE_HAZE = {0.72f, 0.42f, 1f};
-    /** This frame's body colour, rim colour, beam width and how overcharged the shot is. */
     private final float[] shotBody = {1f, 0.12f, 0.16f};
     private final float[] shotRim = {1f, 0.9f, 0.9f};
     private float widthScale = 1f;
@@ -111,10 +89,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
     }
 
-    /**
-     * The ray is far longer than its entity box, so it is culled against its real reach: a muzzle the
-     * camera can see, or a far tip still in frame, keeps it; a beam entirely behind the view is dropped.
-     */
     @Override
     public boolean shouldRender(ExoBeamEntity beam, Frustum frustum, double x, double y, double z) {
         LivingEntity owner = beam.channeler();
@@ -123,8 +97,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
         Vec3 eye = owner.getEyePosition();
         Vec3 far = eye.add(owner.getViewVector(1f).scale(ExoBeamEntity.RANGE));
-        // Inflate by what is actually drawn: the widest haze shell around the tube, and the tall
-        // muzzle pillar above and below it, so no layer pops when the axis crosses the frame edge.
         float tube = ExoBeamEntity.RADIUS * beam.mode().radius * 1.6f + 4f;
         float pillar = 70f * beam.mode().radius + 4f;
         return frustum.isVisible(new AABB(eye, far).inflate(tube, pillar, tube));
@@ -156,7 +128,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         muzzle.set((float) (eye.x - ox), (float) (eye.y - oy), (float) (eye.z - oz))
                 .add(lookF.x * fwd + right.x * rt + up.x * dn, lookF.y * fwd + right.y * rt + up.y * dn,
                         lookF.z * fwd + right.z * rt + up.z * dn);
-        // The ray burns through terrain for its full range; the first surface only gets a scorch flare.
         Vec3 far = eye.add(look.scale(ExoBeamEntity.RANGE));
         struck = hit.distanceToSqr(far) > 1.0;
         impact.set((float) (hit.x - ox), (float) (hit.y - oy), (float) (hit.z - oz));
@@ -185,11 +156,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         super.render(beam, yaw, partialTick, pose, buffers, light);
     }
 
-    /**
-     * This frame's colours. A cooking beam slides crimson to orange and then bleaches toward white, so
-     * the heat is visible on the ray itself; the lance ignores heat and burns gold-white throughout,
-     * with a flicker so it never sits still.
-     */
     private void palette(float heat, float time) {
         if (lance) {
             float flicker = 0.92f + 0.08f * Mth.sin(time * 41f);
@@ -207,14 +173,11 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
     }
 
-    // Charge ------------------------------------------------------------------------------------
-
-    private void charge(VertexConsumer vc, Matrix4f m, float c, float time, int tick) {
+private void charge(VertexConsumer vc, Matrix4f m, float c, float time, int tick) {
         float cc = c * c;
         halo(vc, m, muzzle, (0.4f + 2.6f * cc) * widthScale, shotBody, 0.25f + 0.45f * c);
         halo(vc, m, muzzle, 0.1f + 0.6f * cc, white, 0.4f + 0.6f * c);
         star(vc, m, muzzle, (0.4f + 2.2f * cc) * widthScale, whiteMix(shotBody, 0.5f), 0.6f * c, time * 3f);
-        // Three dashed rings closing in around the aim, counter-rotating.
         for (int k = 0; k < 3; k++) {
             float r = ((3.2f - k * 0.6f) * (1f - cc) + 0.3f) * widthScale;
             tmp.set(dir).mul(0.1f + k * 0.3f).add(muzzle);
@@ -225,7 +188,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
             }
             ring(vc, m, tmp, u, v, r, 0.14f, c1, 0.8f * c, 32, true, time * ((k & 1) == 0 ? 3.2f : -2.6f));
         }
-        // Motes spiralling inward.
         for (int i = 0; i < 20; i++) {
             float ph = frac(time * 1.3f + i / 20f);
             float r = 4f * (1f - ph) * (1f - ph);
@@ -235,7 +197,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
             crimson(i / 20f, c1);
             star(vc, m, a, 0.14f + 0.18f * c, whiteMix(c1, 0.3f), ph * (0.3f + 0.7f * c), ang);
         }
-        // Crackling arcs off the gathering core.
         for (int i = 0; i < 4; i++) {
             float h1 = hash(tick, i * 3 + 1), h2 = hash(tick, i * 3 + 2);
             float ang = h1 * Mth.TWO_PI;
@@ -246,16 +207,12 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
     }
 
-    // Beam --------------------------------------------------------------------------------------
-
-    private void fire(PoseStack pose, MultiBufferSource buffers, float f, float length, float time, int tick) {
+private void fire(PoseStack pose, MultiBufferSource buffers, float f, float length, float time, int tick) {
         Matrix4f m = pose.last().pose();
         float grow = backOut(Math.min(1f, f / 6f)) * (0.97f + 0.03f * Mth.sin(time * 70f));
-        // The ray punches out over a few ticks rather than appearing at full length.
         float reach = Math.min(length, 8f + f * 90f);
         int rings = stations(reach, grow, time);
 
-        // Body: racing plasma streaks.
         VertexConsumer body = buffers.getBuffer(VfxRenderTypes.glowTextured(PLASMA));
         Matrix3f n = pose.last().normal();
         float scroll = time * 2.2f;
@@ -264,7 +221,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
                 plasma(body, m, n, j, k, scroll, 0.96f, 0.92f, 0f);
             }
         }
-        // A looser outer sheath flowing slower and twisted, so the streaks shear past each other.
         for (int j = 0; j < rings - 1; j++) {
             for (int k = 0; k < SIDES; k++) {
                 plasma(body, m, n, j, k, scroll * 0.55f + 0.37f, 1.1f, 0.42f, time * 0.15f);
@@ -272,14 +228,11 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
 
         VertexConsumer glow = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
-        // White-hot silhouette, then a wider haze in the shot's own colour.
         shell(glow, m, rings, 1.0f, shotRim, 1.0f, 1.6f, 0f);
         shell(glow, m, rings, 1.25f, shotBody, 0.45f, 1.0f, 0f);
         shell(glow, m, rings, 1.6f, lance ? LANCE_HAZE : shotBody, lance ? 0.3f : 0.18f, 0.7f, 0f);
-        // The nose is flooded white, fading into the body behind it.
         shell(glow, m, rings, 0.97f, white, 0.85f, 0f, ExoBeamEntity.NOSE * widthScale + 10f);
 
-        // Shock rings racing down the ray.
         float spacing = 28f, lead = frac(time * 150f / spacing) * spacing;
         for (float d = ExoBeamEntity.NOSE * widthScale + lead; d < reach; d += spacing) {
             float r = ExoBeamEntity.RADIUS * widthScale * grow * 1.04f;
@@ -288,7 +241,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
             ring(glow, m, tmp, u, v, r, 1.6f, shotRim, 0.55f * fade, 48, false, 0f);
             ring(glow, m, tmp, u, v, r * 1.12f, 2.6f, shotBody, 0.35f * fade, 48, false, 0f);
         }
-        // The lance throws one wall of shock down its whole length, once per discharge.
         if (lance) {
             float front = Mth.clamp(f / 10f, 0f, 1f);
             float at = front * Math.min(reach, 220f);
@@ -299,28 +251,24 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
             ring(glow, m, tmp, u, v, wall * 1.6f, 12f, LANCE_HAZE, 0.5f * fade, 64, false, 0f);
             ring(glow, m, tmp, u, v, wall * 2.3f, 18f, shotBody, 0.25f * fade, 64, false, 0f);
         }
-        // Rotating sigil around the muzzle: an outer ticked ring, a counter-spinning dashed ring, an inner band.
         tmp.set(dir).mul(-0.4f).add(muzzle);
         float sigil = grow * widthScale;
         ring(glow, m, tmp, u, v, 5.5f * sigil, 0.25f, shotBody, 0.85f, 64, false, 0f);
         ring(glow, m, tmp, u, v, 6.1f * sigil, 0.35f, shotRim, 0.6f, 36, true, time * 1.2f);
         ring(glow, m, tmp, u, v, 4.2f * sigil, 0.2f, whiteMix(shotBody, 0.4f), 0.8f, 24, true, -time * 2.1f);
         ring(glow, m, tmp, u, v, 2.6f * sigil, 0.45f, shotBody, 0.6f, 48, false, 0f);
-        // Axis core.
         a.set(muzzle);
         b.set(dir).mul(reach).add(muzzle);
         strip(glow, m, a, b, 0.9f * grow * widthScale, 0.9f * grow * widthScale, lance ? LANCE_HAZE : ice,
                 lance ? LANCE_HAZE : ice, 0.55f, 0.35f);
         strip(glow, m, a, b, 0.25f * grow * widthScale, 0.25f * grow * widthScale, white, white, 1f, 0.8f);
 
-        // Eruption flash.
         if (f < 6f) {
             float k = f / 6f;
             halo(glow, m, muzzle, (4f + 14f * k) * widthScale, white, 0.95f * (1f - k));
             ring(glow, m, muzzle, u, v, (2f + 14f * k) * widthScale, 1.2f, shotBody, 0.8f * (1f - k), 48, false, 0f);
         }
 
-        // Muzzle: crimson bloom, a towering vertical pillar and a horizontal lens streak.
         halo(glow, m, muzzle, 9f * grow * widthScale, shotBody, 0.55f);
         halo(glow, m, muzzle, 3.5f * grow * widthScale, whiteMix(shotBody, 0.6f), 0.8f);
         halo(glow, m, muzzle, 1.4f * grow * widthScale, white, 1f);
@@ -336,7 +284,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         pillar(glow, m, a, b, 0.6f * grow, whiteMix(shotBody, 0.5f), 0.55f);
         star(glow, m, muzzle, 5f * grow * widthScale, white, 0.8f, time * 1.5f);
 
-        // Impact where the ray meets a surface.
         float impactAt = impact.distance(muzzle);
         if (struck && reach >= impactAt) {
             end.set(impact);
@@ -360,13 +307,11 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
     }
 
-    /** Fills the tube's stations: dense through the nose, sparse after. Returns how many. */
     private int stations(float reach, float grow, float time) {
         int count = 0;
         float nose = Math.min(ExoBeamEntity.NOSE * widthScale, reach);
         for (int i = 0; i <= NOSE_RINGS; i++) {
             float t = i / (float) NOSE_RINGS;
-            // Cluster stations near the muzzle, where the dome curves hardest.
             stations[count++] = nose * (1f - (1f - t) * (1f - t));
         }
         for (float s = nose + BODY_STEP; s < reach && count < MAX_RINGS - 1; s += BODY_STEP) {
@@ -395,19 +340,16 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
                 (u.z * cosT[k] + v.z * sinT[k]) * r);
     }
 
-    /** Outward surface normal at station j, side k (tilted back through the nose). */
     private void ringNormal(Vector3f out, int j, int k) {
         out.set(u.x * cosT[k] + v.x * sinT[k], u.y * cosT[k] + v.y * sinT[k], u.z * cosT[k] + v.z * sinT[k])
                 .sub(dir.x * slopes[j], dir.y * slopes[j], dir.z * slopes[j]).normalize();
     }
 
-    /** One textured plasma quad, both windings. */
     private void plasma(VertexConsumer vc, Matrix4f m, Matrix3f n, int j, int k, float scroll, float scale,
                         float alpha, float twist) {
         float u0 = stations[j] / 48f - scroll, u1 = stations[j + 1] / 48f - scroll;
         float v0 = k * 2f / SIDES + twist + stations[j] * 0.004f, v1 = (k + 1) * 2f / SIDES + twist + stations[j] * 0.004f;
         float v0b = v0 + (stations[j + 1] - stations[j]) * 0.004f, v1b = v1 + (stations[j + 1] - stations[j]) * 0.004f;
-        // Fade the body in from the muzzle so the dome's tip is pure light.
         float a0 = Math.min(1f, stations[j] / 6f) * alpha, a1 = Math.min(1f, stations[j + 1] / 6f) * alpha;
         ringPoint(a, j, k, scale);
         ringPoint(b, j + 1, k, scale);
@@ -424,11 +366,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
                 .uv2(LightTexture.FULL_BRIGHT).normal(n, 0f, 1f, 0f).endVertex();
     }
 
-    /**
-     * An additive shell over the tube at {@code scale} x radius. Brightness is {@code fresnel}-weighted
-     * toward the silhouette ({@code power} 0 = uniform); with {@code fadeAt} > 0 it covers only the
-     * first {@code fadeAt} blocks, fading out along them.
-     */
     private void shell(VertexConsumer vc, Matrix4f m, int rings, float scale, float[] rgb, float alpha, float power,
                        float fadeAt) {
         for (int j = 0; j < rings - 1; j++) {
@@ -462,10 +399,7 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         sides.vertex(vc, m, side.x, side.y, side.z, rgb[0], rgb[1], rgb[2], alpha * weight);
     }
 
-    // Primitives ---------------------------------------------------------------------------------
-
-    /** A jagged bolt from {@code from} to {@code to}: pinned ends, hashed kinks, glow plus hot core. */
-    private void bolt(VertexConsumer vc, Matrix4f m, Vector3f from, Vector3f to, float jag, int key, int salt,
+private void bolt(VertexConsumer vc, Matrix4f m, Vector3f from, Vector3f to, float jag, int key, int salt,
                       float core, float glow, float[] rgb, float alpha) {
         bd.set(to).sub(from);
         if (bd.lengthSquared() < 1.0e-6f) {
@@ -489,7 +423,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
     }
 
-    /** A light streak that fades toward both ends, like a lens flare. */
     private void pillar(VertexConsumer vc, Matrix4f m, Vector3f from, Vector3f to, float width, float[] rgb, float alpha) {
         int segs = 8;
         for (int i = 0; i < segs; i++) {
@@ -503,7 +436,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
     }
 
-    /** Camera-facing soft line: bright centre, transparent edges. */
     private void strip(VertexConsumer vc, Matrix4f m, Vector3f p0, Vector3f p1, float w0, float w1,
                        float[] col0, float[] col1, float a0, float a1) {
         side.set(p1).sub(p0);
@@ -522,7 +454,6 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         }
     }
 
-    /** A soft annulus in the plane of {@code ax}/{@code ay}; {@code dashed} skips every other segment. */
     private void ring(VertexConsumer vc, Matrix4f m, Vector3f c, Vector3f ax, Vector3f ay, float r, float w,
                       float[] rgb, float alpha, int segs, boolean dashed, float spin) {
         for (int i = 0; i < segs; i++) {
@@ -610,9 +541,7 @@ public class ExoBeamRenderer extends EntityRenderer<ExoBeamEntity> {
         vertex(vc, m, tmp.x, tmp.y, tmp.z, rgb, alpha);
     }
 
-    // Helpers ------------------------------------------------------------------------------------
-
-    private static void basis(Vector3f d, Vector3f outU, Vector3f outV) {
+private static void basis(Vector3f d, Vector3f outU, Vector3f outV) {
         boolean steep = Math.abs(d.y) >= 0.95f;
         outU.set(d).cross(steep ? 1f : 0f, steep ? 0f : 1f, 0f).normalize();
         outV.set(d).cross(outU).normalize();

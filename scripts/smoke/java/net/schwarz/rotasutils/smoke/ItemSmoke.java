@@ -19,7 +19,6 @@ import net.schwarz.rotasutils.server.LootService;
 import java.util.List;
 import java.util.UUID;
 
-/** Dedicated-server checks for item profiles, rarities, sets, requirements and loot delivery. */
 public final class ItemSmoke {
     private static final UUID ID = UUID.fromString("2f9a1c34-2b6e-4f27-9a51-6d0b9c8e77a2");
     private static final String ACTOR = "smoke-item";
@@ -96,9 +95,7 @@ public final class ItemSmoke {
         var modifiers = sword.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_DAMAGE);
         double added = modifiers.stream().filter(modifier -> modifier.getName().startsWith("rotasutils.item/"))
                 .mapToDouble(net.minecraft.world.entity.ai.attributes.AttributeModifier::getAmount).sum();
-        // base 2 + 0.5 per level over 11 levels, doubled by the rare rarity multiplier.
         require(Math.abs(added - 14.0) < .001, "scaled attack damage modifier: " + added);
-        // Item levels clamp into the profile band regardless of the source level.
         require(ItemFactory.level(ItemFactory.create(catalog, SWORD, 9999, 1, LootService.random("smoke|clamp"))) == 50, "item level clamp");
 
         List<ItemStack> first = LootService.roll(catalog, TABLE, "seed|a", 10, 1, null);
@@ -110,7 +107,6 @@ public final class ItemSmoke {
         require(LootService.roll(catalog, TABLE, "seed|a", 10, 2, null).size() == 4, "tier multiplier scales the roll count");
         require(LootService.roll(catalog, TABLE, "seed|a", 10, 0, null).isEmpty(), "a zero multiplier drops nothing");
 
-        // Receipts persist with the world, so each run uses its own occurrence pair.
         String occurrence = "run-" + UUID.randomUUID();
         require(LootService.grantOnce(player, data, TABLE, occurrence, 10, 1), "first loot grant applies");
         int afterFirst = count(player);
@@ -118,7 +114,6 @@ public final class ItemSmoke {
         require(!LootService.grantOnce(player, data, TABLE, occurrence, 10, 1), "receipt blocks a duplicate loot grant");
         require(count(player) == afterFirst, "rejected duplicate changed nothing");
 
-        // A full inventory must not destroy rewards: they go to the mailbox and recover later.
         player.getInventory().clearContent();
         for (int slot = 0; slot < player.getInventory().items.size(); slot++) {
             player.getInventory().items.set(slot, new ItemStack(Items.STONE, 64));

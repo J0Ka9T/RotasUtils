@@ -13,7 +13,6 @@ import net.minecraft.world.phys.Vec3;
 import net.schwarz.rotasutils.entity.CelestialFxEntity;
 import org.jetbrains.annotations.Nullable;
 
-/** Server-side consequences of Abyss visuals: shadow bolt hits, grasp roots, the pit's pull, Oblivion's blast. */
 final class AbyssBehaviour implements CelestialFxEntity.Behaviour {
     @Override
     public void impact(CelestialFxEntity fx, Vec3 at, @Nullable Entity hit) {
@@ -58,7 +57,6 @@ final class AbyssBehaviour implements CelestialFxEntity.Behaviour {
                 if (collapse) burst(level, heart, 2.5f, owner);
             }
             case CelestialFxEntity.ECLIPSE -> {
-                // The Watcher blinks at tick 26: darkness bursts out with the blink.
                 if (fx.tickCount != 26) return;
                 for (LivingEntity target : CelestialBehaviour.victims(level, owner, fx.position(), fx.radius())) {
                     CelestialBehaviour.hurt(AbyssMagic.ECLIPSE_NOVA.get(), target, fx.damage, fx, owner);

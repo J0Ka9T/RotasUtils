@@ -25,35 +25,15 @@ import net.schwarz.rotasutils.item.ExoDisintegratorItem;
 import net.schwarz.rotasutils.registry.RotasRegistry;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * The ExoElectric Disintegrator's ray. It exists exactly as long as its wielder keeps channelling:
- * {@link #CHARGE} ticks of gathering light at the muzzle, then a continuous beam that pierces every
- * creature along the wielder's aim for its full range, burning straight through terrain, ticking
- * heavy damage (a flat bite plus a share of max health), igniting and shoving victims, and unmaking what it
- * kills (no corpse is left, only a burst of light). After {@link #OVERHEAT} ticks of firing the gun
- * vents and must cool down.
- * <p>
- * The beam's shape is not synced: every client re-derives it from the wielder's own interpolated
- * aim each frame, so it tracks the crosshair perfectly smoothly.
- */
 public class ExoBeamEntity extends Entity {
-    /**
-     * What the gun is doing. The ordinary beam is channelled for as long as the trigger is held; the
-     * lance is a single overcharged discharge, fired by sneaking, that runs its own length whether the
-     * trigger is held or not and leaves the gun cooling.
-     */
     public enum Mode {
         BEAM(14, 0, 1f, 1f, COOLDOWN),
         LANCE(22, 16, 2.05f, 3.4f, 160);
 
-        /** Ticks of gathering before it fires. */
         public final int charge;
-        /** Ticks of firing before it ends on its own; 0 = until the trigger is released. */
         public final int fire;
-        /** Beam radius and damage relative to the ordinary beam. */
         public final float radius;
         public final float damage;
-        /** Cooldown put on the gun when it ends. */
         public final int cooldown;
 
         Mode(int charge, int fire, float radius, float damage, int cooldown) {
@@ -70,25 +50,16 @@ public class ExoBeamEntity extends Entity {
         }
     }
 
-    /** Ticks of charge before the ray fires. */
     public static final int CHARGE = 14;
-    /** Ticks of continuous fire before the gun overheats and vents. Ten seconds, as the tooltip says. */
     public static final int OVERHEAT = 200;
-    /** Cool-down after venting, in ticks. */
     private static final int COOLDOWN = 40;
     public static final double RANGE = 320.0;
-    /** Full beam radius (the ray is 20 blocks across). */
     public static final float RADIUS = 10f;
-    /** Length of the rounded, white-hot nose over which the ray swells to full width. */
     public static final float NOSE = 14f;
     private static final int DAMAGE_INTERVAL = 2;
-    /** Per-strike bite: a strike every other tick over the ten-second vent is 340 + 60% max HP per second. */
     private static final float DAMAGE = 34f;
-    /** Extra damage per strike as a fraction of the victim's max health, so bosses melt too. */
     private static final float MAX_HEALTH_BITE = 0.06f;
-    /** The sizzle under a connect is throttled to one every this many ticks, however many victims. */
     private static final int HIT_SOUND_INTERVAL = 6;
-    /** Embers shed from the ray's skin; the hot pair takes over as the gun cooks. */
     private static final net.minecraft.core.particles.DustParticleOptions EMBER =
             new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(1f, 0.12f, 0.12f), 3.5f);
     private static final net.minecraft.core.particles.DustParticleOptions EMBER_HOT =
@@ -104,12 +75,10 @@ public class ExoBeamEntity extends Entity {
         noPhysics = true;
     }
 
-    /** Starts an ordinary beam for the wielder, unless one is already running. */
     public static void channel(ServerLevel level, LivingEntity owner) {
         channel(level, owner, Mode.BEAM);
     }
 
-    /** Starts a ray for the wielder in {@code mode}, unless one is already running. */
     static boolean canStartRay(boolean beamActive, boolean ceroActive, boolean coolingDown) {
         return !beamActive && !ceroActive && !coolingDown;
     }
@@ -131,10 +100,6 @@ public class ExoBeamEntity extends Entity {
                 SoundSource.PLAYERS, 0.8f, mode == Mode.LANCE ? 0.7f : 1.5f);
     }
 
-    /**
-     * The Annihilation Overdrive (Epic Fight innate skill): starts a Lance even while the gun is cooling,
-     * since the skill has its own cost, but never on top of a ray or barrage already running.
-     */
     public static void overdrive(ServerLevel level, LivingEntity owner) {
         if (activeFor(owner) || ExoCeroMuzzleEntity.activeFor(owner)) {
             return;
@@ -145,7 +110,6 @@ public class ExoBeamEntity extends Entity {
         channel(level, owner, Mode.LANCE);
     }
 
-    /** True while {@code owner} already channels a ray, so the barrage can stand aside. */
     public static boolean activeFor(LivingEntity owner) {
         return !owner.level().getEntitiesOfClass(ExoBeamEntity.class, owner.getBoundingBox().inflate(4),
                 b -> b.entityData.get(OWNER) == owner.getId()).isEmpty();
@@ -161,15 +125,10 @@ public class ExoBeamEntity extends Entity {
         return Mode.of(entityData.get(MODE));
     }
 
-    /** Ticks of charge this shot gathers before it fires. */
     public int chargeTicks() {
         return mode().charge;
     }
 
-    /**
-     * The wielder. The beam needs them to still be holding the trigger; the lance is already loosed,
-     * so it only needs them alive - letting go does not swallow the discharge.
-     */
     @Nullable
     public LivingEntity channeler() {
         Entity owner = level().getEntity(entityData.get(OWNER));
@@ -182,15 +141,10 @@ public class ExoBeamEntity extends Entity {
         return living.isUsingItem() && living.getUseItem().getItem() instanceof ExoDisintegratorItem ? living : null;
     }
 
-    /**
-     * How hot the gun is, 0 to 1: the ordinary beam heats over its run to the vent, the lance is at
-     * full heat the moment it fires. Both sides derive it from the age, so nothing is synced for it.
-     */
     public float heat(float partialTick) {
         return heatAt(mode(), age(partialTick) - chargeTicks());
     }
 
-    /** Heat for a given number of ticks since the shot erupted; pure so the curve can be tested. */
     public static float heatAt(Mode mode, float firing) {
         if (firing <= 0f) {
             return 0f;
@@ -202,7 +156,6 @@ public class ExoBeamEntity extends Entity {
         return tickCount + partialTick;
     }
 
-    /** Where the ray stops: the first solid block along the aim, else full range. */
     public static Vec3 beamEnd(LivingEntity owner, Vec3 eye, Vec3 look) {
         Vec3 far = eye.add(look.scale(RANGE));
         HitResult hit = owner.level().clip(new ClipContext(eye, far, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, owner));
@@ -222,7 +175,6 @@ public class ExoBeamEntity extends Entity {
         if (owner == null) {
             if (tickCount > 3) {
                 if (tickCount < mode().charge) {
-                    // The charge is dropped before it erupts: a soft fizzle, so letting go has a tell.
                     playAt(SoundEvents.FIRE_EXTINGUISH, 0.5f, 1.6f);
                 } else {
                     playAt(SoundEvents.BEACON_DEACTIVATE, 0.9f, 1.6f);
@@ -242,7 +194,6 @@ public class ExoBeamEntity extends Entity {
                 playAt(SoundEvents.CONDUIT_AMBIENT_SHORT, 0.6f, 0.5f + 1.2f * tickCount / mode.charge);
             }
             if (tickCount == mode.charge - 3) {
-                // The muzzle locks: one clean note right before the discharge, so the shot is called.
                 playAt(SoundEvents.BEACON_POWER_SELECT, 0.8f, mode == Mode.LANCE ? 0.6f : 1.9f);
                 playAt(SoundEvents.AMETHYST_BLOCK_CHIME, mode == Mode.LANCE ? 1.0f : 0.7f, 0.8f);
             }
@@ -253,7 +204,6 @@ public class ExoBeamEntity extends Entity {
             playAt(SoundEvents.LIGHTNING_BOLT_THUNDER, 1.0f, 0.6f);
         }
         if (firing == 0) {
-            // The discharge itself: the thunder carries the crack, the explosion carries the weight.
             playAt(SoundEvents.GENERIC_EXPLODE, mode == Mode.LANCE ? 1.3f : 0.55f,
                     mode == Mode.LANCE ? 0.7f : 1.5f);
             playAt(SoundEvents.LIGHTNING_BOLT_THUNDER, 0.55f, 1.9f);
@@ -267,7 +217,6 @@ public class ExoBeamEntity extends Entity {
         if (firing % 7 == 3) {
             playAt(SoundEvents.LIGHTNING_BOLT_IMPACT, 0.25f, 1.6f + random.nextFloat() * 0.4f);
         }
-        // The lance bites every tick; the beam every other one.
         if (mode == Mode.LANCE || firing % DAMAGE_INTERVAL == 0) {
             burn((ServerLevel) level(), owner);
         }
@@ -276,7 +225,6 @@ public class ExoBeamEntity extends Entity {
         }
     }
 
-    /** The shot ends: the gun vents, goes on cooldown, and the ray is gone. */
     private void vent(LivingEntity owner, Mode mode) {
         owner.stopUsingItem();
         if (owner instanceof Player player) {
@@ -286,7 +234,6 @@ public class ExoBeamEntity extends Entity {
         if (mode == Mode.LANCE) {
             playAt(SoundEvents.BEACON_DEACTIVATE, 1.0f, 0.5f);
         } else {
-            // The vent after a full burn has to read as a failure, not just the shot ending.
             playAt(SoundEvents.RESPAWN_ANCHOR_DEPLETE.value(), 1.0f, 1.1f);
         }
         ((ServerLevel) level()).sendParticles(ParticleTypes.CLOUD, owner.getX(), owner.getEyeY() - 0.3, owner.getZ(),
@@ -326,7 +273,6 @@ public class ExoBeamEntity extends Entity {
             }
             hits++;
             victim.setSecondsOnFire(6);
-            // The ray's pressure shoves whatever it holds along its length.
             victim.setDeltaMovement(victim.getDeltaMovement().add(unit.scale(0.35 * mode.radius)));
             victim.hurtMarked = true;
             level.sendParticles(ParticleTypes.ELECTRIC_SPARK, center.x, center.y, center.z, 6, 0.2, 0.2, 0.2, 0.35);
@@ -334,13 +280,11 @@ public class ExoBeamEntity extends Entity {
                 disintegrate(level, victim);
             }
         }
-        // One sizzle under a connect carry, throttled so a crowd cannot stack it into noise.
         if (hits > 0 && tickCount % HIT_SOUND_INTERVAL == 0) {
             playAt(SoundEvents.FIRE_EXTINGUISH, 0.5f, 1.8f + random.nextFloat() * 0.3f);
         }
     }
 
-    /** The victim comes apart into light. Mobs leave no corpse; players keep vanilla death. */
     private void disintegrate(ServerLevel level, LivingEntity victim) {
         AABB box = victim.getBoundingBox();
         Vec3 c = box.getCenter();
@@ -358,7 +302,6 @@ public class ExoBeamEntity extends Entity {
         }
     }
 
-    /** Shared by the ray and its Cero bolts: the wielder's pets and allies are never hit. */
     static boolean spared(LivingEntity victim, @Nullable LivingEntity owner) {
         if (owner == null) {
             return false;
@@ -373,13 +316,9 @@ public class ExoBeamEntity extends Entity {
         level().playSound(null, getX(), getY(), getZ(), sound, SoundSource.PLAYERS, volume, pitch);
     }
 
-    /** Client: loose sparks off the impact and along the ray, and kick the camera when it first fires. */
     private void clientTick(LivingEntity owner) {
         Mode mode = mode();
         int firing = tickCount - mode.charge;
-        // The local player's own readout (crosshair gauge and lens punch) is fed every tick, charge
-        // included. The lance never heats - it is its own short discharge - so it reports the
-        // fraction of the discharge spent instead, which drains the same gauge over its run.
         float gauge = mode == Mode.LANCE && firing >= 0
                 ? Mth.clamp(firing / (float) mode.fire, 0f, 1f) : heat(0f);
         ClientFx.beamState(entityData.get(OWNER), mode.ordinal(),
@@ -393,7 +332,6 @@ public class ExoBeamEntity extends Entity {
         if (firing == 0) {
             ClientFx.quake(owner.getX(), owner.getY(), owner.getZ(), mode == Mode.LANCE ? 13f : 5.5f, 32);
         } else if (firing % 8 == 0 || mode == Mode.LANCE) {
-            // The rumble grows with the heat, so a nearly-venting gun feels like it is coming apart.
             float rumble = (mode == Mode.LANCE ? 2.2f : 0.8f) * (1f + heat(0f));
             ClientFx.quake(owner.getX(), owner.getY(), owner.getZ(), rumble, 32);
         }
@@ -405,7 +343,6 @@ public class ExoBeamEntity extends Entity {
             level.addParticle(ember, end.x + (random.nextDouble() - 0.5) * RADIUS, end.y + (random.nextDouble() - 0.5) * RADIUS,
                     end.z + (random.nextDouble() - 0.5) * RADIUS, 0, 0, 0);
         }
-        // The hotter the gun runs, the more it vents at the muzzle: the tell before it cuts out.
         float heat = heat(0f);
         if (heat > 0.35f && random.nextFloat() < heat) {
             Vec3 vent = eye.add(look.scale(0.9)).add(0, -0.25, 0);
@@ -418,10 +355,8 @@ public class ExoBeamEntity extends Entity {
                         (random.nextDouble() - 0.5) * 0.2, 0.1, (random.nextDouble() - 0.5) * 0.2);
             }
         }
-        // Embers shed from the ray's skin along its first stretch, where the wielder can see them.
         double span = Math.min(eye.distanceTo(end), 60.0);
         if (span < 1.0e-3) {
-            // The eye is inside a collider and the ray has no length; normalising would seed NaNs.
             return;
         }
         Vec3 unit = end.subtract(eye).normalize();
@@ -454,12 +389,10 @@ public class ExoBeamEntity extends Entity {
         return false;
     }
 
-    /** Ray radius at distance {@code s} from the muzzle: an elliptical nose, then full width. */
     public static float radiusAt(float s) {
         return radiusAt(s, 1f);
     }
 
-    /** The same profile at {@code scale} times the ordinary beam's width, for the lance. */
     public static float radiusAt(float s, float scale) {
         float nose = NOSE * scale;
         if (s >= nose) {
@@ -469,7 +402,6 @@ public class ExoBeamEntity extends Entity {
         return RADIUS * scale * (float) Math.sqrt(1f - k * k);
     }
 
-    /** Smooth 0..1 ramp. */
     public static float smooth(float t) {
         t = Mth.clamp(t, 0f, 1f);
         return t * t * (3f - 2f * t);

@@ -2,7 +2,9 @@ package net.schwarz.rotasutils.house;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
@@ -17,17 +19,24 @@ public final class HouseProtectionService {
         RotasData housing = RotasData.get(player.server);
         HouseDefinition house = HouseRegistry.at(housing.houses().values(), player.level().dimension().location().toString(), pos);
         if (house == null) return true;
-        // Admins bypass housing protection: an AVAILABLE house has no owner and no members, so
-        // without this nobody at all - including operators - could build or fix anything inside it.
         if (net.schwarz.rotasutils.server.BoardService.isAdmin(player, housing)) { return true; }
         HouseTenancy tenancy = housing.houseTenancy(house.id());
         return player.getUUID().equals(tenancy.owner()) || tenancy.members().contains(player.getUUID());
     }
 
-    /**
-     * Right-clicking a block: owners and members may use anything, visitors only what the house's
-     * settings open to guests (doors, buttons and levers, containers).
-     */
+    public static boolean canPlaceAgainst(ServerPlayer player, BlockPos clicked, Direction face, ItemStack held) {
+        if (face == null || !(held.getItem() instanceof net.minecraft.world.item.FlintAndSteelItem
+                || held.getItem() instanceof net.minecraft.world.item.FireChargeItem
+                || held.getItem() instanceof net.minecraft.world.item.SpawnEggItem
+                || held.getItem() instanceof net.minecraft.world.item.ArmorStandItem
+                || held.getItem() instanceof net.minecraft.world.item.HangingEntityItem
+                || held.getItem() instanceof net.minecraft.world.item.BoatItem
+                || held.getItem() instanceof net.minecraft.world.item.MinecartItem)) {
+            return true;
+        }
+        return canModify(player, clicked.relative(face));
+    }
+
     public static boolean canInteract(ServerPlayer player, BlockPos pos) {
         if (canModify(player, pos)) return true;
         RotasData housing = RotasData.get(player.server);

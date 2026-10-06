@@ -19,7 +19,6 @@ import net.schwarz.rotasutils.block.QuestBoardBlock;
 import net.schwarz.rotasutils.block.QuestBoardBlockEntity;
 import net.schwarz.rotasutils.item.AdminToolItem;
 
-/** All blocks, items, block entities and the creative tab. */
 public final class RotasRegistry {
     public static final DeferredRegister<Block> BLOCKS =
             DeferredRegister.create(Rotasutils.MOD_ID, Registries.BLOCK);
@@ -34,7 +33,6 @@ public final class RotasRegistry {
     public static final DeferredRegister<net.minecraft.world.entity.EntityType<?>> ENTITIES =
             DeferredRegister.create(Rotasutils.MOD_ID, Registries.ENTITY_TYPE);
 
-    /** A standing rift that opens, lets a traveller through and seals; lives a few seconds. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.RiftPortalEntity>>
             RIFT_PORTAL = ENTITIES.register("rift_portal", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.RiftPortalEntity>of(net.schwarz.rotasutils.entity.RiftPortalEntity::new,
@@ -42,7 +40,6 @@ public final class RotasRegistry {
                     .sized(2.2f, 3.4f).clientTrackingRange(10).updateInterval(1).noSave()
                     .build("rift_portal"));
 
-    /** Four rifts clashing; the cinematic that brings the Tetrarch. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.RiftConvergenceEntity>>
             RIFT_CONVERGENCE = ENTITIES.register("rift_convergence", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.RiftConvergenceEntity>of(net.schwarz.rotasutils.entity.RiftConvergenceEntity::new,
@@ -50,7 +47,6 @@ public final class RotasRegistry {
                     .sized(1f, 1f).clientTrackingRange(12).updateInterval(1).noSave()
                     .build("rift_convergence"));
 
-    /** The Tetrarch of the Four Rifts, and its echoes. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.TetrarchEntity>>
             TETRARCH = ENTITIES.register("tetrarch", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.TetrarchEntity>of(net.schwarz.rotasutils.entity.TetrarchEntity::new,
@@ -58,7 +54,6 @@ public final class RotasRegistry {
                     .sized(0.9f, 2.9f).clientTrackingRange(12).fireImmune()
                     .build("tetrarch"));
 
-    /** Tentacles tearing up from the ground under the Tetrarch's void grasp. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.VoidGraspEntity>>
             VOID_GRASP = ENTITIES.register("void_grasp", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.VoidGraspEntity>of(net.schwarz.rotasutils.entity.VoidGraspEntity::new,
@@ -66,7 +61,6 @@ public final class RotasRegistry {
                     .sized(4.4f, 1f).clientTrackingRange(8).updateInterval(1).noSave()
                     .build("void_grasp"));
 
-    /** One spectral sword loosed by the Zenith, looping out to the aimed point and back. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.ZenithBladeEntity>>
             ZENITH_BLADE = ENTITIES.register("zenith_blade", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.ZenithBladeEntity>of(net.schwarz.rotasutils.entity.ZenithBladeEntity::new,
@@ -74,7 +68,6 @@ public final class RotasRegistry {
                     .sized(0.5f, 0.5f).clientTrackingRange(8).updateInterval(2).noSave().fireImmune()
                     .build("zenith_blade"));
 
-    /** The Zenith's sneak-use finisher: a colossal arch of light torn forward along the ground. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.ExcaliburSlashEntity>>
             EXCALIBUR_SLASH = ENTITIES.register("excalibur_slash", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.ExcaliburSlashEntity>of(net.schwarz.rotasutils.entity.ExcaliburSlashEntity::new,
@@ -82,7 +75,6 @@ public final class RotasRegistry {
                     .sized(0.5f, 0.5f).clientTrackingRange(12).updateInterval(20).noSave().fireImmune()
                     .build("excalibur_slash"));
 
-    /** The ExoElectric Disintegrator's channelled ray; lives while its wielder holds use. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.ExoBeamEntity>>
             EXO_BEAM = ENTITIES.register("exo_beam", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.ExoBeamEntity>of(net.schwarz.rotasutils.entity.ExoBeamEntity::new,
@@ -90,10 +82,6 @@ public final class RotasRegistry {
                     .sized(0.5f, 0.5f).clientTrackingRange(10).updateInterval(1).noSave().fireImmune()
                     .build("exo_beam"));
 
-    /**
-     * The mount the Cero Metralleta pours out of; lives for the barrage. Its bolts are logical
-     * shots, not entities, so this is the only entity the whole attack costs.
-     */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.ExoCeroMuzzleEntity>>
             EXO_CERO_MUZZLE = ENTITIES.register("exo_cero_muzzle",
                     () -> net.minecraft.world.entity.EntityType.Builder
@@ -103,7 +91,6 @@ public final class RotasRegistry {
                     .sized(0.5f, 0.5f).clientTrackingRange(10).updateInterval(3).noSave().fireImmune()
                     .build("exo_cero_muzzle"));
 
-    /** Every visual of the Celestial spell school (Iron's Spells); see CelestialFxEntity. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.CelestialFxEntity>>
             CELESTIAL_FX = ENTITIES.register("celestial_fx", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.CelestialFxEntity>of(net.schwarz.rotasutils.entity.CelestialFxEntity::new,
@@ -111,7 +98,6 @@ public final class RotasRegistry {
                     .sized(0.5f, 0.5f).clientTrackingRange(10).updateInterval(1).noSave().fireImmune()
                     .build("celestial_fx"));
 
-    /** The robed traveller who steps out of a rift portal. */
     public static final RegistrySupplier<net.minecraft.world.entity.EntityType<net.schwarz.rotasutils.entity.RiftWandererEntity>>
             RIFT_WANDERER = ENTITIES.register("rift_wanderer", () -> net.minecraft.world.entity.EntityType.Builder
                     .<net.schwarz.rotasutils.entity.RiftWandererEntity>of(net.schwarz.rotasutils.entity.RiftWandererEntity::new,
@@ -119,16 +105,10 @@ public final class RotasRegistry {
                     .sized(0.6f, 1.95f).clientTrackingRange(10)
                     .build("rift_wanderer"));
 
-    /** Glowing embers that drift down from the cracked sky while the rift strains open. */
     public static final RegistrySupplier<net.minecraft.core.particles.SimpleParticleType> RIFT_EMBER =
             PARTICLES.register("rift_ember", () -> new net.minecraft.core.particles.SimpleParticleType(false) { });
 
-    /**
-     * Who may see the operator tools tab. Servers keep the default (nobody); the client installs a check
-     * of its own player's operator permission, so no client class is referenced from common code.
-     */
-
-    public static final RegistrySupplier<Block> QUEST_BOARD = BLOCKS.register("quest_board",
+public static final RegistrySupplier<Block> QUEST_BOARD = BLOCKS.register("quest_board",
             () -> new QuestBoardBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.WOOD)
                     .strength(2.0f)
@@ -136,7 +116,6 @@ public final class RotasRegistry {
                     .noOcclusion()
                     .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
 
-    /** Invisible filler for the other five cells of a quest board's 3x2 footprint; never an item. */
     public static final RegistrySupplier<Block> QUEST_BOARD_PART = BLOCKS.register("quest_board_part",
             () -> new net.schwarz.rotasutils.block.QuestBoardPartBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.WOOD)
@@ -146,21 +125,15 @@ public final class RotasRegistry {
                     .noLootTable()
                     .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
 
-    /**
-     * Warp pillar: three segments tall, placed and broken as one. Placing it registers the pillar;
-     * right-clicking any segment records it and opens the warp list.
-     */
     public static final RegistrySupplier<Block> WAYSTONE = BLOCKS.register("waystone",
             () -> new net.schwarz.rotasutils.block.WaystoneBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.DEEPSLATE)
                     .strength(4.0f, 1200.0f)
                     .sound(SoundType.DEEPSLATE)
-                    // Lit enough to find at night without lighting the ground around it like a lamp.
                     .lightLevel(state -> 9)
                     .noOcclusion()
                     .requiresCorrectToolForDrops()));
 
-    /** Where refinement happens: the bench refuses an attempt unless one is within reach. */
     public static final RegistrySupplier<Block> REFINE_FORGE = BLOCKS.register("refine_forge",
             () -> new net.schwarz.rotasutils.block.StationBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
@@ -172,7 +145,6 @@ public final class RotasRegistry {
                     Block.box(0, 0, 0, 16, 16, 16),
                     net.schwarz.rotasutils.network.RotasNetwork::openRefine));
 
-    /** Where runes are inscribed into a weapon. */
     public static final RegistrySupplier<Block> RUNE_ALTAR = BLOCKS.register("rune_altar",
             () -> new net.schwarz.rotasutils.block.StationBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_PURPLE)
@@ -184,6 +156,47 @@ public final class RotasRegistry {
                     net.schwarz.rotasutils.block.StationBlock.Kind.ALTAR,
                     Block.box(0, 0, 0, 16, 16, 16),
                     net.schwarz.rotasutils.network.RotasNetwork::openRunes));
+
+    private static RegistrySupplier<Block> workstation(String id, MapColor color, SoundType sound, int light,
+                                                        net.schwarz.rotasutils.block.StationBlock.Kind kind, String trade) {
+        return BLOCKS.register(id, () -> new net.schwarz.rotasutils.block.StationBlock(BlockBehaviour.Properties.of()
+                .mapColor(color).strength(3.5f, 6.0f).sound(sound)
+                .lightLevel(state -> state.hasProperty(net.schwarz.rotasutils.block.StationBlock.LIT) && state.getValue(net.schwarz.rotasutils.block.StationBlock.LIT)
+                        ? Math.max(light, 13) : (light > 8 ? light - 5 : 0))
+                .requiresCorrectToolForDrops(),
+                kind, Block.box(0, 0, 0, 16, 16, 16),
+                player -> net.schwarz.rotasutils.server.TradeService.openStation(player, trade)));
+    }
+
+    private static RegistrySupplier<Item> stationItem(String id, RegistrySupplier<Block> block) {
+        return ITEMS.register(id, () -> new BlockItem(block.get(), new Item.Properties()));
+    }
+
+    public static final RegistrySupplier<Block> COOKING_STATION = workstation("cooking_station", MapColor.COLOR_ORANGE,
+            SoundType.METAL, 8, net.schwarz.rotasutils.block.StationBlock.Kind.STOVE, "chef");
+    public static final RegistrySupplier<Block> SMELTERY = workstation("smeltery", MapColor.STONE,
+            SoundType.STONE, 12, net.schwarz.rotasutils.block.StationBlock.Kind.SMELTER, "miner");
+    public static final RegistrySupplier<Block> SMITHING_BENCH = workstation("smithing_bench", MapColor.METAL,
+            SoundType.ANVIL, 6, net.schwarz.rotasutils.block.StationBlock.Kind.BENCH, "blacksmith");
+    public static final RegistrySupplier<Block> ALCHEMY_TABLE = workstation("alchemy_table", MapColor.COLOR_PURPLE,
+            SoundType.GLASS, 9, net.schwarz.rotasutils.block.StationBlock.Kind.TABLE, "alchemy");
+    public static final RegistrySupplier<Block> TANNERY = workstation("tannery", MapColor.WOOD,
+            SoundType.WOOD, 3, net.schwarz.rotasutils.block.StationBlock.Kind.TANNERY, "rancher");
+    public static final RegistrySupplier<Block> FISHMONGER = workstation("fishmonger", MapColor.COLOR_LIGHT_BLUE,
+            SoundType.WET_GRASS, 5, net.schwarz.rotasutils.block.StationBlock.Kind.FISH, "fisher");
+    public static final RegistrySupplier<Block> MILL = workstation("mill", MapColor.COLOR_YELLOW,
+            SoundType.WOOD, 3, net.schwarz.rotasutils.block.StationBlock.Kind.MILL, "farmer");
+
+    public static final RegistrySupplier<Item> COOKING_STATION_ITEM = stationItem("cooking_station", COOKING_STATION);
+    public static final RegistrySupplier<Item> SMELTERY_ITEM = stationItem("smeltery", SMELTERY);
+    public static final RegistrySupplier<Item> SMITHING_BENCH_ITEM = stationItem("smithing_bench", SMITHING_BENCH);
+    public static final RegistrySupplier<Item> ALCHEMY_TABLE_ITEM = stationItem("alchemy_table", ALCHEMY_TABLE);
+    public static final RegistrySupplier<Item> TANNERY_ITEM = stationItem("tannery", TANNERY);
+    public static final RegistrySupplier<Item> FISHMONGER_ITEM = stationItem("fishmonger", FISHMONGER);
+    public static final RegistrySupplier<Item> MILL_ITEM = stationItem("mill", MILL);
+
+    public static final RegistrySupplier<Item> RECIPE_SCROLL = ITEMS.register("recipe_scroll",
+            () -> new net.schwarz.rotasutils.item.RecipeScrollItem(new Item.Properties().stacksTo(16)));
 
     public static final RegistrySupplier<Item> REFINE_FORGE_ITEM = ITEMS.register("refine_forge",
             () -> new BlockItem(REFINE_FORGE.get(), new Item.Properties()));
@@ -203,51 +216,39 @@ public final class RotasRegistry {
     public static final RegistrySupplier<Item> NPC_WAND = ITEMS.register("npc_wand",
             () -> new net.schwarz.rotasutils.item.NpcWandItem(new Item.Properties().stacksTo(1)));
 
-    /**
-     * Admin-only tool. Only listed in the operator-gated {@link #ADMIN_TAB}; it is also handed out from
-     * the admin menu, and its use is re-checked server-side.
-     */
     public static final RegistrySupplier<Item> ZONE_WAND = ITEMS.register("zone_wand",
             () -> new net.schwarz.rotasutils.item.ZoneWandItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistrySupplier<Item> HOUSE_WAND = ITEMS.register("house_wand",
             () -> new net.schwarz.rotasutils.item.HouseWandItem(new Item.Properties().stacksTo(1)));
 
-    /** Operator-only sky toggle; opens/closes the eldritch rift in the holder's dimension. */
     public static final RegistrySupplier<Item> ELDRITCH_SIGIL = ITEMS.register("eldritch_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1)));
 
-    /** Operator-only sky toggle, like the Eldritch Sigil, but a colossal figure steps out of the tear. */
     public static final RegistrySupplier<Item> HERALD_SIGIL = ITEMS.register("herald_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_HERALD));
 
-    /** The Eldritch Sigil in crimson: the same invasion under a red sky. */
     public static final RegistrySupplier<Item> CRIMSON_SIGIL = ITEMS.register("crimson_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_SKY_RED));
 
-    /** The Herald Sigil in crimson: a blood-dark sky and a red herald. */
     public static final RegistrySupplier<Item> CRIMSON_HERALD_SIGIL = ITEMS.register("crimson_herald_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_HERALD_RED));
 
-    /** The Eldritch Sigil in gold. */
     public static final RegistrySupplier<Item> GOLD_SIGIL = ITEMS.register("gold_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_SKY_GOLD));
 
-    /** The Herald Sigil in gold. */
     public static final RegistrySupplier<Item> GOLD_HERALD_SIGIL = ITEMS.register("gold_herald_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_HERALD_GOLD));
 
-    /** A black void sky with tentacles reaching out of the tear. */
     public static final RegistrySupplier<Item> VOID_SIGIL = ITEMS.register("void_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_VOID));
 
-    /** A rainbow sky: the whole rupture cycles the spectrum. */
     public static final RegistrySupplier<Item> PRISM_SIGIL = ITEMS.register("prism_sigil",
             () -> new net.schwarz.rotasutils.item.EldritchSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_SKY_RAINBOW));
@@ -257,51 +258,41 @@ public final class RotasRegistry {
                     .rarity(net.minecraft.world.item.Rarity.EPIC),
                     net.schwarz.rotasutils.sky.EldritchSkyTransition.VARIANT_FOUR_SKIES));
 
-    /** Operator-only travel rift: sneak-use binds a destination, use opens a rift leading there. */
     public static final RegistrySupplier<Item> RIFT_KEY = ITEMS.register("rift_key",
             () -> new net.schwarz.rotasutils.item.RiftSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.entity.RiftPortalEntity.Kind.TRAVEL));
 
-    /** Operator-only: a rift that drags nearby monsters in and swallows them. */
     public static final RegistrySupplier<Item> VOID_MAW = ITEMS.register("void_maw",
             () -> new net.schwarz.rotasutils.item.RiftSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.entity.RiftPortalEntity.Kind.MAW));
 
-    /** Operator-only: a rift whose tentacles strike nearby monsters. */
     public static final RegistrySupplier<Item> TENTACLE_RIFT = ITEMS.register("tentacle_rift",
             () -> new net.schwarz.rotasutils.item.RiftSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.entity.RiftPortalEntity.Kind.TENTACLE));
 
-    /** Operator-only: a rift a colossal prismatic hand reaches out of to strike nearby monsters. */
     public static final RegistrySupplier<Item> RADIANT_RIFT = ITEMS.register("radiant_rift",
             () -> new net.schwarz.rotasutils.item.RiftSigilItem(new Item.Properties().stacksTo(1),
                     net.schwarz.rotasutils.entity.RiftPortalEntity.Kind.RADIANT));
 
-    /** Operator-only: four rifts clash and the Tetrarch steps out. */
     public static final RegistrySupplier<Item> CONVERGENCE_SIGIL = ITEMS.register("convergence_sigil",
             () -> new net.schwarz.rotasutils.item.ConvergenceSigilItem(new Item.Properties().stacksTo(1)
                     .rarity(net.minecraft.world.item.Rarity.EPIC)));
 
-    /** Operator-only: four rifts tear open in the sky and clash overhead. */
     public static final RegistrySupplier<Item> SKY_CLASH_SIGIL = ITEMS.register("sky_clash_sigil",
             () -> new net.schwarz.rotasutils.item.SkyClashSigilItem(new Item.Properties().stacksTo(1)
                     .rarity(net.minecraft.world.item.Rarity.EPIC)));
 
-    /** Operator-only: binds the open eldritch rift in a golden seal and shatters it, closing the sky. */
     public static final RegistrySupplier<Item> SUNDERING_SIGIL = ITEMS.register("sundering_sigil",
             () -> new net.schwarz.rotasutils.item.SunderingSigilItem(new Item.Properties().stacksTo(1)
                     .rarity(net.minecraft.world.item.Rarity.EPIC)));
 
-    /** Operator-only: tears a portal open in front of the holder and a traveller steps out. */
     public static final RegistrySupplier<Item> RIFT_SIGIL = ITEMS.register("rift_sigil",
             () -> new net.schwarz.rotasutils.item.RiftSigilItem(new Item.Properties().stacksTo(1)));
 
-    /** The Zenith: every sword in the world forged into one; holding use looses spectral copies of them all. */
     public static final RegistrySupplier<Item> ZENITH = ITEMS.register("zenith",
             () -> new net.schwarz.rotasutils.item.ZenithItem(new Item.Properties().stacksTo(1).fireResistant()
                     .rarity(net.minecraft.world.item.Rarity.EPIC)));
 
-    /** Red Reversal: a right click begins a cinematic ability, run by the AbilityManager. */
     public static final RegistrySupplier<Item> RED_REVERSAL = ITEMS.register("red_reversal",
             () -> new net.schwarz.rotasutils.item.RedReversalItem(new Item.Properties().stacksTo(1).fireResistant()
                     .rarity(net.minecraft.world.item.Rarity.EPIC)));
@@ -313,25 +304,28 @@ public final class RotasRegistry {
             () -> new net.schwarz.rotasutils.item.RedReversalItem(new Item.Properties().stacksTo(1).fireResistant()
                     .rarity(net.minecraft.world.item.Rarity.EPIC), net.schwarz.rotasutils.ability.RedReversalAbility.PURPLE,
                     "item.rotasutils.hollow_purple.desc"));
+    public static final RegistrySupplier<Item> ANNIHILATOR_STARGUN = ITEMS.register("annihilator_stargun",
+            () -> new net.schwarz.rotasutils.item.RedReversalItem(new Item.Properties().stacksTo(1).fireResistant()
+                    .rarity(net.minecraft.world.item.Rarity.EPIC), net.schwarz.rotasutils.ability.StargunAbility.INSTANCE,
+                    "item.rotasutils.annihilator_stargun.desc"));
+    public static final RegistrySupplier<Item> PROJECTION_SORCERY = ITEMS.register("projection_sorcery",
+            () -> new net.schwarz.rotasutils.item.RedReversalItem(new Item.Properties().stacksTo(1).fireResistant()
+                    .rarity(net.minecraft.world.item.Rarity.EPIC), net.schwarz.rotasutils.ability.ProjectionAbility.INSTANCE,
+                    "item.rotasutils.projection_sorcery.desc"));
 
-    /** ExoElectric Disintegrator: charge, then a continuous piercing ray that unmakes what it kills. */
     public static final RegistrySupplier<Item> EXO_DISINTEGRATOR = ITEMS.register("exo_disintegrator",
             () -> new net.schwarz.rotasutils.item.ExoDisintegratorItem(new Item.Properties().stacksTo(1).fireResistant()
                     .rarity(net.minecraft.world.item.Rarity.EPIC)));
 
-    /** Opens the stable and calls a horse; used on an owned SWEM horse it puts that horse in the stable. */
+    public static final RegistrySupplier<Item> CAPOEIRA_WRAPS = ITEMS.register("capoeira_wraps",
+            () -> new Item(new Item.Properties().stacksTo(1).rarity(net.minecraft.world.item.Rarity.RARE)));
+
     public static final RegistrySupplier<Item> HORSE_WHISTLE = ITEMS.register("horse_whistle",
             () -> new net.schwarz.rotasutils.item.HorseWhistleItem(new Item.Properties().stacksTo(1)));
 
-    /** Visual denomination for rotas:gold; wallet balances remain the economic source of truth. */
     public static final RegistrySupplier<Item> GOLD_COIN = ITEMS.register("gold_coin",
             () -> new net.schwarz.rotasutils.item.GoldCoinItem(new Item.Properties().stacksTo(1)));
 
-    // Refinement materials ------------------------------------------------------------------------
-    /**
-     * Refine ores and scrolls. They are deliberately hard to come by: nothing crafts them, and they only
-     * arrive through the rare and epic drop grades, a boss, or whatever a server hands out itself.
-     */
     public static final RegistrySupplier<Item> ORIDECON = ITEMS.register("oridecon",
             () -> new net.schwarz.rotasutils.item.RpgMaterialItem(new Item.Properties(),
                     "item.rotasutils.oridecon.desc", net.minecraft.ChatFormatting.GRAY, false,
@@ -367,8 +361,6 @@ public final class RotasRegistry {
                     "item.rotasutils.certificate_scroll.desc", net.minecraft.ChatFormatting.LIGHT_PURPLE, true,
                     net.schwarz.rotasutils.item.RpgMaterialItem.Opens.REFINE));
 
-    // Runes ---------------------------------------------------------------------------------------
-    /** One item per rune; inscribed into a weapon at the Rune Altar. */
     public static final java.util.Map<net.schwarz.rotasutils.core.RuneType, RegistrySupplier<Item>> RUNES = runes();
 
     private static java.util.Map<net.schwarz.rotasutils.core.RuneType, RegistrySupplier<Item>> runes() {
@@ -383,24 +375,19 @@ public final class RotasRegistry {
         return java.util.Collections.unmodifiableMap(map);
     }
 
-    // Cards ---------------------------------------------------------------------------------------
-    /** Every monster card is this one item; which card it is lives in its NBT. */
     public static final RegistrySupplier<Item> CARD = ITEMS.register("card",
             () -> new net.schwarz.rotasutils.item.CardItem(new Item.Properties().stacksTo(16)));
 
-    /** Punches one socket into a weapon or a piece of armour. */
     public static final RegistrySupplier<Item> SOCKET_PUNCH = ITEMS.register("socket_punch",
             () -> new net.schwarz.rotasutils.item.RpgMaterialItem(new Item.Properties(),
                     "item.rotasutils.socket_punch.desc", net.minecraft.ChatFormatting.AQUA, true,
                     net.schwarz.rotasutils.item.RpgMaterialItem.Opens.SOCKETS));
 
-    /** Carries the floating-core renderer on the lower half of a waystone; stores nothing. */
     public static final RegistrySupplier<BlockEntityType<net.schwarz.rotasutils.block.WaystoneBlockEntity>>
             WAYSTONE_BLOCK_ENTITY = BLOCK_ENTITIES.register("waystone", () -> BlockEntityType.Builder
                     .of(net.schwarz.rotasutils.block.WaystoneBlockEntity::new, WAYSTONE.get())
                     .build(null));
 
-    /** Carries the floating-crystal renderer on the Rune Altar; stores nothing. */
     public static final RegistrySupplier<BlockEntityType<net.schwarz.rotasutils.block.RuneAltarBlockEntity>>
             RUNE_ALTAR_BLOCK_ENTITY = BLOCK_ENTITIES.register("rune_altar", () -> BlockEntityType.Builder
                     .of(net.schwarz.rotasutils.block.RuneAltarBlockEntity::new, RUNE_ALTAR.get())
@@ -416,12 +403,6 @@ public final class RotasRegistry {
                     Component.translatable("itemGroup." + Rotasutils.MOD_ID + ".main"),
                     () -> new ItemStack(QUEST_BOARD_ITEM.get())));
 
-    /**
-     * Operator tools: every wand and the admin tool. Always listed: the creative inventory is only
-     * reachable in creative mode, which already takes operator rights on the server. A client-side op
-     * check here hid the tab from real operators on the live server. Every item still re-checks
-     * administrator permission on the server when used.
-     */
     public static final RegistrySupplier<CreativeModeTab> ADMIN_TAB = TABS.register("admin",
             () -> CreativeTabRegistry.create(builder -> builder
                     .title(Component.translatable("itemGroup." + Rotasutils.MOD_ID + ".admin"))
@@ -453,7 +434,6 @@ public final class RotasRegistry {
     private RotasRegistry() {
     }
 
-    // CreativeTabRegistry.append takes a generic varargs array; no API on Forge/Fabric avoids it.
     @SuppressWarnings("unchecked")
     public static void init() {
         BLOCKS.register();
@@ -466,10 +446,11 @@ public final class RotasRegistry {
                 net.schwarz.rotasutils.entity.TetrarchEntity::createAttributes);
         TABS.register();
         PARTICLES.register();
-        CreativeTabRegistry.append(TAB, QUEST_BOARD_ITEM, WAYSTONE_ITEM, HORSE_WHISTLE, ZENITH, RED_REVERSAL, RED_REVERSAL_MAX, HOLLOW_PURPLE, EXO_DISINTEGRATOR, GOLD_COIN,
+        CreativeTabRegistry.append(TAB, QUEST_BOARD_ITEM, WAYSTONE_ITEM, HORSE_WHISTLE, ZENITH, RED_REVERSAL, RED_REVERSAL_MAX, HOLLOW_PURPLE, PROJECTION_SORCERY, ANNIHILATOR_STARGUN, EXO_DISINTEGRATOR, CAPOEIRA_WRAPS, GOLD_COIN,
                 ORIDECON, ELUNIUM, ENRICHED_ORIDECON, ENRICHED_ELUNIUM,
                 PROTECTION_SCROLL, BLESSING_SCROLL, CERTIFICATE_SCROLL, SOCKET_PUNCH, CARD,
-                REFINE_FORGE_ITEM, RUNE_ALTAR_ITEM);
+                REFINE_FORGE_ITEM, RUNE_ALTAR_ITEM, COOKING_STATION_ITEM, SMELTERY_ITEM, SMITHING_BENCH_ITEM,
+                ALCHEMY_TABLE_ITEM, TANNERY_ITEM, FISHMONGER_ITEM, MILL_ITEM, RECIPE_SCROLL);
         for (RegistrySupplier<Item> rune : RUNES.values()) {
             CreativeTabRegistry.append(TAB, rune);
         }

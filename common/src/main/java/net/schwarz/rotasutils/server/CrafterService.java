@@ -33,14 +33,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Hidden artisan NPCs. An artisan stands in for a sub-role no player at hand holds: it makes its job's crafting and
- * smelting unlocks from the player's own materials, for a steep fee and only a few times a day. Its work pays no
- * sub-job EXP, so trading with a player who has the role is always the better deal.
- *
- * <p>The offer list is derived from the job's unlock table and the server's recipes, never stored, and every
- * commission is re-checked here; the screen only asks.</p>
- */
 public final class CrafterService {
     private static final String DAY = "rpg.crafter.day";
     private static final String USED = "rpg.crafter.used";
@@ -48,18 +40,15 @@ public final class CrafterService {
     public record Result(boolean ok, String message) {
     }
 
-    /** One grouped recipe input: how many matching items one craft uses. */
     record Material(Ingredient ingredient, int count) {
     }
 
-    /** Something the artisan makes: the unlock row, one craft's output and materials, and the fee per craft. */
     record Offer(String key, JobDef.ProductionEntry entry, ItemStack result, List<Material> materials, int tier, long fee) {
     }
 
     private CrafterService() {
     }
 
-    /** The job this NPC's artisan service stands in for, when the job still exists and is enabled. */
     public static JobDef job(RotasData data, NpcDef npc) {
         NpcServiceDef service = npc.crafterService();
         JobDef job = service == null ? null : data.job(service.jobId());
@@ -86,7 +75,6 @@ public final class CrafterService {
             if (!craft && entry.activity() != JobDef.ProductionEntry.Activity.SMELT) {
                 continue;
             }
-            // Tag rows name many items and brewing has no recipe to read, so neither can be commissioned.
             if (entry.selector().startsWith("#") || (maxLevel > 0 && entry.unlockLevel() > maxLevel)) {
                 continue;
             }
@@ -102,12 +90,10 @@ public final class CrafterService {
             offers.add(new Offer(key, entry, recipe.getResultItem(registries).copy(), materials(recipe), tier,
                     rules.crafterFeeFor(tier)));
         }
-        // Stable sort: rows unlocked at the same level keep the table's order.
         offers.sort(Comparator.comparingInt(offer -> offer.entry().unlockLevel()));
         return offers;
     }
 
-    /** The simplest ordinary recipe that makes this item: fewest inputs, then the recipe id for a stable choice. */
     private static Recipe<?> recipeFor(RecipeManager recipes, RegistryAccess registries, boolean craft, String itemId) {
         List<? extends Recipe<?>> candidates;
         if (craft) {
@@ -161,11 +147,6 @@ public final class CrafterService {
         return total;
     }
 
-    /**
-     * Takes {@code crafts} crafts' worth of materials from the main inventory, or with {@code remainders} null only
-     * checks that it could. Stacks are matched greedily per material over a working count, so two materials never
-     * spend the same item twice. Containers a recipe leaves behind (milk buckets) are collected into remainders.
-     */
     private static boolean take(Inventory inventory, List<Material> materials, int crafts, List<ItemStack> remainders) {
         List<ItemStack> items = inventory.items;
         int[] left = new int[items.size()];
@@ -206,7 +187,6 @@ public final class CrafterService {
         return true;
     }
 
-    /** Commissions left for this player today; -1 when there is no daily limit. */
     public static int remaining(int limit, int used) {
         return limit <= 0 ? -1 : Math.max(0, limit - used);
     }
@@ -233,7 +213,6 @@ public final class CrafterService {
         progress.markDirty();
     }
 
-    /** Most crafts of this offer the player can commission right now. */
     private static int affordable(ServerPlayer player, PlayerProgress progress, SeasonRules rules, Offer offer) {
         long max = 64;
         int left = left(progress, rules);
@@ -248,7 +227,6 @@ public final class CrafterService {
         return low;
     }
 
-    /** One commission, all or nothing: every cost for {@code crafts} crafts is checked before anything moves. */
     public static Result commission(ServerPlayer player, RotasData data, NpcDef npc, String key, int crafts) {
         if (npc.role() != NpcDef.Role.CRAFTER || job(data, npc) == null) {
             return new Result(false, ThaiText.t("rotasutils.msg.crafter.unavailable"));

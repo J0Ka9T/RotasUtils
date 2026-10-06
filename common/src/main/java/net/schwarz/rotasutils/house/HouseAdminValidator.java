@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/** Pure validation shared by the housing administrator UI and server actions. */
 public final class HouseAdminValidator {
     private static final String ID_PATTERN = "[a-z0-9_.-]{1,64}";
     private static final String CURRENCY_PATTERN = "[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}";

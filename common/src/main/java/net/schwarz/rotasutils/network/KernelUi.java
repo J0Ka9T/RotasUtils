@@ -24,29 +24,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Server side of the kernel control screens.
- *
- * <p>The client receives a bounded description of the live content plus the player's own state, and
- * sends back only an operation name and the ID it selected. Every operation is re-checked here
- * against the same services and permissions the commands use, so a modified client gains nothing by
- * sending a packet the screen would not have offered.</p>
- */
 public final class KernelUi {
-    /** Per-kind entry caps. A pack larger than this is listed up to the cap and flagged truncated. */
     public static final int MAX_ENTRIES = 256;
     public static final int MAX_TRADES = 32;
     private static final double REACH = 24.0;
-    /** Section names the console understands; the command suggests these. */
     public static final List<String> SECTIONS = List.of("character", "quests", "merchants",
             "items", "loot", "monsters", "bosses");
 
     private KernelUi() {
     }
 
-    // Snapshot -------------------------------------------------------------
-
-    public static CompoundTag snapshot(ServerPlayer player) {
+public static CompoundTag snapshot(ServerPlayer player) {
         RotasData data = RotasData.get(player.server);
         CompoundTag tag = new CompoundTag();
         RpgKernel kernel = data.kernel();
@@ -63,19 +51,10 @@ public final class KernelUi {
         return tag;
     }
 
-    /** Describes live content for the screens. Public so the round trip can be tested directly. */
     public static CompoundTag catalog(net.schwarz.rotasutils.core.ContentRegistry.Snapshot content) {
         return catalog(content, true);
     }
 
-    /**
-     * Describes live content for the screens.
-     *
-     * <p>Player screens (quests, merchants, mail) share this snapshot with the admin screens, so the
-     * authoring side of the catalogue is filtered out unless the viewer may see it. Monster profiles,
-     * boss internals and loot tables are how an encounter is built; handing them to every client that
-     * opens a quest board spoils the content and leaks the raw definition JSON.</p>
-     */
     public static CompoundTag catalog(net.schwarz.rotasutils.core.ContentRegistry.Snapshot content, boolean admin) {
         CompoundTag catalog = new CompoundTag();
         boolean[] truncated = {false};
@@ -95,7 +74,6 @@ public final class KernelUi {
                 entry.putInt("affixes", profile.affixes().size());
                 entry.putString("boss", profile.boss() == null ? "" : profile.boss().value());
                 entry.putString("loot", profile.loot() == null ? "" : profile.loot().value());
-                // The body lets the Mob Setup screen reopen a profile for editing.
                 var definition = content.definitions().get(id);
                 entry.putString("body", definition == null ? "{}" : definition.source().document().getAsJsonObject("body").toString());
                 monsters.add(entry);
@@ -221,7 +199,6 @@ public final class KernelUi {
         return String.join(" + ", parts);
     }
 
-    /** Drops the namespace and folder from an ID so a row can show the part that differs. */
     public static String shortName(String id) {
         int slash = id.lastIndexOf('/');
         if (slash >= 0) { return id.substring(slash + 1); }
@@ -294,10 +271,7 @@ public final class KernelUi {
         return player.createCommandSourceStack();
     }
 
-    // Actions --------------------------------------------------------------
-
-    /** Handles one screen operation. Returns false when the action name is not ours. */
-    public static boolean handle(ServerPlayer player, String action, CompoundTag payload) {
+public static boolean handle(ServerPlayer player, String action, CompoundTag payload) {
         RotasData data = RotasData.get(player.server);
         if (data.kernel() == null) {
             if (!action.startsWith("kernel_")) { return false; }
@@ -475,7 +449,6 @@ public final class KernelUi {
         }
     }
 
-    /** The mob the player is looking at, so the screen never asks anyone to type a UUID. */
     public static Mob lookedAt(ServerPlayer player) {
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getViewVector(1.0F);
@@ -497,12 +470,10 @@ public final class KernelUi {
         catch (IllegalArgumentException malformed) { return null; }
     }
 
-    /** Item profile display name for the client; exposed so both sides format IDs identically. */
     public static String describe(ItemDefinitions.Profile profile) {
         return shortName(profile.id().value()) + " (" + shortName(profile.item()) + ")";
     }
 
-    /** Quest reset wording shared by the screens. */
     public static String resetText(QuestDefinitions.Reset reset, Map<String, String> ignored) {
         return switch (reset) {
             case NONE -> "one time";

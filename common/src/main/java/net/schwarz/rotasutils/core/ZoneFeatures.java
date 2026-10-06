@@ -7,15 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Everything a zone does beyond its level band, shapes, combat rules and entry lock: its type, whether
- * it keeps outside mobs out, its miniboss/boss spawn points, the titles shown on entry and exit, the
- * effects kept on players inside, forbidden movement, and how it shows itself to players. Zones saved before this existed load with
- * {@link #DEFAULT}, which changes nothing.
- *
- * @param isolateMobs when true, only Mob Setups scoped to this zone apply inside it and hostile mobs
- *                    spawn naturally only if one of those setups names them
- */
 public record ZoneFeatures(ZoneType type, boolean isolateMobs, List<ZoneSpawnPoint> spawnPoints,
                            ZoneMessages messages, List<ZoneEffect> effects, ZoneMovement movement,
                            ZoneDungeon dungeon, ZoneDisplay display) {
@@ -24,13 +15,11 @@ public record ZoneFeatures(ZoneType type, boolean isolateMobs, List<ZoneSpawnPoi
     public static final ZoneFeatures DEFAULT = new ZoneFeatures(ZoneType.CUSTOM, false, List.of(),
             ZoneMessages.NONE, List.of(), ZoneMovement.NONE, ZoneDungeon.NONE, ZoneDisplay.DEFAULT);
 
-    /** Features without a dungeon run. */
     public ZoneFeatures(ZoneType type, boolean isolateMobs, List<ZoneSpawnPoint> spawnPoints,
                         ZoneMessages messages, List<ZoneEffect> effects, ZoneMovement movement) {
         this(type, isolateMobs, spawnPoints, messages, effects, movement, ZoneDungeon.NONE, ZoneDisplay.DEFAULT);
     }
 
-    /** Features with the default player display. */
     public ZoneFeatures(ZoneType type, boolean isolateMobs, List<ZoneSpawnPoint> spawnPoints,
                         ZoneMessages messages, List<ZoneEffect> effects, ZoneMovement movement, ZoneDungeon dungeon) {
         this(type, isolateMobs, spawnPoints, messages, effects, movement, dungeon, ZoneDisplay.DEFAULT);
@@ -96,7 +85,6 @@ public record ZoneFeatures(ZoneType type, boolean isolateMobs, List<ZoneSpawnPoi
         return new ZoneFeatures(type, isolateMobs, spawnPoints, messages, effects, movement, dungeon, next);
     }
 
-    /** True when this zone runs as a dungeon: waves, a boss and a party limit. */
     public boolean dungeonRun() {
         return dungeon.enabled();
     }

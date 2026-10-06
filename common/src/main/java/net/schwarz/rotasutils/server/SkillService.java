@@ -28,14 +28,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Skill unlocking, resets, requirement evaluation and attribute application. */
 public final class SkillService {
     private SkillService() {
     }
 
-    // Unlocking ------------------------------------------------------------
-
-    public record UnlockResult(boolean success, String message) {
+public record UnlockResult(boolean success, String message) {
         static UnlockResult ok(String message) {
             return new UnlockResult(true, message);
         }
@@ -45,12 +42,6 @@ public final class SkillService {
         }
     }
 
-    /**
-     * Attempts to buy the next rank of a node.
-     *
-     * <p>Every check runs here on the server; the client's node colouring is a hint
-     * only and is re-derived from the same rules for display.
-     */
     public static UnlockResult unlock(ServerPlayer player, RotasData data, String nodeId) {
         String blocked = purchaseCheck(player, data, nodeId);
         if (blocked != null) {
@@ -73,7 +64,6 @@ public final class SkillService {
             return UnlockResult.no(ThaiText.t("rotasutils.msg.skill.not_enough", ThaiText.t("rotasutils.msg.skill.pool_skill"), cost));
         }
 
-        // Seed only ranks from older saves; subsequent price/pool edits cannot rewrite receipts.
         for (int r = progress.skillPurchases(nodeId).size(); r < currentRank; r++) {
             progress.recordSkillPurchase(nodeId, category.id(), categoryPool ? category.id() : "", node.costForRank(r));
         }
@@ -88,7 +78,6 @@ public final class SkillService {
         return UnlockResult.ok(ThaiText.t("rotasutils.msg.skill.now_rank", node.name(), currentRank + 1));
     }
 
-    /** Null means the next rank can be purchased; this is also used for server UI previews. */
     public static String purchaseCheck(ServerPlayer player, RotasData data, String nodeId) {
         SkillNode node = data.findNode(nodeId);
         if (node == null) {
@@ -182,7 +171,6 @@ public final class SkillService {
         return true;
     }
 
-    /** Null when the player's job and race may use the category, otherwise the reason. */
     public static String audience(ServerPlayer player, RotasData data, PlayerProgress progress, SkillCategory category) {
         if (category.jobs().isEmpty() && category.races().isEmpty()) {
             return null;
@@ -200,7 +188,6 @@ public final class SkillService {
     }
     private static String jobName(RotasData data,String id) { return data.job(id)==null?id:data.job(id).name(); }
 
-    /** Returns null when the node's connections allow it, otherwise the reason. */
     public static String connectionsSatisfied(RotasData data, PlayerProgress progress, SkillNode node) {
         return net.schwarz.rotasutils.skill.SkillRules.connectionsSatisfied(data::findNode, progress, node);
     }
@@ -228,7 +215,6 @@ public final class SkillService {
         return counted.size();
     }
 
-    /** Restores original purchase pools; old saves without receipts use their preserved/current cost. */
     public static int refund(PlayerProgress progress, RotasData data, String categoryId) {
         long refunded = 0;
         for (String nodeId : new ArrayList<>(progress.skillRanks().keySet())) {
@@ -270,7 +256,6 @@ public final class SkillService {
             progress.legacySkills().remove(nodeId);
             progress.chosenBranches().remove(nodeId);
         }
-        // Another skill the player still owns may grant the same permission.
         for (Map.Entry<String, Integer> owned : progress.skillRanks().entrySet()) {
             SkillNode node = owned.getValue() > 0 ? data.findNode(owned.getKey()) : null;
             if (node == null) continue;
@@ -284,10 +269,7 @@ public final class SkillService {
         return (int) Math.min(Integer.MAX_VALUE, refunded);
     }
 
-    // Reset ----------------------------------------------------------------
-
-    /** Refunds every point spent in a category, or in all categories when null. */
-    public static int reset(ServerPlayer player, RotasData data, String categoryId) {
+public static int reset(ServerPlayer player, RotasData data, String categoryId) {
         PlayerProgress progress = data.progress(player.getUUID());
         int refunded = refund(progress, data, categoryId);
         recalculate(player, data);
@@ -295,9 +277,7 @@ public final class SkillService {
         return refunded;
     }
 
-    // Effects --------------------------------------------------------------
-
-    private static void applyUnlockEffects(ServerPlayer player, RotasData data,
+private static void applyUnlockEffects(ServerPlayer player, RotasData data,
                                            PlayerProgress progress, SkillNode node, int rank) {
         for (SkillEffect effect : node.effects()) {
             switch (effect.type()) {
@@ -311,7 +291,6 @@ public final class SkillService {
                 case UNLOCK_CATEGORY -> progress.unlockedCategories().add(effect.params().getString("category", ""));
                 case UNLOCK_QUEST -> progress.unlockedQuests().add(effect.params().getString("quest", ""));
                 case ITEM_REWARD -> {
-                    // Once per node rank, guarded so a reset+rebuy cannot duplicate it.
                     if (progress.claimOnce("skill_item:" + node.id() + ":" + rank)) {
                         ResourceLocation itemId = effect.params().getId("item");
                         if (itemId != null && BuiltInRegistries.ITEM.containsKey(itemId)) {
@@ -322,7 +301,6 @@ public final class SkillService {
                     }
                 }
                 case COMMAND -> {
-                    // Once per node rank, like item rewards, so reset + rebuy cannot repeat it.
                     if (progress.claimOnce("skill_cmd:" + node.id() + ":" + rank)) {
                         RewardService.runCommand(player, effect.params().getString("command", ""));
                     }
@@ -330,29 +308,19 @@ public final class SkillService {
                 case PERMISSION -> progress.questVariables().put(
                         "permission." + effect.params().getString("permission", ""), "true");
                 default -> {
-                    // Attribute and multiplier effects are handled by recalculate().
                 }
             }
         }
     }
 
-    /**
-     * Rebuilds every attribute modifier the player's skills grant.
-     *
-     * <p>Called only when progression actually changes, never per tick. Modifier ids
-     * are derived from the node id so an old modifier is replaced rather than stacked.
-     */
     public static void recalculate(ServerPlayer player, RotasData data) {
         double previousMaxHealth = player.getMaxHealth();
         clearModifiers(player, data);
         clearPassivePotions(player);
         if (PuffishSkillsCompat.active(data)) {
-            // Pufferfish is the chosen character-build layer. Keeping Rotas modifiers active
-            // would stack two skill systems on the same player.
             return;
         }
         PlayerProgress progress = data.progress(player.getUUID());
-        // A tree the player's current job or race cannot use grants nothing, even with ranks in it.
         java.util.Set<String> closedCategories = new java.util.HashSet<>();
         for (SkillCategory category : data.categories().values()) {
             if (audience(player, data, progress, category) != null) {
@@ -397,7 +365,7 @@ public final class SkillService {
                         "rotasutils.skill." + node.id() + "." + i, applied, operation));
             }
         }
-        // Growing max health leaves the player at their old health; top up the gain.
+        CharacterStatService.apply(player, data);
         double gained = player.getMaxHealth() - previousMaxHealth;
         if (gained > 0) {
             player.heal((float) gained);
@@ -406,7 +374,28 @@ public final class SkillService {
         }
     }
 
-    /** Removes every RotasUtils-owned modifier, including ones from deleted nodes. */
+    public static double combatBonus(ServerPlayer player, RotasData data, PlayerProgress progress, EffectType type) {
+        String stat = type.combatStat();
+        if (stat == null || PuffishSkillsCompat.active(data)) {
+            return 0;
+        }
+        double total = 0;
+        for (Map.Entry<String, Integer> entry : progress.skillRanks().entrySet()) {
+            SkillNode node = data.findNode(entry.getKey());
+            SkillCategory category = node == null ? null : data.category(node.categoryId());
+            if (node == null || category == null || node.disabled() || audience(player, data, progress, category) != null) {
+                continue;
+            }
+            for (SkillEffect effect : node.effects()) {
+                if (effect.type() == type) {
+                    double value = effect.valueAt(entry.getValue(), progress.level());
+                    total += type == EffectType.DEFENSE_RATING ? value : value / 100.0;
+                }
+            }
+        }
+        return total;
+    }
+
     public static void clearModifiers(ServerPlayer player, RotasData data) {
         for (Attribute attribute : BuiltInRegistries.ATTRIBUTE) {
             AttributeInstance instance = player.getAttribute(attribute);
@@ -421,7 +410,6 @@ public final class SkillService {
         }
     }
 
-    /** Skill passives are the only infinite, ambient, particle-free effects this mod applies. */
     private static void clearPassivePotions(ServerPlayer player) {
         for (MobEffectInstance active : new ArrayList<>(player.getActiveEffects())) {
             if (active.isInfiniteDuration() && active.isAmbient() && !active.isVisible()) {
@@ -448,24 +436,15 @@ public final class SkillService {
             return;
         }
         int amplifier = Math.max(0, effect.params().getInt("amplifier", 0) + rank - 1);
-        // Long duration with hidden particles reads as a permanent passive.
         player.addEffect(new MobEffectInstance(mobEffect, MobEffectInstance.INFINITE_DURATION, amplifier, true, false, true));
     }
 
-    // Multipliers ----------------------------------------------------------
-
-    /**
-     * False when the node's tree is limited to jobs the player no longer has, so a job change drops
-     * that tree's bonuses everywhere, not only on attributes.
-     */
-    // ponytail: race-limited trees are only closed in recalculate(), which has the player for Origins.
-    private static boolean jobOpen(RotasData data, PlayerProgress progress, SkillNode node) {
+private static boolean jobOpen(RotasData data, PlayerProgress progress, SkillNode node) {
         SkillCategory category = data.category(node.categoryId());
         return category == null || category.jobs().isEmpty()
                 || category.jobs().contains(progress.mainJob()) || category.jobs().contains(progress.subJob());
     }
 
-    /** Product of every experience multiplier the player's skills grant. */
     public static double experienceMultiplier(RotasData data, PlayerProgress progress, boolean questSource) {
         if (PuffishSkillsCompat.active(data)) {
             return 1.0;
@@ -487,7 +466,6 @@ public final class SkillService {
         return Math.max(0.0, total);
     }
 
-    /** Sum of a named multiplier effect across all unlocked skills, as a fraction. */
     public static double multiplier(RotasData data, PlayerProgress progress, EffectType type) {
         if (PuffishSkillsCompat.active(data)) {
             return 0.0;
@@ -507,7 +485,6 @@ public final class SkillService {
         return total;
     }
 
-    /** True when any unlocked skill grants the given flag-style effect. */
     public static boolean hasFlag(RotasData data, PlayerProgress progress, EffectType type) {
         if (PuffishSkillsCompat.active(data)) {
             return false;

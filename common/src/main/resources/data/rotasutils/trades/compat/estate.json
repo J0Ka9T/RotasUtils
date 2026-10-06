@@ -1,0 +1,248 @@
+{
+  "bundle": "estate",
+  "stars": [
+    {
+      "job": "farmer",
+      "items": [
+        "farm_and_charm:strawberry",
+        "farm_and_charm:corn",
+        "farm_and_charm:tomato",
+        "farm_and_charm:lettuce",
+        "farm_and_charm:oat",
+        "farm_and_charm:barley"
+      ]
+    }
+  ],
+  "trades": {
+    "farmer": [
+      {
+        "id": "flour",
+        "level": 2,
+        "seconds": 45,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:wheat|#forge:crops/wheat",
+            "count": 4,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "farm_and_charm:flour",
+            "count": 6
+          }
+        ],
+        "requires": [
+          "farm_and_charm"
+        ]
+      },
+      {
+        "id": "butter",
+        "level": 3,
+        "seconds": 45,
+        "open": true,
+        "ingredients": [
+          {
+            "item": "minecraft:milk_bucket",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "farm_and_charm:butter",
+            "count": 3
+          },
+          {
+            "item": "minecraft:bucket",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "farm_and_charm"
+        ]
+      }
+    ],
+    "chef": [
+      {
+        "id": "braided_bread",
+        "level": 2,
+        "seconds": 70,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "farm_and_charm:flour",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:egg|#forge:eggs",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "bakery:braided_bread",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "bakery",
+          "farm_and_charm"
+        ]
+      },
+      {
+        "id": "croissant",
+        "level": 4,
+        "seconds": 90,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "farm_and_charm:flour",
+            "count": 2,
+            "graded": true
+          },
+          {
+            "item": "farm_and_charm:butter",
+            "count": 2
+          },
+          {
+            "item": "minecraft:egg|#forge:eggs",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "bakery:croissant",
+            "count": 2
+          }
+        ],
+        "requires": [
+          "bakery",
+          "farm_and_charm"
+        ]
+      },
+      {
+        "id": "strawberry_cake",
+        "level": 6,
+        "seconds": 150,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "farm_and_charm:flour",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "farm_and_charm:strawberry",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:sugar",
+            "count": 2
+          },
+          {
+            "item": "farm_and_charm:butter",
+            "count": 1
+          },
+          {
+            "item": "minecraft:egg|#forge:eggs",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "bakery:strawberry_cake",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "bakery",
+          "farm_and_charm"
+        ]
+      },
+      {
+        "id": "chocolate_cake",
+        "level": 7,
+        "seconds": 150,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "farm_and_charm:flour",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:cocoa_beans",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:sugar",
+            "count": 2
+          },
+          {
+            "item": "farm_and_charm:butter",
+            "count": 1
+          },
+          {
+            "item": "minecraft:egg|#forge:eggs",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "bakery:chocolate_cake",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "bakery",
+          "farm_and_charm"
+        ]
+      },
+      {
+        "id": "apple_pie",
+        "level": 8,
+        "seconds": 140,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "farm_and_charm:flour",
+            "count": 2,
+            "graded": true
+          },
+          {
+            "item": "minecraft:apple",
+            "count": 3
+          },
+          {
+            "item": "minecraft:sugar",
+            "count": 1
+          },
+          {
+            "item": "farm_and_charm:butter",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "bakery:apple_pie",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "bakery",
+          "farm_and_charm"
+        ]
+      }
+    ]
+  }
+}

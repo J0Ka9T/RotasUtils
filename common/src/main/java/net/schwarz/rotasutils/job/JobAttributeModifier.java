@@ -3,7 +3,6 @@ package net.schwarz.rotasutils.job;
 import net.minecraft.nbt.CompoundTag;
 import net.schwarz.rotasutils.stat.CharacterStat;
 
-/** One server-applied strength or weakness owned by a job. */
 public record JobAttributeModifier(String label, String attribute, double amount, CharacterStat.Operation operation) {
     public JobAttributeModifier {
         label = label == null ? "" : label.trim();

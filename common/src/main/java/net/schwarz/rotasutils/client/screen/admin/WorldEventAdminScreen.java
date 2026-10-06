@@ -9,14 +9,6 @@ import net.minecraft.nbt.Tag;
 import net.schwarz.rotasutils.client.screen.RotasScreen;
 import net.schwarz.rotasutils.client.screen.Ui;
 
-/**
- * Live control of the mod's world events.
- *
- * <p>Left: every event type the season file defines; pick one and start it at a random place or
- * where the admin stands. Right: every running event; pick one and stop it. The footer switch turns
- * automatic rolling on or off. The server re-sends this screen after every action, so it never shows
- * stale state, and it re-checks admin permission on each action.</p>
- */
 @Environment(EnvType.CLIENT)
 public class WorldEventAdminScreen extends RotasScreen {
     private static final int ROW = 26;
@@ -69,7 +61,6 @@ public class WorldEventAdminScreen extends RotasScreen {
         boolean running = selectedRunning >= 0 && selectedRunning < running().size();
         String pickFirst = "Click an event type in the left list first";
 
-        // Row 1: change the event types. Row 2: run events now.
         int[][] edit = net.schwarz.rotasutils.core.ButtonRow.fit(rowX, rowW, 84, 70, 76, 80, 110);
         place(Ui.primaryButton(Ui.text("+ New type"), button -> editType("", false)), edit[0], editY,
                 room, editable ? "Too many types (max 32)" : "Season file too big - use Season settings > JSON");
@@ -97,7 +88,6 @@ public class WorldEventAdminScreen extends RotasScreen {
         }), run[4], footer, running, "Click a running event in the right list first");
     }
 
-    /** Adds a button in its row slot; a disabled one says why on hover, so nothing is a dead end. */
     private void place(net.schwarz.rotasutils.client.screen.RotasButton.Builder builder, int[] slot, int y,
                        boolean active, String whyNot) {
         var button = builder.bounds(slot[0], y, slot[1], 22).build();
@@ -122,7 +112,6 @@ public class WorldEventAdminScreen extends RotasScreen {
         }, Ui.text("Delete event type " + id + "?"), Ui.text("Running events of this type end. This writes season.json.")));
     }
 
-    /** The full worldEvents block the server sent, or null when it was too large to send. */
     private com.google.gson.JsonObject rules() {
         String json = state.getString("rules_json");
         if (json.isEmpty()) return null;

@@ -3,15 +3,6 @@ package net.schwarz.rotasutils.client.cinematic;
 import net.minecraft.world.phys.Vec3;
 import net.schwarz.rotasutils.ability.RedTimings;
 
-/**
- * The caster's whole body through the Red Reversal, as pure numbers (radians, model pixels): weight
- * shifted onto the rear leg, a lowered stance, shoulders and torso turned to the target, the casting arm
- * rising slowly, the far arm out for balance, the head on the target - all on Bezier and PCHIP curves,
- * with breathing and tiny drifts that die to nothing for the hold, then a snap of about 0.15 s.
- *
- * <p>It also gives the world positions of the palm, hand, chest, core and eyes (the VFX sockets),
- * worked out with the same arithmetic the model uses, so effects stay glued to the animation.</p>
- */
 public final class RedPose {
     private RedPose() {
     }
@@ -21,7 +12,6 @@ public final class RedPose {
                        double rLegX, double rLegZ, double lLegX, double lLegZ) {
     }
 
-    /** World positions of the effect sockets, and the casting arm's direction. */
     public record Sockets(Vec3 hand, Vec3 palm, Vec3 chest, Vec3 core, Vec3 eye, Vec3 armDir) {
     }
 
@@ -29,7 +19,6 @@ public final class RedPose {
         return a + (b - a) * t;
     }
 
-    /** How much the cast pose replaces the ordinary animation: it fades in and out at the ends. */
     public static double weight(double t) {
         return Curves.smoothstep(t / 0.3) * (1 - Curves.smoothstep((t - (RedTimings.CAMERA_RETURN + 0.1)) / 0.8));
     }
@@ -69,17 +58,13 @@ public final class RedPose {
                 rLegX * keep, rLegZ * keep, lLegX * keep, lLegZ * keep);
     }
 
-    // Sockets ----------------------------------------------------------------------------------------
-
-    /** A point in model space (pixels; y down, front is -z) to the world, for an entity at {@code feet} facing {@code yawDeg}. */
-    public static Vec3 toWorld(double mx, double my, double mz, Vec3 feet, double yawDeg) {
+public static Vec3 toWorld(double mx, double my, double mz, Vec3 feet, double yawDeg) {
         double x = -mx / 16.0, y = 1.501 - my / 16.0, z = mz / 16.0;
         double a = Math.toRadians(180.0 - yawDeg);
         double c = Math.cos(a), s = Math.sin(a);
         return new Vec3(feet.x + x * c + z * s, feet.y + y, feet.z - x * s + z * c);
     }
 
-    /** The end of the right arm's {@code length} pixels in model space, with the pose's rotations (Rx, then Ry, then Rz). */
     private static double[] armPoint(Pose p, double length) {
         double px = -Math.cos(p.bodyYaw) * 5.0, pz = Math.sin(p.bodyYaw) * 5.0, py = 2.0 + p.dy;
         double y = length, z = 0, x = 0;
@@ -92,7 +77,6 @@ public final class RedPose {
         return new double[]{px + x3, py + y3, pz + z2};
     }
 
-    /** How far past the fist the core's centre sits, for a core of about the charged size. */
     public static final double CORE_REACH = 0.16 + 0.9 * 0.42;
 
     public static Sockets sockets(Pose p, Vec3 feet, double yawDeg) {

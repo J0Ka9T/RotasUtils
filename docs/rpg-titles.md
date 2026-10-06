@@ -20,7 +20,7 @@ were too late.
 | Condition | Read from |
 |---|---|
 | `LEVEL` | The character's level |
-| `KILL_ENTITY` | Kills of `target`, tallied per entity type |
+| `KILL_ENTITY` | Kills of `target`: one entity id, a comma-separated list (any of them counts, tallied together) or `namespace:*` for a whole mod |
 | `KILL_ANY` | Monsters killed |
 | `KILL_BOSS` | Bosses killed |
 | `QUEST` | Completions of the quest named by `target` |
@@ -43,6 +43,15 @@ A title may carry up to four `CharacterStat.Effect`s. They are applied by
 `CharacterStatService.apply` alongside the character stats, which means they are
 transient, rebuilt on login and on every change, and a title taken off never
 leaves a modifier behind.
+
+Every shipped title carries a bonus (`TitleBuffs`): the amounts are the common-rarity base and are multiplied by
+rarity when worn. Titles that had none got one that fits the deed (fighters get attack or crit, levelling gets health
+or regen, makers get defense or luck), existing bonuses were raised x1.5 and rare titles and above carry two. The
+upgrade runs once per world (`buffs_v1`) and only on titles that still equal what the mod shipped.
+
+`rotas:dragon_slayer` needs a dragon of the Saints Dragons mod (Raevyx, Stegonaut, Cindervane, Varasuchus, Ignivorus,
+Volitans or Nulljaw). The Ender Dragon has its own title, `rotas:ender_dragon_bane`. Both changes are one-time
+migrations (`dragons_v1`) and leave an edited title alone.
 
 ## Display
 

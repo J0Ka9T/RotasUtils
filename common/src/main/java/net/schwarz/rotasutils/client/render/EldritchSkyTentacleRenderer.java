@@ -13,11 +13,6 @@ import net.schwarz.rotasutils.Rotasutils;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
-/**
- * The void sky: colossal tentacles pour out of the tear and reach down toward the world, writhing
- * slowly, their sucker rims glowing a sick green. They grow out once the tear is wide and are drawn
- * back in as it closes. Only a picture in the sky - no entity, no collision.
- */
 @Environment(EnvType.CLIENT)
 final class EldritchSkyTentacleRenderer {
     static final ResourceLocation SKIN = new ResourceLocation(Rotasutils.MOD_ID, "textures/entity/tentacle.png");
@@ -43,7 +38,6 @@ final class EldritchSkyTentacleRenderer {
         EldritchSkyCelestial.direction(env.focalYawDeg(), env.focalElevationDeg(), dir);
         Vector3f centre = new Vector3f(dir[0], dir[1], dir[2]).mul(DISTANCE);
         Vector3f toViewer = new Vector3f(-dir[0], -dir[1], -dir[2]);
-        // A frame across the tear: "right" along the horizon, "up" across it.
         Vector3f right = new Vector3f(toViewer).cross(0, 1, 0);
         if (right.lengthSquared() < 1.0e-6f) {
             right.set(1, 0, 0);
@@ -76,12 +70,9 @@ final class EldritchSkyTentacleRenderer {
             RenderSystem.setShaderFogStart(fogStart);
             RenderSystem.setShaderFogEnd(fogEnd);
         }
-        // The tentacles wrote depth at sky distance; clear it so the world still draws in front.
-        // Drawn over the finished frame (shader packs), the world's depth must survive for the terrain in front.
         if (!ShaderPackCompat.overlay()) RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
     }
 
-    /** Tentacle {@code i}: rooted round the heart of the tear, splaying out and reaching down. */
     private static void shape(int i, float t, float grown, Vector3f centre, Vector3f toViewer, Vector3f right,
                               Vector3f across) {
         double around = Math.PI * 2 * i / COUNT + 0.35 * i;
@@ -94,7 +85,6 @@ final class EldritchSkyTentacleRenderer {
         SHAPE.up.set(across);
         SHAPE.length = 58f + 14f * ((i * 37) % 5) / 4f;
         SHAPE.radius = 4.2f + 1.2f * (i % 2);
-        // Staggered: each one pushes out a little after the one before.
         float stagger = Math.max(0f, Math.min(1f, grown * 1.4f - i * 0.06f));
         SHAPE.grown = stagger * stagger * (3f - 2f * stagger);
         SHAPE.splay = 0.55f;

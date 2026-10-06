@@ -6,18 +6,10 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 
 import java.util.Locale;
 
-/**
- * Gold coin stacks that hold any amount.
- *
- * <p>Vanilla slots and packets stop a stack at 64, so a coin stack keeps its real amount on the item
- * ({@value #AMOUNT}) and stays at a count of 1. Old untagged coins still count one per item. Coins that
- * came out of a kill are also marked {@value #LOOT}: picking those up puts them straight in the wallet.</p>
- */
 public final class GoldCoins {
     public static final String AMOUNT = "RotasCoins";
     public static final String LOOT = "RotasCoinLoot";
     public static final String OWNER = "RotasCoinOwner";
-    /** Most gold one stack can hold. */
     public static final long MAX = 1_000_000_000L;
 
     private GoldCoins() {
@@ -27,7 +19,6 @@ public final class GoldCoins {
         return !stack.isEmpty() && stack.is(RotasRegistry.GOLD_COIN.get());
     }
 
-    /** Gold this stack is worth. */
     public static long amount(ItemStack stack) {
         if (!is(stack)) {
             return 0;
@@ -37,14 +28,12 @@ public final class GoldCoins {
         return Math.min(MAX, each * stack.getCount());
     }
 
-    /** One stack worth {@code amount} gold. */
     public static ItemStack stack(long amount) {
         ItemStack stack = new ItemStack(RotasRegistry.GOLD_COIN.get());
         setAmount(stack, amount);
         return stack;
     }
 
-    /** A kill's coins: same as {@link #stack} but they go to the wallet when picked up. */
     public static ItemStack loot(long amount, java.util.UUID owner) {
         ItemStack stack = stack(amount);
         stack.getOrCreateTag().putBoolean(LOOT, true);
@@ -54,7 +43,6 @@ public final class GoldCoins {
         return stack;
     }
 
-    /** True when {@code player} may pick these coins up: not kill coins, or that player's own. */
     public static boolean mayTake(ItemStack stack, java.util.UUID player) {
         CompoundTag tag = stack.getTag();
         return tag == null || !tag.hasUUID(OWNER) || tag.getUUID(OWNER).equals(player);
@@ -80,10 +68,6 @@ public final class GoldCoins {
         }
     }
 
-    /**
-     * Moves {@code from} into {@code into}. Returns true when anything moved; whatever does not fit under
-     * {@link #MAX} stays in {@code from}.
-     */
     public static boolean merge(ItemStack into, ItemStack from) {
         if (!is(into) || !is(from) || into == from) {
             return false;
@@ -104,7 +88,6 @@ public final class GoldCoins {
         return true;
     }
 
-    /** "1,250", or "1.2k" / "3.4M" when {@code compact}. */
     public static String format(long amount, boolean compact) {
         if (!compact || amount < 1_000) {
             return String.format(Locale.ROOT, "%,d", amount);

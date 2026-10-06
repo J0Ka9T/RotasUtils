@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Dedicated-server checks for boss phases, arena reset, contributions and shared payouts. */
 public final class BossSmoke {
     private static final UUID MAIN = UUID.fromString("8b3f3d21-9f4b-4f4d-9a0a-6d1c53c7f4aa");
     private static final UUID HELPER = UUID.fromString("41cf6b09-6d33-4b7e-9f6f-2b2e4a2d3c55");
@@ -125,14 +124,12 @@ public final class BossSmoke {
         double armourPhase = boss.getAttributeValue(Attributes.ARMOR);
         require(Math.abs(armourPhase - armourBefore - 8.0) < .001, "phase attributes applied: " + armourBefore + " -> " + armourPhase);
         require(!bosses.phase(boss, state, definition), "the same phase does not re-trigger");
-        // A monster healed above the threshold steps back and drops the phase modifiers again.
         boss.setHealth(boss.getMaxHealth());
         require(bosses.phase(boss, state, definition), "healing returns the boss to the earlier phase");
         require(Math.abs(boss.getAttributeValue(Attributes.ARMOR) - armourBefore) < .001, "phase modifiers removed on the way back");
         boss.setHealth(boss.getMaxHealth() * 0.4F);
         bosses.phase(boss, state, definition);
 
-        // Reset clears the ledger, restores health and returns the boss to its arena origin.
         bosses.reset(boss, state, definition, new net.minecraft.world.phys.Vec3(boss.getX(), boss.getY(), boss.getZ()));
         require(bosses.contributions(state).isEmpty(), "reset clears the contribution ledger");
         require(Math.abs(boss.getHealth() - boss.getMaxHealth()) < .001, "reset restores full health");
@@ -147,7 +144,6 @@ public final class BossSmoke {
         require(data.progress(MAIN).rpg().currency("rotas:boss_coin") == mainBefore, "no payout without an online player");
         require(data.progress(HELPER).rpg().currency("rotas:boss_coin") == helperBefore, "minimum share is not paid either");
 
-        // Contributions survive the entity storage round trip exactly like the rest of the state.
         monsters.persist(boss, state);
         var reloaded = net.schwarz.rotasutils.core.MonsterState.load(
                 net.schwarz.rotasutils.server.MonsterStorage.read(boss));
@@ -155,7 +151,6 @@ public final class BossSmoke {
         require(reloaded.runtime().getInt("boss:phase") == 0, "phase persisted with the entity");
         require(bosses.definition(reloaded) != null, "restored state resolves its boss definition");
 
-        // The ledger is bounded so a raid cannot grow the entity tag without limit.
         for (int i = 0; i < net.schwarz.rotasutils.server.BossService.MAX_CONTRIBUTORS + 8; i++) {
             var extra = new FakePlayer(level, new GameProfile(UUID.nameUUIDFromBytes(("boss-smoke-" + i).getBytes()), "F" + i));
             bosses.contribute(boss, state, extra, 1);

@@ -10,18 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.random.RandomGenerator;
 
-/**
- * Paying out one rung of a reward track.
- *
- * <p>The daily track, the season track and the bestiary all pay the same four things - gold, experience,
- * rank points and item lines - so they all pay through here. Items that do not fit in the bag go to the
- * mailbox exactly like a monster drop does, so a claim can never destroy what it paid.</p>
- */
 public final class TrackRewards {
     private TrackRewards() {
     }
 
-    /** What a claim actually handed over, for the chat line and the audit. */
     public record Paid(long gold, long xp, long rankPoints, List<ItemStack> items, int mailed) {
     }
 
@@ -52,7 +44,6 @@ public final class TrackRewards {
         return new Paid(reward.gold, reward.xp, reward.rankPoints, List.copyOf(items), mailed);
     }
 
-    /** {@code "+400 gold, +900 exp, +5 rank, 2 items"} - whatever the claim actually paid. */
     public static String describe(Paid paid) {
         List<String> parts = new ArrayList<>();
         if (paid.gold() > 0) {

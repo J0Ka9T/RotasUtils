@@ -18,12 +18,6 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * A void grasp. Warning: a dark cracked stain spreads under a spinning abyssal seal, a counter-rotating
- * rune ring tightens, a light curtain rises off the rim and motes spiral inward. Eruption: white flash,
- * expanding shock ring and a void pillar as three tentacles burst up, writhe, and sink back while the
- * seal smoulders out.
- */
 @Environment(EnvType.CLIENT)
 public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
     private static final ResourceLocation SIGIL_ARCANE = tex("sigil_arcane");
@@ -57,7 +51,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
 
     @Override
     public boolean shouldRender(VoidGraspEntity grasp, Frustum frustum, double x, double y, double z) {
-        // Tentacles, pillar and stain reach far past the tiny carrier bbox.
         return true;
     }
 
@@ -79,14 +72,12 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
         float burst = age < erupt ? 0f : 1f - smooth((age - erupt) / 10f);
         float spin = time * (0.6f + 1.8f * urgency * urgency);
 
-        // 1. Dark underlay first (alpha blend) so the additive light reads on bright ground in daylight.
         if (seal > 0.01f) {
             float grow = backOut(Math.min(1f, age / 10f));
             flatGlow(buffers, SMOKE, m, n, r * 1.55f * grow, -time * 0.25f, 0.03f, STAIN, 0.55f * seal);
             flatGlow(buffers, CRACKS, m, n, r * 1.25f * grow, 0.4f, 0.035f, STAIN, 0.75f * seal);
         }
 
-        // 2. Painted seal: outer arcane circle + counter-rotating rune ring that tightens toward the eruption.
         if (seal > 0.01f) {
             float grow = backOut(Math.min(1f, age / 8f));
             float pulse = 0.75f + 0.25f * (float) Math.sin(time * (8f + 18f * urgency));
@@ -97,7 +88,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
             flatLight(buffers, SIGIL_RUNES, m, inner, -spin * 1.6f, 0.06f, VIOLET, 0.8f * seal * after);
         }
 
-        // 3. Soft vector rings, a rising light curtain and inward-spiralling motes during the warning.
         if (warn > 0.01f) {
             float pulse = 0.6f + 0.4f * (float) Math.sin(time * (8f + 18f * urgency));
             ring(buffers.getBuffer(VfxRenderTypes.ADDITIVE), m, r, 0.12f, VOID, 0.8f * warn * pulse);
@@ -107,7 +97,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
             motes(buffers, m, r, time, urgency, warn);
         }
 
-        // 4. Eruption: flash, shock ring racing outward, void pillar.
         if (burst > 0.01f) {
             float t = 1f - burst;
             flatLight(buffers, SHOCK_RING, m, r * (0.6f + 2.4f * easeOut(t)), 0f, 0.08f, VOID, burst * burst);
@@ -119,7 +108,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
             pillar(buffers.getBuffer(VfxRenderTypes.ADDITIVE), m, 0.3f * burst + 0.08f, 7.5f, WHITE, 0.9f * burst * burst);
         }
 
-        // 5. Tentacles.
         float grown = smooth((age - erupt + 2f) / 5f) * (1f - smooth((age - VoidGraspEntity.END + 14f) / 12f));
         if (grown > 0.01f) {
             VertexConsumer skin = buffers.getBuffer(RenderType.entityCutoutNoCull(EldritchSkyTentacleRenderer.SKIN));
@@ -156,7 +144,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
         shape.lash = 0f;
     }
 
-    /** Horizontal painted quad, additive (POSITION_TEX_COLOR). */
     private static void flatLight(MultiBufferSource buffers, ResourceLocation texture, Matrix4f m, float half,
                                   float angle, float y, float[] c, float alpha) {
         if (alpha <= 0.005f) return;
@@ -169,7 +156,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
         vc.vertex(m, cs + sn, y, sn - cs).uv(1f, 0f).color(c[0], c[1], c[2], a).endVertex();
     }
 
-    /** Horizontal painted quad, alpha-blended (NEW_ENTITY) — can darken the ground. */
     private static void flatGlow(MultiBufferSource buffers, ResourceLocation texture, Matrix4f m, Matrix3f n,
                                  float half, float angle, float y, float[] c, float alpha) {
         if (alpha <= 0.005f) return;
@@ -206,7 +192,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
         }
     }
 
-    /** Vertical light sheet off the rim, bright at the ground, fading upward, rippling around the circle. */
     private static void curtain(VertexConsumer vc, Matrix4f m, float radius, float height, float time, float[] c,
                                 float alpha) {
         for (int i = 0; i < SEGMENTS; i++) {
@@ -223,7 +208,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
         }
     }
 
-    /** Motes converging on the centre along golden-angle spirals, rising as they close in. */
     private void motes(MultiBufferSource buffers, Matrix4f m, float radius, float time, float urgency, float warn) {
         for (int i = 0; i < MOTES; i++) {
             float ph = frac(time * (0.5f + 0.9f * urgency) + i / (float) MOTES);
@@ -237,7 +221,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
         }
     }
 
-    /** Vertical soft column seen from any yaw: two crossed sheets, bright axis to transparent edges, tapered top. */
     private static void pillar(VertexConsumer vc, Matrix4f m, float halfWidth, float height, float[] c, float alpha) {
         for (int k = 0; k < 2; k++) {
             float dx = k == 0 ? halfWidth : 0f, dz = k == 0 ? 0f : halfWidth;
@@ -252,7 +235,6 @@ public class VoidGraspRenderer extends EntityRenderer<VoidGraspEntity> {
         }
     }
 
-    /** Camera-facing soft disc: bright centre, transparent rim. */
     private void halo(VertexConsumer vc, Matrix4f m, float x, float y, float z, float radius, float[] c, float alpha) {
         if (alpha <= 0.005f) return;
         Quaternionf cam = entityRenderDispatcher.cameraOrientation();

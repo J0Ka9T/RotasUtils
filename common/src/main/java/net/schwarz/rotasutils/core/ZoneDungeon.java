@@ -8,19 +8,6 @@ import net.schwarz.rotasutils.util.Nbt;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A dungeon run inside a zone: a party enters, clears waves of monsters and then a final boss against
- * the clock, and is paid at the end. While a run is going the zone takes no one new beyond the party
- * size, and a player who cleared it waits out a cooldown before running it again.
- *
- * <p>Entering is refused through the zone's entry gate (see {@code ZoneGateService}), so a full or
- * cooling-down dungeon pushes a player back exactly like a locked zone. Live run state is kept on the
- * server, not here; this record is only what the administrator configured.</p>
- *
- * @param keyItem       item every player must carry to join, consumed on joining; empty for none
- * @param bossProfile   Mob Setup spawned after the last wave; empty for no final boss
- * @param rewardItems   lines like {@code "minecraft:diamond 2"}, given to every player who finishes
- */
 public record ZoneDungeon(boolean enabled, int maxPlayers, String keyItem, int keyCount, long entryGold,
                           int timeLimitSeconds, int cooldownSeconds, List<Wave> waves, String bossProfile,
                           long rewardGold, long rewardXp, List<String> rewardItems) {
@@ -29,7 +16,6 @@ public record ZoneDungeon(boolean enabled, int maxPlayers, String keyItem, int k
     public static final int MAX_PLAYERS = 16;
     public static final ZoneDungeon NONE = new ZoneDungeon(false, 4, "", 1, 0, 900, 3600, List.of(), "", 0, 0, List.of());
 
-    /** One wave: {@code count} monsters of a Mob Setup, all alive at once. */
     public record Wave(String profile, int count) {
         public static final int MAX_COUNT = 24;
 
@@ -86,7 +72,6 @@ public record ZoneDungeon(boolean enabled, int maxPlayers, String keyItem, int k
         }
     }
 
-    /** Waves plus the boss, as the run counts stages. */
     public int stages() {
         return waves.size() + (bossProfile.isEmpty() ? 0 : 1);
     }

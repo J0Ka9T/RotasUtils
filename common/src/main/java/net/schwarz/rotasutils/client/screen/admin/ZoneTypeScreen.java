@@ -10,10 +10,6 @@ import net.schwarz.rotasutils.client.screen.Sfx;
 import net.schwarz.rotasutils.client.screen.Ui;
 import net.schwarz.rotasutils.core.ZoneType;
 
-/**
- * Picks a zone type. Choosing one fills in that type's settings on the zone editor's unsaved copy; the
- * admin reviews them and presses Save there, and every filled-in setting stays editable.
- */
 @Environment(EnvType.CLIENT)
 public class ZoneTypeScreen extends RotasScreen {
     private static final int ROW = 40;

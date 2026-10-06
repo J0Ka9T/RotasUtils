@@ -16,10 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * The mobs that belong to one zone: whether it keeps outside mobs out, and the Mob Setups scoped to it.
- * The switch saves with the zone; a Mob Setup saves on its own screen, as everywhere else.
- */
 @Environment(EnvType.CLIENT)
 public class ZoneMobsScreen extends RotasScreen {
     private static final int ROW = 30;

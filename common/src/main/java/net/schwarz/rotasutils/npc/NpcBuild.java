@@ -4,7 +4,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.schwarz.rotasutils.util.Nbt;
 import java.util.Map;
 
-/** Optional combat build for guards and companions; absence keeps interaction-only NPC behavior. */
 public record NpcBuild(LevelMode levelMode, int level, double difficultyMultiplier, String faction,
                        int leashBlocks, String equipmentProfile, Map<String,Integer> statAllocations,
                        Map<String,Integer> skillRanks) {

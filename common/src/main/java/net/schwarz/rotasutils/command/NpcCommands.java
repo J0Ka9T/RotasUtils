@@ -22,11 +22,6 @@ import net.schwarz.rotasutils.server.RotasPermissions;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * {@code /rotas npc quick <role> [name]}: a ready service NPC where the admin stands, in one command. It is a
- * villager dressed for the job that stands still and cannot be hurt; the NPC editor (or the NPC wand) refines
- * it afterwards like any other NPC.
- */
 final class NpcCommands {
     private NpcCommands() {
     }

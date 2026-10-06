@@ -38,7 +38,6 @@ class TetrarchRulesTest {
                 assertTrue(dot < 0.01, "quarters " + a + " and " + b + " point apart");
             }
         }
-        // Any direction on the ground falls in exactly one 90-degree quarter.
         for (int deg = 0; deg < 360; deg += 7) {
             Vec3 dir = new Vec3(Math.cos(Math.toRadians(deg)), 0, Math.sin(Math.toRadians(deg)));
             int inside = 0;

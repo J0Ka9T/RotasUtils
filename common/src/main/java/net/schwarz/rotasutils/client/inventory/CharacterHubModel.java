@@ -15,13 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Data adapter between Rotas systems and the Character Hub renderer.
- *
- * <p>The renderer never invents job, subclass, quest, party or accessory state. It consumes this
- * snapshot, which is built from the server-owned Rotas mirror, Pufferfish category summaries and
- * the live Curios inventory.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class CharacterHubModel {
     public record SkillPath(String categoryId, String displayName, int pointsLeft, int pointsTotal,
@@ -59,10 +52,6 @@ public final class CharacterHubModel {
     private CharacterHubModel() {
     }
 
-    /**
-     * Builds the Character Hub's relatively expensive cross-system snapshot at most once per client tick.
-     * Rendering can run at hundreds of FPS, while quest/party/Curios/Pufferfish state only needs tick-rate refresh.
-     */
     public static Snapshot capture(LocalPlayer player) {
         if (player == null) throw new IllegalArgumentException("player");
         UUID playerId = player.getUUID();
@@ -72,7 +61,6 @@ public final class CharacterHubModel {
 
         PlayerProgress progress = ClientState.progress();
         List<ClientState.SkillCategorySummary> categories = new ArrayList<>(ClientState.puffishCategories());
-        // Without an explicit profile mapping, prefer the category the player has invested in most.
         categories.sort(Comparator
                 .comparingInt(ClientState.SkillCategorySummary::pointsTotal).reversed()
                 .thenComparing(Comparator.comparingInt(ClientState.SkillCategorySummary::pointsSpent).reversed())
@@ -90,7 +78,6 @@ public final class CharacterHubModel {
         String subName = variable(progress, "profile.sub", "sub");
         if (subName.isBlank() && subPath != null) subName = subPath.displayName();
         if (!ClientState.pufferfishSkills()) {
-            // Built-in trees: the job slot is the chosen Rotas job, the second slot is the Origins race.
             String job = progress.job();
             jobName = job.isBlank() ? "" : ClientState.jobName(job);
             jobPath = job.isBlank() ? null : rotasPath(category -> category.jobs().contains(job), jobName, progress);
@@ -150,7 +137,6 @@ public final class CharacterHubModel {
         return null;
     }
 
-    /** Summarises every Rotas tree matching {@code filter}, or null when none match. */
     private static SkillPath rotasPath(java.util.function.Predicate<net.schwarz.rotasutils.skill.SkillCategory> filter,
                                        String name, PlayerProgress progress) {
         String firstId = null;

@@ -5,12 +5,6 @@ import net.schwarz.rotasutils.util.Nbt;
 
 import java.util.regex.Pattern;
 
-/**
- * A place inside a zone where one miniboss or boss lives. The mob is a Mob Setup (monster profile), so
- * its level, strength, rewards and optional boss phases come from that setup. Only one mob per point is
- * alive at a time; after it dies the point waits {@code respawnSeconds} before a player nearby wakes the
- * next one. Live state (which mob, when it may return) is kept in world data, not here.
- */
 public record ZoneSpawnPoint(String id, int x, int y, int z, String profile, Kind kind, int respawnSeconds,
                              int activationRadius) {
     public enum Kind { MINIBOSS, BOSS }

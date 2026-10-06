@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MonsterRollCompatTest {
-    /** Stand-in for Monster Expansion's Rakoth roll goal. */
     @SuppressWarnings("unused")
     private static final class RakothRollGoal {
     }

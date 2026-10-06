@@ -25,35 +25,17 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The Cero Metralleta's rounds.
- *
- * <p>Starrk's Cero Metralleta is a stream of fat blue shafts, near-parallel, overlapping, all
- * pouring the same way. Each round is drawn as a <b>solid shaded capsule</b> - blunt nose, long body,
- * tapered tail - deep blue face-on and bright at its silhouette, with an additive rim and a white
- * nose laid over it.</p>
- *
- * <p><b>Impacts outlive their round.</b> Where a round lands, it leaves an expanding shock ring, a
- * radial burst of sparks and a white core that decay over {@link CeroFxProfile#IMPACT_TICKS} ticks -
- * so a barrage leaves a wall of fire standing on whatever it is hitting, which is the whole point of
- * firing two hundred rounds.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class CeroFxRenderer {
-    /** Rounds in flight at once; a burst tick adds five, and they live as long as their distance. */
-    /** Twenty a tick for up to ~33 ticks of flight: room for every cero in the air at once. */
     private static final int MAX_BOLTS = 720;
     private static final int MAX_IMPACTS = 320;
     private static final int RIBBONS = 3;
-    /** Cyan-white heart, spiritual cyan body, deep blue haze. */
     private static final float[] CORE = {0.92f, 0.99f, 1f};
     private static final float[] CYAN = {0.30f, 0.86f, 1f};
     private static final float[] DEEP = {0.16f, 0.42f, 1f};
     private static final Vec3 UP = new Vec3(0, 1, 0);
-    /** The body's shading: dark saturated blue facing the camera, bright blue at the silhouette. */
     private static final float[] BODY_FACE = {0.02f, 0.14f, 0.72f};
     private static final float[] BODY_EDGE = {0.30f, 0.66f, 1f};
-    /** Toward the nose the body brightens to this, like the lit heads of the reference shafts. */
     private static final float[] BODY_HOT = {0.45f, 0.80f, 1f};
     private static final float[] RIM = {0.35f, 0.75f, 1f};
     private static final float[] NOSE = {0.60f, 0.88f, 1f};
@@ -92,7 +74,6 @@ public final class CeroFxRenderer {
         for (int i = BOLTS.size() - 1; i >= 0; i--) {
             Bolt bolt = BOLTS.get(i);
             bolt.age++;
-            // The round's own flare is handed to an impact the moment it lands, so it can outlive it.
             if (!bolt.landed && bolt.age >= bolt.shot.flightTicks() && bolt.shot.impact()) {
                 bolt.landed = true;
                 IMPACTS.add(new Impact(bolt.shot.end(), bolt.direction(), bolt.seed));
@@ -123,14 +104,12 @@ public final class CeroFxRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         try {
-            // Bodies first with ordinary blending, so each cero reads as a solid, shaded mass of blue.
             RenderSystem.defaultBlendFunc();
             batch.begin();
             for (Bolt bolt : BOLTS) {
                 renderBody(batch, bolt, bolt.age + partialTick);
             }
             batch.draw();
-            // Then the light on top: rims, heads and bursts add.
             RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
             batch.begin();
             for (Bolt bolt : BOLTS) {
@@ -148,10 +127,7 @@ public final class CeroFxRenderer {
         }
     }
 
-    // Rounds --------------------------------------------------------------------------------------
-
-    /** Where a round's body is this frame: tail, head, direction and thickness. False when nothing shows. */
-    private static boolean place(Bolt bolt, float age, Vec3[] out, float[] radius) {
+private static boolean place(Bolt bolt, float age, Vec3[] out, float[] radius) {
         float flight = bolt.shot.flightTicks();
         Vec3 start = bolt.shot.start();
         Vec3 axis = bolt.shot.end().subtract(start);
@@ -168,17 +144,10 @@ public final class CeroFxRenderer {
         out[0] = start.add(direction.scale(tailAt));
         out[1] = start.add(direction.scale(headAt));
         out[2] = direction;
-        // Fattens out of the muzzle over its first tick.
         radius[0] = 1.3f * (float) CeroBallistics.SCALE * Math.min(1f, 0.3f + age * 0.8f);
         return true;
     }
 
-    /**
-     * The cero's body: a long capsule - blunt rounded nose, full girth behind it, tapering to a point
-     * at the tail - shaded like a lit solid: deep blue where it faces the camera, bright cyan at its
-     * silhouette. That shading is what turns a streak of light into the fat blue shafts of the
-     * Metralleta.
-     */
     private static void renderBody(Batch batch, Bolt bolt, float age) {
         float alpha = CeroFxProfile.alpha(age, bolt.shot.flightTicks());
         Vec3[] at = new Vec3[3];
@@ -190,7 +159,6 @@ public final class CeroFxRenderer {
                 bolt.flicker(age));
     }
 
-    /** The light over the body: a hot rim, a white nose, and the glow it throws around itself. */
     private static void renderBolt(Batch batch, Bolt bolt, float age) {
         float alpha = CeroFxProfile.alpha(age, bolt.shot.flightTicks());
         Vec3[] at = new Vec3[3];
@@ -199,7 +167,6 @@ public final class CeroFxRenderer {
             return;
         }
         float r = radius[0];
-        // Kept faint on purpose: five overlapping additive shafts go white, and a cero is blue.
         batch.capsuleRim(at[0], at[1], at[2], r * 1.03f, RIM, 0.3f * alpha);
         if (age <= bolt.shot.flightTicks()) {
             Vec3 nose = at[1].subtract(at[2].scale(r * 0.5f));
@@ -207,31 +174,21 @@ public final class CeroFxRenderer {
         }
     }
 
-    // Impacts -------------------------------------------------------------------------------------
-
-    /**
-     * A cero bursts into a ball of light, not a spark: a white flash, a swelling sphere of cyan glow
-     * that thins as it grows, a shock ring racing out square to the shot, and a few embers thrown
-     * clear.
-     */
-    private static void renderImpact(Batch batch, Impact impact, float age) {
+private static void renderImpact(Batch batch, Impact impact, float age) {
         float alpha = CeroFxProfile.impactAlpha(age);
         if (alpha <= 0.01f) {
             return;
         }
-        // Area blasts: a stream of these on one spot stacks into a standing field of explosions.
         float scale = 2.2f * (float) CeroBallistics.SCALE;
         float spread = CeroFxProfile.impactSpread(age) * scale;
         Vec3 at = impact.at;
         float flash = Math.max(0f, 1f - age / 2.5f);
         batch.glow(at, (1.2f + 1.6f * flash) * scale, CORE, flash);
-        // The blast sphere: layered discs that grow and fade, bright rim thin centre as it opens.
         batch.glow(at, spread * 0.7f, CORE, 0.5f * alpha);
         batch.glow(at, spread * 1.0f, CYAN, 0.5f * alpha);
         batch.glow(at, spread * 1.5f, DEEP, 0.3f * alpha);
         batch.crackle(at, spread * 0.95f, spread * 0.12f + 0.08f, CORE, 0.6f * alpha, age * 0.5f, impact.seed);
         batch.ring(at, impact.direction, spread * 1.3f, spread * 0.14f + 0.1f, CYAN, 0.45f * alpha);
-        // A shockwave rolling out flat over the ground, which is what sells it as area damage.
         batch.ring(at, UP, spread * 1.7f, spread * 0.22f + 0.15f, CYAN, 0.5f * alpha);
         batch.ring(at, UP, spread * 1.05f, spread * 0.1f + 0.1f, CORE, 0.4f * alpha);
         Vec3 side = perpendicular(impact.direction);
@@ -276,7 +233,6 @@ public final class CeroFxRenderer {
             return axis.lengthSqr() < 1.0e-8 ? new Vec3(0, 0, 1) : axis.normalize();
         }
 
-        /** A per-round wobble, so two hundred rounds never move as one. */
         private float flicker(float age) {
             return Mth.sin(age * 2.7f + index * 1.31f);
         }
@@ -324,11 +280,6 @@ public final class CeroFxRenderer {
                     .color(r, g, b, Math.max(0f, Math.min(1f, a))).endVertex();
         }
 
-        /**
-         * The round's body: {@link #RIBBONS} ribbons crossed evenly around its axis. Unlike one
-         * camera-facing ribbon it keeps its width when the camera swings across the shot, which is
-         * what makes a barrage look like solid fire rather than a flicker of lines.
-         */
         private void lance(Vec3 start, Vec3 end, Vec3 direction, float width, float[] rgb, float alphaStart,
                            float alphaEnd) {
             Vec3 side = perpendicular(direction);
@@ -340,7 +291,6 @@ public final class CeroFxRenderer {
             }
         }
 
-        /** One ribbon of the body: a point at the tail widening to {@code across} at the head. */
         private void taper(Vec3 start, Vec3 end, Vec3 across, float[] rgb, float alphaStart, float alphaEnd) {
             Vec3 e0 = end.subtract(across);
             Vec3 e1 = end.add(across);
@@ -348,7 +298,6 @@ public final class CeroFxRenderer {
             triangle(start, alphaStart, end, alphaEnd, e1, 0f, rgb[0], rgb[1], rgb[2]);
         }
 
-        /** A flat camera-facing streak, for sparks and spirals. */
         private void ribbon(Vec3 start, Vec3 end, float width, float r, float g, float b, float alphaStart,
                             float alphaEnd) {
             Vec3 axis = end.subtract(start);
@@ -368,7 +317,6 @@ public final class CeroFxRenderer {
             triangle(start, alphaStart, e1, 0f, end, alphaEnd, r, g, b);
         }
 
-        /** A camera-facing disc, bright at the centre and gone at the edge. */
         private void glow(Vec3 center, float radius, float[] rgb, float alpha) {
             if (radius <= 0.001f || alpha <= 0.004f) {
                 return;
@@ -382,11 +330,9 @@ public final class CeroFxRenderer {
             }
         }
 
-        /** Kept lean: up to seven hundred of these are in the air at once, and they overlap. */
         private static final int SIDES = 8;
         private static final int RINGS = 6;
 
-        /** Radius along the capsule, 0 at the tail to 1 at the nose: a point, a long swell, a blunt cap. */
         private static float profile(float t) {
             if (t > 0.86f) {
                 float k = (t - 0.86f) / 0.14f;
@@ -396,7 +342,6 @@ public final class CeroFxRenderer {
             return (float) Math.pow(k, 0.55);
         }
 
-        /** Shaded solid capsule: {@code face} colour where it faces the camera, {@code edge} at its rim. */
         private final float[] lit = new float[3];
 
         private void capsule(Vec3 tail, Vec3 head, Vec3 direction, float radius, float[] face, float[] edge,
@@ -408,7 +353,6 @@ public final class CeroFxRenderer {
                 Vec3 c0 = tail.add(head.subtract(tail).scale(t0));
                 Vec3 c1 = tail.add(head.subtract(tail).scale(t1));
                 float r0 = radius * profile(t0) * (1f + 0.04f * wobble), r1 = radius * profile(t1) * (1f + 0.04f * wobble);
-                // The tail fades into the air behind it.
                 float a0 = alpha * Math.min(1f, t0 * 3f), a1 = alpha * Math.min(1f, t1 * 3f);
                 for (int k = 0; k < SIDES; k++) {
                     double g0 = Math.PI * 2 * k / SIDES, g1 = Math.PI * 2 * (k + 1) / SIDES;
@@ -426,7 +370,6 @@ public final class CeroFxRenderer {
             }
         }
 
-        /** {@code along} is 0 at the tail to 1 at the nose: the body is darkest behind, lit at the head. */
         private void shaded(Vec3 p, Vec3 normal, float[] face, float[] edge, float alpha, float along) {
             Vec3 view = camera.subtract(p);
             double len = view.length();
@@ -440,7 +383,6 @@ public final class CeroFxRenderer {
             vertex(p, lit[0], lit[1], lit[2], alpha);
         }
 
-        /** Additive glow hugging the capsule's silhouette only: bright where it grazes, nothing face-on. */
         private void capsuleRim(Vec3 tail, Vec3 head, Vec3 direction, float radius, float[] rgb, float alpha) {
             Vec3 side = perpendicular(direction);
             Vec3 up = direction.cross(side).normalize();
@@ -474,7 +416,6 @@ public final class CeroFxRenderer {
             vertex(p, rgb[0], rgb[1], rgb[2], alpha * rim);
         }
 
-        /** A camera-facing ring whose edge jitters per segment and spins: the orb's live, crackling rim. */
         private void crackle(Vec3 center, float radius, float width, float[] rgb, float alpha, float spin, int seed) {
             if (radius <= 0.001f || alpha <= 0.004f) {
                 return;
@@ -499,7 +440,6 @@ public final class CeroFxRenderer {
             }
         }
 
-        /** A ring standing square to {@code normal}: the shock off a hit, seen edge-on down the shot. */
         private void ring(Vec3 center, Vec3 normal, float radius, float width, float[] rgb, float alpha) {
             if (radius <= 0.001f || alpha <= 0.004f) {
                 return;

@@ -22,7 +22,7 @@ class SeasonSchemaTest {
         assertTrue(SeasonSchema.isEntryCollection(List.of("daily", "tiers")));
         assertTrue(SeasonSchema.isEntryCollection(List.of("worldEvents", "types")));
         assertTrue(SeasonSchema.isMap(List.of("cards", "entries")));
-        assertFalse(SeasonSchema.isEntryCollection(List.of("refine", "chances"))); // plain numbers: text list
+        assertFalse(SeasonSchema.isEntryCollection(List.of("refine", "chances")));
         assertFalse(SeasonSchema.isEntryCollection(List.of("farming")));
         assertTrue(SeasonSchema.isEntry(List.of("events", "rules", "0")));
     }

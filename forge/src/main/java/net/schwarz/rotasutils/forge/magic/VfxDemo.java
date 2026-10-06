@@ -16,22 +16,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Development-only VFX preview harness. Active only with {@code ROTASUTILS_VFX_DEMO=1}
- * and {@code <gameDir>/vfxdemo.txt} (never on a real server). Each line: {@code spellId level pitch view shotTicks} e.g.
- * {@code rotasutils:eclipse_nova 5 -12 back 8,20,27,33}. For each line the server resets a test
- * arena (time noon, clear weather, test zombies with no AI in front of the player), casts the spell as
- * the player through Iron's {@code /cast}, and publishes the cast time; the client
- * ({@code VfxDemoClient}) takes HUD-less screenshots at the listed tick offsets.
- */
 public final class VfxDemo {
     public record Shot(String spell, int level, float pitch, String view, int[] ticks) {
     }
 
-    /** Ticks per line: long enough for the longest line's last screenshot. */
     public static int SLOT = 170;
     public static volatile List<Shot> shots = List.of();
-    /** Game time of the current cast, and which line it is; read by the client on the same JVM. */
     public static volatile long castAt = -1;
     public static volatile int current = -1;
     public static volatile boolean finished;
@@ -74,7 +64,7 @@ public final class VfxDemo {
         ServerPlayer player = server.getPlayerList().getPlayers().get(0);
         long now = player.level().getGameTime();
         if (startTick < 0) {
-            startTick = now + 60; // let the world settle
+            startTick = now + 60;
             anchor = new Vec3(Math.floor(player.getX()) + 0.5, Math.floor(player.getY()), Math.floor(player.getZ()) + 0.5);
         }
         long rel = now - startTick;
@@ -97,8 +87,16 @@ public final class VfxDemo {
             run(server, src, "gamemode creative");
             run(server, src, "kill @e[type=!player,distance=..80]");
             run(server, src, String.format(java.util.Locale.ROOT, "tp @s %.2f %.2f %.2f 0 %.1f", anchor.x, anchor.y, anchor.z, shot.pitch()));
-            // A cinematic ability wants one far target, so the shot is seen crossing the world.
-            double[][] spots = ability(shot) != null ? new double[][]{{0.0, 40.0}} : new double[][]{{-2.2, 7.5}, {0.3, 9.0}, {2.4, 7.2}};
+            if (ability(shot) == net.schwarz.rotasutils.ability.StargunAbility.INSTANCE) {
+                for (int tx = -96; tx < 96; tx += 32) {
+                    for (int tz = shot.level() - 96; tz < shot.level() + 96; tz += 32) {
+                        run(server, src, String.format(java.util.Locale.ROOT, "fill %d %d %d %d %d %d air replace minecraft:fire",
+                                (int) anchor.x + tx, (int) anchor.y - 3, (int) anchor.z + tz, (int) anchor.x + tx + 31, (int) anchor.y + 6, (int) anchor.z + tz + 31));
+                    }
+                }
+            }
+            double[][] spots = ability(shot) == net.schwarz.rotasutils.ability.StargunAbility.INSTANCE ? new double[][]{{0.0, shot.level()}, {9, shot.level() - 6}, {-11, shot.level() - 14}, {16, shot.level() + 5}, {-18, shot.level() + 2}, {4, shot.level() - 30}, {-3, shot.level() - 50}}
+                    : ability(shot) != null ? new double[][]{{0.0, shot.level() > 1 ? shot.level() : 40.0}} : new double[][]{{-2.2, 7.5}, {0.3, 9.0}, {2.4, 7.2}};
             for (double[] s : spots) {
                 run(server, src, String.format(java.util.Locale.ROOT,
                         "summon minecraft:zombie %.2f %.2f %.2f {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[180f,0f],ArmorItems:[{},{},{},{id:\"minecraft:leather_helmet\",Count:1b}],ActiveEffects:[{Id:12,Duration:99999,Amplifier:0b,ShowParticles:0b}]}",
@@ -116,12 +114,13 @@ public final class VfxDemo {
         }
     }
 
-    /** Lines naming a cinematic ability (not an Iron's spell) are started through the ability manager. */
     private static AbilityDefinition ability(Shot shot) {
         return switch (shot.spell()) {
             case "rotasutils:hollow_purple" -> RedReversalAbility.PURPLE;
             case "rotasutils:red_reversal" -> RedReversalAbility.INSTANCE;
             case "rotasutils:red_reversal_max" -> RedReversalAbility.MAX;
+            case "rotasutils:projection_sorcery" -> net.schwarz.rotasutils.ability.ProjectionAbility.INSTANCE;
+            case "rotasutils:annihilator_stargun" -> net.schwarz.rotasutils.ability.StargunAbility.INSTANCE;
             default -> null;
         };
     }

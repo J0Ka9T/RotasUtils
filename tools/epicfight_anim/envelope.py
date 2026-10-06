@@ -56,7 +56,6 @@ def build(ref_dir, out_path):
                 d = data[n]; d['tw'].append(tw); d['n'] += 1
                 d['cells'].add((round(sw.x / CELL), round(sw.y / CELL)))
                 d.setdefault('sw', []).append(sw)
-    # hinge axes: mean swing direction of clearly bent samples (elbows/knees are hinges in EF)
     hinges = {}
     for n in ('Hand_R', 'Hand_L', 'Leg_R', 'Leg_L'):
         pts = data[n].get('sw', [])
@@ -77,7 +76,6 @@ def build(ref_dir, out_path):
                 for dy in (-1, 0, 1):
                     cells.add((x + dx, y + dy))
         env[n] = {'twist': [lo - 5, hi + 5], 'cells': sorted(cells), 'samples': d['n']}
-    # rest-relative idle pose (first frame of living/idle.json) for settle-to-neutral blending
     idle = {}
     ip = os.path.join(ref_dir, 'living', 'idle.json')
     if os.path.exists(ip):

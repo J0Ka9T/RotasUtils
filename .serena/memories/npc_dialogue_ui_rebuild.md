@@ -1,1 +1,0 @@
-Root cause confirmed: standard NPCs use NpcDialogueScreen via NpcService.openDialogue -> "npc_dialogue". User screenshot matched NpcDialogueScreen old wood/parchment renderFrame. NpcConversationScreen rebuild did not affect standard NPCs. Next action: rebuild NpcDialogueScreen full-screen using shared NpcConversationLayout and preserve option actions.

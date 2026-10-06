@@ -16,15 +16,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * One title's form. Every choice is picked from a list rather than typed or clicked through: how it is
- * earned, the mob or quest, the rarity, a colour, and the bonuses it gives while worn (up to
- * {@link TitleDef#MAX_EFFECTS}). A "Looks like" line shows the title as players will see it over their
- * heads. The server re-validates everything on save.
- */
 @Environment(EnvType.CLIENT)
 public class TitleEditScreen extends SimpleFieldScreen {
-    /** A bonus an admin can pick: the stat, how it is labelled for players, and whether it is a percentage. */
     private record Stat(String attribute, String label, boolean percent) {
     }
 
@@ -42,6 +35,12 @@ public class TitleEditScreen extends SimpleFieldScreen {
         STATS.put("Evasion (flat)", new Stat("rotas:evasion", "Evasion", false));
         STATS.put("Magic attack (flat)", new Stat("rotas:magic_attack", "Magic attack", false));
         STATS.put("Magic power (flat)", new Stat("rotas:magic_power", "Magic power", false));
+        STATS.put("Armor pen %", new Stat("rotas:armor_pen", "Armor Pen", true));
+        STATS.put("Cooldown reduction %", new Stat("rotas:cooldown_reduction", "CDR", true));
+        STATS.put("Drop rate %", new Stat("rotas:drop_rate", "Drop Rate", true));
+        STATS.put("Life steal %", new Stat("rotas:life_steal", "Life Steal", true));
+        STATS.put("Damage reduction %", new Stat("rotas:damage_reduction", "Damage Red", true));
+        STATS.put("Stamina regen %", new Stat("rotas:stamina_regen", "Stamina Regen", true));
     }
 
     private static final Map<String, Integer> COLOURS = new LinkedHashMap<>();
@@ -89,6 +88,11 @@ public class TitleEditScreen extends SimpleFieldScreen {
                     () -> (tag.getString("target").isBlank() ? "Pick a mob" : tag.getString("target")) + "  ▾",
                     value -> minecraft.setScreen(new PickerScreen(ParamSpec.ParamKind.ENTITY, this,
                             picked -> tag.putString("target", picked)))));
+        } else if (condition == TitleDef.Condition.SUB_LEVEL) {
+            target.add(text("Sub job id (miner, chef, farmer...)", () -> tag.getString("target"), value -> tag.putString("target", value.trim())));
+        } else if (condition == TitleDef.Condition.STAT) {
+            target.add(text("Counter (crafted, crafted.chef, stars, gold_stars, star_meals, nodes, rich_nodes, rich_veins)",
+                    () -> tag.getString("target"), value -> tag.putString("target", value.trim())));
         } else if (condition == TitleDef.Condition.QUEST) {
             target.add(pickQuest("Quest", () -> tag.getString("target"), value -> tag.putString("target", value.trim())));
         }
@@ -116,7 +120,6 @@ public class TitleEditScreen extends SimpleFieldScreen {
                     0xFF000000 | (picked.equals("rarity") ? TitleDef.load(tag).rarity().color & 0xFFFFFF : Integer.parseInt(picked)))));
         }));
 
-        // Bonuses while worn.
         ListTag effects = tag.getList("effects", Tag.TAG_COMPOUND);
         for (int i = 0; i < effects.size(); i++) {
             int index = i;
@@ -154,7 +157,6 @@ public class TitleEditScreen extends SimpleFieldScreen {
         minecraft.setScreen(PickerScreen.choices("Bonus", options, this, picked -> then.accept(STATS.get(picked))));
     }
 
-    /** Writes a bonus: a percentage is stored as a fraction on the base value, a flat bonus as is. */
     private static void apply(CompoundTag effect, Stat stat, double amount) {
         if (stat == null) return;
         effect.putString("attribute", stat.attribute());
@@ -228,7 +230,6 @@ public class TitleEditScreen extends SimpleFieldScreen {
         return set.isBlank() ? "Auto (" + TitleDef.load(tag).rarity().key() + ")" : cap(set.toLowerCase(Locale.ROOT));
     }
 
-    /** The condition in everyday words, so the form reads without knowing the enum. */
     static String plain(TitleDef.Condition condition) {
         return switch (condition.name()) {
             case "LEVEL" -> "Reach a level";
@@ -248,6 +249,8 @@ public class TitleEditScreen extends SimpleFieldScreen {
             case "TITLE_COUNT" -> "Collect titles";
             case "DEATH" -> "Die and get back up";
             case "TRADE" -> "Earn gold trading";
+            case "SUB_LEVEL" -> "Level a sub job";
+            case "STAT" -> "Reach a play count (crafts, stars, ore)";
             default -> condition.name();
         };
     }
@@ -260,6 +263,7 @@ public class TitleEditScreen extends SimpleFieldScreen {
             case "QUEST" -> "Times finished";
             case "KILL_ENTITY", "KILL_ANY", "KILL_BOSS", "NEMESIS" -> "Kills needed";
             case "QUEST_COUNT" -> "Quests needed";
+            case "SUB_LEVEL" -> "Sub job level needed";
             default -> "How many";
         };
     }

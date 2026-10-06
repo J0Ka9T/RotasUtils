@@ -12,11 +12,6 @@ import net.schwarz.rotasutils.client.screen.Sfx;
 import net.schwarz.rotasutils.client.screen.Ui;
 import net.schwarz.rotasutils.house.HouseSettings;
 
-/**
- * One house's own settings, for administrators: a price different from its tier, what visitors may
- * use, a welcome line, and clearing the house back to available. Reached from the house screen, which
- * the House Wand opens when right-clicking the air inside a house.
- */
 @Environment(EnvType.CLIENT)
 public class HouseQuickSettingsScreen extends RotasScreen {
     private final String houseId;

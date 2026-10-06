@@ -2,18 +2,6 @@ package net.schwarz.rotasutils.house;
 
 import net.minecraft.nbt.CompoundTag;
 
-/**
- * Per-house options on top of its tier: its own price, what visitors may use, and a line shown to
- * everyone who walks in. Kept apart from {@link HouseDefinition} so the area, tier and rental
- * records stay exactly as they were.
- *
- * @param deposit     this house's deposit, or -1 to use its tier's
- * @param rent        this house's rent per payment, or -1 to use its tier's
- * @param guestDoors  visitors may open doors, trapdoors and gates
- * @param guestButtons visitors may press buttons and pull levers
- * @param guestContainers visitors may open chests, barrels and other containers
- * @param welcome     shown when someone walks in; empty for the default line
- */
 public record HouseSettings(long deposit, long rent, boolean guestDoors, boolean guestButtons,
                             boolean guestContainers, String welcome) {
     public static final int MAX_WELCOME = 96;
@@ -29,7 +17,6 @@ public record HouseSettings(long deposit, long rent, boolean guestDoors, boolean
         }
     }
 
-    /** The tier with this house's own prices laid over it; null when the tier is unknown. */
     public HouseTier apply(HouseTier tier) {
         if (tier == null) {
             return null;

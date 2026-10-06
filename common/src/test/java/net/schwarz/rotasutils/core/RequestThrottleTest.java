@@ -52,7 +52,6 @@ class RequestThrottleTest {
             throttle.allow(UUID.randomUUID(), 1_000, 0L);
         }
         assertEquals(300, throttle.tracked());
-        // Ten seconds later every old entry is past the cooldown, so the next request prunes them.
         assertTrue(throttle.allow(UUID.randomUUID(), 1_000, 10L * SECOND));
         assertEquals(1, throttle.tracked());
     }

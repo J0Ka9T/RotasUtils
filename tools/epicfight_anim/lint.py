@@ -15,6 +15,9 @@ lint(start, end) samples every frame and reports:
   SPINE        a spine joint bent past its range
   POP          any bone rotating > 40 deg in one frame relative to the pelvis
   BALANCE      centre of mass outside the feet (both feet grounded)
+Human limits (only when REALISM['human_limits'] is set): COM_OFF  centre of mass > 20 cm from the single supporting foot;
+  SPIN_RATE body yaw faster than max_spin deg/s; FOOT_SPEED an ankle faster than max_foot_speed blocks/s; AIR_TIME a jump whose
+  flight is too short for its height (implied gravity above max_g).
 Also returns tip-speed peaks, used to line up EF hit windows with the real swing.
 """
 import bpy, math
@@ -22,7 +25,7 @@ from mathutils import Vector
 import efanim as E
 import poser as P
 
-GROUND = 0.02  # a foot this low counts as planted
+GROUND = 0.02
 
 
 def _com(pb):
@@ -34,7 +37,7 @@ def _com(pb):
 def lint(start, end, verbose=True, blade_len=None, neutral=None, skip_end=False):
     """neutral: {bone: Quaternion} pose the clip must end near (default EF idle); skip_end for loops/aims."""
     a = E.arm(); sc = bpy.context.scene; pb = a.pose.bones; s = P.Solver()
-    issues = {}; prev = None; tip_prev = None; speeds = []
+    issues = {}; prev = None; tip_prev = None; speeds = []; series = []
     lo, hi = P.REALISM['wrist']; blade_len = blade_len or P.REALISM['blade_len']
     env = P.load_envelope()
     import envelope as V
@@ -88,6 +91,8 @@ def lint(start, end, verbose=True, blade_len=None, neutral=None, skip_end=False)
                 add('LOCKED', f, up)
         right = pb['Root'].matrix.to_3x3().col[0].normalized()
         fr, fl = pb['Leg_R'].tail, pb['Leg_L'].tail
+        series.append((f, _com(pb), fr.copy(), fl.copy(), pb['Root'].head.z,
+                       math.degrees(math.atan2((pb['Thigh_L'].head - pb['Thigh_R'].head).y, (pb['Thigh_L'].head - pb['Thigh_R'].head).x))))
         if (fr - fl).dot(right) < 0.12:
             add('FEET_CROSS', f, f'{(fr - fl).dot(right):.2f}')
         if prev:
@@ -111,9 +116,9 @@ def lint(start, end, verbose=True, blade_len=None, neutral=None, skip_end=False)
                 q = b.matrix_basis.to_quaternion()
                 s_ok, t_ok, sw, tw = V.check(env, b.name, q)
                 if b.name == 'Root':
-                    t_ok = True  # whole-body spins are legal
+                    t_ok = True
                 if b.name == 'Tool_R' and not P.REALISM.get('wrist_envelope', True):
-                    continue     # non-sword items: vanilla grips don't apply
+                    continue
                 if not s_ok or not t_ok:
                     add('ENVELOPE', f, f'{b.name} {"swing" if not s_ok else "roll %+.0f" % tw}')
                 if b.name in ('Hand_R', 'Hand_L', 'Leg_R', 'Leg_L') and (abs(sw.y) > 15 or abs(tw) > 10):
@@ -126,6 +131,50 @@ def lint(start, end, verbose=True, blade_len=None, neutral=None, skip_end=False)
                 if d > 40:
                     add('END_POSE', f, f'{dev[1]} {d:.0f}deg from neutral')
         prev = {'footR': fr.copy(), 'footL': fl.copy(), 'rot': {b.name: pb['Root'].matrix.to_quaternion().inverted() @ b.matrix.to_quaternion() for b in pb}}
+
+    if P.REALISM.get('human_limits') and len(series) > 12:
+        import numpy as np
+        R = P.REALISM
+        frames = [x[0] for x in series]
+        com = np.array([[x[1].x, x[1].y] for x in series])
+        ar = np.array([[x[2].x, x[2].y, x[2].z] for x in series]); al = np.array([[x[3].x, x[3].y, x[3].z] for x in series])
+        rz = np.array([x[4] for x in series]); yaw = np.degrees(np.unwrap(np.radians([x[5] for x in series])))
+        sm = lambda v, k: np.convolve(np.pad(v, (k // 2, k - 1 - k // 2), mode='edge'), np.ones(k) / k, mode='valid')
+        run = 0
+        for i, f in enumerate(frames):
+            sup = None
+            if ar[i, 2] < 0.05 and al[i, 2] > 0.09: sup = ar[i, :2]
+            elif al[i, 2] < 0.05 and ar[i, 2] > 0.09: sup = al[i, :2]
+            off = float(np.linalg.norm(com[i] - sup)) if sup is not None else 0.0
+            run = run + 1 if off > R.get('max_com_off', 0.2) else 0
+            if run >= 3:
+                add('COM_OFF', f, f'com {off:.2f} from the support foot')
+        rate = np.abs(sm(np.gradient(yaw) * 60, 8))
+        for i, f in enumerate(frames):
+            if rate[i] > R.get('max_spin', 1000):
+                add('SPIN_RATE', f, f'{rate[i]:.0f} deg/s')
+        for name, a_ in (('R', ar), ('L', al)):
+            v = np.linalg.norm(np.gradient(a_, axis=0), axis=1) * 60
+            v = sm(v, 3)
+            for i, f in enumerate(frames):
+                if v[i] > R.get('max_foot_speed', 16):
+                    add('FOOT_SPEED', f, f'{name} foot {v[i]:.0f} blocks/s')
+        air = (ar[:, 2] > 0.09) & (al[:, 2] > 0.09)
+        i = 0
+        while i < len(frames):
+            if air[i]:
+                j = i
+                while j + 1 < len(frames) and air[j + 1]:
+                    j += 1
+                if j - i >= 5:
+                    T = (j - i + 2) / 60.0
+                    h = float(rz[i:j + 1].max() - min(rz[max(i - 1, 0)], rz[min(j + 1, len(rz) - 1)]))
+                    g = 8 * h / (T * T)
+                    if h > 0.08 and g > R.get('max_g', 16):
+                        add('AIR_TIME', frames[i], f'rises {h:.2f} in {T:.2f}s flight (g {g:.0f})')
+                i = j + 1
+            else:
+                i += 1
     if verbose:
         for kind, lst in sorted(issues.items()):
             frames = sorted({f for f, _ in lst})

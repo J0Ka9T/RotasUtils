@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.level;
 
 import net.minecraft.nbt.CompoundTag;
 
-/** Per-source tuning: toggle, amount, multiplier, cooldown, caps and anti-farm. */
 public final class XpSourceConfig {
     private final XpSource source;
     private boolean enabled;
@@ -15,7 +14,6 @@ public final class XpSourceConfig {
     private String dimension = "";
     private int minLevel;
     private int maxLevel;
-    /** Fraction of the award mirrored to nearby party members, 0 disables sharing. */
     private double partyShare;
 
     public XpSourceConfig(XpSource source) {

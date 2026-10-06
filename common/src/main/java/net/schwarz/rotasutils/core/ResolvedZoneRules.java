@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 
-/** Effective rules for one position plus the zone that supplied each override. */
 public record ResolvedZoneRules(String identityZoneId, Optional<Boolean> pvpEnabled,
         Optional<Boolean> hostileSpawningEnabled, OptionalDouble playerDamageTakenMultiplier,
         OptionalDouble playerDamageDealtMultiplier, OptionalDouble healingMultiplier,

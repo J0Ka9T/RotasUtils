@@ -15,7 +15,6 @@ import net.schwarz.rotasutils.house.HouseAdminValidator;
 
 import java.util.List;
 
-/** Local tier editor. It never sends a request; the parent settings screen owns Save. */
 @Environment(EnvType.CLIENT)
 public final class HouseTierEditScreen extends RotasScreen {
     private final HouseSettingsScreen parentSettings;

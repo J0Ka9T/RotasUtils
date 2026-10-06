@@ -4,7 +4,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Generates the human readable, collision free ids used for quests, boards and skills. */
 public final class Ids {
     private Ids() {
     }
@@ -21,7 +20,6 @@ public final class Ids {
         return base;
     }
 
-    /** Returns a slug of {@code name} that is not already present in {@code taken}. */
     public static String unique(String name, Set<String> taken) {
         String base = slug(name);
         if (!taken.contains(base)) {

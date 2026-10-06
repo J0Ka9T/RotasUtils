@@ -28,7 +28,6 @@ class MonsterCatalogTest {
 
         assertEquals(List.of(high.id(), equalA.id(), equalB.id(), low.id()),
                 catalog.candidates("minecraft:zombie").stream().map(MonsterDefinitions.Profile::id).toList());
-        // A profile with an entity selector never reaches unrelated entity types, broad ones always do.
         assertEquals(List.of(equalB.id(), low.id()),
                 catalog.candidates("minecraft:skeleton").stream().map(MonsterDefinitions.Profile::id).toList());
     }

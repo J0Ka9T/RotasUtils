@@ -27,23 +27,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Edits one skill. The default view is what most skills need: name, icon, cost, level and the bonuses
- * it gives, written out as sentences. Node types, link kinds, extra requirements, exclusions and
- * per-rank text are behind "Show advanced settings".
- */
 @Environment(EnvType.CLIENT)
 public class SkillNodeEditorScreen extends RotasScreen {
-    /** Remembered between openings, so an admin who needs the advanced rows keeps seeing them. */
     private static boolean advanced;
 
-    /** Bonuses offered in the simple list; everything else is in the advanced list. */
     private static final EffectType[] COMMON_BONUSES = {
             EffectType.MAX_HEALTH, EffectType.ATTACK_DAMAGE, EffectType.ARMOR, EffectType.MOVEMENT_SPEED,
             EffectType.ATTACK_SPEED, EffectType.ARMOR_TOUGHNESS, EffectType.KNOCKBACK_RESISTANCE, EffectType.LUCK,
             EffectType.MINING_SPEED, EffectType.HEALING_MULTIPLIER, EffectType.ROTAS_XP_MULTIPLIER,
-            EffectType.QUEST_XP_MULTIPLIER, EffectType.CURRENCY_MULTIPLIER, EffectType.POTION_EFFECT,
-            EffectType.ITEM_REWARD};
+            EffectType.QUEST_XP_MULTIPLIER, EffectType.CURRENCY_MULTIPLIER, EffectType.CRIT_CHANCE,
+            EffectType.CRIT_DAMAGE, EffectType.DEFENSE_RATING, EffectType.DODGE_CHANCE, EffectType.MAGIC_POWER_BONUS,
+            EffectType.HEALTH_REGEN, EffectType.POTION_EFFECT, EffectType.ITEM_REWARD};
 
     private final SkillCategory category;
     private final SkillNode node;
@@ -55,7 +49,6 @@ public class SkillNodeEditorScreen extends RotasScreen {
     private ScrollPanel list;
     private EditBox textField;
     private String textTarget = "";
-    /** A bonus just picked from the list; its fields open once the picker has closed. */
     private SkillEffect pendingEffect;
 
     public SkillNodeEditorScreen(SkillCategory category, SkillNode node, SkillEditorScreen editor) {
@@ -200,13 +193,11 @@ public class SkillNodeEditorScreen extends RotasScreen {
         return value ? "Yes" : "No";
     }
 
-    /** "5 point(s) per rank · up to rank 3 · needs Lv 10", shown in the tree editor too. */
     static String costLine(SkillNode node) {
         return node.costPerRank() + " point(s) per rank  ·  up to rank " + node.maxRank()
                 + "  ·  needs Lv " + node.minLevel();
     }
 
-    /** A bonus as a short sentence, e.g. "+2 Maximum Health per rank". */
     static String describe(SkillEffect effect, int maxRank) {
         Params params = effect.params();
         EffectType type = effect.type();
@@ -350,7 +341,6 @@ public class SkillNodeEditorScreen extends RotasScreen {
         }
     }
 
-    /** Opens a bonus's value fields; the advanced view also lets the admin change its kind and stacking. */
     private void openEffect(SkillEffect effect) {
         if (advanced) {
             int effectIndex = node.effects().indexOf(effect);
@@ -380,7 +370,6 @@ public class SkillNodeEditorScreen extends RotasScreen {
         minecraft.setScreen(PickerScreen.choices("Add a bonus", options, this, value -> {
             SkillEffect effect = new SkillEffect(EffectType.valueOf(value));
             node.effects().add(effect);
-            // The picker returns to this screen after this call, so the fields open on the next tick.
             pendingEffect = effect;
         }));
     }

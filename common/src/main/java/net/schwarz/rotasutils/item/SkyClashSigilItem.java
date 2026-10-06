@@ -16,10 +16,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/**
- * Operator-only: tears the four rifts open in the sky over the whole dimension and sets them against
- * each other - the {@link SkyClash}. Needs open sky above only to be seen, not to work.
- */
 public final class SkyClashSigilItem extends Item {
     public SkyClashSigilItem(Properties properties) {
         super(properties);

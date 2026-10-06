@@ -6,10 +6,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.Mth;
 
-/**
- * Full-screen level-up effect: expanding ring, golden particle burst,
- * and a "LEVEL UP" text that slides in with a glow.
- */
 @Environment(EnvType.CLIENT)
 public final class LevelUpFx {
     private static LevelUpEffect activeEffect;
@@ -43,7 +39,7 @@ public final class LevelUpFx {
     }
 
     private static class LevelUpEffect {
-        private static final int TOTAL_DURATION = 120; // 6 seconds at 20fps
+        private static final int TOTAL_DURATION = 120;
         private final int level;
         private final int prestige;
         private int age;
@@ -68,13 +64,11 @@ public final class LevelUpFx {
             int h = mc.getWindow().getGuiScaledHeight();
             float progress = Math.min(1f, age / (float) TOTAL_DURATION);
 
-            // Phase 1: screen flash (0-10%)
             if (progress < 0.1f) {
                 float flashAlpha = 1f - progress / 0.1f;
                 graphics.fill(0, 0, w, h, ((int) (flashAlpha * 80) << 24) | 0xFFD4A017);
             }
 
-            // Phase 2: expanding ring (10-40%)
             if (progress >= 0.1f && progress < 0.4f) {
                 float ringProgress = (progress - 0.1f) / 0.3f;
                 float radius = ringProgress * Math.max(w, h) * 0.6f;
@@ -82,10 +76,8 @@ public final class LevelUpFx {
                 drawRing(graphics, w / 2, h / 2, (int) radius, 3, alpha);
             }
 
-            // Phase 3: "LEVEL UP" text with glow (20-80%)
             if (progress >= 0.2f && progress < 0.8f) {
                 float textProgress = (progress - 0.2f) / 0.6f;
-                // Slide in from top with overshoot
                 float slideY = Mth.clamp(textProgress * 1.5f, 0f, 1f);
                 if (textProgress > 0.8f) {
                     slideY *= 1f - (textProgress - 0.8f) / 0.2f;
@@ -93,19 +85,16 @@ public final class LevelUpFx {
                 int textAlpha = (int) (255 * Math.min(1f, textProgress * 3f) * slideY);
                 int textY = (int) (h / 2 - 40 + (1f - slideY) * -60);
 
-                // Glow layers
                 for (int i = 3; i >= 1; i--) {
                     int glowAlpha = textAlpha / (i * 2);
                     graphics.drawString(mc.font, net.schwarz.rotasutils.client.screen.L.t("rotasutils.fx.level_up"),
                             w / 2 - mc.font.width(net.schwarz.rotasutils.client.screen.L.t("rotasutils.fx.level_up")) / 2, textY,
                             (glowAlpha << 24) | 0xFFD4A017, false);
                 }
-                // Main text
                 graphics.drawString(mc.font, net.schwarz.rotasutils.client.screen.L.t("rotasutils.fx.level_up"),
                         w / 2 - mc.font.width(net.schwarz.rotasutils.client.screen.L.t("rotasutils.fx.level_up")) / 2, textY,
                         (textAlpha << 24) | 0xFFFFE066, false);
 
-                // Level number
                 String levelText = net.schwarz.rotasutils.client.screen.L.t("rotasutils.fx.level", level);
                 if (prestige > 0) {
                     levelText += " ★".repeat(Math.min(prestige, 10));
@@ -117,7 +106,6 @@ public final class LevelUpFx {
                         (levelAlpha << 24) | 0xFFE7BE76, false);
             }
 
-            // Phase 4: golden particles (15-50%)
             if (progress >= 0.15f && progress < 0.5f) {
                 float particleProgress = (progress - 0.15f) / 0.35f;
                 int particleAlpha = (int) (180 * (1f - Math.abs(particleProgress - 0.5f) * 2f));

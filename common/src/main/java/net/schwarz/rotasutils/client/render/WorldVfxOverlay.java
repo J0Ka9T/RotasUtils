@@ -13,17 +13,8 @@ import org.joml.Matrix4f;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The in-world counterpart of {@link SkyShaderOverlay}. A shader pack re-routes the glow, additive and
- * translucent entity passes through its own programs - fogging them, cutting them at the horizon,
- * dropping their blending - so with a pack on, effects hand their drawing over here instead. The pose
- * and projection are captured as the entity is drawn, and the draw is replayed right after the pack has
- * composited the frame, with the vanilla shaders back and depth-tested against the world so blocks
- * still stand in front. Captures live for one frame only.
- */
 @Environment(EnvType.CLIENT)
 public final class WorldVfxOverlay {
-    /** One effect's drawing, replayed with a pose equal to the one it was given. */
     @FunctionalInterface
     public interface Draw {
         void draw(PoseStack pose, MultiBufferSource buffers);
@@ -32,7 +23,6 @@ public final class WorldVfxOverlay {
     private record Pending(Matrix4f pose, Matrix3f normal, Draw draw) {
     }
 
-    /** More than any frame should need; guards against a frame whose overlay hook never ran. */
     private static final int MAX_PENDING = 256;
     private static final List<Pending> PENDING = new ArrayList<>();
     private static final Matrix4f PROJECTION = new Matrix4f();
@@ -41,10 +31,6 @@ public final class WorldVfxOverlay {
     private WorldVfxOverlay() {
     }
 
-    /**
-     * Takes over {@code draw} when a shader pack is drawing the world, and returns true; otherwise
-     * returns false and the caller draws as usual.
-     */
     public static boolean defer(PoseStack pose, Draw draw) {
         if (!ShaderPackCompat.active()) {
             return false;
@@ -57,7 +43,6 @@ public final class WorldVfxOverlay {
         return true;
     }
 
-    /** Called right after the world (and any shader pack's composite) has been drawn, before the hand. */
     public static void render() {
         if (PENDING.isEmpty()) {
             return;

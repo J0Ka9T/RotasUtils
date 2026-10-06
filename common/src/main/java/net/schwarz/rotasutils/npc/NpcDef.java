@@ -7,25 +7,13 @@ import net.minecraft.world.item.Items;
 import net.schwarz.rotasutils.util.Nbt;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-/**
- * A configured NPC.
- *
- * <p>RotasUtils does not spawn or own entities: an NPC definition is a role bolted onto an
- * entity that already exists in the world, matched by uuid. That is deliberate, because it
- * makes every NPC mod work the same way. A plain villager, an armour stand, an Easy NPC
- * entity and a modded quest giver are all bound with the same admin tool click, and breaking
- * or replacing the entity never destroys the configuration - only the binding.</p>
- *
- * <p>What the definition adds is the part entity mods do not agree on: which quests this
- * character hands out and takes back, which board it opens, which merchant it trades from,
- * what it says, and who is allowed to talk to it.</p>
- */
 public final class NpcDef {
-    /** What talking to this NPC does. The first applicable action is the default one. */
     public enum Role {
         DIALOGUE("Dialogue only"),
         QUEST_GIVER("Quest giver"),
@@ -33,7 +21,6 @@ public final class NpcDef {
         MERCHANT("Opens a shop"),
         JOB_MASTER("Assigns configured jobs"),
         STABLE("Runs the stable"),
-        /** A hidden artisan: makes its job's crafts from the player's materials for a steep fee. */
         CRAFTER("Crafts for a fee"),
         BLACKSMITH("Blacksmith: repair, refine, salvage"),
         ENCHANTER("Enchanter: disenchant, runes, sockets"),
@@ -58,23 +45,27 @@ public final class NpcDef {
         public String display() {
             return net.schwarz.rotasutils.util.ThaiText.label("npc_role", this, display);
         }
+
+        public boolean hasScreen() {
+            return switch (this) {
+                case DIALOGUE, QUEST_GIVER, JOB_MASTER -> false;
+                default -> true;
+            };
+        }
     }
 
     private String id;
     private String name = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.default.npc.name");
-    /** Short line under the name: "Guild Clerk", "Blacksmith". */
     private String title = "";
     private ItemStack icon = new ItemStack(Items.VILLAGER_SPAWN_EGG);
     private Role role = Role.QUEST_GIVER;
     private boolean enabled = true;
 
-    /** The bound entity, or empty while the NPC is authored but not yet placed. */
     private String entityUuid = "";
-    /** Recorded when the binding is made, for the admin list and for validation. */
     private String entityType = "";
     private String dimension = "";
+    private net.minecraft.core.BlockPos home;
 
-    /** Spoken lines, chosen by the state the player is in. */
     private String greeting = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.default.npc.greeting");
     private String questAvailableLine = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.default.npc.quest_available");
     private String questActiveLine = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.default.npc.quest_active");
@@ -82,24 +73,17 @@ public final class NpcDef {
     private String blockedLine = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.default.npc.blocked");
     private String farewell = net.schwarz.rotasutils.util.ThaiText.t("rotasutils.default.npc.farewell");
 
-    /** Quests offered and turned in here, in the order the dialogue lists them. */
     private final Set<String> questIds = new LinkedHashSet<>();
-    /** Board opened by BOARD_KEEPER, and offered as an extra action by any other role. */
     private String boardId = "";
-    /** Kernel merchant id opened by MERCHANT. */
     private String merchantId = "";
 
     private int requiredLevel;
-    /** 0 keeps the server default; otherwise the reach in blocks. */
     private double interactionDistance = 6.0;
-    /** Draw the "!" / "?" marker above the bound entity. */
     private boolean showMarker = true;
-    /** Suppress the entity's own interaction (villager trades, for instance). */
     private boolean captureInteraction = true;
     private String interactionJson = "";
     private net.schwarz.rotasutils.core.NpcInteractions.Definition interactions;
 
-    /** One villager-style trade: the player pays {@code costA} (and {@code costB}) and receives {@code result}. */
     public record Trade(ItemStack costA, ItemStack costB, ItemStack result) {
         public Trade {
             costA = sanitize(costA);
@@ -137,17 +121,39 @@ public final class NpcDef {
     }
 
     public static final int MAX_TRADES = 32;
-    /** The simple shop: opened as the vanilla trading screen, no content pack needed. */
     private final List<Trade> trades = new ArrayList<>();
-    /** Turns the mob's AI off so it stays where it was placed. */
     private boolean standStill;
-    /** Players cannot hurt the mob. */
     private boolean invulnerable;
-    /** Writes the NPC name above the mob's head. */
     private boolean showName;
+    public static final String[] VOICE_KEYS = {"greeting", "available", "active", "ready", "blocked", "farewell"};
+    private final Map<String, String> voices = new LinkedHashMap<>();
+    private int voicePitch = 100;
     public static final int MAX_SERVICES=32;
     private final List<NpcServiceDef> services=new ArrayList<>();
     private NpcBuild build;
+
+    public String voice(String key) { return voices.getOrDefault(key, ""); }
+    public void setVoice(String key, String sound) {
+        String id = sound == null ? "" : sound.trim();
+        if (id.isEmpty()) voices.remove(key); else voices.put(key, id);
+    }
+    public int voicePitch() { return voicePitch; }
+    public void setVoicePitch(int percent) { voicePitch = Math.max(50, Math.min(200, percent)); }
+    public static String voiceKey(NpcState state) {
+        return switch (state) {
+            case QUEST_AVAILABLE -> "available";
+            case QUEST_ACTIVE, OBJECTIVE_COMPLETE -> "active";
+            case READY_TO_TURN_IN -> "ready";
+            case REQUIREMENTS_NOT_MET -> "blocked";
+            default -> "greeting";
+        };
+    }
+    public net.minecraft.sounds.SoundEvent voiceSound(String key) {
+        String id = voice(key);
+        if (id.isEmpty() && !key.equals("greeting")) id = voice("greeting");
+        net.minecraft.resources.ResourceLocation location = id.isEmpty() ? null : net.minecraft.resources.ResourceLocation.tryParse(id);
+        return location == null ? null : net.minecraft.sounds.SoundEvent.createVariableRangeEvent(location);
+    }
 
     public List<Trade> trades() { return trades; }
     public boolean hasShop() { return !trades.isEmpty() || !merchantId.isBlank(); }
@@ -161,7 +167,6 @@ public final class NpcDef {
     public NpcBuild build() { return build; }
     public void setBuild(NpcBuild value) { build=value; }
     public boolean combatCapable() { return build!=null; }
-    /** The artisan service (the job it stands in for and its highest level), or null when none is set. */
     public NpcServiceDef crafterService() {
         for (NpcServiceDef service : services) {
             if (service.type() == NpcServiceDef.Type.CRAFTER && !service.jobId().isBlank()) return service;
@@ -259,6 +264,14 @@ public final class NpcDef {
 
     public void setDimension(String dimension) {
         this.dimension = dimension == null ? "" : dimension;
+    }
+
+    public net.minecraft.core.BlockPos home() {
+        return home;
+    }
+
+    public void setHome(net.minecraft.core.BlockPos home) {
+        this.home = home == null ? null : home.immutable();
     }
 
     public String greeting() {
@@ -362,7 +375,6 @@ public final class NpcDef {
         this.captureInteraction = captureInteraction;
     }
 
-    /** The line to speak for a resolved state, falling back to the greeting. */
     public String lineFor(NpcState state) {
         String line = switch (state) {
             case QUEST_AVAILABLE -> questAvailableLine;
@@ -385,6 +397,7 @@ public final class NpcDef {
         tag.putString("entity_uuid", entityUuid);
         tag.putString("entity_type", entityType);
         tag.putString("dimension", dimension);
+        if (home != null) tag.putLong("home", home.asLong());
         tag.putString("greeting", greeting);
         tag.putString("line_available", questAvailableLine);
         tag.putString("line_active", questActiveLine);
@@ -403,6 +416,10 @@ public final class NpcDef {
         tag.putBoolean("stand_still", standStill);
         tag.putBoolean("invulnerable", invulnerable);
         tag.putBoolean("show_name", showName);
+        CompoundTag voice = new CompoundTag();
+        voices.forEach(voice::putString);
+        tag.put("voice", voice);
+        tag.putInt("voice_pitch", voicePitch);
         tag.put("services",Nbt.saveList(services,NpcServiceDef::save));
         if(build!=null) tag.put("build",build.save());
         return tag;
@@ -418,6 +435,7 @@ public final class NpcDef {
         npc.entityUuid = tag.getString("entity_uuid");
         npc.entityType = tag.getString("entity_type");
         npc.dimension = tag.getString("dimension");
+        npc.home = tag.contains("home") ? net.minecraft.core.BlockPos.of(tag.getLong("home")) : null;
         npc.greeting = tag.getString("greeting");
         npc.questAvailableLine = tag.getString("line_available");
         npc.questActiveLine = tag.getString("line_active");
@@ -441,21 +459,21 @@ public final class NpcDef {
         npc.standStill = tag.getBoolean("stand_still");
         npc.invulnerable = tag.getBoolean("invulnerable");
         npc.showName = tag.getBoolean("show_name");
+        CompoundTag voice = tag.getCompound("voice");
+        for (String key : VOICE_KEYS) npc.setVoice(key, voice.getString(key));
+        npc.setVoicePitch(tag.contains("voice_pitch") ? tag.getInt("voice_pitch") : 100);
         for(NpcServiceDef service:Nbt.loadList(tag,"services",NpcServiceDef::load)) { if(npc.services.size()>=MAX_SERVICES) throw new IllegalArgumentException("NPC service count exceeds "+MAX_SERVICES); npc.services.add(service); }
         if(tag.contains("build")) npc.build=NpcBuild.load(tag.getCompound("build"));
         return npc;
     }
 
-    /** Deep copy under a new id; round-tripped so added fields cannot be forgotten. */
     public NpcDef copyAs(String newId) {
         CompoundTag tag = save();
         tag.putString("id", newId);
-        // A copy must not answer for the same entity, or two NPCs would fight over one click.
         tag.putString("entity_uuid", "");
         return load(tag);
     }
 
-    /** Problems an admin should see before this NPC is expected to work. */
     public List<String> problems() {
         List<String> problems = new ArrayList<>();
         if (name.isBlank()) {

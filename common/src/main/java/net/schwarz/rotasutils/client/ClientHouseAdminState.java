@@ -18,10 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * The bounded, identity-free housing data an authenticated administrator may
- * edit. This is presentation state only; mutations still go through the server.
- */
 public final class ClientHouseAdminState {
     public static final int MAX_DEFINITIONS = 4096;
     public static final int MAX_STATUSES = 4096;
@@ -50,7 +46,6 @@ public final class ClientHouseAdminState {
         validateIdentityFreeShape();
     }
 
-    /** Builds a snapshot from server-owned values and the requesting actor's wand selection. */
     public static ClientHouseAdminState of(Collection<HouseDefinition> definitions, HouseConfig config,
                                            Map<String, HouseTenancy> tenancies,
                                            HouseAdminService.Selection selection) {
@@ -117,7 +112,6 @@ public final class ClientHouseAdminState {
         return tag;
     }
 
-    /** Returns null for any malformed, stale-shaped, or over-budget wire value. */
     public static ClientHouseAdminState load(CompoundTag tag) {
         try {
             if (tag == null || !tag.contains("definitions", Tag.TAG_LIST)

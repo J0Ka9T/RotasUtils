@@ -23,21 +23,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
-/**
- * Edits one drop table without typing item strings.
- *
- * <p>The same page serves three kinds of table: a monster rank ({@code rank:ELITE}), one mob's own drops
- * ({@code entity:minecraft:zombie}, which replaces its rank's drop) and a loot grade ({@code grade:rare}).
- * Items are picked from the item browser and get a min, max and chance; coins are a plain min-max range.
- * Save sends the whole table once; nothing changes on the server until then.</p>
- */
 @Environment(EnvType.CLIENT)
 public class DropTableEditScreen extends RotasScreen {
     private static final Gson GSON = new Gson();
     private static final String[] GRADES = {"common", "medium", "rare", "epic"};
     private static final int ROW_H = 24;
 
-    /** One item line: {@code minecraft:diamond 1-3 @0.5}. */
     static final class Line {
         String item;
         int min = 1;
@@ -66,7 +57,6 @@ public class DropTableEditScreen extends RotasScreen {
                         line.min = line.max = Integer.parseInt(parts[i]);
                     }
                 } catch (NumberFormatException ignored) {
-                    // Keep what parsed; the editor shows the rest as defaults.
                 }
             }
             return line;
@@ -91,10 +81,6 @@ public class DropTableEditScreen extends RotasScreen {
     private int scroll;
     private String pendingItem;
 
-    /**
-     * @param target {@code rank:NAME}, {@code entity:<id>} or {@code grade:<key>}
-     * @param title  what the header calls this table
-     */
     public DropTableEditScreen(Screen parent, String target, String title) {
         super("Drop table", parent);
         this.target = target;
@@ -111,7 +97,6 @@ public class DropTableEditScreen extends RotasScreen {
         } else {
             SeasonRules.RankDrop current = entity ? drops.plain.byEntity.get(key) : drops.ranks.get(key);
             if (current == null && entity) {
-                // A new custom drop starts from what the mob gets today: the plain rule.
                 current = drops.plain.rule;
             }
             rule = current == null ? new SeasonRules.RankDrop() : GSON.fromJson(GSON.toJson(current), SeasonRules.RankDrop.class);
@@ -125,14 +110,11 @@ public class DropTableEditScreen extends RotasScreen {
         }
     }
 
-    // Layout -----------------------------------------------------------------
-
-    private int fieldsTop() { return guiTop + 44; }
+private int fieldsTop() { return guiTop + 44; }
     private int listTop() { return guiTop + (grade ? 104 : 140); }
     private int footerY() { return guiTop + guiHeight - 30; }
     private int visibleRows() { return Math.max(1, (footerY() - 30 - listTop()) / ROW_H); }
 
-    /** Holds an unsaved draft of this drop table: never rebuilt by a push, but warns when someone else changes it. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
@@ -255,7 +237,6 @@ public class DropTableEditScreen extends RotasScreen {
         return GSON.toJson(rule);
     }
 
-    /** Sends the table; {@code json == null} removes a mob's custom table. */
     private void submit(String json) {
         CompoundTag payload = new CompoundTag();
         payload.putString("target", target);
@@ -330,7 +311,6 @@ public class DropTableEditScreen extends RotasScreen {
         }
     }
 
-    /** What a level 1 and a level 50 monster pay under the current numbers. */
     private String coinExample() {
         if (rule.coinChance <= 0) {
             return "No coins.";

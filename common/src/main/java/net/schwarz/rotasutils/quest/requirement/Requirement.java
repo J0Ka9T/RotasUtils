@@ -5,11 +5,9 @@ import net.schwarz.rotasutils.data.ParamSpec;
 import net.schwarz.rotasutils.data.Params;
 import net.schwarz.rotasutils.util.Nbt;
 
-/** One configured gate condition. */
 public final class Requirement {
     private RequirementType type;
     private final Params params;
-    /** When true the requirement is shown as a recommendation and never blocks. */
     private boolean recommendationOnly;
 
     public Requirement(RequirementType type) {
@@ -43,10 +41,6 @@ public final class Requirement {
         this.recommendationOnly = recommendationOnly;
     }
 
-    /**
-     * Compact list of the configured fields for admin lists, e.g. {@code quest=rotas:quest/gate, times=1}.
-     * Empty text fields are left out and a switch only appears (by name) when it is on.
-     */
     public String summary() {
         StringBuilder out = new StringBuilder();
         for (ParamSpec spec : type.specs()) {
@@ -94,7 +88,6 @@ public final class Requirement {
         return requirement;
     }
 
-    /** Value equality so zone drafts and lists can tell an edited requirement from an identical one. */
     @Override
     public boolean equals(Object other) {
         return other instanceof Requirement requirement

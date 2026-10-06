@@ -4,7 +4,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.schwarz.rotasutils.core.ZoneArea;
 
-/** Emits wireframe edges that match each zone area's containment shape. */
 @Environment(EnvType.CLIENT)
 public final class ZoneOutlineGeometry {
     private static final int CIRCLE_SEGMENTS = 48;

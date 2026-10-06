@@ -27,13 +27,6 @@ import org.joml.Vector3f;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * The Zenith's sneak-use finisher, after Excalibur: the wielder raises the blade while golden light
- * gathers into a pillar for {@link #GATHER} ticks, then cuts, and a colossal diagonal crescent of
- * light (a flying slash, {@link #ARC_RADIUS} radius, tapering to needle tips) tears forward out to
- * {@link #RANGE} blocks, striking everything its blade passes through once. The direction is fixed when the
- * move starts; origin and direction are synced so every client draws the same wave.
- */
 public class ExcaliburSlashEntity extends Entity {
     public static final int GATHER = 22;
     public static final float SPEED = 3.2f;
@@ -41,15 +34,12 @@ public class ExcaliburSlashEntity extends Entity {
     public static final float HALF_WIDTH = 10f;
     public static final float HEIGHT = 24f;
     public static final int TRAVEL = (int) Math.ceil(RANGE / SPEED);
-    /** Ticks the afterglow lingers once the wave is spent. */
     public static final int FADE = 24;
     public static final int LIFE = GATHER + TRAVEL + FADE;
-    /** Radius of the crescent's curve, its half-span angle, diagonal tilt, and centre height. */
     public static final float ARC_RADIUS = 60f;
     public static final float ARC_SPAN = (float) Math.toRadians(17);
     public static final float ROLL = (float) Math.toRadians(80);
     public static final float MID_HEIGHT = 15f;
-    /** Thickness of the crescent at its middle; it tapers to points at both tips. */
     public static final float THICK = 1.1f;
     private static final float DAMAGE = 160f;
     private static final float MAX_HEALTH_BITE = 0.15f;
@@ -106,21 +96,14 @@ public class ExcaliburSlashEntity extends Entity {
         return tickCount + partialTick;
     }
 
-    /** How far the wave front has travelled at {@code age}, in blocks. */
     public static float front(float age) {
         return Math.max(0f, Math.min(RANGE, (age - GATHER) * SPEED));
     }
 
-    /**
-     * A point on the flying crescent. {@code theta} runs from -{@link #ARC_SPAN} (one tip) to
-     * +{@link #ARC_SPAN} (the other); the middle leads, the tips trail slightly behind. Writes the
-     * outward radial direction to {@code radial}. Shared by the server hit test and the renderer.
-     */
     public static Vector3f crescent(Vector3f origin, Vector3f dir, float front, float theta, float scale, Vector3f out,
                                     Vector3f radial) {
         float rx = -dir.z, rz = dir.x;
         float cr = (float) Math.cos(ROLL), sr = (float) Math.sin(ROLL);
-        // e1 = rolled right, e2 = rolled up.
         float e1x = rx * cr, e1y = sr, e1z = rz * cr;
         float e2x = -rx * sr, e2y = cr, e2z = -rz * sr;
         float st = (float) Math.sin(theta), ct = (float) Math.cos(theta);
@@ -132,7 +115,6 @@ public class ExcaliburSlashEntity extends Entity {
                 .add(radial.x * radius, radial.y * radius, radial.z * radius);
     }
 
-    /** Crescent thickness at {@code theta}: full in the middle, needle points at the tips. */
     public static float thickness(float theta, float scale) {
         float t = (theta + ARC_SPAN) / (2f * ARC_SPAN);
         return THICK * scale * (float) Math.pow(Math.max(0f, (float) Math.sin(Math.PI * t)), 0.9);
@@ -176,7 +158,6 @@ public class ExcaliburSlashEntity extends Entity {
         }
     }
 
-    /** Strikes everything between last tick's front and this tick's, inside the arch. */
     private void sweep(ServerLevel level, @Nullable Entity owner) {
         Vector3f o = origin(), d = direction();
         float near = front(tickCount - 1) - 2f, far = front(tickCount) + 2f;
@@ -194,7 +175,6 @@ public class ExcaliburSlashEntity extends Entity {
             if (along < near - 6 || along > far + 6) {
                 continue;
             }
-            // Position in the crescent's rolled plane, relative to the curve's centre.
             float cr = (float) Math.cos(ROLL), sr = (float) Math.sin(ROLL);
             double lat = -rx * d.z + rz * d.x;
             double up = victim.getY() + victim.getBbHeight() * 0.5 - o.y - MID_HEIGHT;
@@ -213,8 +193,6 @@ public class ExcaliburSlashEntity extends Entity {
                 victim.setDeltaMovement(victim.getDeltaMovement().add(d.x * 1.6, 0.9, d.z * 1.6));
                 victim.hurtMarked = true;
                 Vec3 c = victim.getBoundingBox().getCenter();
-                // A tall slash mark along the crescent's own tilt, and a crack of thunder: a hit this
-                // heavy has to be seen and heard on every creature it takes.
                 Vec3 tilt = new Vec3(-d.z * Math.cos(ROLL), Math.sin(ROLL), d.x * Math.cos(ROLL))
                         .scale(Math.max(1.5, victim.getBbHeight()));
                 RiftFx.send(level, RiftFx.Kind.SLASH, RiftFx.WHITE, c.subtract(tilt), c.add(tilt), 1.6f, 10);
@@ -233,7 +211,6 @@ public class ExcaliburSlashEntity extends Entity {
             ClientFx.quake(o.x, o.y, o.z, 6f, 48);
         }
         if (tickCount < GATHER) {
-            // Motes drawn up the pillar.
             for (int i = 0; i < 1; i++) {
                 double ang = random.nextDouble() * Math.PI * 2, r = 2 + random.nextDouble() * 5;
                 level().addParticle(ParticleTypes.END_ROD, o.x + Math.cos(ang) * r, o.y + 0.2, o.z + Math.sin(ang) * r,

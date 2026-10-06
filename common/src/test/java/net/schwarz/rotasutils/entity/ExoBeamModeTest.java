@@ -37,7 +37,6 @@ class ExoBeamModeTest {
             assertEquals(full, ExoBeamEntity.radiusAt(ExoBeamEntity.NOSE * mode.radius, mode.radius), 1.0e-3f,
                     "and reaches full width at the end of its own nose");
             assertEquals(full, ExoBeamEntity.radiusAt(500f, mode.radius), 1.0e-3f);
-            // Monotonic through the nose, so the tube never pinches.
             float previous = -1f;
             for (int i = 0; i <= 20; i++) {
                 float at = ExoBeamEntity.radiusAt(ExoBeamEntity.NOSE * mode.radius * i / 20f, mode.radius);

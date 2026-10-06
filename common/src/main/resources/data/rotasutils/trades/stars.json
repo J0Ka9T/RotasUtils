@@ -1,0 +1,111 @@
+{
+  "sources": [
+    {
+      "job": "farmer",
+      "items": [
+        "minecraft:wheat",
+        "minecraft:carrot",
+        "minecraft:potato",
+        "minecraft:beetroot",
+        "minecraft:melon_slice",
+        "minecraft:pumpkin",
+        "minecraft:sweet_berries",
+        "minecraft:cocoa_beans",
+        "minecraft:nether_wart",
+        "minecraft:sugar_cane",
+        "#forge:crops",
+        "farmersdelight:rice",
+        "farmersdelight:onion",
+        "farmersdelight:cabbage",
+        "farmersdelight:tomato",
+        "muffins_thaidelight:raw_papaya",
+        "muffins_thaidelight:papaya",
+        "muffins_thaidelight:pepper",
+        "muffins_thaidelight:lime"
+      ],
+      "maxChance": 0.35
+    },
+    {
+      "job": "miner",
+      "items": [
+        "minecraft:raw_iron",
+        "minecraft:raw_copper",
+        "minecraft:raw_gold",
+        "minecraft:coal",
+        "minecraft:diamond",
+        "minecraft:emerald",
+        "minecraft:lapis_lazuli",
+        "minecraft:redstone",
+        "minecraft:quartz",
+        "minecraft:ancient_debris",
+        "create:raw_zinc"
+      ],
+      "silverBase": 0.04,
+      "goldBase": 0.008,
+      "maxChance": 0.35
+    },
+    {
+      "job": "fisher",
+      "items": [
+        "minecraft:cod",
+        "minecraft:salmon",
+        "minecraft:tropical_fish",
+        "minecraft:pufferfish",
+        "minecraft:ink_sac",
+        "minecraft:nautilus_shell",
+        "#forge:raw_fishes"
+      ],
+      "maxChance": 0.35
+    },
+    {
+      "job": "rancher",
+      "items": [
+        "minecraft:leather",
+        "minecraft:beef",
+        "minecraft:porkchop",
+        "minecraft:chicken",
+        "minecraft:mutton",
+        "minecraft:rabbit",
+        "minecraft:rabbit_foot",
+        "minecraft:feather",
+        "minecraft:string",
+        "#forge:raw_beef",
+        "#forge:raw_pork",
+        "#forge:raw_chicken",
+        "#forge:raw_mutton"
+      ],
+      "maxChance": 0.35
+    }
+  ],
+  "meal": {
+    "silver": [
+      {
+        "effect": "minecraft:absorption",
+        "seconds": 60,
+        "amplifier": 0
+      },
+      {
+        "effect": "minecraft:regeneration",
+        "seconds": 5,
+        "amplifier": 0
+      }
+    ],
+    "gold": [
+      {
+        "effect": "minecraft:absorption",
+        "seconds": 90,
+        "amplifier": 0
+      },
+      {
+        "effect": "minecraft:regeneration",
+        "seconds": 8,
+        "amplifier": 0
+      },
+      {
+        "effect": "minecraft:strength",
+        "seconds": 60,
+        "amplifier": 0
+      }
+    ]
+  }
+}

@@ -29,17 +29,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * NPC shop. The shopkeeper stands on the left, the goods fill the middle, and the right shows the chosen
- * trade: what it costs against what the player carries, stock and limits, a quantity picker and one Buy button.
- * Everything shown comes from the server's snapshot, and every purchase is re-checked there.
- */
 @Environment(EnvType.CLIENT)
 public class ShopScreen extends RotasScreen {
     private static final int ROW = 38;
     private static final int PORTRAIT_W = 150;
     private static final int DETAIL_W = 236;
-    /** Keeps the chosen trade selected when a purchase reopens the screen with fresh stock. */
     private static final Map<String, String> LAST_SELECTED = new HashMap<>();
 
     private record Cost(ItemStack item, String currency, long amount, long baseAmount, long have) {
@@ -54,7 +48,6 @@ public class ShopScreen extends RotasScreen {
             return source + ":" + key;
         }
 
-        /** Most of this trade the player can buy right now; 0 when anything is missing. */
         int affordable() {
             if (!open) return 0;
             long max = 64;
@@ -178,7 +171,6 @@ public class ShopScreen extends RotasScreen {
     private int listW() { return detailX() - Ui.GAP * 2 - listX(); }
     private int footerY() { return guiTop + guiHeight - 28; }
     private int detailBottom() { return footerY() - Ui.GAP; }
-    /** Narrow windows drop the shopkeeper portrait so the goods keep their room. */
     private boolean compact() { return guiWidth < 640; }
 
     private void rebuild() {
@@ -248,9 +240,7 @@ public class ShopScreen extends RotasScreen {
         };
     }
 
-    // Rows -----------------------------------------------------------------------------------------
-
-    private void renderRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
+private void renderRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
         Offer offer = shown.get(index);
         boolean chosen = offer == selected;
         int affordable = offer.affordable();
@@ -273,7 +263,6 @@ public class ShopScreen extends RotasScreen {
         if (offer.stock() >= 0) {
             Ui.label(graphics, "คงเหลือ " + offer.stock(), textX + font.width(status) + 10, y + 19, Ui.TEXT_MUTED);
         }
-        // Price summary on the right: currency first, then up to three item icons.
         int right = x + w - 14;
         for (int i = offer.costs().size() - 1; i >= 0 && right > textX + 120; i--) {
             Cost cost = offer.costs().get(i);
@@ -308,9 +297,7 @@ public class ShopScreen extends RotasScreen {
         }
     }
 
-    // Panels ---------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!compact()) {
             renderPortrait(graphics, mouseX, mouseY);
@@ -397,7 +384,6 @@ public class ShopScreen extends RotasScreen {
             Ui.labelCentered(graphics, "เลือกสินค้าทางซ้าย", x + DETAIL_W / 2, y + h / 2, Ui.TEXT_MUTED);
             return;
         }
-        // Big result icon with its name and first tooltip lines.
         PixelUi.fill(graphics, x + 10, y + 10, 44, 44, 1, RotasTheme.TRACK);
         if (!selected.result().isEmpty()) {
             graphics.pose().pushPose();

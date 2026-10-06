@@ -95,33 +95,27 @@ def forge_front():
     t = plate(23)
     for x in (2, 12):
         rivet(t, x, 2)
-    # lintel and brick-dark surround
     t.rect(3, 3, 12, 3, (30, 31, 36))
     t.rect(2, 4, 13, 12, (16, 14, 16))
-    # the fire: deep red at the top, orange, then yellow-white at the bottom
     rows = {5: (110, 24, 10), 6: (170, 44, 12), 7: (222, 84, 16), 8: (240, 130, 22),
             9: (250, 172, 40), 10: (255, 208, 84), 11: (255, 238, 170)}
     for y, c in rows.items():
         for x in range(4, 12):
             t.set(x, y, shade(c, t.rng.randint(-14, 10)))
-    # flame tongues licking up
     for x in (5, 7, 10):
         t.set(x, 4, (200, 60, 14))
         t.set(x, 5, (240, 120, 20))
     for x in (6, 9):
         t.set(x, 4, (140, 34, 10))
-    # coals along the bottom
     for x in range(4, 12):
         if t.rng.random() < 0.5:
             t.set(x, 12, (70, 20, 10))
         else:
             t.set(x, 12, (200, 60, 12))
-    # grate bars across the mouth
     for x in (6, 9):
         for y in range(5, 12):
             t.set(x, y, (20, 18, 20))
     t.rect(3, 13, 12, 13, (34, 34, 40))
-    # glow spilling onto the frame
     for x in range(3, 13):
         t.set(x, 4, mix(t.px[4][x], (200, 90, 20), 0.35))
     t.save('refine_forge_front.png')
@@ -131,7 +125,6 @@ def forge_top():
     t = plate(37)
     for x, y in ((2, 2), (12, 2), (2, 12), (12, 12)):
         rivet(t, x, y)
-    # recessed steel anvil pad
     t.rect(4, 4, 11, 11, (30, 31, 36))
     t.rect(5, 5, 10, 10, (118, 122, 134))
     for i in range(5, 11):
@@ -139,7 +132,6 @@ def forge_top():
         t.set(5, i, (150, 154, 166))
         t.set(i, 10, (84, 87, 97))
         t.set(10, i, (84, 87, 97))
-    # hammer strikes, hot
     for x, y, c in ((7, 7, (255, 170, 40)), (8, 7, (255, 210, 90)), (8, 8, (240, 110, 20)), (6, 8, (200, 70, 14))):
         t.set(x, y, c)
     t.set(9, 6, (255, 230, 150))
@@ -161,7 +153,6 @@ VIOLET_LIGHT = (214, 172, 255)
 
 def obsidian(seed):
     t = Tex(OBS, seed, 5)
-    # faint violet speckle, like crying obsidian
     for _ in range(9):
         x, y = t.rng.randint(0, 15), t.rng.randint(0, 15)
         t.set(x, y, mix(t.px[y][x], VIOLET, 0.28))
@@ -190,20 +181,17 @@ def altar_side():
     t = obsidian(53)
     band(t, 0, 2)
     band(t, 13, 15)
-    # inlaid glyph, glowing
     for gy, row in enumerate(GLYPH):
         for gx, ch in enumerate(row):
             if ch == '#':
                 t.set(5 + gx + 1, 4 + gy, VIOLET)
     t.set(8, 4, VIOLET_LIGHT)
     t.set(8, 7, VIOLET_LIGHT)
-    # halo around the glyph
     for gy in range(-1, 8):
         for gx in range(-1, 6):
             x, y = 6 + gx, 4 + gy
             if t.px[y][x][2] < 100:
                 t.set(x, y, mix(t.px[y][x], VIOLET, 0.12))
-    # vertical edge highlights
     for y in range(3, 13):
         t.set(0, y, shade(t.px[y][0], 16))
         t.set(15, y, shade(t.px[y][15], -8))
@@ -213,7 +201,6 @@ def altar_side():
 def altar_top():
     t = obsidian(67)
     cx = cy = 7.5
-    # ring, brightest at the eight nodes
     for y in range(16):
         for x in range(16):
             d = math.hypot(x - cx, y - cy)
@@ -225,12 +212,10 @@ def altar_top():
         a = math.pi * 2 * k / 8
         x, y = int(round(cx + math.cos(a) * 5.7)), int(round(cy + math.sin(a) * 5.7))
         t.set(x, y, VIOLET_LIGHT)
-    # diamond core
     for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
         t.set(7 + dx, 7 + dy, (240, 226, 255))
     for x, y in ((6, 7), (6, 8), (9, 7), (9, 8), (7, 6), (8, 6), (7, 9), (8, 9)):
         t.set(x, y, VIOLET_LIGHT)
-    # gold frame
     for i in range(16):
         for c, pos in ((GOLD_DARK, 0), (GOLD, 1)):
             pass
@@ -251,7 +236,6 @@ def altar_crystal():
     t = Tex(VIOLET, 79, 4)
     for y in range(16):
         for x in range(16):
-            # facets: diagonal light/dark bands
             k = ((x + y) // 3) % 3
             t.set(x, y, [VIOLET_LIGHT, VIOLET, (96, 50, 176)][k] if (x + y) % 5 else VIOLET)
     t.rect(0, 0, 15, 0, (70, 36, 130))

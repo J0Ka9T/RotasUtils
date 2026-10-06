@@ -16,13 +16,6 @@ import net.schwarz.rotasutils.client.screen.L;
 import net.schwarz.rotasutils.client.screen.RotasScreen;
 import net.schwarz.rotasutils.client.screen.Ui;
 
-/**
- * The monster book: every kind of monster this character has killed, how far they have studied it, and
- * - once they have killed enough - what it drops.
- *
- * <p>The left page is the list, the right page is the selected monster. Picking one asks the server for
- * its page, because the drop list is rolled from the real loot table and only the server has those.</p>
- */
 @Environment(EnvType.CLIENT)
 public class BestiaryScreen extends RotasScreen {
     private static final int ROWS = 9;
@@ -113,7 +106,6 @@ public class BestiaryScreen extends RotasScreen {
         renderPage(graphics, selected, tiers);
     }
 
-    /** The right page: the selected monster's rung, its bonus, and its drops once revealed. */
     private void renderPage(GuiGraphics graphics, String entity, long[] tiers) {
         int x = guiLeft + guiWidth / 2 + 12;
         int width = guiWidth / 2 - 30;
@@ -176,7 +168,6 @@ public class BestiaryScreen extends RotasScreen {
         return null;
     }
 
-    /** {@code "** . ."}: rungs reached, then the ones still ahead. */
     private static String stars(int tier, int total) {
         StringBuilder text = new StringBuilder();
         for (int index = 0; index < total; index++) {

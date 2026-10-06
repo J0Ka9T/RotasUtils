@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.level;
 
-/** Pure reward multipliers shared by combat previews and server awards. */
 public final class AdventureXpMath {
     private AdventureXpMath() {
     }
@@ -18,10 +17,6 @@ public final class AdventureXpMath {
         return Math.max(config.repetitionFloor(), 1.0 - recentKills * config.repetitionStep());
     }
 
-    /**
-     * Remembered kills after decay: one kill is forgiven per {@code windowTicks} of play time since
-     * the last kill. A clock that went backwards forgives nothing rather than everything.
-     */
     public static int decayedKills(int count, long lastTick, long nowTick, long windowTicks) {
         if (count <= 0) return 0;
         if (windowTicks <= 0 || nowTick <= lastTick) return count;

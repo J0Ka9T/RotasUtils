@@ -1,0 +1,308 @@
+{
+  "trade": "blacksmith",
+  "job": "blacksmith",
+  "station": "rotasutils:smithing_bench",
+  "slotLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "recipes": [
+    {
+      "id": "iron_sword",
+      "level": 1,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:stick",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_sword",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "iron_pickaxe",
+      "level": 1,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 3,
+          "graded": true
+        },
+        {
+          "item": "minecraft:stick",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_pickaxe",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "iron_axe",
+      "level": 2,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 3,
+          "graded": true
+        },
+        {
+          "item": "minecraft:stick",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_axe",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "shield",
+      "level": 3,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:oak_planks",
+          "count": 6
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:shield",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "iron_boots",
+      "level": 5,
+      "seconds": 70,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 4,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_boots",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "iron_helmet",
+      "level": 5,
+      "seconds": 80,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 5,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_helmet",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "iron_leggings",
+      "level": 6,
+      "seconds": 90,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 7,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_leggings",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "iron_chestplate",
+      "level": 7,
+      "seconds": 100,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 8,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:iron_chestplate",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "diamond_sword",
+      "level": 10,
+      "seconds": 150,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:diamond",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:stick",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:diamond_sword",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "diamond_pickaxe",
+      "level": 11,
+      "seconds": 160,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:diamond",
+          "count": 3,
+          "graded": true
+        },
+        {
+          "item": "minecraft:stick",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:diamond_pickaxe",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "diamond_helmet",
+      "level": 14,
+      "seconds": 200,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:diamond",
+          "count": 5,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:diamond_helmet",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "diamond_chestplate",
+      "level": 15,
+      "seconds": 240,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:diamond",
+          "count": 8,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:diamond_chestplate",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "masterwork_blade",
+      "level": 15,
+      "seconds": 300,
+      "secret": true,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:diamond",
+          "count": 3,
+          "graded": true
+        },
+        {
+          "item": "minecraft:netherite_scrap",
+          "count": 2
+        },
+        {
+          "item": "minecraft:stick",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:diamond_sword",
+          "count": 1,
+          "nbt": "{Enchantments:[{id:\"minecraft:sharpness\",lvl:3s}]}"
+        }
+      ]
+    }
+  ]
+}

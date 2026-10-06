@@ -1,0 +1,310 @@
+{
+  "trade": "alchemy",
+  "job": "alchemy",
+  "station": "rotasutils:alchemy_table",
+  "slotLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "recipes": [
+    {
+      "id": "healing",
+      "level": 1,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:glistering_melon_slice",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:healing\"}"
+        }
+      ]
+    },
+    {
+      "id": "swiftness",
+      "level": 2,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:sugar",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:swiftness\"}"
+        }
+      ]
+    },
+    {
+      "id": "night_vision",
+      "level": 3,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:golden_carrot",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:night_vision\"}"
+        }
+      ]
+    },
+    {
+      "id": "fire_resistance",
+      "level": 4,
+      "seconds": 75,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:magma_cream",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:fire_resistance\"}"
+        }
+      ]
+    },
+    {
+      "id": "leaping",
+      "level": 5,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:rabbit_foot",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:leaping\"}"
+        }
+      ]
+    },
+    {
+      "id": "water_breathing",
+      "level": 6,
+      "seconds": 75,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:pufferfish",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:water_breathing\"}"
+        }
+      ]
+    },
+    {
+      "id": "strength",
+      "level": 8,
+      "seconds": 90,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:blaze_powder",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:strength\"}"
+        }
+      ]
+    },
+    {
+      "id": "splash_healing",
+      "level": 9,
+      "seconds": 90,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:glistering_melon_slice",
+          "count": 1
+        },
+        {
+          "item": "minecraft:gunpowder",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:splash_potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:healing\"}"
+        }
+      ]
+    },
+    {
+      "id": "regeneration",
+      "level": 10,
+      "seconds": 120,
+      "secret": true,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:ghast_tear",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:regeneration\"}"
+        }
+      ]
+    },
+    {
+      "id": "strong_healing",
+      "level": 12,
+      "seconds": 120,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:glass_bottle",
+          "count": 3
+        },
+        {
+          "item": "minecraft:glistering_melon_slice",
+          "count": 2
+        },
+        {
+          "item": "minecraft:nether_wart",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:potion",
+          "count": 3,
+          "nbt": "{Potion:\"minecraft:strong_healing\"}"
+        }
+      ]
+    }
+  ]
+}

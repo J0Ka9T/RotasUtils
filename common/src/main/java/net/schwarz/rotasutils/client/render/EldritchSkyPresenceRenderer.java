@@ -10,7 +10,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import org.joml.Matrix4f;
 
-/** A single colossal head, crown, torso, and attached limb system behind the celestial wound. */
 @Environment(EnvType.CLIENT)
 public final class EldritchSkyPresenceRenderer {
     private static final int HEAD_SEGMENTS = 40;
@@ -110,7 +109,6 @@ public final class EldritchSkyPresenceRenderer {
         BufferUploader.drawWithShader(buffer.end());
     }
 
-    /** Writes local tangent coordinates into out[0..1]; z is unused until spherical projection. */
     private static void limbPoint(EldritchSkyGeometry.PresenceLimb limb, float reach, float t,
                                   float phase, float[] out) {
         float endX = limb.side() * reach;

@@ -23,12 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-/**
- * The client's book of running casts, fed by the server's start, release and end packets, and the
- * clock that plays each one's client timeline: sounds, and the moments that only the presentation cares
- * about. Layers of sound are built from short one-shots that stop at the hold, so the world can go quiet
- * right before the release, which is what makes the release feel large.
- */
 @Environment(EnvType.CLIENT)
 public final class ClientCasts {
     private ClientCasts() {
@@ -44,7 +38,6 @@ public final class ClientCasts {
         return CASTS.get(id);
     }
 
-    /** The cast whose caster is this client's own player, while it still owns the camera. */
     public static ClientCast local() {
         for (ClientCast cast : CASTS.values()) {
             if (cast.local && !cast.cancelled && cast.time(0) < cast.endSeconds()) {
@@ -58,10 +51,10 @@ public final class ClientCasts {
         CASTS.clear();
         CastPostFx.reset();
         HandCapture.clear();
+        PurpleDissolve.clear();
         restoreGui(Minecraft.getInstance());
     }
 
-    /** The game's interface is hidden while the player's own cutscene plays, and put back exactly as it was. */
     private static boolean guiHidden;
 
     private static void syncGui(Minecraft mc) {
@@ -81,9 +74,7 @@ public final class ClientCasts {
         }
     }
 
-    // Packets ----------------------------------------------------------------------------------------
-
-    public static void receiveStart(FriendlyByteBuf buf, Consumer<Runnable> queue) {
+public static void receiveStart(FriendlyByteBuf buf, Consumer<Runnable> queue) {
         ResourceLocation ability = buf.readResourceLocation();
         int caster = buf.readVarInt();
         long seed = buf.readLong();
@@ -115,7 +106,9 @@ public final class ClientCasts {
         }
         boolean local = mc.player != null && mc.player.getId() == casterId;
         ClientCast cast = new ClientCast(casterId, ability, seed, eye, target, targetEntity, mc.level.getGameTime(), local,
-                ability.getPath().equals("hollow_purple") ? buildPurpleTimeline()
+                ability.getPath().equals("projection_sorcery") ? Projection.timeline()
+                        : ability.getPath().equals("annihilator_stargun") ? Stargun.timeline()
+                        : ability.getPath().equals("hollow_purple") ? buildPurpleTimeline()
                         : buildTimeline(ability.getPath().endsWith("_max")));
         CASTS.put(casterId, cast);
     }
@@ -142,9 +135,8 @@ public final class ClientCasts {
         }
     }
 
-    // Tick -------------------------------------------------------------------------------------------
-
-    public static void tick(Minecraft mc) {
+public static void tick(Minecraft mc) {
+        PurpleDissolve.tick(mc);
         if (mc.level == null) {
             if (!CASTS.isEmpty()) {
                 clear();
@@ -177,13 +169,15 @@ public final class ClientCasts {
         }
     }
 
-    /** Keeps the caster's body turned to the target for the whole sequence, whatever the player's mouse does. */
     private static void faceTarget(Minecraft mc, ClientCast cast, double t) {
         if (cast.cancelled || t > cast.endSeconds()) {
             return;
         }
         if (mc.level.getEntity(cast.casterId) instanceof LivingEntity e) {
             float yaw = (float) cast.frame(0).yawDeg();
+            if (cast.projection()) {
+                yaw = (float) Projection.yaw(cast, t, e.getYRot());
+            }
             e.yBodyRot = yaw;
             e.yBodyRotO = yaw;
             e.yHeadRot = yaw;
@@ -193,9 +187,7 @@ public final class ClientCasts {
         }
     }
 
-    // Sound ------------------------------------------------------------------------------------------
-
-    private static void play(ClientCast cast, SoundEvent sound, float volume, float pitch) {
+private static void play(ClientCast cast, SoundEvent sound, float volume, float pitch) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
             return;
@@ -208,13 +200,11 @@ public final class ClientCasts {
     private static Timeline<ClientCast> buildTimeline(boolean max) {
         Timeline<ClientCast> tl = new Timeline<>();
         if (max) {
-            // MAX: a low swell as the point forms and builds, silence in the collapse, a roar on release.
             tl.at(RedTimings.CORE_FORMS, "seed", c -> play(c, SoundEvents.BEACON_ACTIVATE, 0.6f, 0.4f));
             tl.at(RedTimings.CLOSE_UP, "swell", c -> play(c, SoundEvents.END_PORTAL_SPAWN, 0.6f, 0.7f));
             tl.at(RedTimings.RELEASE, "roar", c -> play(c, SoundEvents.WITHER_SPAWN, 0.8f, 0.7f));
         }
         tl.at(RedTimings.CORE_FORMS, "core", c -> play(c, SoundEvents.RESPAWN_ANCHOR_CHARGE, 0.5f, 0.6f));
-        // Charging: a low rumble whose pulses match the core's compressions, a thin electrical shimmer, a suction swell.
         for (double s = RedTimings.CHARGE_SOUND; s < RedTimings.HOLD - 0.1; s += 0.55) {
             final double at = s;
             tl.at(s, "rumble", c -> {
@@ -227,9 +217,7 @@ public final class ClientCasts {
         for (double s = RedTimings.DEBRIS; s < RedTimings.HOLD - 0.1; s += 0.45) {
             tl.at(s, "debris", c -> play(c, SoundEvents.GRAVEL_STEP, 0.35f, 0.7f));
         }
-        // The hold: everything thins to one faint tone.
         tl.at(RedTimings.HOLD, "tone", c -> play(c, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.35f, 2.0f));
-        // The release: a hard crack, a deep hit, an explosion and a long tail, all on the same instant.
         tl.at(RedTimings.RELEASE, "crack", c -> {
             play(c, SoundEvents.LIGHTNING_BOLT_IMPACT, 2.0f, 1.7f);
             play(c, SoundEvents.GENERIC_EXPLODE, 1.6f, 0.55f);
@@ -240,7 +228,6 @@ public final class ClientCasts {
         return tl;
     }
 
-    /** Silence, Blue, Red, the forces, the collapse, the hush, Purple's birth, the stillness, the release. */
     private static Timeline<ClientCast> buildPurpleTimeline() {
         Timeline<ClientCast> tl = new Timeline<>();
         double silence = PurpleTimings.SILENCE;
@@ -250,7 +237,6 @@ public final class ClientCasts {
             play(c, SoundEvents.PORTAL_AMBIENT, 0.5f, 0.5f);
         });
         tl.at(PurpleTimings.RED, "red", c -> play(c, SoundEvents.RESPAWN_ANCHOR_CHARGE, 0.5f, 0.55f));
-        // Two heartbeats of opposing forces, growing, and a warping tone that turns more unnatural.
         for (double s = 2.6; s < silence - 0.2; s += 0.8) {
             final double at = s;
             tl.at(s, "rumble", c -> {
@@ -268,7 +254,6 @@ public final class ClientCasts {
             tl.at(s, "spark", c -> play(c, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.3f, 1.4f + 0.3f * (float) (at - PurpleTimings.SPARKS)));
         }
         tl.at(PurpleTimings.COLLAPSE, "fall", c -> play(c, SoundEvents.END_PORTAL_SPAWN, 0.5f, 0.5f));
-        // The hush: nothing from the silence on but one thin tone on the spark.
         tl.at(PurpleTimings.POINT, "tone", c -> play(c, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.25f, 2.0f));
         tl.at(PurpleTimings.BORN, "born", c -> {
             play(c, SoundEvents.LIGHTNING_BOLT_THUNDER, 1.2f, 0.6f);
@@ -276,7 +261,6 @@ public final class ClientCasts {
             play(c, SoundEvents.END_PORTAL_SPAWN, 0.8f, 1.4f);
             play(c, SoundEvents.WARDEN_SONIC_BOOM, 1.0f, 0.5f);
         });
-        // Each pulse of the finished sphere is a deep bass hit; then it stops for the stillness.
         for (double s = PurpleTimings.BORN + 0.5; s < PurpleTimings.STABLE - 0.4; s += 1.25) {
             tl.at(s, "pulse", c -> {
                 play(c, SoundEvents.WARDEN_HEARTBEAT, 1.6f, 0.4f);
@@ -297,7 +281,6 @@ public final class ClientCasts {
     private static void impactSounds(Minecraft mc, ClientCast cast) {
         Vec3 at = cast.impact;
         if (cast.purple()) {
-            // The world was silent for the compression; now a section of it is erased.
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 4.0f, 0.4f, false);
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 2.5f, 0.5f, false);
             mc.level.playLocalSound(at.x, at.y, at.z, SoundEvents.WARDEN_SONIC_BOOM, SoundSource.PLAYERS, 3.0f, 0.5f, false);
@@ -313,10 +296,8 @@ public final class ClientCasts {
     }
 
     private static final double[] AFTERMATH_AT = {0.30, 0.70, 1.60, 2.80};
-    /** Hollow Purple: only a deep, distant rumble, then silence. */
     private static final double[] PURPLE_AFTERMATH_AT = {0.9, 2.2, 3.8, 5.2};
 
-    /** MAX: the second pulse, then a deep rumble that fades over a few seconds. */
     private static void aftermath(Minecraft mc, ClientCast cast, double sinceImpact) {
         double[] table = cast.purple() ? PURPLE_AFTERMATH_AT : AFTERMATH_AT;
         if (cast.aftermath >= table.length || sinceImpact < table[cast.aftermath]) {
@@ -334,7 +315,6 @@ public final class ClientCasts {
         }
     }
 
-    /** Extra names for tools and tests that want the list without the map. */
     public static List<ClientCast> snapshot() {
         return new ArrayList<>(CASTS.values());
     }

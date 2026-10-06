@@ -11,10 +11,6 @@ import net.schwarz.rotasutils.network.RotasNetwork;
 import net.schwarz.rotasutils.server.RefineService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * {@code /rotas refine}: what an attempt on the held item would cost, the attempt itself, and an
- * operator's way to set a level outright for testing or for a hand-made reward.
- */
 final class RefineCommands {
     private RefineCommands() {
     }

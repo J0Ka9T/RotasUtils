@@ -23,45 +23,23 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Server side of the Zone Wand.
- *
- * <p>Block clicks trace a shape in the wand's current mode (see {@link ZoneWandItem}); a finished
- * shape is added to the zone the admin is working on, which is the zone they last opened in the
- * editor or started with the wand. The first finished shape with no working zone starts a new one
- * whose band is taken from the location itself and whose name comes from the biome, so a traced
- * area is playable immediately and only needs tuning. A zone started inside another zone is given
- * a higher priority so the nested area (a town inside a region) wins.</p>
- *
- * <p>Mob clicks re-level that mob to where it stands, with the same stable roll a fresh spawn gets.
- * The wand is only ever given to administrators and every entry point re-checks that. Radius and the
- * working zone are per admin and live for the session.</p>
- */
 public final class ZoneWandService {
     public static final int DEFAULT_RADIUS = 32;
     public static final int MIN_RADIUS = 4;
     public static final int MAX_RADIUS = 256;
-    /** A new zone spans at least this many levels above its floor. */
     private static final int NEW_ZONE_WIDTH = 4;
 
-    /** The zone each admin is currently growing, and their working radius. */
     private static final Map<UUID, String> ACTIVE = new HashMap<>();
     private static final Map<UUID, Integer> RADIUS = new HashMap<>();
 
     private ZoneWandService() {
     }
 
-    /**
-     * Drops every admin's wand session. Called when the server stops: these are keyed by player UUID
-     * and nothing else removes them, so without this a zone id from a previous world stays "active"
-     * and the wand keeps growing a zone that no longer exists.
-     */
     public static void clear() {
         ACTIVE.clear();
         RADIUS.clear();
     }
 
-    /** Drops one admin's wand session, on logout. */
     public static void forget(UUID player) {
         ACTIVE.remove(player);
         RADIUS.remove(player);
@@ -75,19 +53,16 @@ public final class ZoneWandService {
         RADIUS.put(player.getUUID(), Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, value)));
     }
 
-    /** Active zone id for an admin, or empty when they have not started one. */
     public static String activeZone(ServerPlayer player) {
         return ACTIVE.getOrDefault(player.getUUID(), "");
     }
 
-    /** Points the wand at a zone, so shapes traced next grow the zone the editor shows. */
     public static void setActive(ServerPlayer player, String zoneId) {
         if (zoneId == null || zoneId.isEmpty()) {
             ACTIVE.remove(player.getUUID());
         } else {
             ACTIVE.put(player.getUUID(), zoneId);
         }
-        // Stamp every wand the admin carries so the client highlights the same zone the server grows.
         var inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
@@ -115,7 +90,6 @@ public final class ZoneWandService {
         message(player, ThaiText.t("rotasutils.msg.zone.mode_changed", next.label(), how), ChatFormatting.AQUA);
     }
 
-    /** Drops an unfinished box or outline; false when there was nothing to cancel. */
     public static boolean cancelShape(ServerPlayer player, ItemStack wand) {
         if (ZoneWandItem.points(wand).isEmpty()) {
             return false;
@@ -149,7 +123,6 @@ public final class ZoneWandService {
             case OUTLINE -> {
                 boolean finish = ZoneWandItem.closesOutline(points, pos);
                 if (!finish && player.isShiftKeyDown() && !points.isEmpty()) {
-                    // Sneak-click finishes at this block, the reliable way to close a large outline.
                     List<BlockPos> withLast = new java.util.ArrayList<>(points);
                     if (!points.get(points.size() - 1).equals(pos)) {
                         withLast.add(pos);
@@ -211,10 +184,6 @@ public final class ZoneWandService {
                 state.level(), describe(region)), ChatFormatting.GREEN);
     }
 
-    /**
-     * Creates and stores a zone around one shape, taking its band from the location and its name
-     * from the biome. Also used by the editor's "New zone here".
-     */
     public static ZoneDef createZone(RotasData data, ServerLevel level, BlockPos center, ZoneArea area) {
         String dimension = level.dimension().location().toString();
         ZoneService.Region here = ZoneService.region(data, level, center.getX() + 0.5, center.getY(), center.getZ() + 0.5);
@@ -225,8 +194,6 @@ public final class ZoneWandService {
         String biome = level.getBiome(center).unwrapKey().map(key -> key.location().getPath()).orElse("area");
         String name = titleCase(biome);
         String id = Ids.unique("zone_" + biome, data.zones().keySet());
-        // A zone started inside another one is a separate place: it keeps the outer zone's mobs out
-        // until the admin switches that off.
         ZoneDef zone = new ZoneDef(id, name.length() > 64 ? name.substring(0, 64) : name, dimension,
                 area == null ? List.of() : List.of(area), min, max, priority, true)
                 .withFeatures(net.schwarz.rotasutils.core.ZoneFeatures.DEFAULT.withIsolateMobs(parent != null));
@@ -234,7 +201,6 @@ public final class ZoneWandService {
         return zone;
     }
 
-    /** Adds a finished shape to the working zone, starting one when there is none here. */
     private static void commit(ServerPlayer player, ItemStack wand, ServerLevel level, ZoneArea area) {
         RotasData data = RotasData.get(player.server);
         String dimension = level.dimension().location().toString();
@@ -270,7 +236,6 @@ public final class ZoneWandService {
                 updated.areas().size(), ZoneDef.MAX_AREAS), ChatFormatting.GREEN);
     }
 
-    /** "Dark Forest Lv 10-20, Dangerous" or "wilderness Lv 3-6". */
     static String describe(ZoneService.Region region) {
         if (region.wilderness()) {
             return region.nearZone().isEmpty() ? ThaiText.t("rotasutils.msg.zone.describe_wild", region.bandLabel())

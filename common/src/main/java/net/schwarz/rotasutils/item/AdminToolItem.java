@@ -21,13 +21,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/**
- * Administrator tool.
- *
- * <p>Right-click in the air opens the admin menu. Right-clicking a block or entity
- * while a world-selection request is pending answers that request, which is how
- * positions, NPCs and boards get picked without typing coordinates or UUIDs.
- */
 public class AdminToolItem extends Item {
     public AdminToolItem(Properties properties) {
         super(properties);

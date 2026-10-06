@@ -256,7 +256,6 @@ public final class NpcInteractionScreen extends RotasScreen {
         addRenderableWidget(editor);
     }
 
-    /** A whole number that may be negative: affection can be lost as well as won. */
     private void signedBox(int x, int y, int w, int value, IntConsumer setter) {
         EditBox editor = new EditBox(font, x, y, Math.max(24, w), 18, Component.empty());
         editor.setMaxLength(4);

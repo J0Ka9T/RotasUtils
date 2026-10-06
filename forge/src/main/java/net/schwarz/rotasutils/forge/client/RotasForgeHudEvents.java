@@ -7,12 +7,6 @@ import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.schwarz.rotasutils.client.hud.RotasHudRenderer;
 
-/**
- * Forge survival HUD is split into overlay events, so cancel those overlays explicitly.
- * Mount health, the jump bar and the item name are cancelled as well: the left-side
- * vitals panel renders them as rows, and the item name is the pill the hotbar draws
- * above itself, so the vanilla versions would be duplicates.
- */
 public final class RotasForgeHudEvents {
     private RotasForgeHudEvents() {
     }

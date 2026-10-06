@@ -2,21 +2,6 @@ package net.schwarz.rotasutils.client.render;
 
 import net.schwarz.rotasutils.sky.EldritchSkyTransition;
 
-/**
- * Pure client-side visual state of the eldritch sky: where the activation choreography currently
- * is, how much of the world it has taken over, and the colours the sky, clouds and fog are pulled
- * toward.
- *
- * <p>This is a mutable, reusable calculator. Callers keep one instance and call {@link #update}
- * once per frame, so the renderer allocates nothing per frame and every layer reads the same
- * numbers. Only openness, the game tick, the partial tick and the event seed are inputs, which
- * makes the whole choreography unit testable.</p>
- *
- * <p>Phases follow the design contract: Omen (0.00-0.15), Contamination (0.15-0.35), Tear
- * (0.35-0.62), Presence (0.62-0.85) and Stabilise (0.85-1.00). Weights overlap so nothing
- * visibly pops between phases, and {@link #retreat()} squeezes the invasion back toward the
- * rupture while the sky closes.</p>
- */
 public final class EldritchSkyEnvironment {
     public static final float OMEN_START = 0.00f;
     public static final float CONTAMINATION_START = 0.15f;
@@ -27,7 +12,6 @@ public final class EldritchSkyEnvironment {
     public static final float ZENITH_CORRUPTION = EldritchSkyArt.ZENITH_COVERAGE;
     public static final float HORIZON_CORRUPTION = EldritchSkyArt.HORIZON_COVERAGE;
 
-    /** Apparent angular scale of the focal rupture across the activation. */
     public static final float APERTURE_SCALE_MIN = EldritchSkyArt.APERTURE_SCALE_MIN;
     public static final float APERTURE_SCALE_MAX = EldritchSkyArt.APERTURE_SCALE_MAX;
 
@@ -76,17 +60,10 @@ public final class EldritchSkyEnvironment {
     private float focalYawDeg;
     private float focalElevationDeg;
 
-    /** Phases whose weights blend the whole palette, plus the global corruption strength. */
     public EldritchSkyEnvironment update(EldritchSkyTransition.Snapshot snapshot, long tick, float partialTick) {
         return update(snapshot, tick, partialTick, 0f);
     }
 
-    /**
-     * Phases whose weights blend the whole palette, plus the global corruption strength.
-     *
-     * <p>{@code timeOfDay} is vanilla's celestial angle in 0..1 and is only used to occlude the
-     * vanilla sun and moon once the atmosphere has taken over.</p>
-     */
     public EldritchSkyEnvironment update(EldritchSkyTransition.Snapshot snapshot, long tick, float partialTick,
                                          float timeOfDay) {
         this.partialTick = partialTick;
@@ -125,7 +102,6 @@ public final class EldritchSkyEnvironment {
             return this;
         }
         this.active = true;
-        // A shattered rift retreats like a closing one once it has broken.
         this.closing = snapshot.state == EldritchSkyTransition.State.CLOSING
                 || (snapshot.state == EldritchSkyTransition.State.SHATTERING && tick >= snapshot.referenceTick);
         this.seed = snapshot.seed;
@@ -164,35 +140,29 @@ public final class EldritchSkyEnvironment {
         return this;
     }
 
-    /** Whole-sky "breathing" factor, a few percent around one. */
     public static float breath(float seconds) {
         float midpoint = (EldritchSkyArt.BREATH_MIN + EldritchSkyArt.BREATH_MAX) * 0.5f;
         float amplitude = (EldritchSkyArt.BREATH_MAX - EldritchSkyArt.BREATH_MIN) * 0.5f;
         return midpoint + amplitude * (float) Math.sin(seconds * (Math.PI * 2.0 / EldritchSkyArt.BREATH_PERIOD_SECONDS));
     }
 
-    /** One channel of a tint blend, clamped so no hook can ever emit an invalid colour. */
     public static float mix(float vanilla, float target, float amount) {
         float t = EldritchSkyCelestial.clamp01(amount);
         return EldritchSkyCelestial.clamp01(target + (vanilla - target) * (1f - t));
     }
 
-    /** How far the vanilla sky colour is pulled toward the eldritch palette. */
     public static float skyTintStrength(float openness) {
         return EldritchSkyCelestial.smoothstep(0.02f, 0.60f, openness) * EldritchSkyArt.SKY_TAKEOVER;
     }
 
-    /** Cloud takeover strength; vanilla white cannot survive full activation. */
     public static float cloudTintStrength(float openness) {
         return EldritchSkyCelestial.smoothstep(0.02f, 0.55f, openness) * EldritchSkyArt.CLOUD_TAKEOVER;
     }
 
-    /** Fog takeover strength, applied only at the end of vanilla air-fog colour math. */
     public static float fogTintStrength(float openness) {
         return EldritchSkyCelestial.smoothstep(0.02f, 0.58f, openness) * EldritchSkyArt.FOG_TAKEOVER;
     }
 
-    /** Exact vanilla passthrough while inactive; otherwise caps daylight without crushing night. */
     public static float daylightBrightness(float vanilla, float openness) {
         if (openness <= 0.001f) {
             return vanilla;
@@ -227,7 +197,6 @@ public final class EldritchSkyEnvironment {
         return partialTick;
     }
 
-    /** Vanilla celestial angle in 0..1, used for sun/moon occlusion at full activation. */
     public float timeOfDay() {
         return timeOfDay;
     }

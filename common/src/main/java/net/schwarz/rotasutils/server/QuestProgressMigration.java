@@ -18,14 +18,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Converts old kernel quest variables ({@code rpg.q.*}) into canonical {@link ActiveQuest} and completion
- * history. Every quest is validated in memory before the player record is touched, so a malformed quest
- * leaves its old keys in place. Migration never grants rewards, rank points or claim receipts.
- *
- * <p>A marker {@code rpg.migration.quest.<hash>=<quest version>} is written once canonical state exists;
- * a quest with a marker is never migrated again, so retained old keys cannot revive a finished quest.
- */
 public final class QuestProgressMigration {
     public static final int MAX_DIAGNOSTICS = 64;
     public static final String MARKER_PREFIX = "rpg.migration.quest.";
@@ -53,11 +45,6 @@ public final class QuestProgressMigration {
 
     private QuestProgressMigration() { }
 
-    /**
-     * Migrates every projected kernel quest of one player.
-     *
-     * @param nowSeconds bookkeeping time only; historical completion times are always kept as stored
-     */
     public static Result migrate(PlayerProgress progress, Map<String, KernelQuestAdapter.Projection> projections,
                                  long nowSeconds) {
         Objects.requireNonNull(progress, "progress");
@@ -112,14 +99,12 @@ public final class QuestProgressMigration {
         return new Result(changed, complete, diagnostics);
     }
 
-    /** Marker variable for a quest: a deterministic 16 hex character name hash of the full quest ID. */
     public static String marker(String questId) {
         String hash = UUID.nameUUIDFromBytes(questId.getBytes(StandardCharsets.UTF_8))
                 .toString().replace("-", "").substring(0, 16);
         return MARKER_PREFIX + hash;
     }
 
-    /** Groups old variables by the longest projected quest prefix; nested keys of unprojected quests are skipped. */
     private static Map<String, Map<String, String>> ownedKeys(Map<String, String> variables,
                                                               Map<String, List<String>> questsByPrefix) {
         Map<String, Map<String, String>> owned = new LinkedHashMap<>();
@@ -224,11 +209,6 @@ public final class QuestProgressMigration {
         return new Candidate(active, completedAt);
     }
 
-    /**
-     * Highest valid count for an old objective counter. The current stage's objective sets the bound;
-     * otherwise the value is a leftover of another stage and is bounded by that stage's requirement.
-     * Returns -1 when no stage has an objective at that position.
-     */
     private static int limit(List<QuestStage> stages, Map<String, Objective> objectives, int stage, int index) {
         if (stage >= 0) {
             Objective current = objectives.get("s" + stage + "/o" + index);
@@ -260,7 +240,6 @@ public final class QuestProgressMigration {
         }
     }
 
-    /** First second the kernel reset rules allow the quest again, or 0 when that cannot be expressed. */
     private static long availableAgainAt(QuestDefinitions.Quest source, long completedAt) {
         if (!source.repeatable()) {
             return 0;

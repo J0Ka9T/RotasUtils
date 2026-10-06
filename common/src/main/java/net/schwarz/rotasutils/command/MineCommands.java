@@ -21,12 +21,6 @@ import net.schwarz.rotasutils.mine.MiningSite;
 import net.schwarz.rotasutils.server.MiningService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * {@code /rotas mine}: setting up mining sites. Operators only - players simply mine.
- *
- * <p>A site is created where the operator stands, and nodes are added either one at a time by looking
- * at a block, or all at once by scanning a radius for one kind of ore.</p>
- */
 final class MineCommands {
     private MineCommands() {
     }
@@ -192,7 +186,6 @@ final class MineCommands {
         return site;
     }
 
-    /** The block the player is looking at within reach, or null. */
     private static BlockPos lookedAt(ServerPlayer player) {
         Vec3 eye = player.getEyePosition();
         Vec3 end = eye.add(player.getLookAngle().scale(6.0));

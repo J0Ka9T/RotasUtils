@@ -24,14 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
-/**
- * Mob browser that shows each entity's live model, name and id.
- *
- * <p>Single mode picks one mob (double-click or Select). Multi mode, opened with
- * {@link #many(Screen, Collection, Consumer)}, ticks any number of mobs - including every mob the
- * current search shows - and hands the whole selection back at once, so a setup for "all zombie
- * kinds" is one search and one click instead of a trip through the picker per mob.</p>
- */
 @Environment(EnvType.CLIENT)
 public class EntityPickerScreen extends RotasScreen {
     private static final int CARD_W = 78;
@@ -48,13 +40,10 @@ public class EntityPickerScreen extends RotasScreen {
     private final List<Entry> all = new ArrayList<>();
     private final List<Entry> filtered = new ArrayList<>();
     private final List<String> namespaces = new ArrayList<>();
-    /** Ticked mob ids in multi mode, in the order they were ticked. */
     private final LinkedHashSet<String> chosen = new LinkedHashSet<>();
     private final MobModelCache models = new MobModelCache(4);
     private String query = "";
-    /** 0 shows every mod, otherwise an index into {@link #namespaces} plus one. */
     private int namespaceIndex;
-    /** 0 shows every category, otherwise an index into {@link MobCategory#values()} plus one. */
     private int categoryIndex;
     private int scrollRow;
     private Entry selected;
@@ -66,7 +55,6 @@ public class EntityPickerScreen extends RotasScreen {
         this(parent, onPicked, null, allowEmpty, List.of());
     }
 
-    /** Multi-select picker; {@code alreadyChosen} starts ticked, so unticking one removes it. */
     public static EntityPickerScreen many(Screen parent, Collection<String> alreadyChosen,
                                           Consumer<List<String>> onPicked) {
         return new EntityPickerScreen(parent, null, onPicked, false, alreadyChosen);
@@ -255,7 +243,6 @@ public class EntityPickerScreen extends RotasScreen {
         }
     }
 
-    /** Small green check badge on a ticked card, drawn from fills so it never depends on a font glyph. */
     private static void tick(GuiGraphics graphics, int x, int y) {
         graphics.fill(x, y, x + 11, y + 11, Ui.GOOD);
         int ink = 0xFF1A140E;
@@ -265,7 +252,6 @@ public class EntityPickerScreen extends RotasScreen {
         }
     }
 
-    /** Multi mode: the side panel lists what is ticked, with the hovered mob's model on top. */
     private void renderSelection(GuiGraphics graphics) {
         int x = previewX();
         int y = gridTop() - 2;
@@ -405,7 +391,6 @@ public class EntityPickerScreen extends RotasScreen {
             return;
         }
         Sfx.select();
-        // Leave first, then hand the value over, so the callback may open another screen.
         goBack();
         onPicked.accept(entry.id());
     }

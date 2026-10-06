@@ -17,7 +17,6 @@ import net.schwarz.rotasutils.house.HouseDefinition;
 
 import java.util.List;
 
-/** Server-authoritative definition editor for one housing definition. */
 @Environment(EnvType.CLIENT)
 public final class HouseEditScreen extends RotasScreen {
     private final String houseId;
@@ -55,7 +54,6 @@ public final class HouseEditScreen extends RotasScreen {
         return houseId;
     }
 
-    /** Snapshot of the live typed values used when opening a removal confirmation. */
     public HouseScreenActions.EditorContext editorContext() {
         return HouseScreenActions.editorContext(houseId,
                 new HouseAdminPresentation.EditDraft(houseId, houseName, tierId, enabled, definitionRevision));
@@ -71,7 +69,6 @@ public final class HouseEditScreen extends RotasScreen {
         return 360;
     }
 
-    /** Width of each of the two form columns. */
     private int columnWidth() {
         return (guiWidth - Ui.PAD * 2 - Ui.GAP) / 2;
     }
@@ -97,7 +94,6 @@ public final class HouseEditScreen extends RotasScreen {
             }
             initialized = true;
         } else if (definition != null) {
-            // Resyncs update only the expected revision; typed fields stay as the admin left them.
             definitionRevision = definition.revision();
         }
         if (tierId.isEmpty() && state != null && !state.tiers().isEmpty()) {
@@ -109,7 +105,6 @@ public final class HouseEditScreen extends RotasScreen {
         int rx = rightX();
         int y = guiTop + 44;
 
-        // Row 1: name | tier.
         EditBox name = new EditBox(font, x, y, w, 20, L.c("rotasutils.house.edit.name_hint"));
         name.setMaxLength(96);
         name.setValue(houseName);
@@ -119,7 +114,6 @@ public final class HouseEditScreen extends RotasScreen {
                 .bounds(rx, y, w, 20).build());
         tier.active = state != null && state.tiers().size() > 1;
 
-        // Row 2: protection | this house's own price, guests and welcome line.
         int y2 = y + 44;
         HouseAdminPresentation.OverviewRow row = overviewRow(state);
         boolean occupied = row != null && !HouseScreenActions.canDisableOrRemove(row);
@@ -144,7 +138,6 @@ public final class HouseEditScreen extends RotasScreen {
             send("house_settings_open", payload);
         }).bounds(rx, y2, w, 20).build());
 
-        // Row 4, under the summary card: area | remove.
         int y4 = y2 + 110;
         boolean hasSelection = state != null && HouseAdminPresentation.selection(state).complete();
         RotasButton replace = addRenderableWidget(Ui.button(L.c("rotasutils.house.edit.replace_bounds"),
@@ -291,7 +284,6 @@ public final class HouseEditScreen extends RotasScreen {
         Ui.label(graphics, text("rotasutils.house.edit.enabled", "PROTECTION"), x, y2 - 11, Ui.TEXT_MUTED);
         Ui.label(graphics, text("rotasutils.house.edit.own_heading", "THIS HOUSE"), rx, y2 - 11, Ui.TEXT_MUTED);
 
-        // Summary card: where, how big, who lives there.
         int cardY = y2 + 30;
         int cardW = guiWidth - Ui.PAD * 2;
         Ui.modernPanel(graphics, x, cardY, cardW, 68);

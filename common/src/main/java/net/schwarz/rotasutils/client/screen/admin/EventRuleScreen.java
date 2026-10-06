@@ -14,13 +14,6 @@ import net.schwarz.rotasutils.event.EventType;
 
 import java.util.Locale;
 
-/**
- * One line of the event catalogue: what the server does when this event happens.
- *
- * <p>The page is edited locally and sent in one go, so a half-changed rule never reaches the server.
- * A multiplier on an event that pays no experience of its own would do nothing, and the page says so
- * rather than letting an administrator tune a number with no effect.</p>
- */
 @Environment(EnvType.CLIENT)
 public class EventRuleScreen extends RotasScreen {
     private final String typeName;
@@ -48,7 +41,6 @@ public class EventRuleScreen extends RotasScreen {
         this.cooldown = rule == null ? 0 : rule.cooldownSeconds();
     }
 
-    /** Holds an unsaved draft of this event rule: never rebuilt by a push, but warns when someone else changes it. */
     @Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
@@ -105,7 +97,6 @@ public class EventRuleScreen extends RotasScreen {
         }).bounds(guiLeft + guiWidth - 176, guiTop + guiHeight - 34, 160, 22).build());
 
         if (!filter.isBlank()) {
-            // Only a filtered line can be deleted; the plain entry is what a type falls back to.
             addRenderableWidget(Ui.dangerButton(L.c("rotasutils.event.delete"), button -> {
                 CompoundTag payload = new CompoundTag();
                 payload.putString("type", typeName);

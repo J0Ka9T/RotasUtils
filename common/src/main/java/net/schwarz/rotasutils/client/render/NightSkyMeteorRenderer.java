@@ -18,23 +18,11 @@ import org.joml.Matrix4f;
 
 import java.util.Random;
 
-/**
- * Shooting stars across an ordinary night sky, while the player is standing still doing nothing.
- * Meant to reward a quiet moment - watching a campfire, waiting at a waystone, standing on a
- * mountain - rather than to compete with the eldritch invasion's own meteors.
- *
- * <p>Idle is tracked here rather than trusted from elsewhere: no screen open, and the player has
- * neither moved nor turned the camera for {@link #IDLE_TICKS_TO_START} ticks. The moment either
- * happens again, the count resets and stars stop within a couple of seconds.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class NightSkyMeteorRenderer {
     private static final float RADIUS = 92f;
-    /** Ticks (20/s) of standing still before the first star can appear. */
     private static final int IDLE_TICKS_TO_START = 60;
-    /** Idle ticks at which the shower reaches its full, still-sparse rate. */
     private static final int IDLE_TICKS_TO_FULL = 400;
-    /** Seconds between stars at full idle; roughly doubled right when they start. */
     private static final float PERIOD_SECONDS = 5.5f;
     private static final float LIFE_SECONDS = 1.1f;
 
@@ -48,7 +36,6 @@ public final class NightSkyMeteorRenderer {
     private NightSkyMeteorRenderer() {
     }
 
-    /** Client tick: advances or resets the idle counter. Call once per tick, any dimension. */
     public static void tick(Minecraft minecraft) {
         LocalPlayer player = minecraft.player;
         if (player == null || minecraft.screen != null) {
@@ -68,15 +55,12 @@ public final class NightSkyMeteorRenderer {
         tracked = true;
         if (moved) {
             idleTicks = 0;
-            // A fresh seed each time a quiet moment starts, so two idle moments never replay
-            // the same shower.
             showerSeed = SEED_SOURCE.nextLong();
         } else if (idleTicks < Integer.MAX_VALUE) {
             idleTicks++;
         }
     }
 
-    /** Sky render pass, after the vanilla stars. No-op unless the player has been idle a while. */
     public static void render(PoseStack pose, float partialTick, boolean isFoggy, boolean blockedByFluid) {
         if (idleTicks < IDLE_TICKS_TO_START || isFoggy || blockedByFluid) {
             return;
@@ -86,15 +70,12 @@ public final class NightSkyMeteorRenderer {
         if (level == null || !level.dimensionType().hasSkyLight() || level.isRaining()) {
             return;
         }
-        // Vanilla star brightness already fades the sky in and out around dusk/dawn; ride the same
-        // curve so a star never shows through daylight.
         float starBrightness = level.getStarBrightness(partialTick);
         if (starBrightness <= 0.05f) {
             return;
         }
         EldritchSkyTransition.Snapshot eldritch = EldritchSkyClientState.current();
         if (eldritch != null && eldritch.state != EldritchSkyTransition.State.OFF) {
-            // The invasion has its own meteors; do not double up on top of them.
             return;
         }
 

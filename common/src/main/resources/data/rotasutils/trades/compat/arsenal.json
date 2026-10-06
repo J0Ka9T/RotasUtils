@@ -1,0 +1,565 @@
+{
+  "bundle": "arsenal",
+  "trades": {
+    "blacksmith": [
+      {
+        "id": "iron_longsword",
+        "level": 3,
+        "seconds": 80,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:iron_longsword",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "iron_katana",
+        "level": 4,
+        "seconds": 90,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:iron_katana",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "iron_rapier",
+        "level": 4,
+        "seconds": 90,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:iron_rapier",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "iron_claymore",
+        "level": 6,
+        "seconds": 120,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 5,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:iron_claymore",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "iron_glaive",
+        "level": 7,
+        "seconds": 130,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 4,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:iron_glaive",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "iron_greataxe",
+        "level": 8,
+        "seconds": 140,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 6,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:iron_greataxe",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "gold_katana",
+        "level": 8,
+        "seconds": 120,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:gold_ingot",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:gold_katana",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "diamond_katana",
+        "level": 11,
+        "seconds": 180,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:diamond",
+            "count": 3,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:diamond_katana",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "diamond_claymore",
+        "level": 13,
+        "seconds": 220,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:diamond",
+            "count": 5,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:diamond_claymore",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "diamond_twinblade",
+        "level": 14,
+        "seconds": 240,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:diamond",
+            "count": 6,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:diamond_twinblade",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "netherite_katana",
+        "level": 16,
+        "seconds": 420,
+        "open": true,
+        "secret": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "simplyswords:diamond_katana",
+            "count": 1
+          },
+          {
+            "item": "minecraft:netherite_ingot",
+            "count": 1,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:netherite_katana",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "netherite_claymore",
+        "level": 17,
+        "seconds": 480,
+        "open": true,
+        "secret": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "simplyswords:diamond_claymore",
+            "count": 1
+          },
+          {
+            "item": "minecraft:netherite_ingot",
+            "count": 1,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "simplyswords:netherite_claymore",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "simplyswords"
+        ]
+      },
+      {
+        "id": "iron_bastardsword",
+        "level": 5,
+        "seconds": 100,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 4,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "magistuarmory:iron_bastardsword",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "magistuarmory"
+        ]
+      },
+      {
+        "id": "iron_estoc",
+        "level": 6,
+        "seconds": 110,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 4,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "magistuarmory:iron_estoc",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "magistuarmory"
+        ]
+      },
+      {
+        "id": "iron_zweihander",
+        "level": 9,
+        "seconds": 150,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 7,
+            "graded": true
+          },
+          {
+            "item": "minecraft:stick",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "magistuarmory:iron_zweihander",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "magistuarmory"
+        ]
+      },
+      {
+        "id": "iron_kiteshield",
+        "level": 6,
+        "seconds": 110,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 5,
+            "graded": true
+          },
+          {
+            "item": "minecraft:oak_planks",
+            "count": 3
+          }
+        ],
+        "outputs": [
+          {
+            "item": "magistuarmory:iron_kiteshield",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "magistuarmory"
+        ]
+      },
+      {
+        "id": "iron_heatershield",
+        "level": 6,
+        "seconds": 110,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 4,
+            "graded": true
+          },
+          {
+            "item": "minecraft:oak_planks",
+            "count": 3
+          }
+        ],
+        "outputs": [
+          {
+            "item": "magistuarmory:iron_heatershield",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "magistuarmory"
+        ]
+      },
+      {
+        "id": "iron_basic_shield",
+        "level": 4,
+        "seconds": 90,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 4,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "spartanshields:iron_basic_shield",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "spartanshields"
+        ]
+      },
+      {
+        "id": "iron_tower_shield",
+        "level": 7,
+        "seconds": 130,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:iron_ingot",
+            "count": 7,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "spartanshields:iron_tower_shield",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "spartanshields"
+        ]
+      },
+      {
+        "id": "diamond_basic_shield",
+        "level": 12,
+        "seconds": 200,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:diamond",
+            "count": 4,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "spartanshields:diamond_basic_shield",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "spartanshields"
+        ]
+      },
+      {
+        "id": "netherite_tower_shield",
+        "level": 17,
+        "seconds": 460,
+        "open": true,
+        "secret": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "spartanshields:diamond_tower_shield",
+            "count": 1
+          },
+          {
+            "item": "minecraft:netherite_ingot",
+            "count": 1,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "spartanshields:netherite_tower_shield",
+            "count": 1
+          }
+        ],
+        "requires": [
+          "spartanshields"
+        ]
+      }
+    ]
+  }
+}

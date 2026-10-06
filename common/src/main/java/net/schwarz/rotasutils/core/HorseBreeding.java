@@ -6,18 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.random.RandomGenerator;
 
-/**
- * Stable breeding genetics, kept free of Minecraft so every rule is unit tested.
- *
- * <p>A foal inherits part of what its parents trained (never all of it: training stays worth doing), each parent
- * trait with {@code traitInheritChance}, a fresh trait on a mutation, and possibly a parent's rare or secret coat.
- * Its lineage is one more than its older parent's, which raises its collector value. Close kin cannot breed.</p>
- */
 public final class HorseBreeding {
     private HorseBreeding() {
     }
 
-    /** What breeding needs to know about one parent. {@code sire}/{@code dam} are its own parents' ids ("" if none). */
     public record Parent(String id, int[] levels, int lineage, List<HorseTrait> traits, String sire, String dam,
                          boolean secretCoat, boolean rareCoat) {
     }
@@ -26,7 +18,6 @@ public final class HorseBreeding {
                        boolean mutated) {
     }
 
-    /** Why these two may not breed, or null when they may. Keys are lang keys under rotasutils.msg.horse. */
     public static String forbidden(Parent a, Parent b) {
         if (a.id().equals(b.id())) return "breed_same";
         if (a.id().equals(b.sire()) || a.id().equals(b.dam()) || b.id().equals(a.sire()) || b.id().equals(a.dam())) {
@@ -40,7 +31,6 @@ public final class HorseBreeding {
         return !parent.isEmpty() && (parent.equals(otherSire) || parent.equals(otherDam));
     }
 
-    /** Breeding fee: base plus a step per generation of the older line, so famous lines cost more to extend. */
     public static long fee(SeasonRules.HorseRules rules, Parent a, Parent b) {
         long lineage = Math.max(a.lineage(), b.lineage());
         return Math.max(0, rules.breedBaseCost + lineage * rules.breedCostPerLineage);
@@ -49,7 +39,6 @@ public final class HorseBreeding {
     public static Foal roll(SeasonRules.HorseRules rules, Parent a, Parent b, RandomGenerator random) {
         int[] start = new int[4];
         for (int i = 0; i < 4; i++) {
-            // Average of what the parents reached above level 1, of which only a share is born in.
             double carried = ((a.levels()[i] - 1) + (b.levels()[i] - 1)) / 2.0 * rules.breedLevelInheritance;
             int whole = (int) carried;
             if (random.nextDouble() < carried - whole) whole++;
@@ -72,7 +61,6 @@ public final class HorseBreeding {
         boolean starbornParents = a.traits().size() >= HorseTrait.STARBORN_PARENT_TRAITS
                 && b.traits().size() >= HorseTrait.STARBORN_PARENT_TRAITS;
         if (starbornParents && random.nextDouble() < rules.starbornChance) {
-            // The mythic trait takes the place of whatever would have been dropped last.
             if (traits.size() >= HorseTrait.MAX_TRAITS) traits.remove(traits.size() - 1);
             traits.add(HorseTrait.STARBORN);
             mutated = true;
@@ -82,7 +70,6 @@ public final class HorseBreeding {
                 traits.add(fresh);
                 mutated = true;
             } else if (fresh != null) {
-                // A full foal mutates a level instead.
                 int skill = random.nextInt(3);
                 start[skill]++;
                 mutated = true;
@@ -101,10 +88,6 @@ public final class HorseBreeding {
         return new Foal(start, lineage, List.copyOf(traits), coat, mutated);
     }
 
-    /**
-     * Traits for a drawn horse: {@code gachaTraits[rarity]} is the expected count, whole part guaranteed and the
-     * fraction a chance for one more.
-     */
     public static List<HorseTrait> drawTraits(SeasonRules.HorseRules rules, HorseGacha.Rarity rarity, RandomGenerator random) {
         double expected = rules.gachaTraits[Math.min(rules.gachaTraits.length - 1, rarity.ordinal())];
         int count = (int) expected;
@@ -117,7 +100,6 @@ public final class HorseBreeding {
         return List.copyOf(traits);
     }
 
-    /** Price multiplier the horse's traits add to an NPC sale. */
     public static double priceMultiplier(SeasonRules.HorseRules rules, List<HorseTrait> traits) {
         double multiplier = 1;
         if (traits.contains(HorseTrait.GOLDEN_BLOOD)) multiplier += rules.goldenBloodPrice;
@@ -126,7 +108,6 @@ public final class HorseBreeding {
         return multiplier;
     }
 
-    /** Breedings a horse gets over its life. */
     public static int breedings(SeasonRules.HorseRules rules, List<HorseTrait> traits) {
         return rules.breedsPerHorse + (traits.contains(HorseTrait.FERTILE) ? rules.fertileBonusBreeds : 0);
     }

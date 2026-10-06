@@ -10,20 +10,12 @@ import net.schwarz.rotasutils.util.ThaiText;
 
 import java.util.List;
 
-/**
- * A crafting-material item that explains itself in the tooltip.
- *
- * <p>Refine ores and scrolls are only worth picking up if the player can tell what they are for, and a
- * name alone does not say it. Each one carries a translation key ending in {@code .desc}; the line is
- * shown in Thai like the rest of this mod, and an item with no such key simply shows nothing extra.</p>
- */
 public class RpgMaterialItem extends Item {
     private final String descriptionKey;
     private final ChatFormatting style;
     private final boolean glint;
     private final Opens opens;
 
-    /** The bench this material opens when it is used, so a player never has to be told a command. */
     public enum Opens { NOTHING, REFINE, SOCKETS, RUNES }
 
     public RpgMaterialItem(Properties properties, String descriptionKey, ChatFormatting style, boolean glint) {
@@ -59,7 +51,6 @@ public class RpgMaterialItem extends Item {
         return net.minecraft.world.InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
-    /** A tiered rune shows its tier after its name. */
     @Override
     public Component getName(ItemStack stack) {
         int tier = ItemRunes.tierOf(stack);

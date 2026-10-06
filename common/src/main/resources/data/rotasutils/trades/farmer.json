@@ -1,0 +1,146 @@
+{
+  "trade": "farmer",
+  "job": "farmer",
+  "station": "rotasutils:mill",
+  "slotLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "recipes": [
+    {
+      "id": "bread",
+      "level": 1,
+      "seconds": 30,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:wheat|#forge:crops/wheat",
+          "count": 3,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:bread",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "baked_potatoes",
+      "level": 1,
+      "seconds": 40,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:potato|#forge:crops/potato",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:baked_potato",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "sugar",
+      "level": 2,
+      "seconds": 30,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:sugar_cane",
+          "count": 3,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:sugar",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "hay_bales",
+      "level": 3,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:wheat|#forge:crops/wheat",
+          "count": 9,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:hay_block",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "glistering_melon",
+      "level": 5,
+      "seconds": 90,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:melon_slice",
+          "count": 1,
+          "graded": true
+        },
+        {
+          "item": "minecraft:gold_nugget",
+          "count": 8
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:glistering_melon_slice",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "carrot_on_a_stick",
+      "level": 6,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:fishing_rod",
+          "count": 1
+        },
+        {
+          "item": "minecraft:carrot|#forge:crops/carrot",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:carrot_on_a_stick",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

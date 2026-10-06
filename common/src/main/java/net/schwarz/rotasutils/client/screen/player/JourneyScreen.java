@@ -19,14 +19,6 @@ import net.schwarz.rotasutils.util.Nbt;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The journey page: today's missions with the daily track, and the season track.
- *
- * <p>A mission row opens the ordinary quest page, so accepting, tracking and turning in behave exactly
- * as they do from a board - this page adds the count and the rungs, not a second quest interface.
- * Every number on it is the server's: the counts come with the progress sync, and a claim is only ever
- * a request that the server re-checks.</p>
- */
 @Environment(EnvType.CLIENT)
 public class JourneyScreen extends RotasScreen {
     private static final int MISSION_ROWS = 6;
@@ -95,7 +87,6 @@ public class JourneyScreen extends RotasScreen {
         addBackButton();
     }
 
-    /** One claim button per rung of a track that is reached and not yet claimed. */
     private void buildTrackButtons(CompoundTag track, String action, int x, int y, int columns) {
         long progress = track.getInt("done");
         int mask = track.getInt("claimed");
@@ -223,7 +214,6 @@ public class JourneyScreen extends RotasScreen {
         renderTrack(graphics, track, done, guiLeft + half + 8, guiTop + 72, "rotasutils.journey.tier_missions");
     }
 
-    /** The rungs of a track as cards: what each needs, what it pays, and whether it is claimed. */
     private void renderTrack(GuiGraphics graphics, CompoundTag track, long progress, int x, int y, String neededKey) {
         ListTag tiers = track.getList("tiers", Tag.TAG_COMPOUND);
         int mask = track.getInt("claimed");
@@ -287,7 +277,6 @@ public class JourneyScreen extends RotasScreen {
         }
     }
 
-    /** {@code "400 gold, 900 exp, 5 rank, oridecon"} - what a rung pays, in words. */
     static String rewardText(CompoundTag rung) {
         List<String> parts = new ArrayList<>();
         if (rung.getLong("gold") > 0) {

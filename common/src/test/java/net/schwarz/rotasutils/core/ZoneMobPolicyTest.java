@@ -31,7 +31,6 @@ class ZoneMobPolicyTest {
     void nestedZoneOnTopDecidesSpawning() {
         ZoneDef outer = zone("zone_forest", 0, false);
         ZoneDef inner = zone("zone_crypt", 1, true);
-        // The inner zone has the higher priority, so it is the top zone at a shared position.
         ZoneDef top = net.schwarz.rotasutils.server.ZoneService.select(List.of(outer, inner), OVERWORLD, 0, 64, 0);
         assertSame(inner, top);
 

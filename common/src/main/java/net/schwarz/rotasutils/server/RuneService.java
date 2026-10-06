@@ -23,20 +23,10 @@ import net.schwarz.rotasutils.util.ThaiText;
 
 import java.util.Map;
 
-/**
- * Rune inscribing at the Rune Altar, and what inscribed runes do in a fight.
- *
- * <p>A weapon gains a rune slot at each refine threshold in {@link SeasonRules.RuneRules#slotLevels}.
- * Inscribing consumes one rune item and the slot's gold price; a rune already in the slot comes back
- * to the player, and inscribing the rune a slot already holds is refused so nothing is wasted.
- * Runes act only on melee hits from the weapon in the main hand, so a bow or a spell never triggers
- * the sword's runes.</p>
- */
 public final class RuneService {
     private RuneService() {
     }
 
-    /** Rune slots the weapon has now; 0 for anything that is not a weapon. */
     public static int slots(SeasonRules.RuneRules rules, ItemStack stack) {
         if (rules == null || !rules.enabled || ItemRefine.categoryOf(stack) != ItemRefine.Category.WEAPON) {
             return 0;
@@ -44,7 +34,6 @@ public final class RuneService {
         return RuneType.slots(ItemRefine.level(stack), rules.slotLevels);
     }
 
-    /** Why the altar cannot be used at all (runes off, no altar in reach), or an empty string. */
     public static String stationRefusal(ServerPlayer player, RotasData data) {
         SeasonRules.RuneRules rules = SeasonService.rules(data).runes;
         if (rules == null || !rules.enabled) {
@@ -56,7 +45,6 @@ public final class RuneService {
         return "";
     }
 
-    /** Why the held item cannot take runes here at all, or an empty string when it can. */
     public static String refusal(ServerPlayer player, RotasData data) {
         String station = stationRefusal(player, data);
         if (!station.isEmpty()) {
@@ -74,7 +62,6 @@ public final class RuneService {
         return "";
     }
 
-    /** Inscribes {@code rune} into {@code slot} of the held weapon. True when it was written. */
     public static boolean inscribe(ServerPlayer player, RotasData data, int slot, String runeId, int tier) {
         String refusal = refusal(player, data);
         if (!refusal.isEmpty()) {
@@ -144,7 +131,6 @@ public final class RuneService {
         return true;
     }
 
-    /** Fuses {@link RuneType#FUSE_COUNT} runes of {@code tier} into one of the next tier. True when it was done. */
     public static boolean fuse(ServerPlayer player, RotasData data, String runeId, int tier) {
         String refusal = stationRefusal(player, data);
         if (!refusal.isEmpty()) {
@@ -198,10 +184,7 @@ public final class RuneService {
         return true;
     }
 
-    // Combat ---------------------------------------------------------------------------------------
-
-    /** The runes that count on the weapon that struck this hit, or an empty map for anything but melee. */
-    private static Map<RuneType, Integer> striking(ServerPlayer attacker, DamageSource source) {
+private static Map<RuneType, Integer> striking(ServerPlayer attacker, DamageSource source) {
         if (source.getDirectEntity() != attacker) {
             return Map.of();
         }
@@ -214,7 +197,6 @@ public final class RuneService {
         return slots <= 0 ? Map.of() : ItemRunes.active(weapon, slots);
     }
 
-    /** Fury: sometimes a hit lands for more. Applied with the other outgoing multipliers. */
     public static double damageMultiplier(ServerPlayer attacker, DamageSource source, LivingEntity victim) {
         int fury = striking(attacker, source).getOrDefault(RuneType.FURY, 0);
         if (fury <= 0 || attacker.getRandom().nextDouble() >= RuneType.FURY.strength(fury)) {
@@ -225,7 +207,6 @@ public final class RuneService {
         return RuneType.FURY_MULTIPLIER;
     }
 
-    /** Fire, frost, venom and lifesteal once a melee hit has really landed. */
     public static void afterHurt(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide || !(source.getEntity() instanceof ServerPlayer attacker) || attacker == victim) {
             return;
@@ -263,13 +244,11 @@ public final class RuneService {
                     }
                 }
                 default -> {
-                    // Fury acts on the damage itself, in damageMultiplier.
                 }
             }
         }
     }
 
-    /** The flash colour of a rune: fire and lifesteal red, fury gold, frost white, venom the rift's violet. */
     private static int colourOf(RuneType rune) {
         return switch (rune) {
             case FIRE, LIFESTEAL -> net.schwarz.rotasutils.entity.RiftFx.CRIMSON;
@@ -293,7 +272,6 @@ public final class RuneService {
         return total;
     }
 
-    /** Main inventory only, like the refine bench, so nothing is pulled out of an armour slot. */
     private static void take(ServerPlayer player, Item item, int tier, int amount) {
         int left = amount;
         for (ItemStack stack : player.getInventory().items) {
@@ -308,7 +286,6 @@ public final class RuneService {
         }
     }
 
-    /** How many of this rune the player carries, for the altar screen. */
     public static int carried(ServerPlayer player, RuneType rune, int tier) {
         return count(player, RotasRegistry.RUNES.get(rune).get(), tier);
     }

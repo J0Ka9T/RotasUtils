@@ -4,15 +4,13 @@ import net.minecraft.nbt.CompoundTag;
 import net.schwarz.rotasutils.data.Params;
 import net.schwarz.rotasutils.util.Nbt;
 
-/** One configured reward entry, including how and when it is handed out. */
 public final class Reward {
     private RewardType type;
     private final Params params;
     private Mode mode = Mode.GUARANTEED;
-    /** Relative weight inside a {@link Mode#RANDOM_WEIGHTED} pool. */
     private int weight = 1;
-    /** Groups {@link Mode#PLAYER_CHOICE} and weighted entries into one pool. */
     private String pool = "";
+    private String path = "";
 
     public Reward(RewardType type) {
         this(type, new CompoundTag());
@@ -61,6 +59,14 @@ public final class Reward {
         this.pool = pool;
     }
 
+    public String path() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = net.schwarz.rotasutils.quest.objective.Objective.cleanPath(path);
+    }
+
     public Reward copy() {
         return load(save());
     }
@@ -72,6 +78,9 @@ public final class Reward {
         tag.putString("mode", mode.name());
         tag.putInt("weight", weight);
         tag.putString("pool", pool);
+        if (!path.isEmpty()) {
+            tag.putString("path", path);
+        }
         return tag;
     }
 
@@ -81,6 +90,7 @@ public final class Reward {
         reward.mode = Nbt.readEnum(tag, "mode", Mode.class, Mode.GUARANTEED);
         reward.weight = Math.max(1, tag.getInt("weight"));
         reward.pool = tag.getString("pool");
+        reward.path = net.schwarz.rotasutils.quest.objective.Objective.cleanPath(tag.getString("path"));
         return reward;
     }
 

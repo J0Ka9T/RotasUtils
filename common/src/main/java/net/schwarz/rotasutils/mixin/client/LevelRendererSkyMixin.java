@@ -11,7 +11,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Draws the eldritch invasion after the vanilla sky in each dimension. */
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererSkyMixin {
     @Inject(method = "renderSky", at = @At("TAIL"))
@@ -27,15 +26,12 @@ public abstract class LevelRendererSkyMixin {
                 camera.getFluidInCamera() != FogType.NONE);
     }
 
-    /**
-     * Blocky clouds read as black boxes floating across the eclipsed sky, so they dissolve out as the
-     * sky darkens and stay away until it closes again.
-     */
     @Inject(method = "renderClouds", at = @At("HEAD"), cancellable = true)
     private void rotasutils$hideClouds(PoseStack poseStack, Matrix4f projectionMatrix, float partialTick,
                                        double camX, double camY, double camZ, CallbackInfo ci) {
         if (net.schwarz.rotasutils.client.render.EldritchSkyLetterbox.hidesClouds(partialTick)
-                || net.schwarz.rotasutils.client.render.SkyClashRenderer.hidesClouds(partialTick)) {
+                || net.schwarz.rotasutils.client.render.SkyClashRenderer.hidesClouds(partialTick)
+                || net.schwarz.rotasutils.client.cinematic.Stargun.hidesClouds(partialTick)) {
             ci.cancel();
         }
     }

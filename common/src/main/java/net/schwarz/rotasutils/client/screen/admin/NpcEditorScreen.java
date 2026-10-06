@@ -38,14 +38,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
-/**
- * NPC editor built around one plain question per page: who is this, what do they do, what do they
- * say, and who may talk to them.
- *
- * <p>Every setting is a visible field on its page, the bound mob is shown live on the left, and a
- * single Save applies the changes to the server immediately. There is no draft, review or apply
- * step to learn; the NPC Wand opens this screen straight from the mob.</p>
- */
 @Environment(EnvType.CLIENT)
 public class NpcEditorScreen extends RotasScreen {
     private static final int SIDE_W = 196;
@@ -98,10 +90,7 @@ public class NpcEditorScreen extends RotasScreen {
         this.npcId = npcId;
     }
 
-    // Layout ---------------------------------------------------------------
-
-    /** Holds an unsaved draft of this NPC: never rebuilt by a push, but warns when someone else changes it. */
-    @Override
+@Override
     protected Refresh refreshMode() {
         return Refresh.BANNER;
     }
@@ -220,7 +209,6 @@ public class NpcEditorScreen extends RotasScreen {
         int y = mainY + 10;
         labels.add(new Label("When a player right-clicks this NPC, it...", x, y, Ui.TEXT_BRIGHT));
         y += 16;
-        // Twenty roles: a compact four-column grid, with the picked role's description underneath.
         int columns = 4;
         int cardW = (w - Ui.GAP * (columns - 1)) / columns;
         int cardH = 22;
@@ -347,11 +335,21 @@ public class NpcEditorScreen extends RotasScreen {
         List<Consumer<String>> setters = List.of(draft::setGreeting, draft::setQuestAvailableLine, draft::setQuestActiveLine,
                 draft::setQuestReadyLine, draft::setBlockedLine, draft::setFarewell);
         int rowH = Math.max(29, Math.min(42, (mainH - 72) / titles.length));
+        int voiceW = Math.min(170, w / 3);
+        int textW = w - voiceW - 30;
         for (int i = 0; i < titles.length; i++) {
+            String key = NpcDef.VOICE_KEYS[i];
             labels.add(new Label(titles[i], x, y, Ui.TEXT_BRIGHT));
-            box(x, y + 11, w, values[i], 256, setters.get(i));
+            box(x, y + 11, textW, values[i], 256, setters.get(i));
+            labels.add(new Label(i == 0 ? "Voice sound id  (blank = silent)" : "Voice sound id", x + textW + 4, y, Ui.TEXT_MUTED));
+            box(x + textW + 4, y + 11, voiceW, draft.voice(key), 100, sound -> draft.setVoice(key, sound));
+            addRenderableWidget(Ui.button(net.schwarz.rotasutils.client.screen.Ui.text(">"), button -> playVoice(key))
+                    .tooltip(net.minecraft.client.gui.components.Tooltip.create(Ui.text("Play this voice")))
+                    .bounds(x + w - 22, y + 10, 22, 20).build());
             y += rowH;
         }
+        labels.add(new Label("e.g. minecraft:entity.villager.yes - any sound from a resource pack works. Pitch is on the Rules page.",
+                x, y - 4, Ui.TEXT_MUTED));
         addRenderableWidget(Ui.primaryButton(Ui.text(L.t("rotasutils.dialogue.studio.talk.create")), button ->
                 minecraft.setScreen(new NpcInteractionScreen(draft, this, this::save)))
                 .tooltip(net.minecraft.client.gui.components.Tooltip.create(Ui.text(
@@ -399,7 +397,17 @@ public class NpcEditorScreen extends RotasScreen {
                 "Hidden",
                 () -> draft.setShowName(!draft.showName()));
         y += 38;
+        stepper(x, y, w, "Voice pitch, in %  (100 = normal)", draft.voicePitch(), 5, 25,
+                value -> draft.setVoicePitch(value));
+        y += 38;
         labels.add(new Label("NPC id: " + draft.id(), x, y, Ui.TEXT_MUTED));
+    }
+
+    private void playVoice(String key) {
+        var sound = draft.voiceSound(key);
+        if (sound != null) {
+            minecraft.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(sound, draft.voicePitch() / 100f));
+        }
     }
 
     private void buildFooter(int footerY) {
@@ -431,13 +439,10 @@ public class NpcEditorScreen extends RotasScreen {
                 .bounds(guiLeft + guiWidth - Ui.PAD - 110, footerY, 110, 22).build());
     }
 
-    // Widgets --------------------------------------------------------------
-
-    private void box(int x, int y, int w, String value, int maxLength, Consumer<String> setter) {
+private void box(int x, int y, int w, String value, int maxLength, Consumer<String> setter) {
         EditBox box = new EditBox(font, x, y, w, 18, Component.empty());
         box.setMaxLength(maxLength);
         box.setValue(value);
-        // The responder is attached after setValue so filling the box is not counted as an edit.
         box.setResponder(text -> {
             setter.accept(text);
             changed();
@@ -494,9 +499,7 @@ public class NpcEditorScreen extends RotasScreen {
         }
     }
 
-    // Actions --------------------------------------------------------------
-
-    private void save() {
+private void save() {
         CompoundTag payload = new CompoundTag();
         payload.put("npc", draft.save());
         send("save_npc", payload);
@@ -515,7 +518,6 @@ public class NpcEditorScreen extends RotasScreen {
         payload.putString("kind", kind);
         payload.putString("screen", screenKey());
         payload.putString("field", fieldKey);
-        // The server needs the NPC id to apply the new mob right away.
         payload.putString("npc", draft.id());
         ScreenRouter.rememberPending(this);
         closingForPick = true;
@@ -537,14 +539,12 @@ public class NpcEditorScreen extends RotasScreen {
         if (!fieldKey.equals("bind")) {
             return;
         }
-        // "uuid|entity type|dimension", written by WorldPicker; the server already applied it.
         String[] parts = value.split("\\|");
         setBinding(parts.length > 0 ? parts[0] : "", parts.length > 1 ? parts[1] : "", parts.length > 2 ? parts[2] : "");
         Sfx.commit();
         rebuild();
     }
 
-    /** Binding changes are live on the server already, so the saved baseline follows them too. */
     private void setBinding(String uuid, String type, String dimension) {
         draft.setEntityUuid(uuid);
         draft.setEntityType(type);
@@ -572,9 +572,7 @@ public class NpcEditorScreen extends RotasScreen {
         });
     }
 
-    // Quest list -----------------------------------------------------------
-
-    private void renderQuestRow(GuiGraphics graphics, int index, int x, int y, int rowWidth, int rowHeight, boolean hovered) {
+private void renderQuestRow(GuiGraphics graphics, int index, int x, int y, int rowWidth, int rowHeight, boolean hovered) {
         String questId = questIds.get(index);
         QuestDef quest = ClientState.quest(questId);
         int w = rowWidth - 6;
@@ -597,9 +595,7 @@ public class NpcEditorScreen extends RotasScreen {
         rebuild();
     }
 
-    // Trade list -----------------------------------------------------------
-
-    private void renderTradeRow(GuiGraphics graphics, int index, int x, int y, int rowWidth, int rowHeight, boolean hovered) {
+private void renderTradeRow(GuiGraphics graphics, int index, int x, int y, int rowWidth, int rowHeight, boolean hovered) {
         if (index >= draft.trades().size()) {
             return;
         }
@@ -646,9 +642,7 @@ public class NpcEditorScreen extends RotasScreen {
         minecraft.setScreen(new TradeEditScreen(draft.trades(), index, this));
     }
 
-    // Rendering ------------------------------------------------------------
-
-    @Override
+@Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         lastClickX = mouseX;
         if (page == Page.ROLE && button == 0) {
@@ -857,7 +851,6 @@ public class NpcEditorScreen extends RotasScreen {
         };
     }
 
-    /** Artisan levels follow the season tiers: every level, or the last level of tier A, B, C or D. */
     private static final int[] CRAFTER_LEVELS = {0, 4, 9, 14, 19};
 
     private String crafterJob() {
@@ -919,7 +912,6 @@ public class NpcEditorScreen extends RotasScreen {
                 }));
     }
 
-    /** The bound mob if it is loaded near this client; searched at most twice a second. */
     private LivingEntity boundEntity() {
         if (!draft.bound() || minecraft == null || minecraft.level == null) {
             return null;

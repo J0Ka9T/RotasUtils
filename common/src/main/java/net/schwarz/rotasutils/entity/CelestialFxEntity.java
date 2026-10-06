@@ -17,17 +17,6 @@ import net.schwarz.rotasutils.registry.RotasRegistry;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-/**
- * One visual of the Celestial school (Iron's Spells). The entity only exists so a renderer has
- * something to draw and so moving spells (bolts, lances) have a body; everything the client draws is
- * derived from a handful of synced values plus the owner's live pose. What a hit <em>does</em> is not
- * decided here: the Iron's Spells module installs {@link #behaviour}, so this class, and the renderer,
- * load on servers and clients that do not have Iron's Spells.
- *
- * <p>Motion is analytic: a bolt is {@code origin + dir * SPEED * t}, a lance a quadratic Bezier from its
- * rack point to the target. The server hit-tests the swept segment each tick; the client renders the
- * same curve at sub-tick precision, so trails are perfectly smooth.</p>
- */
 public class CelestialFxEntity extends Entity {
     public static final int BOLT = 0;
     public static final int IMPACT = 1;
@@ -40,7 +29,6 @@ public class CelestialFxEntity extends Entity {
     public static final int CHARGE = 8;
     public static final int SUPERNOVA = 9;
 
-    // Abyss school (darkness). Kinds >= 100 are handled by abyssBehaviour and AbyssFxRenderer.
     public static final int SHADOW_BOLT = 100;
     public static final int VOID_BURST = 101;
     public static final int GRASP = 102;
@@ -57,9 +45,8 @@ public class CelestialFxEntity extends Entity {
         return kind >= 100;
     }
 
-    /** Effects that ride on their owner and die with them. */
     public static boolean followsOwner(int kind) {
-        return kind == COMET || kind == WARD || kind == CHARGE || kind == RAY
+        return (kind >= 20 && kind <= 29 && kind != 22 && kind != 24) || kind == COMET || kind == WARD || kind == CHARGE || kind == RAY
                 || kind == VOID_RAY || kind == VEIL || kind == OBLIVION_CHARGE;
     }
 
@@ -69,7 +56,6 @@ public class CelestialFxEntity extends Entity {
 
     public static final float BOLT_SPEED = 1.9f;
 
-    /** What hits and ticks do on the server. Installed by the Iron's Spells module; null = visual only. */
     public interface Behaviour {
         void impact(CelestialFxEntity fx, Vec3 at, @Nullable Entity hit);
 
@@ -90,20 +76,14 @@ public class CelestialFxEntity extends Entity {
     private static final EntityDataAccessor<Integer> LIFE = SynchedEntityData.defineId(CelestialFxEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DELAY = SynchedEntityData.defineId(CelestialFxEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> RADIUS = SynchedEntityData.defineId(CelestialFxEntity.class, EntityDataSerializers.FLOAT);
-    /** Target point (lance, bolt direction as a unit vector). */
     private static final EntityDataAccessor<Vector3f> TARGET = SynchedEntityData.defineId(CelestialFxEntity.class, EntityDataSerializers.VECTOR3);
-    /** Origin of an analytic path. */
     private static final EntityDataAccessor<Vector3f> ORIGIN = SynchedEntityData.defineId(CelestialFxEntity.class, EntityDataSerializers.VECTOR3);
 
-    /** Server only: set by the spell that made this. */
     public float damage;
     public int spellLevel;
-    /** Server only: a channelled effect (the ray) dies when its spell stops refreshing it. */
     private int keepAliveUntil = Integer.MAX_VALUE;
-    /** Client only: recent owner positions for the comet trail. */
     public final Vec3[] trail = new Vec3[14];
     public int trailCount;
-    /** Client only: the ground height under the effect, found once by the renderer. */
     public double clientGroundY = Double.NaN;
 
     public CelestialFxEntity(EntityType<? extends CelestialFxEntity> type, Level level) {
@@ -112,7 +92,6 @@ public class CelestialFxEntity extends Entity {
         this.noCulling = true;
     }
 
-    /** A new effect of {@code kind}, placed at {@code pos}, living {@code life} ticks. */
     public static CelestialFxEntity create(Level level, int kind, @Nullable Entity owner, Vec3 pos, int life, float radius) {
         CelestialFxEntity fx = new CelestialFxEntity(RotasRegistry.CELESTIAL_FX.get(), level);
         fx.setPos(pos);
@@ -167,26 +146,20 @@ public class CelestialFxEntity extends Entity {
         return id < 0 ? null : level().getEntity(id);
     }
 
-    /** Keeps a channelled effect alive for a few more ticks; the spell calls this every cast tick. */
     public void refresh() {
         keepAliveUntil = tickCount + 4;
     }
 
-    // Paths --------------------------------------------------------------------------------------
-
-    /** Bolt position {@code age} ticks after launch: straight and fast along the synced direction. */
-    public Vec3 boltPos(float age) {
+public Vec3 boltPos(float age) {
         return originPos().add(targetPos().scale(BOLT_SPEED * age));
     }
 
-    /** Lance flight fraction 0..1 at {@code age}; eased in so lances leave slowly and strike hard. */
     public float lanceU(float age) {
         float flight = Math.max(1, life() - delayTicks());
         float u = Mth.clamp((age - delayTicks()) / flight, 0f, 1f);
         return u * u * (1.6f - 0.6f * u);
     }
 
-    /** Lance position on its arc: up and out from the rack point, then down onto the target. */
     public Vec3 lancePos(float u) {
         Vec3 p0 = originPos();
         Vec3 p2 = targetPos();
@@ -199,9 +172,7 @@ public class CelestialFxEntity extends Entity {
         return p0.scale(a * a).add(p1.scale(2 * a * u)).add(p2.scale(u * u));
     }
 
-    // Tick ---------------------------------------------------------------------------------------
-
-    @Override
+@Override
     public void tick() {
         super.tick();
         int kind = kind();

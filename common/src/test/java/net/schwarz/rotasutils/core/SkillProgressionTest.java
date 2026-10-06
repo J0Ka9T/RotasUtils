@@ -61,7 +61,6 @@ class SkillProgressionTest {
         var first = new SkillNode("first", "job"); first.exclusiveWith().add("second");
         var second = new SkillNode("second", "job");
         var nodes = java.util.Map.of(first.id(), first, second.id(), second);
-        // Graph assembly materializes the declaration on the counterpart node.
         net.schwarz.rotasutils.skill.SkillRules.mirrorExclusives(nodes);
         var progress = new PlayerProgress(UUID.randomUUID()); progress.setSkillRank(first.id(), 1);
         assertNotNull(net.schwarz.rotasutils.skill.SkillRules.connectionsSatisfied(nodes::get, progress, second));

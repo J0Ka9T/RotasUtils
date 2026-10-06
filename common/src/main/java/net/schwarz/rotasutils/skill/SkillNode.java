@@ -11,7 +11,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** One node inside a skill category. */
 public final class SkillNode {
     private String id;
     private String categoryId;
@@ -25,7 +24,6 @@ public final class SkillNode {
 
     private int maxRank = 1;
     private int costPerRank = 1;
-    /** Extra cost added for each rank beyond the first, for escalating ranked skills. */
     private int costIncrement;
     private int minLevel = 1;
     private int levelIncrement;
@@ -38,7 +36,6 @@ public final class SkillNode {
     private final List<Requirement> requirements = new ArrayList<>();
     private final List<SkillConnection> connections = new ArrayList<>();
     private final Set<String> exclusiveWith = new LinkedHashSet<>();
-    /** Per-rank description lines shown in the rank comparison tooltip. */
     private final List<String> rankDescriptions = new ArrayList<>();
 
     public SkillNode(String id, String categoryId) {
@@ -134,7 +131,6 @@ public final class SkillNode {
         this.costIncrement = Math.max(0, costIncrement);
     }
 
-    /** Point cost to go from {@code currentRank} to {@code currentRank + 1}. */
     public int costForRank(int currentRank) {
         return (int) Math.min(Integer.MAX_VALUE, (long) costPerRank() + (long) Math.max(0, costIncrement) * Math.max(0, currentRank));
     }

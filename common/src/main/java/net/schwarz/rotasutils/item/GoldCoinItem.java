@@ -16,10 +16,6 @@ import net.minecraft.world.level.Level;
 
 import java.util.List;
 
-/**
- * Gold coins. One stack holds any amount ({@link GoldCoins}); dropping one coin stack onto another in an
- * inventory merges them, and using a stack puts all of it in the wallet.
- */
 public final class GoldCoinItem extends Item {
     public GoldCoinItem(Properties properties) { super(properties); }
 
@@ -47,7 +43,6 @@ public final class GoldCoinItem extends Item {
         tooltip.add(Component.translatable("rotasutils.coin.hint").withStyle(ChatFormatting.GRAY));
     }
 
-    /** Coins on the cursor clicked onto coins in a slot join that stack. */
     @Override
     public boolean overrideOtherStackedOnMe(ItemStack stack, ItemStack other, Slot slot, ClickAction action,
                                             Player player, SlotAccess access) {

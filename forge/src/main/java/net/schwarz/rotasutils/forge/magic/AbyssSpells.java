@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** The eight Abyss (darkness) spells. Same plumbing as the Celestial ones; see CelestialSpells.Base. */
 final class AbyssSpells {
     private AbyssSpells() {
     }
@@ -45,7 +44,6 @@ final class AbyssSpells {
         }
     }
 
-    // 1 -----------------------------------------------------------------------------------------
     static final class ShadowBolt extends Dark {
         ShadowBolt() {
             super("shadow_bolt", CastType.INSTANT, SpellRarity.COMMON, 10, 1.0, 12, 2, 7, 1, 0);
@@ -67,7 +65,6 @@ final class AbyssSpells {
         }
     }
 
-    // 2 -----------------------------------------------------------------------------------------
     static final class UmbralGrasp extends Dark {
         UmbralGrasp() {
             super("umbral_grasp", CastType.INSTANT, SpellRarity.UNCOMMON, 8, 12, 35, 5, 5, 1, 0);
@@ -98,7 +95,6 @@ final class AbyssSpells {
         }
     }
 
-    // 3 -----------------------------------------------------------------------------------------
     static final class VoidRay extends Dark {
         static final float RANGE = 26f;
         private static final Map<UUID, CelestialFxEntity> BEAMS = new ConcurrentHashMap<>();
@@ -153,7 +149,6 @@ final class AbyssSpells {
         }
     }
 
-    // 4 -----------------------------------------------------------------------------------------
     static final class EclipseNova extends Dark {
         EclipseNova() {
             super("eclipse_nova", CastType.INSTANT, SpellRarity.RARE, 8, 14, 40, 5, 6, 1, 0);
@@ -176,7 +171,6 @@ final class AbyssSpells {
 
         @Override
         public void onCast(Level level, int spellLevel, LivingEntity caster, CastSource source, MagicData data) {
-            // The eye opens, looks, and blinks at tick 26; the blast happens on the blink (AbyssBehaviour).
             spawn(level, CelestialFxEntity.ECLIPSE, caster, caster.position(), 46, radius(spellLevel), damage(spellLevel, caster), spellLevel);
             sound(level, caster.position(), SoundEvents.WARDEN_HEARTBEAT, 2f, 0.5f);
             sound(level, caster.position(), SoundEvents.SCULK_SHRIEKER_SHRIEK, 1f, 0.5f);
@@ -184,7 +178,6 @@ final class AbyssSpells {
         }
     }
 
-    // 5 -----------------------------------------------------------------------------------------
     static final class ShadeStep extends Dark {
         ShadeStep() {
             super("shade_step", CastType.INSTANT, SpellRarity.UNCOMMON, 6, 6, 25, 3, 4, 1, 0);
@@ -218,7 +211,6 @@ final class AbyssSpells {
         }
     }
 
-    // 6 -----------------------------------------------------------------------------------------
     static final class AbyssalPit extends Dark {
         AbyssalPit() {
             super("abyssal_pit", CastType.INSTANT, SpellRarity.EPIC, 6, 25, 70, 8, 2, 1, 0);
@@ -249,7 +241,6 @@ final class AbyssSpells {
         }
     }
 
-    // 7 -----------------------------------------------------------------------------------------
     static final class NightVeil extends Dark {
         NightVeil() {
             super("night_veil", CastType.INSTANT, SpellRarity.RARE, 5, 30, 40, 5, 1, 1, 0);
@@ -284,7 +275,6 @@ final class AbyssSpells {
         }
     }
 
-    // 8 -----------------------------------------------------------------------------------------
     static final class Oblivion extends Dark {
         private static final Map<UUID, CelestialFxEntity> CHARGES = new ConcurrentHashMap<>();
 

@@ -12,15 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Tints the finished vanilla fog colour toward the eldritch palette.
- *
- * <p>Injected at the end of {@code setupColor}, after vanilla mixed the biome and sky colours and
- * after Forge let mods veto the result. The real fog colour is tinted - not only the shader copy -
- * because vanilla reuses it as the world clear colour, and that is the horizon band the player
- * sees underneath the sky. Fog distance, the darkness effect and underwater fog are untouched,
- * and nothing happens while the event is inactive.</p>
- */
 @Mixin(FogRenderer.class)
 public abstract class FogRendererEldritchMixin {
     @Shadow

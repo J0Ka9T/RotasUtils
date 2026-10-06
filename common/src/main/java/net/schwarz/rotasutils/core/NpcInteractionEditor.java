@@ -3,7 +3,6 @@ package net.schwarz.rotasutils.core;
 import com.google.gson.*;
 import java.util.*;
 
-/** Defaults for the same bounded schema used by the server conversation parser. */
 public final class NpcInteractionEditor {
     private NpcInteractionEditor() {}
     private static JsonObject object(String json) { return JsonParser.parseString(json).getAsJsonObject(); }

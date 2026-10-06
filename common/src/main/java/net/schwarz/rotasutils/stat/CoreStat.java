@@ -8,17 +8,13 @@ import net.schwarz.rotasutils.server.CombatStats;
 
 import java.util.List;
 
-/**
- * The four character stats. Fixed in code, tuned by {@link StatRules}.
- *
- * <p>Each point adds the same percent, so the Stats screen can say exactly what a point does and the
- * server applies exactly that. Allocations are stored in the player's RPG profile under {@link #id()}.</p>
- */
 public enum CoreStat {
-    STR("rotas:str", "STR พลัง", "ตีแรงขึ้น ทั้งอาวุธและมือเปล่า", Items.IRON_SWORD, 0xFFE2695C),
-    VIT("rotas:vit", "VIT ความอึด", "พลังชีวิตสูงสุดมากขึ้น", Items.GOLDEN_APPLE, 0xFF86C05C),
-    INT("rotas:int", "INT เวทมนตร์", "เวทมนตร์แรงขึ้น", Items.ENCHANTED_BOOK, 0xFFB08CE8),
-    AGI("rotas:agi", "AGI ความไว", "โจมตีเร็วขึ้นและหลบการโจมตีได้", Items.FEATHER, 0xFF7FD1C7);
+    STR("rotas:str", "พลังโจมตี (STR)", "ตีแรงขึ้น ทั้งอาวุธและมือเปล่า", Items.IRON_SWORD, 0xFFE2695C),
+    VIT("rotas:vit", "พลังชีวิต (VIT)", "เลือดเยอะขึ้น ทนขึ้น และฟื้นเลือดเองได้", Items.GOLDEN_APPLE, 0xFF86C05C),
+    INT("rotas:int", "พลังเวทย์ (INT)", "เวทมนตร์แรงขึ้นและลดคูลดาวน์", Items.ENCHANTED_BOOK, 0xFFB08CE8),
+    AGI("rotas:agi", "ความเร็ว (AGI)", "ตีไวขึ้นและหลบการโจมตีได้", Items.FEATHER, 0xFF7FD1C7),
+    DEX("rotas:dex", "คริติคอล (DEX)", "ตีติดคริบ่อยขึ้น แรงขึ้น และเจาะเกราะ", Items.BOW, 0xFFE8C45C),
+    LUK("rotas:luk", "โชค (LUK)", "ดรอปของและการ์ดดีขึ้น ตกปลาดีขึ้น และมีคริเล็กน้อย", Items.RABBIT_FOOT, 0xFF6FCF8E);
 
     public static final List<CoreStat> ALL = List.of(values());
 
@@ -51,19 +47,35 @@ public enum CoreStat {
         return null;
     }
 
-    /** What one point gives. The amount of each effect is {@code perPoint * points}. */
     public List<CharacterStat.Effect> effects(StatRules rules) {
         return switch (this) {
             case STR -> List.of(percent("minecraft:generic.attack_damage", rules.strAttack, "พลังโจมตี"));
-            case VIT -> List.of(percent("minecraft:generic.max_health", rules.vitHealth, "พลังชีวิต"));
-            case INT -> List.of(percent(CombatStats.MAGIC_POWER, rules.intMagic, "พลังเวทย์"));
+            case VIT -> List.of(percent("minecraft:generic.max_health", rules.vitHealth, "พลังชีวิต"),
+                    flat(CombatStats.DEFENSE, rules.vitDefense, "เกราะ"),
+                    new CharacterStat.Effect(CombatStats.REGEN, rules.vitRegen, CharacterStat.Operation.ADD,
+                            true, "ฟื้นเลือด/วินาที", 0));
+            case INT -> List.of(percent(CombatStats.MAGIC_POWER, rules.intMagic, "พลังเวทย์"),
+                    chance(CombatStats.COOLDOWN_REDUCTION, rules.intCdr, "ลดคูลดาวน์"));
             case AGI -> List.of(percent("minecraft:generic.attack_speed", rules.agiAttackSpeed, "ความเร็วโจมตี"),
                     new CharacterStat.Effect(CombatStats.EVASION, rules.agiDodge, CharacterStat.Operation.ADD,
                             true, "โอกาสหลบ", 0));
+            case DEX -> List.of(chance(CombatStats.CRIT_CHANCE, rules.dexCrit, "โอกาสคริติคอล"),
+                    chance(CombatStats.CRIT_DAMAGE, rules.dexCritDamage, "ดาเมจคริติคอล"),
+                    chance(CombatStats.ARMOR_PEN, rules.dexArmorPen, "เจาะเกราะ"));
+            case LUK -> List.of(flat("minecraft:generic.luck", rules.lukLuck, "โชค"),
+                    chance(CombatStats.CRIT_CHANCE, rules.lukCrit, "โอกาสคริติคอล"),
+                    chance(CombatStats.DROP_RATE, rules.lukDropRate, "อัตราดรอป"));
         };
     }
 
-    /** Player-facing text for {@code points} in this stat, e.g. "+20% พลังโจมตี". */
+    private static CharacterStat.Effect flat(String attribute, double perPoint, String label) {
+        return new CharacterStat.Effect(attribute, perPoint, CharacterStat.Operation.ADD, false, label, 0);
+    }
+
+    private static CharacterStat.Effect chance(String attribute, double perPoint, String label) {
+        return new CharacterStat.Effect(attribute, perPoint, CharacterStat.Operation.ADD, true, label, 0);
+    }
+
     public String describe(StatRules rules, int points) {
         StringBuilder text = new StringBuilder();
         for (CharacterStat.Effect effect : effects(rules)) {

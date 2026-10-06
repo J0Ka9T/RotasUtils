@@ -1,0 +1,307 @@
+{
+  "trade": "rancher",
+  "job": "rancher",
+  "station": "rotasutils:tannery",
+  "slotLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "recipes": [
+    {
+      "id": "smoked_beef",
+      "level": 1,
+      "seconds": 50,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:beef|#forge:raw_beef",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_beef",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "smoked_porkchop",
+      "level": 1,
+      "seconds": 50,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:porkchop|#forge:raw_pork",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_porkchop",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "smoked_chicken",
+      "level": 2,
+      "seconds": 50,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:chicken|#forge:raw_chicken",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_chicken",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "smoked_mutton",
+      "level": 2,
+      "seconds": 50,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:mutton|#forge:raw_mutton",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_mutton",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "smoked_rabbit",
+      "level": 3,
+      "seconds": 50,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:rabbit",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_rabbit",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "leather_boots",
+      "level": 2,
+      "seconds": 50,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:leather",
+          "count": 4,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:leather_boots",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "leather_helmet",
+      "level": 2,
+      "seconds": 60,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:leather",
+          "count": 5,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:leather_helmet",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "leather_leggings",
+      "level": 3,
+      "seconds": 70,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:leather",
+          "count": 7,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:leather_leggings",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "leather_chestplate",
+      "level": 4,
+      "seconds": 80,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:leather",
+          "count": 8,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:leather_chestplate",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "lead",
+      "level": 2,
+      "seconds": 40,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:string",
+          "count": 4,
+          "graded": true
+        },
+        {
+          "item": "minecraft:slime_ball",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:lead",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "saddle",
+      "level": 3,
+      "seconds": 90,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:leather",
+          "count": 5,
+          "graded": true
+        },
+        {
+          "item": "minecraft:iron_ingot",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:saddle",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "leather_horse_armor",
+      "level": 5,
+      "seconds": 100,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:leather",
+          "count": 7,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:leather_horse_armor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "golden_horse_armor",
+      "level": 9,
+      "seconds": 200,
+      "secret": true,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:leather",
+          "count": 7,
+          "graded": true
+        },
+        {
+          "item": "minecraft:gold_ingot",
+          "count": 7
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:golden_horse_armor",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

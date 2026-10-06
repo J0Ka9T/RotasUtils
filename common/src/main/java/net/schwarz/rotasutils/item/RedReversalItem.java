@@ -10,30 +10,27 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.schwarz.rotasutils.ability.AbilityDefinition;
 import net.schwarz.rotasutils.ability.AbilityManager;
 import net.schwarz.rotasutils.ability.RedReversalAbility;
 
 import java.util.List;
 
-/**
- * The entry point to Red Reversal and nothing more: a right click asks the {@link AbilityManager} to
- * begin the ability. Validation, cooldown, targeting, the timeline and the cutscene all live there.
- */
 public class RedReversalItem extends Item {
-    private final RedReversalAbility ability;
+    private final AbilityDefinition ability;
     private final String desc;
 
     public RedReversalItem(Properties properties) {
         this(properties, RedReversalAbility.INSTANCE, "item.rotasutils.red_reversal.desc");
     }
 
-    public RedReversalItem(Properties properties, RedReversalAbility ability, String desc) {
+    public RedReversalItem(Properties properties, AbilityDefinition ability, String desc) {
         super(properties);
         this.ability = ability;
         this.desc = desc;
     }
 
-    public RedReversalAbility ability() {
+    public AbilityDefinition ability() {
         return ability;
     }
 

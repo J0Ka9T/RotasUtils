@@ -40,17 +40,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Inventory-backed Character Hub used by RotasCommu.
- *
- * <p>The left side is the character medallion: the painted compass disc holding the player model,
- * five equipment sockets on its left arc, Curios accessories on its right arc, the level above it
- * and the name, job and sub-job under it. The right side is the painted card: STATUS (vitals,
- * stats, crafting, wallet) above the bag grid and hotbar on the BAG tab, or the JOB/SUB/PARTY/QUEST
- * workspace, with pennant tabs hanging over its top edge. Minecraft remains authoritative for
- * vanilla slots; Curios remains authoritative for accessories; Pufferfish remains authoritative for
- * character skills.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class RotasInventoryRenderer {
     public enum ActionType {
@@ -78,24 +67,18 @@ public final class RotasInventoryRenderer {
     private record CurioVisual(CuriosClientCompat.Entry entry, Rect rect) {
     }
 
-    /** An occupied vanilla slot under the mouse, plus how the inspection panel should describe it. */
     private record HoverTarget(ItemStack stack, String subtitle, String hint) {
     }
 
-    /** One description row: its text and the colour the vanilla tooltip styled it with. */
     private record DescriptionLine(String text, int color) {
     }
 
-    // ---- Painted assets ------------------------------------------------------------------------
-    // Cropped from the designer's sheet at roughly two texels per GUI pixel and drawn with linear
-    // filtering, so the grain survives any GUI scale without nearest-neighbour shimmer.
     private static final ResourceLocation TEX_DISC = new ResourceLocation("rotasutils", "textures/gui/hub/disc.png");
     private static final ResourceLocation TEX_SOCKET = new ResourceLocation("rotasutils", "textures/gui/hub/socket.png");
     private static final ResourceLocation TEX_CARD = new ResourceLocation("rotasutils", "textures/gui/hub/card.png");
     private static final ResourceLocation TEX_SLOT = new ResourceLocation("rotasutils", "textures/gui/hub/slot.png");
     private static final ResourceLocation TEX_TAB = new ResourceLocation("rotasutils", "textures/gui/hub/tab.png");
     private static final int DISC_TEX = 512;
-    /** The paper face's radius as a fraction of the disc texture; the rest is the outer halo line. */
     private static final float DISC_FILL_RATIO = 490f / 512f;
     private static final int SOCKET_TEX = 96;
     private static final int CARD_TEX_W = 730;
@@ -106,13 +89,11 @@ public final class RotasInventoryRenderer {
     private static final int TAB_TEX_H = 64;
     private static final Map<ResourceLocation, AbstractTexture> SMOOTHED = new HashMap<>();
 
-    // ---- Vitals -------------------------------------------------------------------------------
     private static final int HEALTH = 0xFFD8756E;
     private static final int FOOD = 0xFFE0A960;
     private static final int SPELL = 0xFF8FA9C4;
     private static final int BAR_TRACK = 0xFFF8EDD9;
 
-    // ---- Ink and controls, sampled from the painted assets -------------------------------------
     private static final int INK_LINE = 0xFF997956;
     private static final int CONTROL_FILL = 0xFFF8EBD7;
     private static final int LINE = 0x99D0B594;
@@ -122,52 +103,35 @@ public final class RotasInventoryRenderer {
     private static final int SLOT_HOVER_BORDER = 0xFFC5A175;
     private static final int SLOT_OCCUPIED_FILL = 0xFFF1E6D1;
     private static final int CARD_KEYLINE = 0x40B08D57;
-    /** Inspection card: one step lighter than the STATUS card so it reads as floating above it. */
     private static final int TOOLTIP_FILL = 0xFFFBF4E6;
 
-    // ---- Character medallion ----------------------------------------------------------------
     private static final int GEAR_ICON_IDLE = 0x80AA8D68;
     private static final int GEAR_ICON_HOVER = 0xFF51351F;
     private static final int GEAR_ICON_ACTIVE = 0xFFC5A175;
-    /** Name, job and level are printed over the dimmed world: light ink with a brown outline. */
     private static final int WORLD_TEXT = 0xFFFFFFFF;
     private static final int WORLD_TEXT_MUTED = 0xFFF1E6D1;
     private static final int WORLD_OUTLINE = 0xB0654A30;
 
-    /** Pennant tabs hanging over the card's top-right corner (roomy card). */
     public static final int TAB_W = 34;
     public static final int TAB_H = 32;
-    /** How far the hanging tabs rise above the card's top edge. */
     public static final int TAB_OVERHANG = 17;
-    /** Tab strip above a narrow card, where hanging tabs would cover the STATUS title. */
     public static final int TAB_STRIP_H = 18;
     public static final int TAB_GAP = 2;
     private static final int TAB_DISABLED_TEXT = 0xFF9B8062;
     private static final int TAB_ACTIVE_FILL = 0xFFD6C09A;
     private static final int HOVER_FADE_MS = 140;
 
-    /** Gap between the character pane and the card. */
     public static final int PANE_GUTTER = 8;
-    /** Height of the full-size STATUS block (title, two vitals, stat chip, four stat rows). */
     public static final int STATUS_FULL_H = 136;
-    /** Height of the compact STATUS block (title + wallet, two vitals, 2x2 stats). */
     public static final int STATUS_COMPACT_H = 76;
     public static final int STATS_CHIP_H = 14;
-    /** Width of the three withdrawal buttons including their gaps. */
     public static final int WALLET_BUTTONS_W = 74;
-    /** Room left of the withdrawal buttons for the coin and balance. */
     public static final int WALLET_BALANCE_W = 58;
-    /** "LV." and the two-digit level, stacked above the disc and overlapping its rim. */
     public static final int LEVEL_BADGE_H = 18;
-    /** Gap between the disc and the name block under it. */
     public static final int NAME_GAP = 6;
-    /** Name (double size), worn title, job, "sub-job (LV)" and the EXP bar under the disc. */
     public static final int NAME_BLOCK_H = 58;
-    /** Name, worn title and "job LV" on a compact hub. */
     public static final int NAME_BLOCK_COMPACT_H = 32;
-    /** Room right of the disc for the first Curios arc. */
     public static final int CURIO_RESERVE = 30;
-    /** Curios cell size and the extra room each additional arc needs. */
     private static final int CURIO_SIZE = 18;
     private static final int CURIO_RING_STEP = CURIO_SIZE + 4;
     private static final int EXP_BAR_W = 120;
@@ -175,7 +139,6 @@ public final class RotasInventoryRenderer {
     private static final int[] WITHDRAW_AMOUNTS = {10, 100, 1000};
     private static final int[] WITHDRAW_WIDTHS = {20, 24, 24};
 
-    /** Equipment sockets in reading order down the medallion's left arc. */
     private static final int SOCKET_HEAD = 0;
     private static final int SOCKET_CHEST = 1;
     private static final int SOCKET_LEGS = 2;
@@ -194,17 +157,12 @@ public final class RotasInventoryRenderer {
             "necklace", new ResourceLocation("curios", "textures/slot/empty_necklace_slot.png"),
             "ring", new ResourceLocation("curios", "textures/slot/empty_ring_slot.png"));
 
-    /** Current hub tab, captured every frame; the tooltip mixin runs outside InventoryScreenMixin. */
     private static CharacterHubTab activeTab = CharacterHubTab.BAG;
-    /** Scroll offsets for the two Character Hub lists that do not use a vanilla container widget. */
     private static int partyScroll;
     private static int questScroll;
-    /** Last computed layout; slot hit-testing asks for it once per slot per frame. */
     private static Layout cachedLayout;
     private static ItemStack coinStack;
 
-    // One 140ms ramp tracks the currently hovered interactive element. Re-keying restarts it, so
-    // responses stay fast and subtle without bouncing or particles.
     private static String hoverKey = "";
     private static long hoverStartMillis;
 
@@ -217,8 +175,6 @@ public final class RotasInventoryRenderer {
     }
 
     public static int targetWidth(int screenWidth) {
-        // Never return a width larger than the GUI-scaled viewport. The previous hard minimum of
-        // 520 clipped both sides whenever GUI scale reduced the logical width below that value.
         int margin = screenWidth < 540 ? UiSpacing.SMALL : UiSpacing.SECTION;
         int available = Math.max(1, screenWidth - margin * 2);
         int preferred = screenWidth >= 780 ? screenWidth - 190 : screenWidth - 56;
@@ -236,26 +192,15 @@ public final class RotasInventoryRenderer {
         return layout(width, height, 0);
     }
 
-    /**
-     * Hub geometry for {@code curioCount} accessories. Every Curios arc past the first reserves its
-     * own room right of the disc, so the disc shrinks instead of the outer arc sliding under the card.
-     */
     public static Layout layout(int width, int height, int curioCount) {
         width = Math.max(1, width);
         height = Math.max(1, height);
 
-        // ---- Card (right) ----------------------------------------------------------------
-        // The card never gets narrower than nine 18px slots plus padding; the medallion takes
-        // whatever width is left, so it shrinks before the bag does.
         int minCardW = 9 * 18 + 8 * 2 + 2 * 8;
-        // A narrow hub still gives the card ~300px (readable vitals, 27px slots) before the medallion.
         int cardW = Math.max(1, Math.min(width - PANE_GUTTER - 1,
                 Math.max(Math.max(minCardW, width * 55 / 100), Math.min(300, width - 148))));
         int rightX = width - cardW;
         int leftPane = Math.max(1, rightX - PANE_GUTTER);
-        // Pennant tabs hang over the card's top-right corner when the card is wide enough to keep
-        // them clear of the STATUS title and tall enough for the full STATUS block; otherwise a
-        // plain strip of tabs sits above the card.
         int tabRow = TAB_W * 5 + TAB_GAP * 4;
         boolean hangingTabs = cardW - 12 - tabRow >= 130
                 && height - TAB_OVERHANG >= 24 + STATUS_FULL_H + 10 + 8 + 8 + 4 * 18;
@@ -265,7 +210,6 @@ public final class RotasInventoryRenderer {
         int tabX;
         int panelY = hangingTabs ? TAB_OVERHANG : TAB_STRIP_H + 2;
         int panelH = Math.max(1, height - panelY);
-        // JOB/SUB/PARTY/QUEST headers drop below the hanging tabs.
         int contentShift = hangingTabs ? tabH - TAB_OVERHANG + 4 : 0;
 
         int gap = cardW >= 300 ? 4 : 2;
@@ -282,14 +226,10 @@ public final class RotasInventoryRenderer {
         int slotBox = Math.max(16, Math.min(34, Math.min(byWidth, byHeight)));
         int spacing = slotBox + gap;
         int gridW = slotBox * 9 + gap * 8;
-        // Everything in the card hangs off the bag's columns: the same margin left, right, top and
-        // bottom; titles and bars start on the bag's left edge; crafting and the wallet end on its right.
         int side = Math.max(pad, (cardW - gridW) / 2);
         int needed = status + (compact ? 6 : 10) + slotBox * 4 + gap * 2 + hotbarGap;
         int vPad = Math.max(pad, Math.min(side, (panelH - needed) / 2));
         if (!compact) {
-            // The roomy card hugs its content (STATUS, then the bag straight under it) and is
-            // centred in the height it was given, instead of pooling empty paper above the bag.
             int available = panelH;
             panelH = Math.min(available, needed + vPad * 2);
             panelY += (available - panelH) / 2;
@@ -303,20 +243,14 @@ public final class RotasInventoryRenderer {
         int cardRight = gridX + gridW;
         tabX = hangingTabs ? cardRight - tabRow : rightX + 8;
 
-        // Crafting sits on the bag's columns: the 2x2 over columns 6-7, the sparkle over column 8
-        // and the result over column 9, with the bag's own cell size and pitch.
         int craftBox = slotBox;
         int craftX = gridX + spacing * 5;
         int resultX = gridX + spacing * 8;
-        // Below the title + wallet row on a compact card, below the hanging tabs on a roomy one.
         int craftY = compact ? statusY + 18 : hangingTabs ? tabY + tabH + 8 : statusY;
         int resultY = craftY + spacing / 2;
-        // Wallet: level with the last stat row on a full card; on the title row of a compact one.
         int walletY = compact ? statusY : statusY + STATUS_FULL_H - 14;
 
         int barX = gridX;
-        // The bars share their rows only with crafting; the stat rows below share theirs with the
-        // coin balance too, so they may end sooner.
         int barW = Math.max(24, compact
                 ? craftX - 8 - barX
                 : Math.min(craftX - 14 - barX, cardW * 55 / 100));
@@ -324,14 +258,11 @@ public final class RotasInventoryRenderer {
                 : Math.max(24, Math.min(barW, cardRight - WALLET_BUTTONS_W - WALLET_BALANCE_W - 8 - barX));
         int healthY = statusY + (compact ? 18 : 24);
         int spellY = healthY + (compact ? 19 : 23);
-        // The chip's slot; the drawn chip is only as wide as its label (see statsChipRect).
         int chipW = Math.min(barW, 112);
         int chipX = barX + barW - chipW;
         int chipY = statusY + 70;
         int statsY = compact ? spellY + 19 : statusY + 92;
 
-        // ---- Medallion (left) ------------------------------------------------------------
-        // The disc is the largest that fits beside its sockets and the Curios arc.
         int below = NAME_GAP + (compact ? NAME_BLOCK_COMPACT_H : NAME_BLOCK_H);
         int badge = compact ? 0 : LEVEL_BADGE_H;
         int diameter = Math.max(48, Math.min(236,
@@ -345,12 +276,10 @@ public final class RotasInventoryRenderer {
         float orbit = socketOrbit(diameter, socketSize);
         float step = Math.max(22.5f, (float) Math.toDegrees((socketSize + 2) / orbit));
         int reach = socketReach(diameter);
-        // The top socket may rise above the rim on a small disc; the block reserves that too.
         int rise = (int) Math.ceil(Math.sin(Math.toRadians(step * 2)) * orbit + socketSize / 2f - radius);
         int above = Math.max(badge, rise);
         int slack = Math.max(0, leftPane - (diameter + reach + curioReserve));
         int portraitCenterX = reach + radius + slack / 2;
-        // Badge, disc and name are centred as one block, so spare height splits above and below.
         int blockTop = Math.max(0, (height - above - diameter - below) / 2);
         int portraitCenterY = blockTop + above + radius;
         int nameY = portraitCenterY - radius + diameter + NAME_GAP;
@@ -374,17 +303,14 @@ public final class RotasInventoryRenderer {
                 gridX, gridY, hotbarY, slotBox, spacing);
     }
 
-    /** Width right of the disc needed by {@code count} Curios placed as {@link #curioVisuals} does. */
     private static int curioReserve(int diameter, int count) {
         return CURIO_RESERVE + Math.max(0, curioRings(diameter, count) - 1) * CURIO_RING_STEP;
     }
 
     private static float curioBaseOrbit(int diameter) {
-        // Clear of the painted halo line around the disc.
         return diameter / 2f / DISC_FILL_RATIO + CURIO_SIZE / 2f + 3;
     }
 
-    /** How many accessories one arc holds: 150 degrees centred on three o'clock. */
     private static int curioRingCapacity(int diameter, int ring) {
         float orbit = curioBaseOrbit(diameter) + ring * CURIO_RING_STEP;
         float step = (float) Math.toDegrees((CURIO_SIZE + 3) / orbit);
@@ -399,17 +325,14 @@ public final class RotasInventoryRenderer {
         return rings;
     }
 
-    /** Sockets are a fifth of the disc, as painted, but never smaller than an item plus its rim. */
     private static int socketSize(int diameter) {
         return diameter < 80 ? 18 : Math.max(22, Math.min(40, Math.round(diameter * 0.2f)));
     }
 
-    /** Socket centres orbit at 1.33x the disc radius, pushed out further if they would touch the rim. */
     private static float socketOrbit(int diameter, int socketSize) {
         return Math.max(diameter / 2f * 1.327f, diameter / 2f + socketSize / 2f + 4);
     }
 
-    /** How far the socket arc reaches left of the disc's edge. */
     private static int socketReach(int diameter) {
         int size = socketSize(diameter);
         return (int) Math.ceil(socketOrbit(diameter, size) + size / 2f - diameter / 2f) + 2;
@@ -427,15 +350,10 @@ public final class RotasInventoryRenderer {
         return l;
     }
 
-    /**
-     * The layout for the live player, including its Curios count. The inventory mixin places the
-     * vanilla slots from it and re-places them whenever it changes (an accessory granting slots).
-     */
     public static Layout currentLayout(int width, int height) {
         return cachedLayout(width, height);
     }
 
-    /** Box size around a menu slot: equipment sockets, crafting cells and bag cells differ. */
     public static int slotHitSize(Layout l, int menuIndex) {
         if ((menuIndex >= 5 && menuIndex <= 8) || menuIndex == 45) return l.socketSize();
         if (menuIndex >= 0 && menuIndex <= 4) return l.craftBox();
@@ -446,7 +364,6 @@ public final class RotasInventoryRenderer {
         return slotHitSize(cachedLayout(imageWidth, imageHeight), menuIndex);
     }
 
-    /** Offset from a box's corner to the 16px item drawn centred inside it. */
     public static int itemInset(int box) {
         return (box - 16) / 2;
     }
@@ -466,7 +383,6 @@ public final class RotasInventoryRenderer {
         Layout l = cachedLayout(width, height);
         CharacterHubModel.Snapshot model = CharacterHubModel.capture(player);
 
-        // No shared shell: the medallion and the card float over the dimmed world as two objects.
         renderCharacter(graphics, player, model, left, top, mouseX, mouseY, l);
         renderIdentity(graphics, model, left, top, l, mouseX, mouseY);
 
@@ -478,20 +394,13 @@ public final class RotasInventoryRenderer {
             case QUEST -> renderQuests(graphics, model, selectedQuestId, left, top, l, mouseX, mouseY,
                     questScroll);
         }
-        // Tabs last: the hanging pennants overlap the card's top edge.
         renderTabs(graphics, model, tab, left, top, l, mouseX, mouseY);
     }
 
-    /**
-     * The hub's custom inspection layer, drawn in place of the vanilla container tooltip so the
-     * whole screen keeps one coherent visual language. Called from the renderTooltip injection.
-     */
     public static void renderOverlay(GuiGraphics graphics, int left, int top, int width, int height,
                                      int mouseX, int mouseY) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) return;
-        // Vanilla parity: no tooltips while an item is on the cursor. The equipment sockets
-        // instead highlight the compatible slot, which is handled while rendering.
         if (!player.inventoryMenu.getCarried().isEmpty()) return;
         CharacterHubModel.Snapshot model = CharacterHubModel.capture(player);
         Layout l = cachedLayout(width, height);
@@ -499,7 +408,6 @@ public final class RotasInventoryRenderer {
         int hubRight = left + width - 8;
         int hubBottom = top + height - 8;
 
-        // Occupied vanilla slots (equipment, crafting, bag, hotbar) get the full inspection panel.
         HoverTarget target = hoveredVanillaSlot(player, l, left, top, mouseX, mouseY);
         if (target != null) {
             inspectionPanel(graphics, font, mouseX, mouseY, hubRight, hubBottom,
@@ -517,7 +425,6 @@ public final class RotasInventoryRenderer {
             return;
         }
 
-        // Empty vanilla equipment sockets introduce themselves so the medallion explains itself.
         String gearLabel = emptyGearLabel(player, l, left, top, mouseX, mouseY);
         if (gearLabel != null) {
             inspectionPanel(graphics, font, mouseX, mouseY, hubRight, hubBottom,
@@ -526,7 +433,6 @@ public final class RotasInventoryRenderer {
             return;
         }
 
-        // Curios arc: occupied slots inspect like equipment, empty slots name their type.
         for (CurioVisual visual : curioVisuals(model, left, top, l)) {
             if (!visual.rect().contains(mouseX, mouseY)) continue;
             ItemStack stack = visual.entry().stack();
@@ -544,17 +450,13 @@ public final class RotasInventoryRenderer {
         }
     }
 
-    /**
-     * Finds the occupied menu slot under the mouse from the slots' real positions, so the
-     * inspection panel can never drift from where InventoryScreenMixin placed the slots.
-     */
     private static HoverTarget hoveredVanillaSlot(LocalPlayer player, Layout l, int left, int top,
                                                  double mouseX, double mouseY) {
         InventoryMenu menu = player.inventoryMenu;
         int count = Math.min(menu.slots.size(), 46);
         for (int index = 0; index < count; index++) {
             Slot slot = menu.getSlot(index);
-            if (slot.x < -1000) continue; // parked off-screen by the current tab
+            if (slot.x < -1000) continue;
             int size = slotHitSize(l, index);
             Rect rect = new Rect(left + slot.x + 8 - size / 2, top + slot.y + 8 - size / 2, size, size);
             if (!rect.contains(mouseX, mouseY)) continue;
@@ -581,15 +483,10 @@ public final class RotasInventoryRenderer {
         return null;
     }
 
-    /**
-     * The vanilla tooltip minus its title, keeping each line's own colour, its leading indent and
-     * its blank separators, so the hub's card reads like a normal item tooltip instead of one flat
-     * block of muted text.
-     */
     private static List<DescriptionLine> descriptionLines(ItemStack stack, LocalPlayer player) {
         List<DescriptionLine> lines = new ArrayList<>();
         List<Component> tooltip = stack.getTooltipLines(player, TooltipFlag.NORMAL);
-        for (int i = 1; i < tooltip.size(); i++) { // the first line repeats the item name
+        for (int i = 1; i < tooltip.size(); i++) {
             Component part = tooltip.get(i);
             String text = part.getString();
             if (text.isBlank()) {
@@ -603,12 +500,10 @@ public final class RotasInventoryRenderer {
         return lines;
     }
 
-    /** Vanilla tooltip colours are chosen for a near-black box; on parchment the light ones are inked down. */
     private static int readableOnCard(int color) {
         return UiColor.isLight(color) ? UiColor.mix(color, RotasTheme.TEXT, 0.6f) : color;
     }
 
-    /** Wraps a line but keeps its leading indent, so attribute rows stay nested under their header. */
     private static List<String> indentAwareWrap(String text, int width) {
         int indent = 0;
         while (indent < text.length() && text.charAt(indent) == ' ') {
@@ -623,11 +518,9 @@ public final class RotasInventoryRenderer {
     }
 
     private static void shadowLabel(GuiGraphics graphics, Font font, String text, int x, int y, int color) {
-        // No drop shadow: it doubles the strokes of resource-pack fonts on the hub card.
         graphics.drawString(font, text, x, y, color, false);
     }
 
-    /** RPG taxonomy for any item: equipment by its slot, everything else by what it is. */
     private static String itemCategory(ItemStack stack) {
         return switch (LivingEntity.getEquipmentSlotForItem(stack)) {
             case HEAD -> L.t("rotasutils.hub.tag.headgear");
@@ -643,7 +536,6 @@ public final class RotasInventoryRenderer {
     }
 
     private static int rarityColor(ItemStack stack) {
-        // Vanilla rarity colours (WHITE / YELLOW / AQUA / LIGHT_PURPLE) kept as explicit values.
         return switch (stack.getRarity()) {
             case UNCOMMON -> 0xFF6E8C3A;
             case RARE -> 0xFF3E7C99;
@@ -652,11 +544,6 @@ public final class RotasInventoryRenderer {
         };
     }
 
-    /**
-     * Parchment inspection card: accent tick, title in rarity colour, taxonomy line, the real vanilla
-     * tooltip lines (each in its own colour, indentation and spacing) and key hints. Clamped inside
-     * the hub bounds, and capped to the height that fits rather than a fixed line count.
-     */
     private static void inspectionPanel(GuiGraphics graphics, Font font, int mouseX, int mouseY,
                                         int hubRight, int hubBottom, String title, int titleColor,
                                         String subtitle, List<DescriptionLine> lines, String hint) {
@@ -677,7 +564,6 @@ public final class RotasInventoryRenderer {
         }
         List<String> hintLines = Ui.wrap(hint, bodyWidth);
         int hintHeight = hintLines.isEmpty() ? 0 : hintLines.size() * 10 + 6;
-        // Chrome is the title row plus padding; the body is whatever height the hub has left.
         int maxBody = Math.max(1, (hubBottom - 6 - 22 - hintHeight) / 10);
         int hidden = 0;
         if (body.size() > maxBody) {
@@ -692,7 +578,6 @@ public final class RotasInventoryRenderer {
         if (y + height > hubBottom) y = hubBottom - height;
         if (y < 6) y = 6;
 
-        // Lifted above the slot items, which render with depth, so they never poke through the card.
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 400);
         try (UiCanvas ui = UiCanvas.begin(graphics, RotasTheme.MAIN)) {
@@ -721,7 +606,6 @@ public final class RotasInventoryRenderer {
         graphics.pose().popPose();
     }
 
-    /** Returns the real Curios entry under the mouse, without opening another screen. */
     public static CuriosClientCompat.Entry curioAt(int left, int top, int width, int height,
                                                     double mouseX, double mouseY) {
         LocalPlayer player = Minecraft.getInstance().player;
@@ -803,7 +687,6 @@ public final class RotasInventoryRenderer {
         return Hit.NONE;
     }
 
-    /** Scroll the active Character Hub list under the cursor. */
     public static boolean scrollList(int left, int top, int width, int height,
                                      double mouseX, double mouseY, double delta) {
         return scrollList(left, top, width, height, activeTab, mouseX, mouseY, delta);
@@ -854,13 +737,8 @@ public final class RotasInventoryRenderer {
     }
 
     public static void renderLabels(GuiGraphics graphics) {
-        // All labels use absolute coordinates in renderBackground.
     }
 
-    /**
-     * "LV." and the level straddle the top of the disc; name, job and "sub-job (LV)" sit under it.
-     * All of it is printed over the dimmed world, so it is light ink with a brown outline.
-     */
     private static void renderIdentity(GuiGraphics graphics, CharacterHubModel.Snapshot model,
                                        int left, int top, Layout l, int mouseX, int mouseY) {
         String job = model.jobName().isBlank() ? L.t("rotasutils.hub.unassigned") : model.jobName();
@@ -891,7 +769,6 @@ public final class RotasInventoryRenderer {
         renderExpBar(graphics, model, center, y + 52, Math.min(EXP_BAR_W, maxWidth));
     }
 
-    /** The worn title in its own colour, or a quiet "+ choose title" prompt; both open the title list. */
     private static void renderTitleLine(GuiGraphics graphics, Rect rect, int center, int maxWidth, boolean hovered) {
         net.schwarz.rotasutils.title.TitleDef worn = ClientState.title(ClientState.progress().activeTitle());
         String text = worn == null ? L.t("rotasutils.hub.title_pick") : "\u00AB " + worn.name() + " \u00BB";
@@ -904,7 +781,6 @@ public final class RotasInventoryRenderer {
         }
     }
 
-    /** Character EXP toward the next level: the hub showed the level but never how close the next one is. */
     private static void renderExpBar(GuiGraphics graphics, CharacterHubModel.Snapshot model, int center, int y, int width) {
         boolean maxed = model.xpForNext() <= 0 || model.xpForNext() == Long.MAX_VALUE;
         float progress = model.levelProgress();
@@ -923,7 +799,6 @@ public final class RotasInventoryRenderer {
         graphics.drawString(font, label, x + barW + 6, y - 2, WORLD_TEXT_MUTED, false);
     }
 
-    /** Clickable band holding the worn title under the name. */
     private static Rect titleRect(int left, int top, Layout l) {
         int center = left + l.portraitCenterX();
         int w = Math.max(40, Math.min(l.leftPane() - 8, 160));
@@ -954,8 +829,6 @@ public final class RotasInventoryRenderer {
         float r = d / 2f;
         List<CurioVisual> curios = curioVisuals(model, left, top, l);
 
-        // While an equippable item is dragged, its compatible socket lights up so the medallion
-        // explains itself exactly at the moment the player needs it.
         ItemStack carried = player.inventoryMenu.getCarried();
         EquipmentSlot carriedTarget = carried.isEmpty() ? null : LivingEntity.getEquipmentSlotForItem(carried);
 
@@ -990,8 +863,6 @@ public final class RotasInventoryRenderer {
             }
         }
 
-        // A stable, upright preview reads as a character display; tracking the mouse made the
-        // model look broken whenever it faced an edge of the screen.
         int scale = Math.max(18, Math.round(r * 0.62f));
         InventoryScreen.renderEntityInInventoryFollowsMouse(graphics,
                 Math.round(cx), Math.round(cy + r * 0.62f), scale, 0, 0, player);
@@ -1005,8 +876,6 @@ public final class RotasInventoryRenderer {
                         rect.y() + (rect.height() - 16) / 2,
                         120 + visual.entry().slotIndex());
             } else {
-                // Curios' own slot silhouettes are faster to recognize than repeated initials and
-                // keep empty accessories visually quieter than the five equipment sockets.
                 graphics.blit(curioIcon(visual.entry().slotType()),
                         rect.x() + (rect.width() - 16) / 2,
                         rect.y() + (rect.height() - 16) / 2,
@@ -1020,7 +889,6 @@ public final class RotasInventoryRenderer {
         List<Rect> rects = tabRects(left, top, l);
         CharacterHubTab[] tabs = CharacterHubTab.values();
         boolean hanging = l.tabH() > TAB_STRIP_H;
-        // Painted pennants: the active one is tinted a shade deeper and hangs a little lower.
         for (int i = 0; i < tabs.length; i++) {
             Rect r = rects.get(i);
             boolean available = CharacterHubModel.tabAvailable(tabs[i], model);
@@ -1031,8 +899,6 @@ public final class RotasInventoryRenderer {
             } else if (hovered) {
                 RenderSystem.setShaderColor(0.97f, 0.95f, 0.91f, 1f);
             } else {
-                // Unavailable tabs stay opaque: a translucent pennant let the card edge show through.
-                // Only their label is faded.
                 RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
             }
             texture(graphics, TEX_TAB, r.x(), r.y() + tabDrop(selected, hanging), r.width(), r.height(),
@@ -1048,7 +914,6 @@ public final class RotasInventoryRenderer {
             List<String> lines = hanging
                     ? tabLines(tabs[i].label(), r.width() - 2)
                     : List.of(Ui.truncate(tabs[i].label(), r.width() - 4));
-            // The painted notch and point take ~15% of the pennant; centre the text in its body.
             int centerY = r.y() + tabDrop(selected, hanging) + r.height() / 2;
             int textY = centerY - lines.size() * 9 / 2 + 1;
             for (String line : lines) {
@@ -1062,7 +927,6 @@ public final class RotasInventoryRenderer {
         return selected && hanging ? 2 : 0;
     }
 
-    /** One or two lines for a tab label: split at a space, else at the widest prefix that fits. */
     private static List<String> tabLines(String label, int maxWidth) {
         if (Ui.textWidth(label) <= maxWidth) return List.of(label);
         int space = label.indexOf(' ');
@@ -1077,7 +941,6 @@ public final class RotasInventoryRenderer {
         return List.of(label.substring(0, cut), Ui.truncate(label.substring(cut), maxWidth));
     }
 
-    /** Thai vowel and tone marks that must stay attached to the preceding consonant. */
     private static boolean isCombiningMark(char c) {
         return c == 'ั' || (c >= 'ิ' && c <= 'ฺ') || (c >= '็' && c <= '๎');
     }
@@ -1097,7 +960,6 @@ public final class RotasInventoryRenderer {
             Ui.label(graphics, statusTitle, x + l.pad(), statusY + 3, RotasTheme.TEXT);
         } else {
             Ui.scaledLabel(graphics, statusTitle, x + l.pad(), statusY, 2.0f, RotasTheme.TEXT);
-            // "RANK | F" rides the title's baseline and gives way before the tabs or crafting.
             int rankX = x + l.pad() + Math.round(Ui.scaledWidth(statusTitle, 2.0f)) + 6;
             int limit = l.tabH() > TAB_STRIP_H ? left + l.tabX() - 6 : left + l.craftX() - 8;
             if (limit - rankX >= 24) {
@@ -1106,7 +968,6 @@ public final class RotasInventoryRenderer {
             }
         }
 
-        // Primary resources: pointed bars with a small glyph, as on the character sheet.
         float health = Math.max(0f, player.getHealth());
         float maxHealth = Math.max(1f, player.getMaxHealth());
         SpellPointsClientCompat.Reading mana = SpellPointsClientCompat.read(player);
@@ -1131,12 +992,9 @@ public final class RotasInventoryRenderer {
         vitalLabel(graphics, font, L.t("rotasutils.hub.healthpoint"), healthValue, barX, healthY, barW);
         vitalLabel(graphics, font, secondLabel, secondValue, barX, spellY, barW);
 
-        // Secondary attributes: scan rows, not fake progress bars - these have no fixed maximum.
         double damage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         double speed = player.getAttributeValue(Attributes.ATTACK_SPEED);
         double move = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
-        // Movement speed is an abstract 0.1-at-normal attribute; present it as a percentage of the
-        // player's own 0.1 base so a normal walk reads 100%.
         int movePercent = (int) Math.round(move / 0.1 * 100);
         String[] labels = {L.t("rotasutils.hub.stat.damage"), L.t("rotasutils.hub.stat.attack_speed"),
                 L.t("rotasutils.hub.stat.armor"), L.t("rotasutils.hub.stat.movement")};
@@ -1230,8 +1088,6 @@ public final class RotasInventoryRenderer {
         Ui.labelRight(graphics, L.t("rotasutils.hub.points_spent_total", path.pointsSpent(), path.pointsTotal()),
                 x + 14 + progressW, y + 88, RotasTheme.TEXT_FAINT);
 
-        // The old decorative diamond grid only repeated "unlocked X / Y" above; the real tree is
-        // one click away, so the space stays calm.
         Rect action = actionButtonRect(left, top, l, sub ? CharacterHubTab.SUB : CharacterHubTab.JOB);
         if (path.skillsTotal() == 0) {
             Ui.labelCentered(graphics, L.t("rotasutils.hub.no_skills"), x + w / 2,
@@ -1373,7 +1229,6 @@ public final class RotasInventoryRenderer {
         actionButton(graphics, action, L.t("rotasutils.hub.details"), action.contains(mouseX, mouseY));
     }
 
-    /** 2x2 crafting cells, a four-point sparkle and the result cell, top-right of the STATUS block. */
     private static void renderCraft(GuiGraphics graphics, int left, int top, Layout l, int mouseX, int mouseY) {
         int x = left + l.craftX();
         int y = top + l.craftY();
@@ -1402,13 +1257,11 @@ public final class RotasInventoryRenderer {
                 }
             }
             if (hasResult) {
-                // A valid recipe earns the only accent in the block: accent ring + gold sparkle.
                 outline(ui, rx, ry, box, box, RotasTheme.ACCENT);
                 outline(ui, rx + 1, ry + 1, box - 2, box - 2, UiColor.multiplyAlpha(RotasTheme.ACCENT, 0.6f));
             } else if (!dragging && Ui.inside(mouseX, mouseY, rx, ry, box, box)) {
                 cellHover(ui, rx, ry, box, "craft4");
             }
-            // Centred in the bag column between the 2x2 and the result.
             float sparkleX = x + pitch * 2 + box / 2f;
             float sparkleY = ry + box / 2f;
             int color = hasResult ? RotasTheme.ACCENT_STRONG : INK_LINE;
@@ -1435,7 +1288,6 @@ public final class RotasInventoryRenderer {
             int sx = left + l.gridX() + col * l.spacing();
             int sy = top + l.hotbarY();
             if (player.getInventory().selected == col) {
-                // Selected hotbar cell: copper double outline and a small underline indicator.
                 outline(ui, sx, sy, box, box, RotasTheme.ACCENT);
                 outline(ui, sx + 1, sy + 1, box - 2, box - 2, RotasTheme.ACCENT);
                 ui.rect(sx + Math.max(4, (box - 8) / 2), sy + box - 4, 8, 2, RotasTheme.ACCENT_STRONG);
@@ -1449,14 +1301,12 @@ public final class RotasInventoryRenderer {
         texture(graphics, TEX_SLOT, x, y, size, size, SLOT_TEX, SLOT_TEX);
     }
 
-    /** Hover on a painted cell: a warm wash and a copper outline, faded in over 140ms. */
     private static void cellHover(UiCanvas ui, int x, int y, int size, String key) {
         float fade = hoverFade(key);
         ui.roundedRect(x + 1, y + 1, size - 2, size - 2, 2, UiColor.multiplyAlpha(0xFFFFFFFF, 0.35f * fade));
         outline(ui, x, y, size, size, UiColor.multiplyAlpha(SLOT_HOVER_BORDER, 0.6f + 0.4f * fade));
     }
 
-    /** One-pixel outline with clipped corners, matching the painted cells' rounding. */
     private static void outline(UiCanvas ui, int x, int y, int w, int h, int color) {
         if (w < 3 || h < 3) return;
         ui.rect(x + 1, y, w - 2, 1, color)
@@ -1465,7 +1315,6 @@ public final class RotasInventoryRenderer {
                 .rect(x + w - 1, y + 1, 1, h - 2, color);
     }
 
-    /** 0..1 ramp for the currently hovered element, restarting whenever the target changes. */
     private static float hoverFade(String key) {
         long now = Util.getMillis();
         if (!key.equals(hoverKey)) {
@@ -1483,7 +1332,6 @@ public final class RotasInventoryRenderer {
         return out;
     }
 
-    /** Test hook: every tab's {@code {x, y, width, height}} in window coordinates. */
     public static int[][] tabBounds(int left, int top, Layout l) {
         List<Rect> rects = tabRects(left, top, l);
         int[][] out = new int[rects.size()][];
@@ -1513,7 +1361,6 @@ public final class RotasInventoryRenderer {
         return new Rect(left + cx - s / 2, top + cy - s / 2, s, s);
     }
 
-    /** Label for an empty vanilla equipment socket under the mouse, or null when occupied/absent. */
     private static String emptyGearLabel(LocalPlayer player, Layout l, int left, int top, double mouseX, double mouseY) {
         if (socketRect(l, left, top, SOCKET_HEAD).contains(mouseX, mouseY))
             return player.getInventory().armor.get(3).isEmpty() ? L.t("rotasutils.hub.slot.helmet") : null;
@@ -1528,10 +1375,6 @@ public final class RotasInventoryRenderer {
         return null;
     }
 
-    /**
-     * Accessories mirror the equipment sockets on the medallion's right arc, centred on three
-     * o'clock in the order Curios reports them. A long list continues on a second, wider arc.
-     */
     private static List<CurioVisual> curioVisuals(CharacterHubModel.Snapshot model, int left, int top, Layout l) {
         List<CuriosClientCompat.Entry> entries = model.curios();
         if (entries.isEmpty()) return List.of();
@@ -1562,7 +1405,6 @@ public final class RotasInventoryRenderer {
         return CURIO_ICONS.getOrDefault(safeType, CURIO_ICONS.get("curio"));
     }
 
-    /** The painted card, nine-sliced so its border and corners keep their drawn thickness at any size. */
     private static void mainPanel(GuiGraphics graphics, int x, int y, int w, int h) {
         try (UiCanvas ui = UiCanvas.begin(graphics, RotasTheme.MAIN)) {
             ui.shadow(x, y, w, h, 4, UiColor.multiplyAlpha(RotasTheme.MAIN.shadow(), 0.5f));
@@ -1570,10 +1412,6 @@ public final class RotasInventoryRenderer {
         nineSlice(graphics, TEX_CARD, CARD_TEX_W, CARD_TEX_H, CARD_SLICE, x, y, w, h);
     }
 
-    /**
-     * Draws an asset at two texels per GUI pixel: corners keep their size, edges and the centre
-     * stretch. {@code slice} is in texels and must be even.
-     */
     private static void nineSlice(GuiGraphics graphics, ResourceLocation tex, int texW, int texH, int slice,
                                   int x, int y, int w, int h) {
         int s = Math.min(slice / 2, Math.min(w, h) / 2);
@@ -1602,7 +1440,6 @@ public final class RotasInventoryRenderer {
         RenderSystem.disableBlend();
     }
 
-    /** Whole-texture blit scaled into {@code w x h}, with alpha blending for the painted edges. */
     private static void texture(GuiGraphics graphics, ResourceLocation tex, int x, int y, int w, int h,
                                 int texW, int texH) {
         smooth(tex);
@@ -1612,7 +1449,6 @@ public final class RotasInventoryRenderer {
         RenderSystem.disableBlend();
     }
 
-    /** Linear filtering, applied once per texture object (a resource reload creates new ones). */
     private static void smooth(ResourceLocation tex) {
         AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(tex);
         if (SMOOTHED.get(tex) != texture) {
@@ -1621,7 +1457,6 @@ public final class RotasInventoryRenderer {
         }
     }
 
-    /** Pointed resource bar: rounded tail, arrow head, bright fill over a paper track. */
     private static void vitalBar(UiCanvas ui, int x, int y, int width, float progress, int color) {
         int h = 7;
         arrowShape(ui, x, y, width, h, INK_LINE);
@@ -1657,7 +1492,6 @@ public final class RotasInventoryRenderer {
         Ui.labelRight(graphics, value, x + width, y, RotasTheme.TEXT_FAINT);
     }
 
-    /** Compact attribute row: label left, value right-aligned to the vitals column. */
     private static void statRow(GuiGraphics graphics, Font font, int x, int y, int width, String label, String value) {
         int valueW = font.width(value);
         Ui.label(graphics, Ui.truncate(label, Math.max(10, width - valueW - 4)), x, y, RotasTheme.TEXT);
@@ -1697,7 +1531,6 @@ public final class RotasInventoryRenderer {
     }
 
     private static Rect[] withdrawalRects(int left, int top, Layout l) {
-        // Ends on the bag's right edge.
         int right = left + l.gridX() + l.slotBox() * 9 + (l.spacing() - l.slotBox()) * 8;
         int y = top + l.walletY();
         Rect[] out = new Rect[WITHDRAW_WIDTHS.length];
@@ -1716,15 +1549,10 @@ public final class RotasInventoryRenderer {
         return bounds;
     }
 
-    /**
-     * The stat-points chip under the vitals, in window coordinates. Shared by the render path and
-     * {@link #hitTest} so the button the player sees is exactly the button the click lands on.
-     */
     private static Rect statsButtonRect(int left, int top, Layout l) {
         return new Rect(left + l.chipX(), top + l.chipY(), l.chipW(), STATS_CHIP_H);
     }
 
-    /** The chip as drawn: just wide enough for its label, right-aligned in its slot under the bars. */
     private static Rect statsChipRect(int left, int top, Layout l, int points) {
         Rect slot = statsButtonRect(left, top, l);
         int width = Math.min(slot.width(), Ui.textWidth(statsChipText(points)) + 14);
@@ -1735,31 +1563,19 @@ public final class RotasInventoryRenderer {
         return points > 0 ? L.t("rotasutils.hub.spend_points", points) : L.t("rotasutils.hub.open_stats");
     }
 
-    /** The chip lives in the full STATUS block only; a compact card has no row for it. */
     private static boolean statsButtonVisible(Layout l) {
         return !l.compact() && l.chipW() >= 60;
     }
 
-    /**
-     * Test hook: the stat-points chip's {@code {x, y, width, height}} in window coordinates, or
-     * {@code null} when the card is too small to show it. Pure geometry, so it is unit-tested
-     * without a live client.
-     */
     public static int[] statsButtonBounds(int left, int top, Layout l) {
         if (!statsButtonVisible(l)) return null;
         Rect r = statsButtonRect(left, top, l);
         return new int[]{r.x(), r.y(), r.width(), r.height()};
     }
 
-    /**
-     * Draws the "spend stat points" chip. It lights up with the number of unspent points and falls
-     * back to a muted "OPEN STATS" label at zero, so the entry point is always visible but never
-     * pretends there is something to spend.
-     */
     private static void drawStatsButton(GuiGraphics graphics, Rect r, int points, boolean hovered) {
         boolean ready = points > 0;
         try (UiCanvas ui = UiCanvas.begin(graphics, RotasTheme.MAIN)) {
-            // A small outlined chip, as painted; unspent points only earn the copper outline.
             ui.borderedRoundedRect(r.x(), r.y(), r.width(), r.height(), 2,
                     ready || hovered ? RotasTheme.ACCENT : INK_LINE,
                     hovered ? SLOT_HOVER_FILL : CONTROL_FILL);
@@ -1768,7 +1584,6 @@ public final class RotasInventoryRenderer {
         Ui.labelCentered(graphics, Ui.truncate(text, r.width() - 6), r.x() + r.width() / 2, r.y() + 3, RotasTheme.TEXT);
     }
 
-    /** The JOB/SUB/PARTY/QUEST action button, shared by render and hit-test. */
     private static Rect actionButtonRect(int left, int top, Layout l, CharacterHubTab tab) {
         int x = left + l.rightX() + l.rightW() - 14 - 98;
         int y = showsHotbar(tab)
@@ -1777,7 +1592,6 @@ public final class RotasInventoryRenderer {
         return new Rect(x, y, 98, 22);
     }
 
-    /** Hover, drag-compatible and empty-silhouette states over a painted equipment socket. */
     private static void socketState(UiCanvas ui, Layout l, int left, int top, int socket, EquipmentSlot type,
                                     int mouseX, int mouseY, boolean compatible, boolean occupied) {
         Rect rect = socketRect(l, left, top, socket);
@@ -1805,43 +1619,34 @@ public final class RotasInventoryRenderer {
     }
 
     private static void drawHelmetIcon(UiCanvas ui, int cx, int cy, int color) {
-        // Helmet: dome shape with brim
         for (int dy = -2; dy <= 3; dy++) {
             int span = dy < 0 ? 5 - Math.abs(dy) : (dy <= 1 ? 6 : 4 - dy);
             ui.rect(cx - span, cy + dy, span * 2, 1, color);
         }
-        // Brim
         ui.rect(cx - 6, cy + 3, 12, 2, color);
     }
 
     private static void drawChestIcon(UiCanvas ui, int cx, int cy, int color) {
-        // Chestplate: torso shape with shoulder extensions
-        ui.rect(cx - 6, cy - 4, 12, 2, color);  // shoulders
-        ui.rect(cx - 5, cy - 2, 10, 4, color);  // body
-        ui.rect(cx - 4, cy + 2, 8, 3, color);   // lower body
-        // Center line
+        ui.rect(cx - 6, cy - 4, 12, 2, color);
+        ui.rect(cx - 5, cy - 2, 10, 4, color);
+        ui.rect(cx - 4, cy + 2, 8, 3, color);
         ui.rect(cx - 1, cy - 2, 2, 6, color);
     }
 
     private static void drawLegsIcon(UiCanvas ui, int cx, int cy, int color) {
-        // Leggings: two leg shapes
-        ui.rect(cx - 5, cy - 4, 4, 8, color);   // left leg
-        ui.rect(cx + 1, cy - 4, 4, 8, color);   // right leg
-        // Belt
+        ui.rect(cx - 5, cy - 4, 4, 8, color);
+        ui.rect(cx + 1, cy - 4, 4, 8, color);
         ui.rect(cx - 5, cy - 4, 10, 2, color);
     }
 
     private static void drawFeetIcon(UiCanvas ui, int cx, int cy, int color) {
-        // Boots: two boot shapes
-        ui.rect(cx - 5, cy - 2, 4, 5, color);   // left boot
-        ui.rect(cx + 1, cy - 2, 4, 5, color);   // right boot
-        // Boot tops
+        ui.rect(cx - 5, cy - 2, 4, 5, color);
+        ui.rect(cx + 1, cy - 2, 4, 5, color);
         ui.rect(cx - 5, cy - 2, 4, 2, color);
         ui.rect(cx + 1, cy - 2, 4, 2, color);
     }
 
     private static void drawShieldIcon(UiCanvas ui, int cx, int cy, int color) {
-        // Shield: pointed oval shape
         ui.rect(cx - 3, cy - 5, 6, 1, color);
         ui.rect(cx - 5, cy - 3, 10, 1, color);
         ui.rect(cx - 6, cy - 1, 12, 1, color);
@@ -1880,10 +1685,6 @@ public final class RotasInventoryRenderer {
         return String.format(Locale.ROOT, "%.2f", value);
     }
 
-    /**
-     * Pure hub geometry in coordinates relative to the hub's top-left corner. Socket coordinates are
-     * centres; crafting, wallet and bag coordinates are the top-left corners of their boxes.
-     */
     public record Layout(int width, int height, int curioCount, boolean compact, int pad,
                          int leftPane, int rightX, int rightW, int tabX, int tabY, int tabW, int tabH,
                          int panelY, int panelH, int contentShift,

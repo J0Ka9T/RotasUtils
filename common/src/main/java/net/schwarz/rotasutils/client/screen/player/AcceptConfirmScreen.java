@@ -14,7 +14,6 @@ import net.schwarz.rotasutils.progress.PlayerProgress;
 import net.schwarz.rotasutils.quest.QuestDef;
 import net.schwarz.rotasutils.server.QuestService;
 
-/** Extra confirmation shown before accepting an S, SS or SSS rank quest. */
 @Environment(EnvType.CLIENT)
 public class AcceptConfirmScreen extends RotasScreen {
     private final String questId;

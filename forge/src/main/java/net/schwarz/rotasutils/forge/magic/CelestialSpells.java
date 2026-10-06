@@ -34,17 +34,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * The eight Celestial spells. Each one does its gameplay here on the server (damage through Iron's
- * damage source, so spell power, resistance, lifesteal and friendly-fire rules all apply) and spawns
- * a {@link CelestialFxEntity} for the look. Numbers scale with Iron's spell power (school power x
- * level), so gear, attributes and the RPG stat pipeline all feed in.
- */
 final class CelestialSpells {
     private CelestialSpells() {
     }
 
-    /** Shared plumbing: id, config, school, damage and target helpers. */
     abstract static class Base extends AbstractSpell {
         private final ResourceLocation id;
         private final DefaultConfig config;
@@ -111,22 +104,13 @@ final class CelestialSpells {
             return fx;
         }
 
-        /**
-         * Where a ground spell lands: at the feet of the creature under the crosshair, else on the
-         * floor where the aim ray ends. A ray that misses (aimed at the sky, or over a drop) ends in
-         * mid-air, and the spell used to be cast right there - floating, and hurting nothing below it -
-         * so the point is settled onto the first surface beneath it. A creature keeps its own
-         * position, so a spell aimed at a flyer still reaches it.
-         */
         static Vec3 aim(Level level, LivingEntity caster, float range) {
             HitResult hit = Utils.raycastForEntity(level, caster, range, true);
             if (hit instanceof EntityHitResult entityHit) return entityHit.getEntity().position();
-            // Step back off a wall face before settling, so a hit on a wall lands at its foot.
             Vec3 at = hit.getLocation().subtract(caster.getLookAngle().scale(0.3));
             return ground(level, at);
         }
 
-        /** The first surface at or below {@code at} (within 48 blocks); {@code at} itself if there is none. */
         static Vec3 ground(Level level, Vec3 at) {
             Vec3 from = at.add(0, 0.5, 0);
             HitResult down = level.clip(new net.minecraft.world.level.ClipContext(from, from.add(0, -48, 0),
@@ -135,10 +119,6 @@ final class CelestialSpells {
             return down.getType() == HitResult.Type.MISS ? at : down.getLocation();
         }
 
-        /**
-         * Aim assist for bolts: a creature within a few degrees of the crosshair gets the bolt aimed
-         * straight at its middle, so a shot that looks on target is on target. Otherwise the look.
-         */
         static Vec3 assist(Level level, LivingEntity caster, Vec3 start, float range) {
             Vec3 look = caster.getLookAngle();
             LivingEntity best = null;
@@ -162,7 +142,6 @@ final class CelestialSpells {
         }
     }
 
-    // 1 -----------------------------------------------------------------------------------------
     static final class AstralBolt extends Base {
         AstralBolt() {
             super("astral_bolt", CastType.INSTANT, SpellRarity.COMMON, 10, 1.0, 12, 2, 7, 1, 0);
@@ -184,7 +163,6 @@ final class CelestialSpells {
         }
     }
 
-    // 2 -----------------------------------------------------------------------------------------
     static final class NovaBurst extends Base {
         NovaBurst() {
             super("nova_burst", CastType.INSTANT, SpellRarity.UNCOMMON, 8, 10, 30, 5, 6, 1, 0);
@@ -222,7 +200,6 @@ final class CelestialSpells {
         }
     }
 
-    // 3 -----------------------------------------------------------------------------------------
     static final class PrismRay extends Base {
         static final float RANGE = 28f;
         private static final Map<UUID, CelestialFxEntity> BEAMS = new ConcurrentHashMap<>();
@@ -281,7 +258,6 @@ final class CelestialSpells {
         }
     }
 
-    // 4 -----------------------------------------------------------------------------------------
     static final class StarlanceVolley extends Base {
         StarlanceVolley() {
             super("starlance_volley", CastType.LONG, SpellRarity.RARE, 8, 14, 45, 6, 5, 1, 20);
@@ -317,7 +293,6 @@ final class CelestialSpells {
         }
     }
 
-    // 5 -----------------------------------------------------------------------------------------
     static final class CometDash extends Base {
         CometDash() {
             super("comet_dash", CastType.INSTANT, SpellRarity.UNCOMMON, 6, 7, 25, 3, 5, 1, 0);
@@ -342,7 +317,6 @@ final class CelestialSpells {
         }
     }
 
-    // 6 -----------------------------------------------------------------------------------------
     static final class ConstellationBind extends Base {
         ConstellationBind() {
             super("constellation_bind", CastType.INSTANT, SpellRarity.EPIC, 6, 18, 55, 6, 5, 1, 0);
@@ -379,7 +353,6 @@ final class CelestialSpells {
         }
     }
 
-    // 7 -----------------------------------------------------------------------------------------
     static final class AuroraWard extends Base {
         AuroraWard() {
             super("aurora_ward", CastType.INSTANT, SpellRarity.RARE, 5, 30, 40, 5, 1, 1, 0);
@@ -411,7 +384,6 @@ final class CelestialSpells {
         }
     }
 
-    // 8 -----------------------------------------------------------------------------------------
     static final class Supernova extends Base {
         private static final Map<UUID, CelestialFxEntity> CHARGES = new ConcurrentHashMap<>();
 

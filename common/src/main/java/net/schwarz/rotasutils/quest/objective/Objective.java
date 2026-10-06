@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/** One configured objective inside a quest definition. */
 public final class Objective {
     private static final Pattern KEY_PATTERN = Pattern.compile("[a-z0-9_./-]{1,96}");
     private static final int MAX_ID_LENGTH = 200;
@@ -27,11 +26,11 @@ public final class Objective {
     private boolean optional;
     private boolean hidden;
     private boolean partyShared = true;
-    /** Sequential quests only complete objectives in ascending step order. */
     private int step;
-    /** Objectives sharing an alternative group complete each other. */
     private String alternativeGroup = "";
     private int timeLimitSeconds;
+    private String path = "";
+    private String opens = "";
 
     public Objective(ObjectiveType type) {
         this(type, new CompoundTag());
@@ -47,7 +46,6 @@ public final class Objective {
         return type;
     }
 
-    /** Switching type keeps any parameter the new type also declares. */
     public void setType(ObjectiveType type) {
         this.type = type;
         this.params.applyDefaults(type.specs());
@@ -66,7 +64,10 @@ public final class Objective {
         this.saveKey = true;
     }
 
-    /** Assigns an index-derived key to old objectives without changing their serialized shape. */
+    public boolean hasSavedKey() {
+        return saveKey;
+    }
+
     public void useDefaultKey(String key) {
         if (!saveKey) {
             this.key = validKey(key);
@@ -144,6 +145,26 @@ public final class Objective {
         this.alternativeGroup = alternativeGroup;
     }
 
+    public String path() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = cleanPath(path);
+    }
+
+    public String opens() {
+        return opens;
+    }
+
+    public void setOpens(String opens) {
+        this.opens = cleanPath(opens);
+    }
+
+    public static String cleanPath(String value) {
+        return value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
     public int timeLimitSeconds() {
         return timeLimitSeconds;
     }
@@ -171,6 +192,12 @@ public final class Objective {
         tag.putInt("step", step);
         tag.putString("alt_group", alternativeGroup);
         tag.putInt("time_limit", timeLimitSeconds);
+        if (!path.isEmpty()) {
+            tag.putString("path", path);
+        }
+        if (!opens.isEmpty()) {
+            tag.putString("opens", opens);
+        }
         if (saveKey) {
             tag.putString("objective_key", key);
         }
@@ -197,6 +224,8 @@ public final class Objective {
         objective.step = tag.getInt("step");
         objective.alternativeGroup = tag.getString("alt_group");
         objective.timeLimitSeconds = tag.getInt("time_limit");
+        objective.path = cleanPath(tag.getString("path"));
+        objective.opens = cleanPath(tag.getString("opens"));
         if (tag.contains("objective_key")) {
             objective.setKey(tag.getString("objective_key"));
         }
@@ -228,7 +257,6 @@ public final class Objective {
         return load(tag == null ? new CompoundTag() : tag);
     }
 
-    /** Fallback line shown when the admin left the description empty. */
     public String displayText() {
         if (!description.isBlank()) {
             return description;

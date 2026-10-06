@@ -28,20 +28,14 @@ public class ExoCeroMuzzleEntity extends Entity {
     public static final int SHOTS = CeroBallistics.SHOTS;
     public static final int BURST = CeroBallistics.BURST;
     public static final int VOLLEY_TICKS = CeroBallistics.VOLLEY_TICKS;
-    /**
-     * Ticks the mount lives past the last round. Long enough for the furthest round still in the air
-     * to arrive, because that is when its damage lands.
-     */
     public static final int FADE = CeroBallistics.MAX_FLIGHT + 6;
     public static final int LIFE = VOLLEY_TICKS + FADE;
     public static final int COOLDOWN = 150;
     public static final int SHOCK_PERIOD = 6;
     public static final double SPEED = CeroBallistics.SPEED;
 
-    /** Per cero. There are a thousand of them, each bursting in a wide blast, so each is small. */
     private static final float DAMAGE = 1.8f;
     private static final float MAX_HEALTH_BITE = 0.005f;
-    /** Every round lands as a blast, not a bullet: a wide radius that hits nearly as hard as the round. */
     private static final float SPLASH = 4.5f * (float) CeroBallistics.SCALE;
     private static final float SPLASH_SHARE = 0.8f;
     private static final float SPLASH_BITE = 0.004f;
@@ -51,10 +45,8 @@ public class ExoCeroMuzzleEntity extends Entity {
             SynchedEntityData.defineId(ExoCeroMuzzleEntity.class, EntityDataSerializers.INT);
 
     private final CeroDamageBatch<LivingEntity> damageBatch = new CeroDamageBatch<>();
-    /** Hits waiting for their round to actually get there. */
     private final java.util.List<PendingHit> pending = new java.util.ArrayList<>();
 
-    /** A hit the server has already resolved, held until the tick the round arrives. */
     private record PendingHit(LivingEntity victim, float damage, int dueTick) {
     }
 
@@ -136,7 +128,6 @@ public class ExoCeroMuzzleEntity extends Entity {
         if (tickCount >= 1 && tickCount <= VOLLEY_TICKS) {
             fireTick(server, owner);
         }
-        // Rounds already in the air land here, on the tick they actually arrive.
         landPending(owner);
         sounds(server);
         if (tickCount > LIFE) {
@@ -158,7 +149,6 @@ public class ExoCeroMuzzleEntity extends Entity {
         CeroFx.send(level, owner.getId(), firstIndex, shots);
     }
 
-    /** Applies every hit whose round has now arrived, batched so one victim takes one blow a tick. */
     private void landPending(LivingEntity owner) {
         if (pending.isEmpty()) {
             return;
@@ -179,7 +169,6 @@ public class ExoCeroMuzzleEntity extends Entity {
         }
     }
 
-    /** Holds a hit until the round that made it has crossed the distance to its victim. */
     private void hold(LivingEntity victim, float damage, double distance) {
         pending.add(new PendingHit(victim, damage, tickCount + Math.round(CeroBallistics.flightTicks(distance))));
     }
@@ -223,7 +212,6 @@ public class ExoCeroMuzzleEntity extends Entity {
             LivingEntity nearest = null;
             Vec3 nearestAt = null;
             double best = Double.MAX_VALUE;
-            // As wide as the shaft itself: a giant cero hits whatever it passes over, not only its centreline.
             AABB sweep = new AABB(segmentStart, segmentEnd).inflate(0.6 * CeroBallistics.SCALE);
             for (LivingEntity candidate : level.getEntitiesOfClass(LivingEntity.class, sweep,
                     entity -> entity.isAlive() && !entity.isSpectator())) {
@@ -252,7 +240,6 @@ public class ExoCeroMuzzleEntity extends Entity {
     private record EntityHit(LivingEntity victim, Vec3 at) {
     }
 
-    /** The blast around a hit, held for the same arrival tick as the round that caused it. */
     private void splash(ServerLevel level, LivingEntity owner, Vec3 at, @Nullable LivingEntity direct, double flown) {
         AABB box = new AABB(at, at).inflate(SPLASH);
         for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, box,
@@ -280,7 +267,6 @@ public class ExoCeroMuzzleEntity extends Entity {
 
     private void sounds(ServerLevel level) {
         if (tickCount <= VOLLEY_TICKS) {
-            // The rhythm is the point: rattle through a burst, a heavier report as each one opens.
             if (CeroBallistics.shotsAt(tickCount) > 0) {
                 level.playSound(null, getX(), getY(), getZ(), SoundEvents.BLAZE_SHOOT, SoundSource.PLAYERS, 0.34f,
                         1.6f + random.nextFloat() * 0.35f);
@@ -301,13 +287,11 @@ public class ExoCeroMuzzleEntity extends Entity {
         if (tickCount == 1) {
             ClientFx.quake(getX(), getY(), getZ(), 7f, 40);
         } else if (CeroBallistics.shotsAt(tickCount) > 0) {
-            // A steady hammering shake for as long as the stream runs.
             ClientFx.quake(getX(), getY(), getZ(), 1.2f, 26);
         }
     }
 
-
-    @Override
+@Override
     protected void readAdditionalSaveData(CompoundTag tag) {
     }
 

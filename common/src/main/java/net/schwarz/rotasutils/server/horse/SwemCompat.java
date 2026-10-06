@@ -16,15 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Reflection bridge to SWEM (Star Worm Equestrian Mod, Forge only). RotasUtils never links against SWEM, so
- * the mod builds and runs without it; every call fails soft and the horse system reports itself unavailable.
- *
- * <p>Verified against swem-1.20.1-1.6.6: {@code SWEMHorseEntityBase.progressionManager} holds Speed, Jump,
- * Health and Affinity levelings with 0-based {@code getLevel/setLevel} and {@code setXp}; the NBT keys are
- * {@code SpeedLevel}, {@code JumpLevel}, {@code HealthLevel} and {@code AffinityLevel}; coats come from
- * {@code CoatManager} and are set through {@code getCoatBehavior().set(HorseCoat)}.</p>
- */
 public final class SwemCompat {
     public static final ResourceLocation HORSE = new ResourceLocation("swem", "swem_horse");
     private static final String BASE = "com.alaharranhonor.swem.forge.entities.horse.SWEMHorseEntityBase";
@@ -72,7 +63,6 @@ public final class SwemCompat {
         return false;
     }
 
-    /** Display levels (1-based) for Speed, Jump, Health and Affinity; all 1 when SWEM cannot be read. */
     public static int[] levels(Entity horse) {
         int[] levels = {1, 1, 1, 1};
         if (!isHorse(horse)) {
@@ -90,7 +80,6 @@ public final class SwemCompat {
         return levels;
     }
 
-    /** Levels read from a saved horse, for stored horses that are not in the world. */
     public static int[] levels(CompoundTag snapshot) {
         int[] levels = new int[4];
         for (int i = 0; i < 4; i++) {
@@ -99,7 +88,6 @@ public final class SwemCompat {
         return levels;
     }
 
-    /** Sets display levels (1-based) and clears the XP inside each level, so nothing overflows on load. */
     public static boolean setLevels(Entity horse, int[] levels) {
         if (!isHorse(horse)) {
             return false;
@@ -157,7 +145,6 @@ public final class SwemCompat {
         return false;
     }
 
-    /** Every coat SWEM knows, with whether foals can inherit it. */
     @SuppressWarnings("unchecked")
     public static List<Coat> coats() {
         if (!available()) {
@@ -206,7 +193,6 @@ public final class SwemCompat {
         }
     }
 
-    /** True for a foal of two recorded parents, which is how SWEM marks a bred horse. */
     public static boolean bred(Entity horse) {
         if (!isHorse(horse)) {
             return false;

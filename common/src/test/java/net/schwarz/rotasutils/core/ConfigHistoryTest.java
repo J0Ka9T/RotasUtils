@@ -38,8 +38,6 @@ class ConfigHistoryTest {
     @Test void restageRebasesOnTheNewLiveSnapshot() {
         var history = new ConfigHistory(() -> {});
         history.stage("a", "settings", value(1), value(2), -1);
-        // Live moved (1 -> 7) and the editor re-stages against it; the base must
-        // follow the new live or the draft could never be applied.
         history.stage("a", "settings", value(7), value(8), 0);
         assertEquals(value(8), history.draft("a", "settings").value());
         assertEquals(value(7), history.draft("a", "settings").base());
@@ -53,6 +51,6 @@ class ConfigHistoryTest {
         history.stage("a", "settings", value(1), value(2), -1);
         history.discard("a", "settings");
         assertNull(history.draft("a", "settings"));
-        history.discard("a", "settings"); // idempotent
+        history.discard("a", "settings");
     }
 }

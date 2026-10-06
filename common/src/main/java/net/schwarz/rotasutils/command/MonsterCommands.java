@@ -39,7 +39,6 @@ final class MonsterCommands {
         root.then(monster);
     }
 
-    /** Changes an already-assigned mob's level without dropping its profile, tier or affixes. */
     private static int relevel(CommandContext<CommandSourceStack> context, int level)
             throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         CommandSourceStack source = context.getSource();
@@ -79,10 +78,15 @@ final class MonsterCommands {
         if (data.kernel() == null) { source.sendFailure(Component.literal(ThaiText.t("rotasutils.cmd.kernel_not_ready"))); return 0; }
         var service = data.kernel().monsters();
         try {
-            // Restore any persisted assignment before allowing an administrative mutation.
             service.join(mob, "COMMAND", true);
             if (operation.equals("assign")) {
-                service.assign(mob, new ContentId(ResourceLocationArgument.getId(context, "profile").toString()), level, "COMMAND");
+                if (service.peek(mob) != null) { service.clear(mob); }
+                try {
+                    service.assign(mob, new ContentId(ResourceLocationArgument.getId(context, "profile").toString()), level, "COMMAND");
+                } catch (RuntimeException rejected) {
+                    service.join(mob, "COMMAND", false);
+                    throw rejected;
+                }
             } else if (operation.equals("clear")) { service.clear(mob); }
             var state = service.peek(mob);
             var boss = state == null ? null : data.kernel().bosses().definition(state);

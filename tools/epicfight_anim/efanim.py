@@ -14,7 +14,9 @@ def arm():
 
 
 def rest_rel(bone):
-    return bone.matrix_local if bone.parent is None else bone.parent.matrix_local.inverted() @ bone.matrix_local
+    m = bone.matrix_local if bone.parent is None else bone.parent.matrix_local.inverted() @ bone.matrix_local
+    loc, rot, _ = m.decompose()
+    return Matrix.Translation(loc) @ rot.normalized().to_matrix().to_4x4()
 
 
 def mat_from(flat):
@@ -32,13 +34,22 @@ def import_json(path, name):
         if pb is None:
             continue
         pb.rotation_mode = 'QUATERNION'
+        pb.scale = (1, 1, 1)
         rr = rest_rel(pb.bone).inverted()
+        previous = None
         for t, flat in zip(j['time'], j['transform']):
             basis = rr @ mat_from(flat)
             loc, rot, _ = basis.decompose()
+            rot.normalize()
+            if previous is not None and previous.dot(rot) < 0:
+                rot.negate()
+            previous = rot.copy()
             pb.location = loc; pb.rotation_quaternion = rot
             f = t * fps
             pb.keyframe_insert('location', frame=f); pb.keyframe_insert('rotation_quaternion', frame=f)
+    for curve in act.fcurves:
+        for point in curve.keyframe_points:
+            point.interpolation = 'LINEAR'
     return act
 
 
@@ -56,6 +67,8 @@ def export_json(path, start, end, fps=None, step=1):
         sc.frame_set(f)
         for entry, pb in zip(out, a.pose.bones):
             m = rest_rel(pb.bone) @ pb.matrix_basis
+            loc, rot, _ = m.decompose()
+            m = Matrix.Translation(loc) @ rot.normalized().to_matrix().to_4x4()
             entry['time'].append(round((f - start) / fps, 4))
             entry['transform'].append([round(v, 6) for row in m for v in row])
     with open(path, 'w') as fh:
@@ -71,7 +84,6 @@ def _box(name, bone, size, center_along, color, offset=(0, 0, 0)):
     mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     mat.diffuse_color = color; o.data.materials.append(mat)
     o.parent = a; o.parent_type = 'BONE'; o.parent_bone = bone
-    # bone-parented children sit at the bone tail in bone space (Y along bone)
     o.location = Vector((offset[0], -b.length + b.length * center_along + offset[1], offset[2]))
     return o
 
@@ -79,7 +91,7 @@ def _box(name, bone, size, center_along, color, offset=(0, 0, 0)):
 def build_body():
     skin = (0.85, 0.65, 0.5, 1); shirt = (0.2, 0.55, 0.65, 1); pants = (0.25, 0.25, 0.6, 1)
     _box('head', 'Head', (0.5, 0.5, 0.5), 0.55, skin)
-    _box('nose', 'Head', (0.1, 0.1, 0.1), 0.45, (0.9, 0.2, 0.2, 1), offset=(0, 0, -0.28))  # marks face (+Y world at rest)
+    _box('nose', 'Head', (0.1, 0.1, 0.1), 0.45, (0.9, 0.2, 0.2, 1), offset=(0, 0, -0.28))
     _box('chest', 'Chest', (0.5, 0.4, 0.25), 0.5, shirt)
     _box('belly', 'Torso', (0.5, 0.3, 0.25), 0.5, shirt)
     for s in 'RL':
@@ -99,7 +111,7 @@ def build_sword(axis='Y', length=1.4, bone='Tool_R', color=(1.0, 0.3, 0.9, 1)):
     o.scale = sizes
     sign = -1 if axis.startswith('-') else 1
     ax = axis[-1]
-    off = Vector((0, -b.length, 0))  # joint head
+    off = Vector((0, -b.length, 0))
     off[{'X': 0, 'Y': 1, 'Z': 2}[ax]] += sign * length / 2
     mat = bpy.data.materials.new('blade' + axis); mat.diffuse_color = color; o.data.materials.append(mat)
     o.parent = a; o.parent_type = 'BONE'; o.parent_bone = bone
@@ -110,13 +122,13 @@ def build_sword(axis='Y', length=1.4, bone='Tool_R', color=(1.0, 0.3, 0.9, 1)):
 def build_gun(bone='Tool_R', color=(1.0, 0.45, 0.05, 1)):
     """Exo Disintegrator stand-in in Tool-local coords (barrel +Y, top -Z): stock, receiver, barrel, grip, loop."""
     a = arm(); b = a.data.bones[bone]
-    parts = [  # (center, size) in Tool-local blocks
-        ((0, -0.25, -0.29), (0.1, 0.22, 0.16)),   # stock
-        ((0, 0.03, -0.3), (0.13, 0.34, 0.2)),     # receiver
-        ((0, 0.33, -0.29), (0.1, 0.28, 0.12)),    # shroud + barrel
-        ((0, 0.47, -0.29), (0.06, 0.07, 0.06)),   # muzzle
-        ((0, -0.05, -0.12), (0.07, 0.1, 0.2)),    # grip
-        ((0, 0.34, -0.52), (0.05, 0.16, 0.16)),   # loop
+    parts = [
+        ((0, -0.25, -0.29), (0.1, 0.22, 0.16)),
+        ((0, 0.03, -0.3), (0.13, 0.34, 0.2)),
+        ((0, 0.33, -0.29), (0.1, 0.28, 0.12)),
+        ((0, 0.47, -0.29), (0.06, 0.07, 0.06)),
+        ((0, -0.05, -0.12), (0.07, 0.1, 0.2)),
+        ((0, 0.34, -0.52), (0.05, 0.16, 0.16)),
     ]
     for i, (c, sz) in enumerate(parts):
         bpy.ops.mesh.primitive_cube_add(size=1)
@@ -144,9 +156,9 @@ def setup_render(res=360):
     return cam
 
 
-VIEWS = {  # camera position; subject faces +Y
+VIEWS = {
     'front': (0, 8, 1.1), 'side': (8, 0, 1.1), 'quarter': (5.5, 5.5, 3.0), 'top': (0, 0.01, 9), 'back3q': (-5, -5, 2.5),
-    'behind': (1.8, -5.5, 3.2),  # gameplay third-person camera
+    'behind': (1.8, -5.5, 3.2),
 }
 
 

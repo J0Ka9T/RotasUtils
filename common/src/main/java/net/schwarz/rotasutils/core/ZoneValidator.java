@@ -3,7 +3,6 @@ package net.schwarz.rotasutils.core;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Shared validation and optimistic-concurrency gate for UI, commands, and file imports. */
 public final class ZoneValidator {
     private ZoneValidator() {}
     public static ZoneApplyResult apply(ZoneDef live, ZoneDef candidate, long baseRevision) {

@@ -7,13 +7,6 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.schwarz.rotasutils.entity.TetrarchEntity;
 import net.schwarz.rotasutils.entity.TetrarchPower;
 
-/**
- * The Tetrarch on the player skeleton, with a pose for each power: arms raised to call judgement,
- * crossed for the aegis, flung wide for the well, one hand levelled down the lance, and so on. Each
- * pose eases in over the first ticks of a cast and back out over the last, on top of the ordinary
- * walk, so nothing snaps. Between casts it holds itself like a sovereign: arms a little out, slow
- * breathing sway.
- */
 @Environment(EnvType.CLIENT)
 public class TetrarchModel extends PlayerModel<TetrarchEntity> {
     private static final int EASE = 6;
@@ -29,7 +22,6 @@ public class TetrarchModel extends PlayerModel<TetrarchEntity> {
         float partial = ageInTicks - entity.tickCount;
         float breath = (float) Math.sin(ageInTicks * 0.08f);
 
-        // A sovereign's stance between casts.
         rightArm.zRot += 0.14f + 0.03f * breath;
         leftArm.zRot -= 0.14f + 0.03f * breath;
 
@@ -84,7 +76,6 @@ public class TetrarchModel extends PlayerModel<TetrarchEntity> {
         leftPants.copyFrom(leftLeg);
     }
 
-    /** Eases the arms and head toward a pose by {@code k}. */
     private void blend(float k, float rx, float ry, float rz, float lx, float ly, float lz, float hx, float hy) {
         if (k <= 0f) {
             return;

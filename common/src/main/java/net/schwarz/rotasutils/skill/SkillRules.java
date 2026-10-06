@@ -3,14 +3,8 @@ package net.schwarz.rotasutils.skill;
 import net.schwarz.rotasutils.progress.PlayerProgress;
 import java.util.function.Function;
 
-/** Shared graph checks for authoritative purchases and client previews. */
 public final class SkillRules {
     private SkillRules() { }
-    /**
-     * Materializes {@code exclusiveWith} declarations as EXCLUSIVE connections on the
-     * counterpart node, so the shared gate blocks buying either side of an exclusive
-     * branch. Idempotent: it replaces the mirrored connections it authored before.
-     */
     public static void mirrorExclusives(java.util.Map<String, SkillNode> nodes) {
         for (SkillNode declaring : nodes.values()) {
             for (String targetId : declaring.exclusiveWith()) {
@@ -28,10 +22,6 @@ public final class SkillRules {
         }
     }
 
-    /**
-     * Null when a player with {@code job} and {@code races} may use the category, otherwise the
-     * reason. Shared by the server purchase gate and the client tree so both agree.
-     */
     public static String audienceBlock(SkillCategory category, String job, java.util.Collection<String> races,
                                        Function<String, String> jobName, Function<String, String> raceName) {
         return audienceBlock(category,job==null?java.util.List.of():java.util.List.of(job),races,jobName,raceName);
@@ -82,7 +72,6 @@ public final class SkillRules {
                     }
                 }
                 case VISUAL_ONLY -> {
-                    // Decorative link, imposes nothing.
                 }
             }
         }
@@ -91,5 +80,4 @@ public final class SkillRules {
         }
         return null;
     }
-
 }

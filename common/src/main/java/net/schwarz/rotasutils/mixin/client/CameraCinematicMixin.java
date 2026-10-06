@@ -11,10 +11,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Hands the camera to the Clash of Heavens film while it plays: it flies its own shots away from the
- * player, and is marked detached so the player's body is drawn. The player's own facing is untouched.
- */
 @Mixin(Camera.class)
 public abstract class CameraCinematicMixin {
     @Shadow
@@ -42,8 +38,7 @@ public abstract class CameraCinematicMixin {
         if (director != null) {
             setRotation((float) director.yaw(), (float) director.pitch());
             setPosition(director.position().x, director.position().y, director.position().z);
-            // The player's body is drawn once the camera has left it, not while it is still inside the head.
-            detached = director.weight() > 0.02;
+            detached = detached || director.weight() > 0.02;
             return;
         }
         Vec3 eye = getPosition();

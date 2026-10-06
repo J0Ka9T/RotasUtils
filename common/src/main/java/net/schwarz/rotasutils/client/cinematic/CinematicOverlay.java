@@ -6,12 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.schwarz.rotasutils.ability.PurpleTimings;
 import net.schwarz.rotasutils.ability.RedTimings;
+import net.schwarz.rotasutils.ability.StargunTimings;
 
-/**
- * What is drawn over the finished frame while the player's own cutscene plays: black letterbox bars that slide in
- * as the camera leaves the player and out as it returns, and the two blinding flashes - one on release, one when the
- * attack lands. The game's own interface is hidden for the duration (see {@link ClientCasts}), so nothing else competes.
- */
 @Environment(EnvType.CLIENT)
 public final class CinematicOverlay {
     private CinematicOverlay() {
@@ -26,7 +22,6 @@ public final class CinematicOverlay {
         int w = mc.getWindow().getGuiScaledWidth(), h = mc.getWindow().getGuiScaledHeight();
         double t = cast.time(partialTick);
 
-        // The flashes: white-hot, tinged red, gone in a fraction of a second.
         boolean purple = cast.purple();
         double flash = 0;
         double release = cast.releaseSeconds();
@@ -41,14 +36,32 @@ public final class CinematicOverlay {
             flash = Math.max(flash, (purple ? 0.9 : 0.6) * Math.exp(-di / (purple ? 0.2 : 0.12)));
         }
         if (flash > 0.01) {
+            flash *= mc.options.screenEffectScale().get();
             int a = (int) Math.min(255, flash * 255);
             g.fill(0, 0, w, h, (a << 24) | (purple ? 0xF0E0FF : 0xFFDCC8));
         }
 
-        // Letterbox bars.
+        if (cast.stargun()) {
+            double f = 0;
+            if (t >= StargunTimings.FIRE - 0.04) {
+                f = Math.max(f, 0.85 * Math.exp(-(t - StargunTimings.FIRE + 0.04) / 0.22));
+            }
+            if (t >= StargunTimings.IMPACT) {
+                f = Math.max(f, 1.0 * Math.exp(-(t - StargunTimings.IMPACT) / 0.35));
+            }
+            if (f > 0.01) {
+                f *= mc.options.screenEffectScale().get();
+                g.fill(0, 0, w, h, ((int) Math.min(255, f * 255) << 24) | 0xE8F0FF);
+            }
+        }
+
+        if (cast.projection() && Projection.black(cast, t)) {
+            g.fill(0, 0, w, h, 0xFF000000);
+        }
+
         double end = cast.endSeconds();
         double bars = Curves.smoothstep(Curves.window(t, RedTimings.CAMERA_DETACH, 0.8))
-                * (1 - Curves.smoothstep(purple ? Curves.window(t, end - 2.4, end - 0.1)
+                * (1 - Curves.smoothstep(purple || cast.projection() || cast.stargun() ? Curves.window(t, end - 1.3, end - 0.1)
                 : Curves.window(t, RedTimings.CAMERA_RETURN + 0.2, RedTimings.END - 0.1)));
         int bar = (int) Math.round(h * 0.115 * bars);
         if (bar > 0) {

@@ -10,10 +10,6 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/**
- * Guards the camera-anchor contract: the eldritch sky is fixed in the heavens and must never
- * cancel, invert or replace the camera pose that {@code LevelRenderer#renderSky} supplies.
- */
 class EldritchSkyRendererAnchorTest {
     @Test
     void rendererHasNoInverseCameraPoseHelpers() {

@@ -8,10 +8,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Sneak + left-click is the Disintegrator's Cero Metralleta. The click is cancelled when the burst
- * takes it, so the same press cannot also swing at, or start mining, whatever is in front.
- */
 @Mixin(MouseHandler.class)
 public abstract class MouseHandlerClickMixin {
     @Inject(method = "onPress", at = @At("HEAD"), cancellable = true)

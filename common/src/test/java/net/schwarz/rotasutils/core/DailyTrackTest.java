@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The daily and season tracks: reaching rungs, claiming each once, and a hand-edited file climbing anyway. */
 class DailyTrackTest {
     private final long[] rungs = {1, 3, 5};
 

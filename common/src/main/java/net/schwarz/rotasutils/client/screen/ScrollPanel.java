@@ -9,15 +9,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A scrolling list of fixed-height rows.
- *
- * <p>Rows are drawn by a callback so callers keep their own model; only the visible
- * slice is ever drawn.
- */
 @Environment(EnvType.CLIENT)
 public final class ScrollPanel {
-    /** Draws one row inside the panel and reports whether it wants the hover highlight. */
     public interface RowRenderer {
         void render(GuiGraphics graphics, int index, int x, int y, int width, int height, boolean hovered);
     }
@@ -37,9 +30,7 @@ public final class ScrollPanel {
     private RowRenderer renderer;
     private RowClick clickHandler;
     private boolean drawBackground = true;
-    /** Board panels use the parchment palette instead of the console surfaces. */
     private boolean parchment;
-    /** Optional per-row dead space so the clickable area matches the visual card. */
     private int rowHitInsetTop;
     private int rowHitInsetBottom;
     private boolean focused;
@@ -59,16 +50,11 @@ public final class ScrollPanel {
         return this;
     }
 
-    /** Switches this panel to the quest board parchment palette. */
     public ScrollPanel parchment() {
         this.parchment = true;
         return this;
     }
 
-    /**
-     * Shrinks each row's hover/click target to match a card that does not fill the whole row.
-     * Useful when the renderer intentionally leaves spacing between rows.
-     */
     public ScrollPanel rowHitInsets(int top, int bottom) {
         int maxInset = Math.max(0, rowHeight - 1);
         this.rowHitInsetTop = Math.max(0, Math.min(top, maxInset));
@@ -264,7 +250,6 @@ public final class ScrollPanel {
         return true;
     }
 
-    /** Index list helper for callers that filter their model before rendering. */
     public static List<Integer> range(int size) {
         List<Integer> indices = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {

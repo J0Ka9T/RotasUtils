@@ -7,48 +7,24 @@ import net.minecraft.nbt.Tag;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * One geometric area inside an admin zone.
- *
- * <p>A zone is the union of its areas, so an operator can trace a town with a box, drop a radius
- * over a boss arena and add a polygon for a winding valley under a single level band. An empty area
- * list on {@link ZoneDef} means "the whole dimension", which is how a zone with no shape at all is
- * expressed.</p>
- *
- * <p>All containers are validated on construction: coordinates within the usual world bounds,
- * radius/polygon sizes bounded, and the polygon needs at least three points to enclose anything.
- * The records are immutable and serialise through plain NBT, the same way every other RotasUtils
- * definition does.</p>
- */
 public sealed interface ZoneArea {
-    /** Axis-aligned world bounds shared by every shape. */
     int WORLD_LIMIT = 30_000_000;
-    /** A polygon needs a triangle at minimum and is capped so a wand cannot grow world data forever. */
     int MAX_POLYGON_POINTS = 128;
     int MAX_RADIUS = 1_000_000;
 
-    /** True when the world position falls inside this area. */
     boolean contains(double x, double y, double z);
 
-    /**
-     * Straight-line distance in blocks from the position to this area's surface; 0 when inside.
-     * Zone transition rings use it to blend the wilderness level toward the zone band.
-     */
     double distance(double x, double y, double z);
 
     CompoundTag save();
 
-    /** Short human-readable description for admin lists, e.g. "Sphere r32 at 10 64 10". */
     String label();
 
-    /** Axis-aligned envelope, used to draw the zone as a box in the world. */
     Bounds bounds();
 
-    /** Inclusive block envelope of an area. */
     record Bounds(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
     }
 
-    /** A sphere around a point. */
     record Sphere(int x, int y, int z, int radius) implements ZoneArea {
         public Sphere {
             coord(x, "sphere x"); coord(y, "sphere y"); coord(z, "sphere z");
@@ -95,7 +71,6 @@ public sealed interface ZoneArea {
         }
     }
 
-    /** A box between two opposite corners. */
     record Box(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) implements ZoneArea {
         public Box {
             coord(minX, "box min x"); coord(minY, "box min y"); coord(minZ, "box min z");
@@ -138,10 +113,6 @@ public sealed interface ZoneArea {
         }
     }
 
-    /**
-     * A vertical prism over a horizontal polygon. The polygon is stored in the X/Z plane and
-     * clamped between {@code minY} and {@code maxY} (inclusive), so a wand can trace any outline.
-     */
     record Polygon(List<Point> points, int minY, int maxY) implements ZoneArea {
         public record Point(int x, int z) {
             public Point {
@@ -282,7 +253,6 @@ public sealed interface ZoneArea {
         return points;
     }
 
-    /** How far a coordinate lies outside [low, high]; 0 when within. */
     private static double outside(double value, double low, double high) {
         return value < low ? low - value : value > high ? value - high : 0.0;
     }

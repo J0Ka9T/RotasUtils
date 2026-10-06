@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Select an online player, inspect their core stats and manage progression. */
 @Environment(EnvType.CLIENT)
 public class PlayerManagerScreen extends RotasScreen implements AdminResponseReceiver {
     private record StatField(String id, String nameKey, String effectKey) { }
@@ -259,7 +258,6 @@ public class PlayerManagerScreen extends RotasScreen implements AdminResponseRec
         tools.put(L.t(key("set_job")), this::setJob);
         tools.put(L.t(key("reset_skills")), () -> runPlayerAction("admin_reset_skills", new CompoundTag()));
 
-        // Three columns when the panel is wide enough; row height shrinks so every tool stays on screen.
         int gap = 4;
         int columns = contentWidth >= 300 ? 3 : 2;
         int rows = (tools.size() + columns - 1) / columns;

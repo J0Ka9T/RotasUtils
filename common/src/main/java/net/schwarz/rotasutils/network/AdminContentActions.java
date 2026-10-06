@@ -17,14 +17,6 @@ import net.schwarz.rotasutils.title.TitleDef;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/**
- * Admin editors for content that used to be command- or raw-JSON-only: world event kinds, the
- * world event schedule, and titles. The caller has already checked admin permission.
- *
- * <p>Season edits go through the same path as the season editor: the live rules are written to
- * JSON, one block is patched, and {@link SeasonRules#fromJson} parses and sanitizes the result, so
- * a form can never store a value the season file itself would reject.</p>
- */
 public final class AdminContentActions {
     public static final Set<String> ACTIONS = Set.of(
             "worldevent_type_save", "worldevent_type_delete", "worldevent_settings_save",
@@ -56,9 +48,7 @@ public final class AdminContentActions {
         }
     }
 
-    // ---- World events ---------------------------------------------------------------------------
-
-    private static void saveEventType(ServerPlayer player, RotasData data, CompoundTag payload) {
+private static void saveEventType(ServerPlayer player, RotasData data, CompoundTag payload) {
         String id = payload.getString("id").trim();
         String previous = payload.getString("previous").trim();
         if (!id.matches(ID_PATTERN)) {
@@ -84,14 +74,13 @@ public final class AdminContentActions {
             RotasNetwork.feedback(player, false, "Unknown event type " + id);
             return;
         }
-        // A running event of this kind ends on its own: WorldEvent reads its kind live.
         patchSeason(player, data, root -> worldEvents(root).getAsJsonObject("types").remove(id),
                 "deleted world event type " + id);
     }
 
     private static void saveEventSettings(ServerPlayer player, RotasData data, CompoundTag payload) {
         JsonObject settings = parseObject(payload.getString("json"));
-        settings.remove("types"); // kinds are edited one at a time, never replaced wholesale here
+        settings.remove("types");
         patchSeason(player, data, root -> {
             JsonObject block = worldEvents(root);
             for (var entry : settings.entrySet()) block.add(entry.getKey(), entry.getValue());
@@ -134,9 +123,7 @@ public final class AdminContentActions {
         return element.getAsJsonObject();
     }
 
-    // ---- Titles ---------------------------------------------------------------------------------
-
-    private static void saveTitle(ServerPlayer player, RotasData data, CompoundTag payload) {
+private static void saveTitle(ServerPlayer player, RotasData data, CompoundTag payload) {
         if (!payload.contains("title", Tag.TAG_COMPOUND)) return;
         TitleDef title = TitleDef.load(payload.getCompound("title"));
         String previous = payload.getString("previous");
@@ -148,12 +135,13 @@ public final class AdminContentActions {
             RotasNetwork.feedback(player, false, "Name max 64, description max 256 characters");
             return;
         }
-        if (!previous.isEmpty() && !previous.equals(title.id())) {
-            if (data.title(title.id()) != null) {
-                RotasNetwork.feedback(player, false, "A title with id " + title.id() + " already exists");
-                return;
-            }
-            data.removeTitle(previous);
+        if (!previous.isEmpty() && !previous.equals(title.id()) && data.title(previous) != null) {
+            RotasNetwork.feedback(player, false, "Title id cannot change once saved; create a new title instead");
+            return;
+        }
+        if (!previous.equals(title.id()) && data.title(title.id()) != null) {
+            RotasNetwork.feedback(player, false, "A title with id " + title.id() + " already exists");
+            return;
         }
         if (previous.isEmpty() && data.title(title.id()) == null) {
             title.setOrder(data.titles().values().stream().mapToInt(TitleDef::order).max().orElse(-1) + 1);
@@ -173,6 +161,7 @@ public final class AdminContentActions {
             TitleService.revoke(online, data, id);
         }
         data.removeTitle(id);
+        data.releaseUniqueTitle(id);
         data.audit(player.getGameProfile().getName() + " deleted title " + id);
         RotasNetwork.syncContent(player.server);
         RotasNetwork.feedback(player, true, "Title deleted: " + id);
@@ -202,7 +191,6 @@ public final class AdminContentActions {
             TitleService.setBlocked(data.progress(targetId), id, false);
             done = TitleService.award(target, data, title, true);
         } else {
-            // Blocks automatic re-earning, or the checker would hand it straight back.
             done = TitleService.revokeById(player.server, data, targetId, id, true);
         }
         if (done) data.audit(player.getGameProfile().getName() + (grant ? " granted " : " revoked ") + id + " / " + who);
@@ -212,7 +200,6 @@ public final class AdminContentActions {
                         : "Not owned by " + who + " (blocked from auto-earning it anyway)");
     }
 
-    /** Takes a unique title back from whoever holds it, online or not, so a real player can claim it. */
     private static void releaseUnique(ServerPlayer player, RotasData data, String id) {
         TitleDef title = data.title(id);
         java.util.UUID owner = data.uniqueTitleOwner(id);

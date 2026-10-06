@@ -15,7 +15,6 @@ import java.util.random.RandomGenerator;
 public final class MonsterDefinitions {
     private MonsterDefinitions() { }
     public enum Strategy { FIXED, RANDOM, NEAREST_PLAYER, PARTY_AVERAGE, REGION, WORLD_TIER, DIMENSION, EXPRESSION,
-        /** Nearest player plus offset, clamped to the containing level zone's band. */
         ZONE }
     public enum Trigger { SPAWN, HURT, ATTACK, INTERVAL, DEATH }
     public record Scale(double multiplier, double perLevel, double add) {
@@ -46,7 +45,6 @@ public final class MonsterDefinitions {
     public record LevelRule(Strategy strategy, int min, int max, int value, int offset, NumericExpression expression) {
         public int choose(ToDoubleFunction<String> facts, RandomGenerator random) {
             if (strategy == Strategy.ZONE) {
-                // The zone supplies the band; the profile's min/max stay the outer safety rails.
                 double base = facts.applyAsDouble("player.level");
                 double low = facts.applyAsDouble("region.min");
                 double high = facts.applyAsDouble("region.max");
@@ -90,12 +88,29 @@ public final class MonsterDefinitions {
     public record Profile(ContentId id, int priority, Selector selector, boolean manualOnly, boolean applyExisting,
                           LevelRule level, long baseXp, double xpPerLevel, Map<ContentId, Integer> tiers,
                           List<ContentId> affixes, Map<String, Scale> attributes, String name, ContentId reward,
-                          ContentId loot, ContentId boss, MobSpawnRules spawning) {
-        public Profile { tiers = Map.copyOf(tiers); affixes = List.copyOf(affixes); attributes = Map.copyOf(attributes); }
+                          ContentId loot, ContentId boss, MobSpawnRules spawning, DefeatRule defeat,
+                          double size, double sizeVariance) {
+        public static final double MIN_SIZE = 0.1, MAX_SIZE = 8.0, MAX_VARIANCE = 0.5;
+        public Profile {
+            tiers = Map.copyOf(tiers); affixes = List.copyOf(affixes); attributes = Map.copyOf(attributes); defeat = defeat == null ? DefeatRule.NONE : defeat;
+            range(size, MIN_SIZE, MAX_SIZE, "size"); range(sizeVariance, 0, MAX_VARIANCE, "size_variance");
+        }
+        public double sizeFor(java.util.UUID mob) {
+            if (sizeVariance <= 0) { return size; }
+            double spread = new java.util.SplittableRandom(mob.getMostSignificantBits() ^ mob.getLeastSignificantBits() ^ 0x5CA1EL).nextDouble(-1, 1);
+            return Math.max(MIN_SIZE, Math.min(MAX_SIZE, size * (1 + sizeVariance * spread)));
+        }
+        public Profile(ContentId id, int priority, Selector selector, boolean manualOnly, boolean applyExisting,
+                       LevelRule level, long baseXp, double xpPerLevel, Map<ContentId, Integer> tiers,
+                       List<ContentId> affixes, Map<String, Scale> attributes, String name, ContentId reward,
+                       ContentId loot, ContentId boss, MobSpawnRules spawning) {
+            this(id, priority, selector, manualOnly, applyExisting, level, baseXp, xpPerLevel, tiers, affixes, attributes,
+                    name, reward, loot, boss, spawning, DefeatRule.NONE, 1.0, 0.0);
+        }
     }
 
     public static Profile profile(ContentId id, JsonObject json) {
-        KernelJson.fields(json, "priority", "selector", "manual_only", "apply_existing", "level", "base_xp", "xp_per_level", "tiers", "affixes", "attributes", "name", "reward", "loot", "boss", "spawning", "category");
+        KernelJson.fields(json, "priority", "selector", "manual_only", "apply_existing", "level", "base_xp", "xp_per_level", "tiers", "affixes", "attributes", "name", "reward", "loot", "boss", "spawning", "category", "defeat", "size", "size_variance");
         if (string(json, "category", "").length() > 64) { throw new IllegalArgumentException("Monster category name exceeds 64 characters"); }
         JsonObject level = KernelJson.object(json, "level");
         KernelJson.fields(level, "strategy", "min", "max", "value", "offset", "expression");
@@ -115,7 +130,9 @@ public final class MonsterDefinitions {
                 attributes(json), name, json.has("reward") ? new ContentId(KernelJson.string(json, "reward")) : null,
                 json.has("loot") ? new ContentId(KernelJson.string(json, "loot")) : null,
                 json.has("boss") ? new ContentId(KernelJson.string(json, "boss")) : null,
-                json.has("spawning") ? MobSpawnRules.parse(KernelJson.object(json, "spawning")) : MobSpawnRules.DEFAULT);
+                json.has("spawning") ? MobSpawnRules.parse(KernelJson.object(json, "spawning")) : MobSpawnRules.DEFAULT,
+                json.has("defeat") ? DefeatRule.parse(KernelJson.object(json, "defeat")) : DefeatRule.NONE,
+                number(json, "size", 1, Profile.MIN_SIZE, Profile.MAX_SIZE), number(json, "size_variance", 0, 0, Profile.MAX_VARIANCE));
     }
 
     public static Tier tier(ContentId id, JsonObject json) {
@@ -181,7 +198,6 @@ public final class MonsterDefinitions {
         KernelJson.fields(s, "entities", "entity_tags", "namespaces", "biomes", "dimensions", "spawn_reasons", "regions", "exclude_entities");
         Set<String> namespaces = strings(s, "namespaces", false);
         if (namespaces.stream().anyMatch(value -> !value.matches("[a-z0-9_.-]{1,64}"))) { throw new IllegalArgumentException("Invalid entity namespace"); }
-        // Regions are level zone ids ("zone_plains"), which are not namespaced content ids.
         Set<String> regions = strings(s, "regions", false);
         if (regions.stream().anyMatch(value -> !value.matches("[a-z0-9_.:/-]{1,128}"))) { throw new IllegalArgumentException("Invalid zone id in regions"); }
         return new Selector(strings(s, "entities", true), strings(s, "entity_tags", true), namespaces, strings(s, "biomes", true),

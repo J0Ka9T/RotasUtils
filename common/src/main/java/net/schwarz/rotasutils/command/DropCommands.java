@@ -19,14 +19,6 @@ import net.schwarz.rotasutils.util.ThaiText;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * {@code /rotas drops}: what the mobs nobody configured leave behind.
- *
- * <p>Monsters with a Mob Setup are already covered by their profile and their rank. This is the other
- * half: the default every unconfigured mob pays, and a per-entity rule for the handful an administrator
- * cares about - without making a full setup for each one. Every change is written straight to
- * {@code season.json}, so it survives a restart and can be hand-edited afterwards.</p>
- */
 final class DropCommands {
     private DropCommands() {
     }
@@ -192,7 +184,6 @@ final class DropCommands {
         return rules.drops.plain;
     }
 
-    /** The rule for one entity, created on demand. Null means the entity type does not exist. */
     private static SeasonRules.RankDrop forEntity(CommandSourceStack source, String id, boolean create) {
         if (!BuiltInRegistries.ENTITY_TYPE.containsKey(new ResourceLocation(id))) {
             source.sendFailure(Component.literal(ThaiText.t("rotasutils.cmd.drops.unknown_entity", id)));
@@ -223,7 +214,6 @@ final class DropCommands {
         return save(source, ThaiText.t("rotasutils.cmd.drops.rates", coinChance, coinMultiplier, lootChance));
     }
 
-    /** Clamps the whole rule set, writes season.json and reports. */
     private static int save(CommandSourceStack source, String message) {
         MinecraftServer server = source.getServer();
         RotasData data = RotasData.get(server);

@@ -8,48 +8,27 @@ import com.google.gson.JsonParser;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Every tunable number of the season design: job levels, monster and craft EXP, party sharing,
- * rank points, character stats and the horse system.
- *
- * <p>The whole object round-trips through JSON so admins can edit {@code config/rotasutils/season.json}
- * and reload without a rebuild. Fields are public on purpose: this is a plain settings bag, and
- * {@link #sanitize()} clamps anything a hand-edited file gets wrong before it is used.</p>
- */
 public final class SeasonRules {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
-    /** Off restores the pre-season behaviour everywhere these rules hook in. */
     public boolean enabled = true;
-    /** Currency used for gacha, respec, stable slots and horse sales. */
     public String currency = "rotas:gold";
 
-    // Main job and sub job curves ---------------------------------------------------------------
     public double mainBaseXp = 25;
     public double mainExponent = 2.1;
     public int mainMaxLevel = 100;
-    /**
-     * When on (the default) the main curve is set by pacing: each level costs a target number of kills of a
-     * same-level monster (see {@link LevelPacing}), and {@code mainBaseXp}/{@code mainExponent} are ignored.
-     */
     public boolean pacingEnabled = true;
-    /** Kills of a same-level monster for the first level-up, and for the last. */
     public double killsAtStart = 8;
     public double killsAtMax = 120;
-    /** Shape of the rise between them: 1 is a straight line, above 1 keeps the early levels quicker. */
     public double killsCurve = 1.5;
-    /** EXP a level-1 monster pays before its level bonus; the yardstick pacing is measured in. */
     public double referenceMonsterXp = 20;
-    /** Characters below this level earn extra EXP, most at level 1, fading to nothing here. */
     public int catchUpLevel = 30;
     public double catchUpBonus = 0.5;
     public double subBaseXp = 90;
     public double subExponent = 1.8;
     public int subMaxLevel = 20;
-    /** Sub-job EXP comes from production only, never from combat. */
     public boolean subJobProductionOnly = true;
 
-    // Monster EXP ---------------------------------------------------------------------------------
     public double monsterLevelBonus = 0.15;
     public int overLevelGrace = 5;
     public double overLevelPenaltyPerLevel = 0.10;
@@ -57,181 +36,114 @@ public final class SeasonRules {
     public double minibossMultiplier = 10;
     public double bossMultiplier = 40;
 
-    // Party ---------------------------------------------------------------------------------------
-    /** Bonus added to the pool for every member after the first, before the equal split. */
     public double partyBonusPerMember = 0.25;
     public double partyRadius = 40;
     public int partyMaxSize = 5;
-    /** A member earns as if the monster were at most this many levels above them (stops carries). */
     public int partyLevelReach = 10;
 
-    // Overflow currency --------------------------------------------------------------------------
-    /** EXP a maxed sub job cannot use turns into this currency. */
     public String overflowCurrency = "rotas:season_token";
     public long overflowXpPerToken = 1000;
 
-    // Repeatable quests ---------------------------------------------------------------------------
     public int repeatableFullRuns = 15;
     public int repeatableHalfRuns = 30;
     public double repeatableHalfRate = 0.5;
     public double repeatableLowRate = 0.1;
 
-    // Production (sub job) EXP --------------------------------------------------------------------
-    /** Base EXP per tier A, B, C, D. */
     public long[] tierXp = {25, 150, 420, 830};
-    /** Highest sub-job level of tier A, B, C, D. */
     public int[] tierMaxLevel = {4, 9, 14, 19};
     public int craftGraceLevels = 3;
     public double craftPenaltyPerLevel = 0.15;
     public double craftMaxPenalty = 0.90;
     public double firstCraftMultiplier = 3;
-    /** Items in a job's unlock table can only be taken from a crafting result at the unlock level. */
     public boolean lockRecipes = true;
-    /** EXP a capped sub job would have earned turns into overflow currency at this rate. */
     public boolean subCapToOverflow = true;
+    public boolean maxLevelToOverflow = true;
 
-    // Sub-role gates ------------------------------------------------------------------------------
-    /** Smelting results in a job's unlock table can only be taken by that sub job at the unlock level. */
     public boolean lockSmelting = true;
-    /** Brewed potions in a job's unlock table can only be taken by that sub job at the unlock level. */
     public boolean lockBrewing = true;
-    /** Level 1 rows are sealed too, so only the sub-role makes even the starter items. */
     public boolean lockStarterRows = true;
-    /** Gathering rows at or below this unlock level drop normally for everyone. */
     public int gatherFreeLevel = 1;
-    /** Chance each drop stack survives for a player without the sub-role that gathers it. */
+    public double subJobSwitchXpLoss = 0.5;
     public double gatherDropChance = 0.35;
-    /** Most items a surviving drop stack keeps for a player without the sub-role (no Fortune bonus). */
     public int gatherMaxCount = 1;
-    /** What a player without the Fisher role pulls up when a sealed catch slips away. */
     public String gatherFishFallback = "minecraft:cod";
-    /** Artisan NPC fee per craft of tier A, B, C, D, before the price multiplier. */
     public long[] crafterFee = {80, 400, 1200, 3000};
     public double crafterPriceMultiplier = 3.0;
-    /** Crafts one player may commission per day across every artisan. 0 means no limit. */
     public int crafterDailyLimit = 5;
-    /** Artisans show no marker over their heads, so players have to find them. */
     public boolean crafterHideMarker = true;
 
-    // Ranks ---------------------------------------------------------------------------------------
     public Map<String, Integer> rankExp = defaultRankExp();
     public int repeatableRankCapPerDay = 10;
-    /** Rank points available across the season without repeatables; thresholds are shares of it. */
     public long seasonRankTotal = 6900;
     public Map<String, Double> rankThresholds = defaultThresholds();
     public Map<String, RankPerk> rankPerks = defaultPerks();
 
-    // Character stats -----------------------------------------------------------------------------
-    /** The four fixed stats (STR, VIT, INT, AGI) and the points that buy them. */
     public StatRules stats = new StatRules();
-    /** Damage taken is multiplied by scale / (scale + defense). */
     public double defenseScale = 100;
 
-    /*
-     * Combat balance. Level does not change a hit: a player's level gives stat points and nothing else, and a
-     * monster's level only grows that monster's own health and damage. The PvP values keep player fights from
-     * being decided by one stacked stat, a dodge roll or a single hit.
-     */
-    /** Every player-versus-player hit is multiplied by this, so fights last several exchanges. */
     public double pvpDamageMultiplier = 0.6;
-    /** Share of the attacker's stat attack bonus that counts in PvP (1 = all of it). */
     public double pvpStatEfficiency = 0.5;
-    /** Evasion is multiplied by this against player attacks. */
     public double pvpEvasionScale = 0.5;
-    /** Largest share of the victim's max health one PvP hit may deal; 0 turns the cap off. */
     public double pvpMaxHitShare = 0.35;
-    /** Magic attack's flat bonus on one hit is capped at this multiple of the hit; 0 turns the cap off. */
     public double magicBonusMaxRatio = 1.0;
 
+public DropRules drops = new DropRules();
 
-    // Monster drops -------------------------------------------------------------------------------
-    /** What a monster leaves when it dies, by rank, and what is inside each grade of drop box. */
-    public DropRules drops = new DropRules();
-
-    // Horses --------------------------------------------------------------------------------------
     public HorseRules horse = new HorseRules();
 
-    // Farming -------------------------------------------------------------------------------------
-    /** Luck, kill combos and elite monsters: what makes an hour of farming feel like progress. */
     public FarmingRules farming = new FarmingRules();
-    /** The monster book: kill a kind enough and you learn how to fight it. */
     public BestiaryRules bestiary = new BestiaryRules();
-    /** Breaking unwanted gear down into refine materials and gold. */
     public SalvageRules salvage = new SalvageRules();
-    /** Monsters that kill a player remember it, grow, and come back. */
     public NemesisRules nemesis = new NemesisRules();
-    /** Who may earn titles automatically. */
     public TitleRules titles = new TitleRules();
-    /** Prices and offers of the service NPCs: smith, alchemist, inn, priest, bank, bounties, collector, auction. */
     public NpcServiceRules npcServices = new NpcServiceRules();
-    /** NPCs as people: friendship, hired companions and the rumours they pass on. */
     public NpcSocialRules npcSocial = new NpcSocialRules();
 
     public static final class NpcSocialRules {
         public boolean friendship = true;
-        /** Points for the first talk with an NPC each day, and for each paid service it performs. */
         public int chatPoints = 3;
         public int servicePoints = 2;
-        /** Service points one NPC can give one player per day. */
         public int servicePointsPerDay = 10;
-        /** Points needed for each friendship level after Stranger. */
         public int[] levels = {30, 100, 250, 500};
-        /** Discount on that NPC's services per friendship level. */
         public double discountPerLevel = 0.03;
         public boolean companions = true;
         public long companionCost = 300;
         public int companionMinutes = 10;
-        /** The hired fighter; iron golems fight monsters on their own and never turn on players. */
         public String companionEntity = "minecraft:iron_golem";
-        /** Companion health and damage grow by this per level of the one who hired it. */
         public double companionPerLevel = 0.02;
         public boolean rumors = true;
         public int rumorsShown = 5;
     }
 
-    /** Rewards and celebration every few levels, so a level feels like more than a number. */
     public MilestoneRules milestones = new MilestoneRules();
-    /** EXP for seeing the world: zones, waystones, new monsters, advancements, distance travelled. */
     public ExplorationRules exploration = new ExplorationRules();
 
     public static final class MilestoneRules {
         public boolean enabled = true;
-        /** A milestone every this many levels. */
         public int every = 5;
-        /** Gold at a milestone: level × this. */
         public long goldPerLevel = 20;
-        /** Extra stat points at every milestone. */
         public int statPoints = 1;
-        /** Levels that are big milestones: announced to the server, paid {@link #bigMultiplier} times more. */
         public int[] bigLevels = {10, 25, 50, 75, 100};
         public double bigMultiplier = 5;
         public int bigStatPoints = 3;
-        /** Big screen title and a burst of light on level-up. */
         public boolean celebrate = true;
     }
 
     public static final class ExplorationRules {
         public boolean enabled = true;
-        /** Discovery EXP grows with the player's level so it stays worth something: base × (1 + level × this). */
         public double levelScale = 0.05;
-        /** First time in a zone: base EXP, plus this per recommended zone level. */
         public long zoneBase = 120;
         public long zonePerLevel = 8;
         public long waystoneXp = 150;
-        /** First kill of a monster kind (a new bestiary entry). */
         public long newMonsterXp = 60;
-        /** Vanilla advancements by frame: task, goal, challenge. Recipe unlocks give nothing. */
         public long[] advancementXp = {40, 150, 500};
-        /** Blocks walked, ridden or flown between two distance rewards (teleports do not count). */
         public int travelBlocks = 1000;
         public long travelXp = 80;
-        /** Variety: each other kind of activity done in the window adds this to all EXP, up to the cap. */
         public double varietyBonus = 0.05;
         public double varietyMax = 0.25;
         public int varietyWindowMinutes = 30;
     }
 
-    /** One potion an alchemist brews on the spot. */
     public static final class Brew {
         public String effect = "minecraft:speed";
         public int amplifier = 0;
@@ -249,7 +161,6 @@ public final class SeasonRules {
         }
     }
 
-    /** An item the collector buys. {@code price} is per item; today's picks pay {@code collectorBonus} times more. */
     public static final class Wanted {
         public String item = "minecraft:wheat";
         public long price = 2;
@@ -263,7 +174,6 @@ public final class SeasonRules {
         }
     }
 
-    /** A bounty contract: kill {@code count} of {@code entity} (an id or #tag) for gold and EXP. */
     public static final class BountyDef {
         public String entity = "minecraft:zombie";
         public int count = 15;
@@ -284,14 +194,10 @@ public final class SeasonRules {
     }
 
     public static final class NpcServiceRules {
-        // Blacksmith
-        /** Gold per point of durability restored. */
         public double repairPerDurability = 0.4;
         public long repairMinCost = 10;
-        // Enchanter
         public long disenchantBaseCost = 150;
         public long disenchantPerLevel = 60;
-        // Alchemist
         public Brew[] brews = {
                 new Brew("minecraft:speed", 0, 480, 60),
                 new Brew("minecraft:haste", 0, 480, 80),
@@ -301,28 +207,20 @@ public final class SeasonRules {
                 new Brew("minecraft:fire_resistance", 0, 480, 90),
                 new Brew("minecraft:water_breathing", 0, 480, 60),
                 new Brew("minecraft:luck", 0, 600, 200)};
-        // Innkeeper
         public long restCost = 40;
-        /** Minutes of Rested (bonus EXP from every source) a night at the inn gives. */
         public int restedMinutes = 30;
         public double restedXp = 0.10;
         public long homeCost = 100;
-        // Priest
         public long cleanseCost = 30;
         public long blessingCost = 150;
         public int blessingMinutes = 10;
         public long liftCurseCost = 500;
-        /** Free prayer once a day: heals and gives a short blessing. */
         public boolean dailyPrayer = true;
-        // Fortune teller
         public long fortuneCost = 100;
         public int fortuneMinutes = 60;
-        /** Bonus of the fortune's favoured activity; a bad omen gives nothing but the reading. */
         public double fortuneXp = 0.20;
         public double badOmenChance = 0.10;
-        // Banker
         public long[] withdrawSteps = {100, 1000, 10000};
-        // Bounty master
         public BountyDef[] bounties = {
                 new BountyDef("minecraft:zombie", 15, 120, 200, 1),
                 new BountyDef("minecraft:skeleton", 15, 140, 220, 1),
@@ -332,10 +230,8 @@ public final class SeasonRules {
                 new BountyDef("minecraft:enderman", 6, 300, 420, 15),
                 new BountyDef("minecraft:blaze", 8, 360, 500, 20),
                 new BountyDef("minecraft:wither_skeleton", 6, 520, 700, 30)};
-        /** Contracts on offer each day, picked from the list by the date so everyone sees the same board. */
         public int bountiesPerDay = 3;
         public int bountiesCompletedPerDay = 3;
-        // Collector
         public Wanted[] wanted = {
                 new Wanted("minecraft:wheat", 2), new Wanted("minecraft:carrot", 2), new Wanted("minecraft:potato", 2),
                 new Wanted("minecraft:beetroot", 3), new Wanted("minecraft:sugar_cane", 2), new Wanted("minecraft:pumpkin", 6),
@@ -346,39 +242,23 @@ public final class SeasonRules {
                 new Wanted("minecraft:redstone", 3), new Wanted("minecraft:oak_log", 2), new Wanted("minecraft:honeycomb", 12)};
         public int collectorPicksPerDay = 4;
         public double collectorBonus = 1.5;
-        /** Items one player may sell the collector per day. */
         public int collectorDailyItems = 256;
-        /** Trading EXP per gold earned at the collector. */
         public double collectorXpPerGold = 0.5;
-        // Auction house
         public double auctionFee = 0.05;
         public int auctionMaxListings = 8;
         public int auctionHours = 72;
         public long auctionMaxPrice = 100_000_000;
     }
 
-    /**
-     * Titles (ฉายา): who the automatic checker considers. Staff testing a server should not claim a
-     * unique title before real players get the chance.
-     */
     public static final class TitleRules {
-        /** Players with admin permission (OP 2+) earn titles automatically. Grants by hand always work. */
         public boolean staffEarnTitles = false;
-        /** Players in creative or spectator mode earn titles automatically. */
         public boolean creativeEarnTitles = false;
-        /** A title an admin revoked is not earned again automatically by that player. */
         public boolean revokeBlocksReEarn = true;
-        /** Collection points per rarity (common, uncommon, rare, epic, legendary); points unlock {@link #collection}. */
         public int[] rarityPoints = {1, 2, 3, 5, 8};
-        /** Gold paid once when a title of each rarity is earned. */
         public long[] rarityGold = {50, 150, 400, 1000, 3000};
-        /** EXP paid once when a title of each rarity is earned. */
         public long[] rarityXp = {100, 300, 800, 2000, 5000};
-        /** Rarity index (0-4) from which an earned title is announced to the whole server. */
         public int announceFromRarity = 3;
-        /** A worn legendary title glows faintly around its wearer. */
         public boolean legendaryAura = true;
-        /** Permanent bonuses for the whole collection, every reached tier applies, worn title or not. */
         public CollectionTier[] collection = {
                 new CollectionTier(5, "minecraft:generic.max_health", 2, "ADD", false, "พลังชีวิต"),
                 new CollectionTier(12, "minecraft:generic.attack_damage", 0.02, "MULTIPLY_BASE", true, "พลังโจมตี"),
@@ -390,12 +270,10 @@ public final class SeasonRules {
                 new CollectionTier(100, "minecraft:generic.luck", 1, "ADD", false, "โชค")};
     }
 
-    /** One step of the title collection: at {@code points}, the bonus applies for good. */
     public static final class CollectionTier {
         public int points = 10;
         public String attribute = "minecraft:generic.max_health";
         public double amount = 1;
-        /** ADD, MULTIPLY_BASE or MULTIPLY_TOTAL. */
         public String operation = "ADD";
         public boolean percent;
         public String label = "";
@@ -412,68 +290,37 @@ public final class SeasonRules {
             this.label = label;
         }
     }
-    /** Timed events that take over a zone or a patch of wilderness and give players somewhere to go. */
     public WorldEventRules worldEvents = new WorldEventRules();
-    /** A weapon remembers what it killed and grows a little from it. */
     public WeaponMemoryRules weaponMemory = new WeaponMemoryRules();
 
-    /**
-     * Nemeses (ศัตรูคู่แค้น).
-     *
-     * <p>A hostile mob that kills a player may rise: it gets a name, a few levels, tougher stats, and it
-     * stops despawning. Every further player it kills ranks it up. If its body is lost - it burned, it
-     * drowned, the chunk was left behind - it is not gone: it waits, and later ambushes the player it
-     * last killed. Only a player can end it, and the one who does takes a bounty and a trophy; the victim
-     * doing it themselves is revenge, and pays {@link #revengeMultiplier} times as much.</p>
-     */
     public static final class NemesisRules {
         public boolean enabled = true;
-        /** Chance a mob that kills a player rises as a nemesis. */
         public double riseChance = 0.5;
-        /** One player's deaths raise at most one nemesis per this many minutes, so dying is not a bounty farm. */
         public int riseCooldownMinutes = 30;
-        /** Nemeses alive on the whole server at once. */
         public int maxActive = 48;
-        /** Nemeses hunting one player at once. */
         public int maxPerPlayer = 3;
         public int maxRank = 5;
-        /** Levels gained when it rises and on every rank after. */
         public int levelsPerRank = 3;
-        /** Extra max health per rank, as a share of the mob's own: 0.5 is x1.5 at rank 1, x3.5 at rank 5. */
         public double healthPerRank = 0.5;
         public double damagePerRank = 0.2;
-        /** A nemesis whose body was lost may come looking for the player it last killed. */
         public boolean ambushEnabled = true;
         public int ambushCooldownMinutes = 30;
-        /** Chance per minute, once the cooldown is over, that it finds its target. */
         public double ambushChancePerMinute = 0.25;
         public int ambushMinDistance = 16;
         public int ambushMaxDistance = 28;
-        /** A nemesis near a player it has killed says so, at most once per this many seconds. */
         public int tauntRadius = 24;
         public int tauntCooldownSeconds = 300;
-        /** A nemesis nobody has met for this many days is forgotten. */
         public int forgetAfterDays = 14;
-        /** Bounty per rank, paid to whoever slays it. */
         public long goldPerRank = 150;
         public long rankPointsPerRank = 2;
-        /** Drop grade by rank, 1-based; the last entry covers every rank above it. */
         public String[] gradeByRank = {"medium", "medium", "rare", "rare", "epic"};
-        /** The victim slaying their own nemesis multiplies the bounty. */
         public double revengeMultiplier = 2.0;
-        /**
-         * The slayer gets a weapon named after the nemesis. It is always a new item of this kind, never a
-         * copy of what the mob held, which may be a player's own gear.
-         */
         public boolean trophyEnabled = true;
         public String trophyItem = "minecraft:iron_sword";
-        /** The trophy of a nemesis that killed with arrows or other projectiles. */
         public String trophyRangedItem = "minecraft:bow";
-        /** The trophy starts refined to the nemesis' rank, never past the refine safe level. */
         public boolean trophyRefine = true;
         public String[] names = {"กรัค", "มอร์กัธ", "ซาร์โกธ", "วัลคัส", "ดราเกีย", "โกลธ", "อุซรัก", "เคลธาร์",
                 "บรอคส์", "ไวเซอร์", "นาร์กุล", "ฮรอธ", "เซเรธ", "ออร์ซา", "กรีมนาร์", "ทาลุก"};
-        /** Epithets by how the kill was made: melee, ranged, magic, fire, explosion, other. */
         public Map<String, String[]> epithets = defaultEpithets();
 
         static Map<String, String[]> defaultEpithets() {
@@ -488,20 +335,11 @@ public final class SeasonRules {
         }
     }
 
-    /**
-     * One kind of world event (เหตุการณ์โลก).
-     *
-     * <p>While it runs, mobs spawning inside it are levelled and promoted by these numbers, players inside
-     * it are paid by them, and - when the event has a goal - everyone who helped reach it is paid the
-     * reward once. Mobs listed in {@link #spawns} are brought in waves around players inside, so an event
-     * always has something to fight.</p>
-     */
     public static final class WorldEventDef {
         public String name = "";
         public String description = "";
         public int weight = 10;
         public int mobLevelBonus = 0;
-        /** Multiplies the elite and champion chances of mobs levelled inside. */
         public double eliteMultiplier = 1.0;
         public double mobHealth = 1.0;
         public double mobDamage = 1.0;
@@ -509,37 +347,21 @@ public final class SeasonRules {
         public double lootMultiplier = 1.0;
         public double coinMultiplier = 1.0;
         public double healingMultiplier = 1.0;
-        /** Chance a broken ore inside drops its ore once more. */
         public double oreBonusChance = 0.0;
-        /** Potion effects kept on players inside, {@code "minecraft:speed 1"} (level 1-5). */
         public String[] playerEffects = {};
-        /** Only starts at night, and ends at sunrise. */
         public boolean nightOnly = false;
-        /** Mobs brought in waves around players inside. */
         public String[] spawns = {};
         public int waveSize = 3;
         public int waveSeconds = 30;
-        /** Wave mobs alive around one player at most. */
         public int maxAlive = 12;
-        /** What counts toward the goal: KILL (hostile kills inside), MINE (ores broken inside) or NONE. */
         public String goal = "NONE";
         public int goalCount = 0;
-        /** A player has to have done at least this much of the goal to share the reward. */
         public int minContribution = 3;
         public TrackReward reward = new TrackReward();
 
         public WorldEventDef() { }
     }
 
-    /**
-     * World events.
-     *
-     * <p>Every {@link #intervalMinutes}, while players are online and fewer than {@link #maxActive}
-     * events run, one may start: in a random enabled zone that is not safe, or - when the server has no
-     * such zone - in a circle of {@link #wildRadius} blocks near an online player. It is announced with
-     * where it is, shown as a boss bar to everyone inside, and ends when its time runs out or its goal
-     * is met.</p>
-     */
     public static final class WorldEventRules {
         public boolean enabled = true;
         public int intervalMinutes = 40;
@@ -547,65 +369,39 @@ public final class SeasonRules {
         public int durationMinutes = 20;
         public int maxActive = 2;
         public int wildRadius = 80;
-        /** A wilderness event is placed this far from the player it was placed for. */
         public int wildMinDistance = 96;
         public int wildMaxDistance = 192;
         public Map<String, WorldEventDef> types = defaultWorldEvents();
         public static final int MAX_TYPES = 32;
     }
 
-    /**
-     * Weapon memory (ความทรงจำอาวุธ).
-     *
-     * <p>A weapon counts the monsters it killed, on the item itself. Each milestone reached is a rank, and
-     * every rank is worth a little more damage from that weapon. The kind of monster it killed most is
-     * its favoured prey, and from {@link #favoredFromRank} it hits that kind harder. The bonuses are small
-     * on purpose: the point is that an old weapon is worth keeping, not that it replaces refinement.</p>
-     */
     public static final class WeaponMemoryRules {
         public boolean enabled = true;
         public long[] milestones = {50, 250, 1000, 5000};
         public double damagePerRank = 0.02;
         public double favoredBonus = 0.05;
         public int favoredFromRank = 2;
-        /** A rank at or above this is announced to the whole server. */
         public int announceFrom = 4;
-        /** Kinds of monster one weapon remembers; the least-killed is forgotten first. */
         public static final int MAX_KINDS = 8;
     }
 
-    /**
-     * The farming loop.
-     *
-     * <p>Luck is the player's own {@code generic.luck} attribute - cards, potions and gear already raise
-     * it - and every point makes loot and cards a little likelier. A combo is a chain of kills with no
-     * more than {@link #comboWindowSeconds} between them; it grows experience and loot chance up to a cap,
-     * and breaks the moment the chain does. Elite and champion monsters are ordinary mobs promoted at
-     * spawn: tougher, marked, and paid on their rank's better drop rules.</p>
-     */
     public static final class FarmingRules {
         public boolean luckEnabled = true;
-        /** Relative loot chance each luck point adds; 0.10 means +10% of the base chance. */
         public double lootChancePerLuck = 0.10;
         public double cardChancePerLuck = 0.05;
-        /** Most luck can add, as a share of the base chance. 1.0 doubles it at most. */
         public double luckBonusCap = 1.0;
 
         public boolean comboEnabled = true;
         public int comboWindowSeconds = 8;
         public double comboXpPerKill = 0.02;
         public double comboLootPerKill = 0.01;
-        /** The bonus stops growing at this many kills; the count itself keeps going for bragging rights. */
         public int comboCap = 25;
 
         public boolean eliteEnabled = true;
-        /** Chance a naturally spawning, levelled mob is a veteran: a little tougher, no affixes. */
         public double veteranChance = 0.10;
         public double veteranHealth = 1.4;
         public double veteranDamage = 1.15;
-        /** Chance a naturally spawning, levelled mob is promoted to elite. */
         public double eliteChance = 0.03;
-        /** Chance it is promoted to champion instead; rolled first. */
         public double championChance = 0.004;
         public double eliteHealth = 2.0;
         public double eliteDamage = 1.4;
@@ -613,72 +409,38 @@ public final class SeasonRules {
         public double championDamage = 1.8;
         public long eliteRankPoints = 1;
         public long championRankPoints = 3;
-        /** Experience a ranked kill is worth, as a multiple of a normal mob of the same level. */
         public double veteranXp = 1.5;
         public double eliteXp = 2.5;
         public double championXp = 6.0;
-        /** Built-in affixes (vampiric, venomous, volatile...) rolled on elites and champions. */
         public boolean affixesEnabled = true;
         public int eliteAffixes = 1;
         public int championAffixes = 2;
-        /**
-         * Most of a player's maximum health one hit from a ranked mob may take, so an elite is a fight
-         * rather than a one-shot. 0 turns the cap off.
-         */
         public double rankedHitCap = 0.6;
-        /** Rank-coloured particles around elites and champions. */
         public boolean rankAura = true;
-        /** Tell players nearby when a champion appears. */
         public boolean announceChampion = true;
     }
 
-    /**
-     * The monster book (bestiary).
-     *
-     * <p>Each kind of monster a player kills climbs its own rungs. Every rung reached is worth a little
-     * more damage against that kind and a little more loot from it, pays rank points once, and at
-     * {@link #revealDropsAt} the book starts listing what the monster drops.</p>
-     */
     public static final class BestiaryRules {
         public boolean enabled = true;
         public long[] tiers = {10, 50, 200, 1000};
         public double damagePerTier = 0.02;
         public double lootPerTier = 0.02;
         public long rankPointsPerTier = 2;
-        /** The rung (1-based) at which the book shows the drops. */
         public int revealDropsAt = 1;
-        /** Most kinds of monster one book records. */
         public static final int MAX_ENTRIES = 512;
     }
 
-    /**
-     * Salvage.
-     *
-     * <p>A weapon or a piece of armour is worth what it does - its attack or its armour - plus its
-     * enchantments, its refinement and anything socketed in it. Salvage turns that worth into gold and
-     * refine ore, returns the cards, and gives back part of the ore sunk into refining it, so farmed
-     * gear nobody wants still feeds the refinement loop.</p>
-     */
     public static final class SalvageRules {
         public boolean enabled = true;
         public long goldPerValue = 4;
-        /** Refine ore rolled per point of value. */
         public double orePerValue = 0.03;
-        /** Share of the ore that went into refining the item that comes back. */
         public double refineRefund = 0.5;
         public boolean returnCards = true;
     }
 
-    // Reward tracks -------------------------------------------------------------------------------
-    /** Today's missions and the rungs a day of them is worth. */
     public DailyRules daily = new DailyRules();
-    /** The season's long track, climbed with rank points. */
     public SeasonTrackRules seasonTrack = new SeasonTrackRules();
 
-    /**
-     * What one rung of a track pays. Items use the drop-grade line format, so a server writes a track
-     * reward the same way it already writes a boss drop.
-     */
     public static final class TrackReward {
         public long gold = 0;
         public long xp = 0;
@@ -695,7 +457,6 @@ public final class SeasonRules {
         }
     }
 
-    /** One rung of the daily track: reached after this many missions today. */
     public static final class DailyTier {
         public long completions = 1;
         public TrackReward reward = new TrackReward();
@@ -708,21 +469,10 @@ public final class SeasonRules {
         }
     }
 
-    /**
-     * Today's missions.
-     *
-     * <p>The missions themselves are whatever the board named by {@link #boardId} shows today - boards
-     * already rotate daily, so this never decides which quests are today's. What it adds is the count:
-     * every mission finished today climbs the track, and each rung pays once. The count resets at local
-     * midnight, and so does any rung reached but not claimed.</p>
-     */
     public static final class DailyRules {
         public boolean enabled = true;
-        /** The board whose rotation is "today's missions"; empty means every daily quest counts. */
         public String boardId = "";
-        /** Quests set to repeat daily count even when they are not on that board. */
         public boolean countDailyRepeat = true;
-        /** One line on the first join of a day saying how many missions are waiting. */
         public boolean announceOnJoin = true;
         public DailyTier[] tiers = defaultDailyTiers();
 
@@ -733,7 +483,6 @@ public final class SeasonRules {
         }
     }
 
-    /** One rung of the season track: reached at this many rank points. */
     public static final class SeasonTier {
         public long points = 100;
         public String name = "";
@@ -748,14 +497,6 @@ public final class SeasonRules {
         }
     }
 
-    /**
-     * The season track.
-     *
-     * <p>Rank points already come from quests, bosses, the daily track and the bestiary, so the track
-     * needs no earning path of its own - only rungs to claim. A claim is recorded by the rung's point
-     * value, so reordering rungs mid-season never hands one out twice; a new {@link #seasonId} starts
-     * every claim over.</p>
-     */
     public static final class SeasonTrackRules {
         public boolean enabled = true;
         public String seasonId = "s1";
@@ -874,41 +615,22 @@ public final class SeasonRules {
         };
     }
 
-    // Events --------------------------------------------------------------------------------------
-    /** What the server does about each thing that happens in the game. */
     public EventRules events = new EventRules();
 
-    /**
-     * The event catalogue.
-     *
-     * <p>One rule per line: a type, an optional filter, and what the server does when it happens. The
-     * plain entry for a type has no filter and answers for everything; a rule with {@code "alexsmobs:*"}
-     * or an exact id answers only for that, and beats the plain one. Switching a rule off means this mod
-     * stops paying and announcing for that event - it never stops the event itself.</p>
-     */
     public static final class EventRules {
         public boolean enabled = true;
         public EventRule[] rules = defaultEventRules();
-        /** Most rules a server may write. */
         public static final int MAX_RULES = 512;
     }
 
-    /** One line of the event catalogue. */
     public static final class EventRule {
-        /** An {@link net.schwarz.rotasutils.event.EventType} name. */
         public String type = "KILL_ENTITY";
-        /** Empty or {@code *} for everything, {@code namespace:*} for one mod, or an exact id. */
         public String filter = "";
         public boolean enabled = true;
-        /** Scales the experience this event already pays; 1 leaves it alone. */
         public double xpMultiplier = 1.0;
-        /** Flat experience on top, per occurrence. */
         public long xpFlat = 0;
-        /** Season currency paid per occurrence. */
         public long gold = 0;
-        /** OFF, PLAYER or SERVER. */
         public String announce = "OFF";
-        /** Seconds before the same player can be paid for this rule again; 0 means no limit. */
         public int cooldownSeconds = 0;
 
         public EventRule() { }
@@ -927,7 +649,6 @@ public final class SeasonRules {
         }
     }
 
-    /** One plain rule per type, so the catalogue is complete the first time it is opened. */
     private static EventRule[] defaultEventRules() {
         var types = net.schwarz.rotasutils.event.EventType.values();
         EventRule[] rules = new EventRule[types.length];
@@ -937,38 +658,21 @@ public final class SeasonRules {
         return rules;
     }
 
-    // Cards ---------------------------------------------------------------------------------------
-    /** Monster cards and the sockets they go into. */
     public CardRules cards = new CardRules();
 
-    /**
-     * Cards (การ์ด) and sockets (รู).
-     *
-     * <p>A card is the rarest thing an ordinary monster can leave. It goes into a socket on a weapon or
-     * a piece of armour and stays there, and its bonus is a plain attribute bonus, so a card never needs
-     * a system of its own to be worth chasing.</p>
-     */
     public static final class CardRules {
         public boolean enabled = true;
-        /** Most sockets one item can ever have. */
         public int maxSockets = 4;
-        /** Chance a kill leaves a card when the card itself does not set one. Ragnarok-thin on purpose. */
         public double dropChance = 0.0005;
-        /** Card id -> the card. */
         public Map<String, CardDef> entries = defaultCards();
     }
 
-    /** One card: where it comes from, what it fits and what it gives. */
     public static final class CardDef {
         public String name = "";
-        /** Entity id that leaves it; empty means any monster can. */
         public String source = "";
-        /** WEAPON, ARMOR or ANY. */
         public String fits = "ANY";
-        /** Its own drop chance; below zero uses {@link CardRules#dropChance}. */
         public double chance = -1;
         public int color = 0xFFB07CE8;
-        /** Effect lines, e.g. {@code "minecraft:generic.attack_damage 0.08 percent"}. */
         public String[] effects = {};
 
         public CardDef() { }
@@ -1006,63 +710,31 @@ public final class SeasonRules {
         return map;
     }
 
-    // Refinement ----------------------------------------------------------------------------------
-    /** Weapon and armour refinement: how far a player can push a piece and what it pays. */
     public RefineRules refine = new RefineRules();
 
-    /** Rune inscribing at the Rune Altar. */
     public RuneRules runes = new RuneRules();
 
-    /**
-     * Runes (อักษรรูน) inscribed into a weapon at the Rune Altar.
-     *
-     * <p>Slots open with refinement, so a rune is the reward for pushing a weapon rather than a way
-     * around it. What each rune does is fixed in {@link net.schwarz.rotasutils.core.RuneType}.</p>
-     */
     public static final class RuneRules {
         public boolean enabled = true;
-        /** Refine level at which each rune slot opens, in slot order. */
         public int[] slotLevels = {4, 7, 10};
-        /** Gold to inscribe into each slot, in slot order; a replaced rune is lost. */
         public long[] goldPerSlot = {500, 1500, 4000};
     }
 
-    /**
-     * Refinement (ตีบวก).
-     *
-     * <p>An attempt at or below {@link #safeLevel} always succeeds; above it {@link #chances} decides,
-     * and a failure does what {@link #onFail} says. The bonus a level pays is deliberately split in two:
-     * levels inside the safe range pay the plain rate, levels above it pay the over rate, so a +10 is
-     * worth far more than twice a +5 and is worth chasing.</p>
-     */
     public static final class RefineRules {
         public boolean enabled = true;
-        /** Highest refine level an item can reach. */
         public int maxLevel = 10;
-        /** At or below this level an attempt cannot fail. */
         public int safeLevel = 4;
-        /** Success chance of an attempt on level 1, 2, 3 ... The classic Ragnarok table. */
         public double[] chances = {1.0, 1.0, 1.0, 1.0, 0.60, 0.40, 0.40, 0.20, 0.20, 0.10};
-        /** DOWNGRADE, RESET_TO_SAFE, BREAK or KEEP. */
         public String onFail = "DOWNGRADE";
-        /** Flat attack damage each refine level inside the safe range adds to a weapon. */
         public double attackPerLevel = 1.0;
-        /** Flat attack damage each level above the safe range adds. */
         public double attackPerOverLevel = 1.5;
-        /** Defence (the {@code rotas:defense} channel) each level inside the safe range adds to armour. */
         public double defensePerLevel = 0.8;
-        /** Defence each level above the safe range adds. */
         public double defensePerOverLevel = 1.2;
-        /** Gold an attempt on +1 costs; every level multiplies it by {@link #goldGrowth}. */
         public long goldPerAttempt = 200;
         public double goldGrowth = 1.6;
-        /** Success chance the enriched ore adds. */
         public double enrichedBonus = 0.15;
-        /** Success chance a blessing scroll adds. */
         public double blessingBonus = 0.20;
-        /** A success at or above this level is announced to everyone on the server; 0 turns that off. */
         public int announceFrom = 8;
-        /** One of these is consumed per attempt, by what is being refined. */
         public String weaponOre = "rotasutils:oridecon";
         public String armorOre = "rotasutils:elunium";
         public String weaponOreEnriched = "rotasutils:enriched_oridecon";
@@ -1073,85 +745,40 @@ public final class SeasonRules {
         }
     }
 
-    /**
-     * Drops by monster rank.
-     *
-     * <p>Every number here is editable in {@code season.json} and takes effect on
-     * {@code /rotas season reload}. The shipped defaults are the design in the docs: ordinary ranks
-     * pay coins and sometimes common loot, a miniboss always leaves common or medium loot, and a
-     * boss always leaves rare or epic loot. Nothing here is a container the player has to open;
-     * everything drops as the items themselves.
-     */
     public static final class DropRules {
         public boolean enabled = true;
-        /** Monster rank name -> what it leaves. Unlisted ranks drop nothing. */
         public Map<String, RankDrop> ranks = defaultRankDrops();
-        /** Drop grade -> what that grade pays. Unlisted grades fall back to the common grade. */
         public Map<String, GradeLoot> grades = defaultGrades();
-        /** What a mob nobody configured leaves behind. */
         public PlainDrop plain = new PlainDrop();
-        /** Which of a mob's ordinary drops are switched off. */
         public DropFilter filter = new DropFilter();
     }
 
-    /**
-     * Switching off drops a mob would otherwise leave.
-     *
-     * <p>This is the other half of {@link PlainDrop}: that one adds, this one takes away. A blocked item
-     * is simply never spawned when a mob dies, so a server can stop rotten flesh filling every bag
-     * without touching a loot table or a data pack.</p>
-     */
     public static final class DropFilter {
         public boolean enabled = true;
-        /** Item ids no mob ever drops. */
         public String[] blocked = {};
-        /** Entity id -> item ids that particular mob never drops. */
         public Map<String, String[]> byEntity = new LinkedHashMap<>();
-        /** Most globally blocked items. */
         public static final int MAX_BLOCKED = 1024;
-        /** Most entities with a list of their own, and most items in one such list. */
         public static final int MAX_ENTITIES = 512;
         public static final int MAX_PER_ENTITY = 128;
     }
 
-    /**
-     * Drops for the mobs that have no Mob Setup of their own.
-     *
-     * <p>A server does not configure every entity in its pack, and until now those mobs paid nothing
-     * at all. {@link #rule} is what any of them leaves; {@link #byEntity} gives one entity type its own
-     * rule without a full setup, and {@link #ignore} names the ones that must never pay - villagers,
-     * pets and the golems that are part of a town rather than a fight.</p>
-     */
     public static final class PlainDrop {
         public boolean enabled = true;
-        /** Only mobs the game itself calls hostile pay. Off makes animals pay too. */
         public boolean hostileOnly = true;
-        /** The drop every unconfigured mob rolls. Deliberately thinner than a configured monster's. */
         public RankDrop rule = new RankDrop(0.25, 0.5, 0.02, "common");
-        /** Entity id -> its own rule, for "zombies pay more than bats" without a Mob Setup. */
         public Map<String, RankDrop> byEntity = new LinkedHashMap<>();
-        /** Entity ids that never pay, whatever else says. */
         public String[] ignore = {"minecraft:villager", "minecraft:wandering_trader", "minecraft:iron_golem",
                 "minecraft:snow_golem", "minecraft:armor_stand", "minecraft:allay"};
     }
 
-    /** One monster rank's drop rule. */
     public static final class RankDrop {
-        /** Chance (0..1) this rank pays coins at all. */
         public double coinChance = 0.35;
-        /** Coins per kill: coinMin..coinMax, plus coinPerLevel per monster level, then times coinMultiplier. */
         public int coinMin = 1;
         public int coinMax = 2;
         public double coinPerLevel = 0.15;
         public double coinMultiplier = 1.0;
-        /** Chance (0..1) this rank leaves loot on top of its coins. */
         public double lootChance = 0.05;
-        /** Grades one of which is picked at random when loot drops; empty means coins only. */
         public String[] grades = {"common"};
-        /**
-         * Item lines this rule always rolls, on top of the grade: {@code "minecraft:bone 1-2 @0.4"}.
-         * This is how one entity type gets its own drop without a content pack behind it.
-         */
         public String[] items = {};
 
         public RankDrop() { }
@@ -1164,10 +791,6 @@ public final class SeasonRules {
         }
     }
 
-    /**
-     * What one grade pays: gold, plus item lines written as {@code "minecraft:diamond 1-3"} or
-     * {@code "minecraft:diamond 1-3 @0.5"} for a chance.
-     */
     public static final class GradeLoot {
         public long minGold = 10;
         public long maxGold = 30;
@@ -1200,14 +823,12 @@ public final class SeasonRules {
                 "minecraft:bread 2-4", "minecraft:iron_ingot 1-3 @0.5", "minecraft:coal 1-3 @0.5"));
         map.put("medium", new GradeLoot(30, 80,
                 "minecraft:iron_ingot 3-6", "minecraft:gold_ingot 2-4", "minecraft:experience_bottle 2-5",
-                // Refine ore starts here, at a rate that makes a +5 a project rather than an afternoon.
                 "rotasutils:oridecon 1 @0.04", "rotasutils:elunium 1 @0.04"));
         map.put("rare", new GradeLoot(80, 200,
                 "minecraft:diamond 1-3", "minecraft:emerald 4-8", "minecraft:golden_apple 1-2",
                 "minecraft:ender_pearl 1-3",
                 "rotasutils:oridecon 1-2 @0.18", "rotasutils:elunium 1-2 @0.18",
                 "rotasutils:protection_scroll 1 @0.03", "rotasutils:blessing_scroll 1 @0.05",
-                // Runes only matter from +4, so they start where refine ore is already flowing.
                 "rotasutils:rune_fire 1 @0.02", "rotasutils:rune_frost 1 @0.02", "rotasutils:rune_venom 1 @0.02",
                 "rotasutils:rune_lifesteal 1 @0.01", "rotasutils:rune_fury 1 @0.01"));
         map.put("epic", new GradeLoot(200, 500,
@@ -1218,7 +839,6 @@ public final class SeasonRules {
                 "rotasutils:protection_scroll 1 @0.12", "rotasutils:blessing_scroll 1 @0.15",
                 "rotasutils:rune_fire 1 @0.08", "rotasutils:rune_frost 1 @0.08", "rotasutils:rune_venom 1 @0.08",
                 "rotasutils:rune_lifesteal 1 @0.05", "rotasutils:rune_fury 1 @0.05",
-                // The one item that guarantees a +10 attempt. A boss a week, at best.
                 "rotasutils:certificate_scroll 1 @0.01"));
         return map;
     }
@@ -1243,15 +863,12 @@ public final class SeasonRules {
         public boolean enabled = true;
         public long pullCost = 500;
         public long tenPullCost = 4500;
-        /** Chance per pull for COMMON, UNCOMMON, RARE, EPIC, LEGENDARY; normalised when read. */
         public double[] rates = {0.55, 0.25, 0.12, 0.06, 0.02};
         public int pityRare = 10;
         public int pityEpic = 40;
         public int pityLegendary = 150;
         public double epicRareCoatChance = 0.35;
-        /** Coat ids that count as secret. Empty means every coat SWEM does not let foals inherit. */
         public String[] secretCoats = {};
-        /** Coat ids that count as rare (Epic pulls may roll one). */
         public String[] rareCoats = {};
         public int baseStableSlots = 3;
         public long slotBaseCost = 1000;
@@ -1268,11 +885,9 @@ public final class SeasonRules {
         public long sellSecretCoat = 900;
         public long sellRareCoat = 150;
         public long[] sellRarityBonus = {0, 20, 60, 150, 400};
-        /** Percent kept by the market; 0 means sellers receive the full price. */
         public double marketFee = 0;
         public long marketMaxPrice = 10_000_000;
 
-        // Breeding (see HorseBreeding) ---------------------------------------------------------------
         public boolean breedEnabled = true;
         public long breedBaseCost = 800;
         public long breedCostPerLineage = 150;
@@ -1280,7 +895,6 @@ public final class SeasonRules {
         public int breedCooldownMinutes = 120;
         public int breedsPerHorse = 3;
         public int fertileBonusBreeds = 2;
-        /** Share of the parents' trained levels a foal is born with (0 = always level I). */
         public double breedLevelInheritance = 0.5;
         public double breedTraitInheritChance = 0.5;
         public double breedMutationChance = 0.08;
@@ -1289,12 +903,9 @@ public final class SeasonRules {
         public double breedRareCoatChance = 0.35;
         public double breedSecretCoatChance = 0.12;
         public long studMaxFee = 1_000_000;
-        /** Extra NPC price per generation of lineage (capped at 10 generations). */
         public long sellPerLineage = 60;
-        /** Expected traits per draw rarity: whole part guaranteed, fraction is a chance of one more. */
         public double[] gachaTraits = {0.05, 0.25, 0.6, 1.0, 1.5};
 
-        // Trait strength -----------------------------------------------------------------------------
         public double warhorseDamage = 0.12;
         public double ironhideArmor = 6;
         public double valiantArmor = 3;
@@ -1343,12 +954,10 @@ public final class SeasonRules {
         return map;
     }
 
-    /** Rank points one completion of this kind of quest is worth. */
     public int rankExpFor(String questType) {
         return Math.max(0, rankExp.getOrDefault(questType, 0));
     }
 
-    /** What an artisan charges per craft of this tier; tiers past D charge the D fee. */
     public long crafterFeeFor(int tier) {
         long base = crafterFee[Math.max(0, Math.min(crafterFee.length - 1, tier))];
         return Math.max(0, Math.round(base * crafterPriceMultiplier));
@@ -1358,7 +967,6 @@ public final class SeasonRules {
         return rankPerks.getOrDefault(rank, new RankPerk());
     }
 
-    /** Clamps every value into a safe range, so a hand-edited file cannot break the game. */
     public SeasonRules sanitize() {
         mainBaseXp = clamp(mainBaseXp, 1, 1e9, 25);
         mainExponent = clamp(mainExponent, 0.5, 4, 2.1);
@@ -1394,6 +1002,7 @@ public final class SeasonRules {
         craftMaxPenalty = clamp(craftMaxPenalty, 0, 1, 0.9);
         firstCraftMultiplier = clamp(firstCraftMultiplier, 1, 100, 3);
         gatherFreeLevel = clamp(gatherFreeLevel, 0, 10000);
+        subJobSwitchXpLoss = clamp(subJobSwitchXpLoss, 0, 1, 0.5);
         gatherDropChance = clamp(gatherDropChance, 0, 1, 0.35);
         gatherMaxCount = clamp(gatherMaxCount, 1, 64);
         if (gatherFishFallback == null || gatherFishFallback.isBlank()) gatherFishFallback = "minecraft:cod";
@@ -1552,7 +1161,6 @@ public final class SeasonRules {
         }
         java.util.List<EventRule> keptRules = new java.util.ArrayList<>();
         for (EventRule rule : events.rules) {
-            // A rule naming a type this build does not have is dropped rather than kept as a trap.
             if (rule == null || rule.eventType() == null) continue;
             if (!net.schwarz.rotasutils.event.EventRules.validFilter(rule.filter)) rule.filter = "";
             rule.filter = rule.filter == null ? "" : rule.filter.trim().toLowerCase(java.util.Locale.ROOT);
@@ -1564,7 +1172,6 @@ public final class SeasonRules {
             rule.cooldownSeconds = clamp(rule.cooldownSeconds, 0, 86400);
             keptRules.add(rule);
         }
-        // Every type always has a plain entry, so a deleted line cannot make a type unreachable.
         for (var type : net.schwarz.rotasutils.event.EventType.values()) {
             boolean present = false;
             for (EventRule rule : keptRules) {
@@ -1850,7 +1457,6 @@ public final class SeasonRules {
         return r;
     }
 
-    /** Rungs sorted by what they need, no two at the same count, at most the track's limit. */
     private static DailyTier[] sanitizeDailyTiers(DailyTier[] tiers) {
         java.util.List<DailyTier> kept = new java.util.ArrayList<>();
         for (DailyTier tier : tiers) {

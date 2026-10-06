@@ -19,12 +19,7 @@ import java.util.SplittableRandom;
 import java.util.TreeMap;
 import java.util.UUID;
 
-/**
- * Rolls loot tables deterministically. The same seed and content revision always produce the same
- * stacks, so a rejected or retried grant recovers exactly the reward the player was owed.
- */
 public final class LootService {
-    /** Hard ceiling per roll so a pack cannot flood an inventory in one grant. */
     public static final int MAX_STACKS = 64;
     private LootService() { }
 
@@ -33,10 +28,6 @@ public final class LootService {
         return new SplittableRandom(id.getMostSignificantBits() ^ id.getLeastSignificantBits());
     }
 
-    /**
-     * Rolls one table. Entries whose condition fails are excluded from the weighted pool before the
-     * first draw, so a failing condition never silently consumes a roll.
-     */
     public static List<ItemStack> roll(ItemCatalog catalog, ContentId tableId, String seed, int level,
                                        double multiplier, KernelContext context) {
         var table = catalog.loot().get(tableId);
@@ -64,10 +55,6 @@ public final class LootService {
         return List.copyOf(stacks);
     }
 
-    /**
-     * Rolls a table for a player at most once per occurrence and delivers the result. The receipt is
-     * written in the same transaction that stages the delivery, so a duplicate call grants nothing.
-     */
     public static boolean grantOnce(ServerPlayer player, RotasData data, ContentId tableId, String occurrence,
                                     int level, double multiplier) {
         if (data.kernel() == null) { throw new IllegalStateException("RPG kernel is not ready"); }
@@ -83,7 +70,6 @@ public final class LootService {
         }
     }
 
-    /** Adds stacks to the inventory, keeping anything that does not fit in the player's mailbox. */
     public static boolean canDeliver(ServerPlayer player, List<ItemStack> stacks) {
         var inventory = new net.minecraft.world.entity.player.Inventory(player);
         var original = player.getInventory();
@@ -113,7 +99,6 @@ public final class LootService {
         return stored;
     }
 
-    /** Delivers everything the mailbox holds, returning stacks that still do not fit. */
     public static int recover(ServerPlayer player) {
         var progress = RotasData.get(player.server).progress(player.getUUID());
         List<CompoundTag> pending = progress.drainMail();
@@ -125,12 +110,10 @@ public final class LootService {
             ItemStack copy = stack.copy();
             if (player.getInventory().add(copy) && copy.isEmpty()) { delivered++; } else { leftovers.add(copy); }
         }
-        // Anything that still does not fit goes straight back so nothing is destroyed by a full bag.
         leftovers.forEach(stack -> progress.addMail(stack.save(new CompoundTag())));
         return delivered;
     }
 
-    /** Preview of a roll for administrators; identical to a real grant for the same seed. */
     public static List<String> preview(ItemCatalog catalog, ContentId tableId, String seed, int level, double multiplier) {
         List<String> lines = new ArrayList<>();
         for (ItemStack stack : roll(catalog, tableId, seed, level, multiplier, null)) {
@@ -142,7 +125,6 @@ public final class LootService {
         return List.copyOf(lines);
     }
 
-    /** Shared validation helper: the loot entries an item catalog can actually build. */
     public static void checkBuildable(ItemCatalog catalog, ItemDefinitions.LootTable table, List<String> issues) {
         table.entries().forEach(entry -> {
             if (entry.item() != null && !BuiltInRegistries.ITEM.containsKey(new ResourceLocation(entry.item()))) {

@@ -35,6 +35,18 @@ class NpcEditingTest {
         net.minecraft.SharedConstants.tryDetectVersion();
         net.minecraft.server.Bootstrap.bootStrap();
     }
+    @Test void voiceRoundTripsAndFallsBackToGreetingVoice() {
+        NpcDef npc = new NpcDef("talker");
+        npc.setVoice("greeting", "minecraft:entity.villager.yes");
+        npc.setVoicePitch(500);
+        NpcDef restored = NpcDef.load(npc.save());
+        assertEquals("minecraft:entity.villager.yes", restored.voice("greeting"));
+        assertEquals(200, restored.voicePitch());
+        assertNotNull(restored.voiceSound("farewell"));
+        assertNull(new NpcDef("mute").voiceSound("greeting"));
+        assertNull(new NpcDef("bad").voiceSound("greeting"));
+    }
+
     @Test void nonfiniteReachCannotDisableDistanceChecks() {
         NpcDef npc = new NpcDef("test");
         assertThrows(IllegalArgumentException.class, () -> npc.setInteractionDistance(Double.NaN));

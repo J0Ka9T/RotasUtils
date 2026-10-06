@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.client.screen.admin;
 
-/** Parsing checks that leave the raw editor draft untouched. */
 public final class FieldInput {
     private FieldInput() { }
 

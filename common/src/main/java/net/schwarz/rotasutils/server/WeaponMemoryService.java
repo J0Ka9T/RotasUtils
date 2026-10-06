@@ -17,13 +17,6 @@ import net.schwarz.rotasutils.item.WeaponMemory;
 import net.schwarz.rotasutils.level.SeasonRules;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * Weapon memory (ความทรงจำอาวุธ): the weapon that made a kill counts it, and grows from it.
- *
- * <p>Only the weapon that actually struck counts - a melee swing, or a projectile fired by the player
- * holding it - so a sword kept in the off hand while a pet does the work learns nothing. The damage it
- * adds is read at hit time from the item and the season rules, the same way refinement is.</p>
- */
 public final class WeaponMemoryService {
     private WeaponMemoryService() {
     }
@@ -39,7 +32,6 @@ public final class WeaponMemoryService {
         return source.getDirectEntity() instanceof Projectile projectile && projectile.getOwner() == player;
     }
 
-    /** One kill for the weapon in the killer's hand; announces a rank the moment it is reached. */
     public static void onKill(ServerPlayer killer, RotasData data, LivingEntity victim, String entityId,
                               boolean boss, DamageSource source) {
         SeasonRules.WeaponMemoryRules rules = rules(data);
@@ -67,12 +59,10 @@ public final class WeaponMemoryService {
         }
     }
 
-    /** The title of a memory rank; ranks past the last named one keep the last name. */
     public static String rankName(int rank) {
         return ThaiText.t("rotasutils.memory.rank." + Math.max(1, Math.min(5, rank)));
     }
 
-    /** What the striking weapon's memory multiplies this hit by, against a non-player victim. */
     public static double damageMultiplier(SeasonRules rules, ServerPlayer attacker, DamageSource source, LivingEntity victim) {
         SeasonRules.WeaponMemoryRules memory = rules == null ? null : rules.weaponMemory;
         if (memory == null || !memory.enabled || !struckWithHeld(attacker, source)) {

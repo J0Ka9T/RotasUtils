@@ -10,7 +10,6 @@ import net.schwarz.rotasutils.data.RotasData;
 import net.schwarz.rotasutils.network.RotasNetwork;
 import net.schwarz.rotasutils.util.Ids;
 
-/** Server-side reactions to the billboard block. */
 public final class BoardHandlers {
     private BoardHandlers() {
     }
@@ -19,7 +18,6 @@ public final class BoardHandlers {
         RotasData data = RotasData.get(player.server);
         boolean admin = BoardService.isAdmin(player, data);
 
-        // A freshly placed board has no config yet; the first admin to click it creates one.
         if (boardEntity.boardId().isEmpty()) {
             if (!admin) {
                 player.sendSystemMessage(net.schwarz.rotasutils.util.ThaiText.c("rotasutils.msg.board.not_set_up")
@@ -45,9 +43,6 @@ public final class BoardHandlers {
                         .withStyle(ChatFormatting.GRAY));
                 return;
             }
-            // The board was deleted from the manager. Recreating it under the same id made the
-            // deletion look like it had failed, so the block is unbound instead; the next admin
-            // click goes through the normal "set up a new board" path above.
             boardEntity.setBoardId("");
             boardEntity.refreshDisplay(net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.board.default_name"),
                     net.schwarz.rotasutils.board.BoardStyle.WOODEN_VILLAGE, 0, 0xFF3BE8FF, false, false, false);
@@ -70,12 +65,8 @@ public final class BoardHandlers {
     }
 
     public static void onBroken(Level level, QuestBoardBlockEntity boardEntity) {
-        // Board configuration is intentionally preserved so a misplaced break does
-        // not destroy a quest pool. Removing a board for good is done from the
-        // Quest Board Manager.
     }
 
-    /** Pushes the render-only mirror of the board config onto the block entity. */
     public static void refreshDisplay(ServerPlayer player, RotasData data, QuestBoardBlockEntity boardEntity) {
         BoardConfig board = data.board(boardEntity.boardId());
         if (board == null) {

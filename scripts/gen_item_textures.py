@@ -43,7 +43,6 @@ def overlay(grid, rows, pal, x0, y0):
     return grid
 
 
-# ---- runes: rough stone tablets with a glowing sign -------------------------------------------------
 TABLET = [
     "................",
     "....oooooooo....",
@@ -121,14 +120,12 @@ def runes():
         w, h = len(rows[0]), len(rows)
         x0, y0 = 8 - w // 2, 3 + (9 - h) // 2 + 1
         overlay(grid, rows, pal, x0, y0)
-        # chipped corner and a crack, so the slab is not a clean rectangle
         grid[2][11] = None
         grid[3][12] = rgb('#4c4757')
         grid[10][3] = rgb('#4c4757')
         save('rune_' + name, grid)
 
 
-# ---- gems ---------------------------------------------------------------------------------------------
 GEM = [
     "................",
     ".......oo.......",
@@ -157,7 +154,6 @@ def gems():
     for name, pal in ramps.items():
         save(name, ascii_sprite(GEM, pal))
         g = ascii_sprite(GEM, pal)
-        # enriched: a hot core, a facet split line and four-point sparkles
         for x, y in ((8, 6), (8, 7), (7, 8), (8, 8), (8, 9)):
             g[y][x] = rgb(pal['h'])
         for y in range(4, 13):
@@ -169,7 +165,6 @@ def gems():
         save('enriched_' + name, g)
 
 
-# ---- scrolls ------------------------------------------------------------------------------------------
 SCROLL = [
     "................",
     "..oooooooooooo..",
@@ -200,7 +195,6 @@ def scrolls():
     for name, (ink, (seal, hi), kind) in specs.items():
         pal = {**paper, **ink}
         g = ascii_sprite(SCROLL, pal)
-        # seal at the lower right, overlapping the edge
         seal_shape = [
             ".oo.",
             "oSHo",
@@ -217,7 +211,6 @@ def scrolls():
                 g[y][11] = rgb('#7b52c9')
                 g[y][12] = rgb('#5a3aa0')
         save(name, g)
-    # the two sky scrolls: aged paper with a large single glyph instead of text lines
     glyphs = {
         'scroll_abyss': ([
             "..3..3..",
@@ -245,7 +238,6 @@ def scrolls():
         save(name, g)
 
 
-# ---- sigils: shaped medals with a hand-drawn emblem ---------------------------------------------------
 def shape_mask(kind):
     pts = set()
     for y in range(16):
@@ -291,7 +283,6 @@ def medal(kind, metal, field, emblem, epal):
             g[y][x] = lt if (lit and d == 2) else (md if d == 2 or lit else dk)
         else:
             g[y][x] = f_lt if (x + y) < 14 else f_dk
-    # inner shadow line on the recessed field, top and left
     for (x, y) in mask:
         if edge_dist(x, y) == 4 and ((x - 1, y) in mask and edge_dist(x - 1, y) == 3
                                      or (x, y - 1) in mask and edge_dist(x, y - 1) == 3):
@@ -431,7 +422,6 @@ def sigils():
     for name, shape, metal, emb, epal in specs:
         rows = EMBLEMS[emb][0]
         save(name, medal(shape, metals[metal], fields[metal], rows, epal))
-    # the convergence sigil: a gold ring round four coloured quarters
     quarters = [
         "..rrgg..",
         ".rrrggg.",
@@ -446,7 +436,6 @@ def sigils():
     save('convergence_sigil', medal('round', metals['gold'], fields['gold'], quarters, qpal))
 
 
-# ---- keys and rings -----------------------------------------------------------------------------------
 KEY = [
     "................",
     "....oooo........",
@@ -470,7 +459,6 @@ KEY = [
 def keys():
     pal = {'o': '#140c26', 'H': '#f0e2ff', 'V': '#8d5ce0', 'v': '#4b2a94', 'B': '#b48ae8'}
     g = ascii_sprite(KEY, pal)
-    # a glowing crack in the bow
     for x, y in ((4, 4), (5, 5)):
         g[y][x] = rgb('#ffffff')
     save('rift_key', g)

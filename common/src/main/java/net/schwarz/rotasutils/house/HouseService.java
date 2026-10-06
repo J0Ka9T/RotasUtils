@@ -25,7 +25,6 @@ public final class HouseService {
         return rent(current, player, config.tier(tierId), now, expectedRevision);
     }
 
-    /** Rents at the given tier's prices, which may carry a house's own price override. */
     public Action rent(HouseTenancy current, UUID player, HouseTier tier, long now, long expectedRevision) {
         if (current.status() != HouseStatus.AVAILABLE) return fail("house.not_available", current);
         if (current.revision() != expectedRevision) return fail("house.stale", current);
@@ -49,7 +48,6 @@ public final class HouseService {
         return buyout(current, player, config.tier(tierId), expectedRevision);
     }
 
-    /** Buys out at the given tier's deposit, which may carry a house's own price override. */
     public Action buyout(HouseTenancy current, UUID player, HouseTier tier, long expectedRevision) {
         if (current.owner() == null || !player.equals(current.owner())) return fail("house.not_owner", current);
         if (current.status() == HouseStatus.BOUGHT_OUT) return fail("house.already_bought_out", current);

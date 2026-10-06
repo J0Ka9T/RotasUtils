@@ -8,12 +8,6 @@ import net.schwarz.rotasutils.quest.objective.EventKind;
 
 import java.util.UUID;
 
-/**
- * One gameplay event, already narrowed to the objective kind that could consume it.
- *
- * <p>Built at the call site of a game event and passed straight to
- * {@link ObjectiveEngine#handle}; nothing polls for these.
- */
 public final class QuestEvent {
     private final EventKind kind;
     private int amount = 1;

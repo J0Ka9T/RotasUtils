@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "HHH",
+    "GMG",
+    "PPP"
+  ],
+  "key": {
+    "H": {
+      "item": "minecraft:hay_block"
+    },
+    "G": {
+      "item": "minecraft:grindstone"
+    },
+    "M": {
+      "item": "minecraft:composter"
+    },
+    "P": {
+      "item": "minecraft:oak_planks"
+    }
+  },
+  "result": {
+    "item": "rotasutils:mill"
+  }
+}

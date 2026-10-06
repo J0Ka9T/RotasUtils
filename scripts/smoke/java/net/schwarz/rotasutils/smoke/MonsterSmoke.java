@@ -22,11 +22,6 @@ import net.schwarz.rotasutils.server.MonsterStorage;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Dedicated-server checks for the monster profile, tier and affix engine. The definitions are
- * published through the ordinary admin draft path so the assertions run against live kernel content
- * instead of a hand-built snapshot.
- */
 public final class MonsterSmoke {
     private static final UUID ID = UUID.fromString("6d0f6c1c-7cf0-4d4c-9a9d-1b1f1f4bd9a1");
     private static final String ACTOR = "smoke-monster";
@@ -100,7 +95,6 @@ public final class MonsterSmoke {
         zombie.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), MobSpawnType.COMMAND, null, null);
         zombie.setPersistenceRequired();
         zombie.setNoAi(true);
-        // The persistent probe has to survive sunlight, mob griefing and difficulty between runs.
         zombie.setInvulnerable(persistent);
         if (persistent) { zombie.addTag(PERSISTENT_TAG); }
         require(level.addFreshEntity(zombie), "smoke zombie added to the level");
@@ -146,7 +140,6 @@ public final class MonsterSmoke {
         catch (IllegalArgumentException expected) { rejected = true; }
         require(rejected, "level override outside profile bounds is rejected");
 
-        // Forget then rejoin proves the disk-restore path rebuilds attributes from storage alone.
         service.forget(zombie);
         require(service.peek(zombie) == null, "forget drops the runtime index entry");
         service.join(zombie, "COMMAND", true);
@@ -194,7 +187,6 @@ public final class MonsterSmoke {
             if (entity instanceof Zombie zombie && zombie.getTags().contains(PERSISTENT_TAG)) { probe = zombie; }
         }
         require(probe != null, "persistent monster probe survived the restart");
-        // The startup sweep enqueues loaded mobs, so the state may still be waiting for a tick.
         if (service.peek(probe) == null) { service.join(probe, "LOADED", true); }
         MonsterState state = service.peek(probe);
         require(state != null, "monster state restored from entity storage after restart");
@@ -203,7 +195,6 @@ public final class MonsterSmoke {
         require(state.affixes().equals(List.of(new ContentId("rotas:affix/smoke_tough"))), "restored affixes");
         require(Math.abs(probe.getMaxHealth() - 40.0F) < .001, "restored scaling reapplied: " + probe.getMaxHealth());
         require(probe.hasCustomName() && probe.getCustomName().getString().equals(EXPECTED_NAME), "restored generated name");
-        // The published definitions are gone after the harness reload, which must not corrupt live monsters.
         require(!RotasData.get(server).kernel().content().monsters().profiles().containsKey(PROFILE)
                 || service.peek(probe) != null, "live monsters survive content removal");
     }

@@ -12,17 +12,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Kernel quests. Every mutation is one player-record transaction, so accepting, advancing, claiming
- * and abandoning cannot half-apply, and a conflicting write is rejected rather than merged.
- *
- * <p>Quest state lives in the existing bounded player variable namespace, which means it inherits the
- * transaction, receipt and persistence guarantees the progression phase already proved.
- */
 public final class QuestKernelService {
     public enum Result { ACCEPTED, ADVANCED, COMPLETED, CLAIMED, UNAVAILABLE, ALREADY_ACTIVE, NOT_ACTIVE, LIMIT_REACHED }
 
-    /** Active quests per player are bounded so the variable namespace cannot be flooded. */
     public static final int MAX_ACTIVE = 32;
     private final MinecraftServer server;
     private final RpgKernel kernel;
@@ -52,7 +44,6 @@ public final class QuestKernelService {
         return value == null ? 0 : parse(value, 0);
     }
 
-    /** Quests the player may accept right now. */
     public List<ContentId> available(ServerPlayer player) {
         long now = now();
         var context = new KernelPlayerContext(player, Map.of());
@@ -96,10 +87,6 @@ public final class QuestKernelService {
         return Result.NOT_ACTIVE;
     }
 
-    /**
-     * Applies one kernel event to every active quest of a player. Objectives complete, stage rewards
-     * are granted, branches choose the next stage, and the whole step is one transaction per quest.
-     */
     public List<Result> handle(ServerPlayer player, ContentId event, String occurrence, Map<String, String> facts) {
         List<Result> results = new ArrayList<>();
         for (var entry : active(player).entrySet()) {
@@ -140,7 +127,6 @@ public final class QuestKernelService {
             transaction.commit();
         }
         if (!stageDone) { advanced++; return Result.ADVANCED; }
-        // Rewards are granted after the state write so a rejected write never pays out.
         if (stage.reward() != null) {
             try { kernel.grant(player, stage.reward(), "quest:" + id + ":" + stageIndex + ":" + windowKey(quest)); }
             catch (RuntimeException failure) { error("quest-stage-reward:" + id, failure); }
@@ -150,10 +136,6 @@ public final class QuestKernelService {
         return Result.COMPLETED;
     }
 
-    /**
-     * Claims the completion reward once per reset window. A bounty quest also consumes one of its
-     * world-wide slots for the window; a full bounty pays nobody and leaves the claim unclaimed.
-     */
     public Result claim(ServerPlayer player, ContentId id) {
         var quest = quest(id);
         if (stage(player, id) != -1 || completedAt(player, id) <= 0) { return Result.NOT_ACTIVE; }
@@ -181,7 +163,6 @@ public final class QuestKernelService {
         return Result.CLAIMED;
     }
 
-    /** Active quests of a player, keyed by quest with the current stage index. */
     public Map<ContentId, Integer> active(ServerPlayer player) {
         Map<ContentId, Integer> result = new LinkedHashMap<>();
         kernel.content().quests().keySet().forEach(id -> {

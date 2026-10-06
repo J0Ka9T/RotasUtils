@@ -1,10 +1,5 @@
 package net.schwarz.rotasutils.core;
 
-/**
- * Lays a row of buttons into a fixed width. Buttons keep their preferred widths while they fit and
- * shrink together, proportionally, when the window is narrow (large GUI scale), so a row never runs
- * past its window or overlaps the next button. Pure math, unit-tested without a client.
- */
 public final class ButtonRow {
     public static final int GAP = 4;
     public static final int MIN_WIDTH = 34;
@@ -12,7 +7,6 @@ public final class ButtonRow {
     private ButtonRow() {
     }
 
-    /** Returns {@code {x, width}} for each button, left to right, starting at {@code x}. */
     public static int[][] fit(int x, int width, int... preferred) {
         int count = preferred.length;
         int[][] out = new int[count][2];

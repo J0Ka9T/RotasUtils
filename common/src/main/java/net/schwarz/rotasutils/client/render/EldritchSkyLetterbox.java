@@ -6,21 +6,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.schwarz.rotasutils.sky.EldritchSkyTransition;
 
-/**
- * The moment the sky splits: a blinding violet-white flash timed with the light flash and the "split"
- * sound. No text and no letterbox bars: the sky itself, the flash and the sound carry the moment.
- */
 @Environment(EnvType.CLIENT)
 public final class EldritchSkyLetterbox {
-    /** Openness where the sky splits; the flash peaks here (matches the daylight flash). */
     private static final float SPLIT = 0.42f;
-    /** Above this openness the clouds are gone; below it they fade with the tint. */
     private static final float CLOUDS_GONE = 0.3f;
 
     private EldritchSkyLetterbox() {
     }
 
-    /** HUD pass: the split flash over everything else. */
     public static void render(GuiGraphics graphics, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null) {
@@ -44,7 +37,6 @@ public final class EldritchSkyLetterbox {
         }
     }
 
-    /** True while the clouds should not be drawn at all. */
     public static boolean hidesClouds(float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null) {

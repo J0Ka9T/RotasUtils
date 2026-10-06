@@ -15,14 +15,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-/**
- * NPCs as people. Friendship grows by talking to an NPC each day and by using its services, and each level
- * takes a little off its prices. Rumours are the server's own recent news - rare titles, milestones, starborn
- * foals - which innkeepers, guards and fortune tellers pass on.
- *
- * <p>Cheap by design: friendship is one number per player and NPC in the player's server-only variables, touched
- * only when they interact; rumours are a short in-memory list, gone on restart like real gossip.</p>
- */
 public final class NpcSocial {
     private static final String KEY = "rpg.friend.";
     private static final int RUMOR_LIMIT = 20;
@@ -36,9 +28,7 @@ public final class NpcSocial {
         return SeasonService.rules(data).npcSocial;
     }
 
-    // Friendship -----------------------------------------------------------------------------------
-
-    public static long points(PlayerProgress progress, NpcDef npc) {
+public static long points(PlayerProgress progress, NpcDef npc) {
         return TitleCounters.read(progress.questVariables(), KEY + npc.id());
     }
 
@@ -52,7 +42,6 @@ public final class NpcSocial {
         return rules(data).friendship ? level(rules(data), points(progress, npc)) : 0;
     }
 
-    /** "♥♥♡♡ เพื่อน (120/250)" for the service screen header. */
     public static String describe(RotasData data, PlayerProgress progress, NpcDef npc) {
         SeasonRules.NpcSocialRules rules = rules(data);
         if (!rules.friendship) return "";
@@ -65,7 +54,6 @@ public final class NpcSocial {
         return hearts + " " + NAMES[level] + next + (discount > 0 ? " · ลด " + discount + "%" : "");
     }
 
-    /** A service's price after this NPC's friendship discount. */
     public static long price(RotasData data, PlayerProgress progress, NpcDef npc, long cost) {
         if (cost <= 0) return cost;
         double discount = level(data, progress, npc) * rules(data).discountPerLevel;
@@ -88,7 +76,6 @@ public final class NpcSocial {
         }
     }
 
-    /** The first talk of the day with an NPC. */
     public static void onTalk(ServerPlayer player, RotasData data, NpcDef npc) {
         SeasonRules.NpcSocialRules rules = rules(data);
         if (!rules.friendship || rules.chatPoints <= 0) return;
@@ -97,7 +84,6 @@ public final class NpcSocial {
         }
     }
 
-    /** A paid service; capped per day so buying potions in bulk is not the way to a friend. */
     public static void onService(ServerPlayer player, RotasData data, NpcDef npc) {
         SeasonRules.NpcSocialRules rules = rules(data);
         if (!rules.friendship || rules.servicePoints <= 0) return;
@@ -107,10 +93,7 @@ public final class NpcSocial {
         }
     }
 
-    // Rumours --------------------------------------------------------------------------------------
-
-    /** Something worth talking about happened on the server. */
-    public static synchronized void rumor(String text) {
+public static synchronized void rumor(String text) {
         if (text == null || text.isBlank()) return;
         RUMORS.addFirst(text);
         while (RUMORS.size() > RUMOR_LIMIT) RUMORS.removeLast();

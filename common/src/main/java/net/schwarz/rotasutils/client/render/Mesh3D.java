@@ -13,14 +13,6 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
-/**
- * Real 3D geometry for VFX: tubes, cones, spheres and partial spheres drawn as <b>solid, lit meshes</b>
- * (vanilla entity shading from their normals, depth-writing, back faces culled), plus an optional
- * <b>fresnel rim</b> pass (additive, only on camera-facing faces, strongest at the silhouette) that
- * makes dark forms glow at their edges. This is what separates volume from flat billboards.
- *
- * <p>All positions are world space; the owner renderer's origin is subtracted per vertex.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class Mesh3D {
     private static final ResourceLocation PLAIN = new ResourceLocation("rotasutils", "textures/vfx/plain.png");
@@ -41,20 +33,13 @@ public final class Mesh3D {
         this.cam = cam;
     }
 
-    /** Surface style: base colour (lit), rim colour and strength, rim sharpness. */
     public record Style(float r, float g, float b, float rimR, float rimG, float rimB, float rim, float power) {
         public Style withRim(float strength) {
             return new Style(r, g, b, rimR, rimG, rimB, strength, power);
         }
     }
 
-    // ---- Tube -----------------------------------------------------------------------------------
-
-    /**
-     * A smooth tube through {@code pts} with per-point radius (radius 0 = pointed tip). Frames are
-     * parallel-transported so the tube never twists. Ends are left open (cap with a sphere if needed).
-     */
-    public void tube(Vec3[] pts, float[] radius, int sides, Style style) {
+public void tube(Vec3[] pts, float[] radius, int sides, Style style) {
         int n = pts.length;
         if (n < 2) return;
         Vec3[] ringU = new Vec3[n];
@@ -84,15 +69,10 @@ public final class Mesh3D {
         grid(p, nrm, n, sides, true, style);
     }
 
-    /** Sphere (or ellipsoid with axes a, b, c scaled by radii). */
     public void sphere(Vec3 c, Vec3 ax, Vec3 ay, Vec3 az, float ra, float rb, float rc, int lat, int lon, Style style) {
         sphereSection(c, ax, ay, az, ra, rb, rc, 0, Mth.PI, lat, lon, style);
     }
 
-    /**
-     * Part of an ellipsoid between polar angles {@code theta0..theta1} measured from {@code +ay}
-     * (0 = top pole). Used for eyelids: a shell that closes by moving its edge angle.
-     */
     public void sphereSection(Vec3 c, Vec3 ax, Vec3 ay, Vec3 az, float ra, float rb, float rc,
                               float theta0, float theta1, int lat, int lon, Style style) {
         Vec3[][] p = new Vec3[lat + 1][lon];
@@ -115,7 +95,6 @@ public final class Mesh3D {
         for (int i = 0; i < rows - 1; i++) {
             for (int j = 0; j < cols; j++) {
                 int k = (j + 1) % cols;
-                // Order a, b, c, d consistent around the surface; entityCutoutNoCull draws both sides.
                 solidVertex(solid, p[i][j], nrm[i][j], s);
                 solidVertex(solid, p[i + 1][j], nrm[i + 1][j], s);
                 solidVertex(solid, p[i + 1][k], nrm[i + 1][k], s);
@@ -129,7 +108,7 @@ public final class Mesh3D {
                 int k = (j + 1) % cols;
                 Vec3 mid = p[i][j].add(p[i + 1][k]).scale(0.5);
                 Vec3 nMid = nrm[i][j].add(nrm[i + 1][k]);
-                if (nMid.dot(cam.subtract(mid)) <= 0) continue; // only camera-facing faces glow / shine
+                if (nMid.dot(cam.subtract(mid)) <= 0) continue;
                 rimVertex(rim, p[i][j], nrm[i][j], s);
                 rimVertex(rim, p[i + 1][j], nrm[i + 1][j], s);
                 rimVertex(rim, p[i + 1][k], nrm[i + 1][k], s);

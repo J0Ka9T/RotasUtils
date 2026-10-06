@@ -4,22 +4,9 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.schwarz.rotasutils.core.ZoneArea;
 
-/**
- * Turns a zone area into a short curtain that stands on the terrain along the zone border.
- *
- * <p>Outline prisms and floor-plan boxes span the whole build height, so their wireframe is just a
- * few vertical threads into the sky with nothing tying them to the ground. The curtain instead walks
- * the border, looks up the surface at each step and emits a panel from the ground up
- * {@link #CURTAIN_HEIGHT} blocks, clipped to the area's own vertical range. The result reads like a
- * fence drawn on the world, the way land-claim borders are shown.</p>
- *
- * <p>Pure and allocation-free: the surface lookup and the output are callbacks, so it is unit
- * tested without a client and costs no garbage per frame.</p>
- */
 @Environment(EnvType.CLIENT)
 public final class ZoneBorderGeometry {
     public static final double CURTAIN_HEIGHT = 3.0;
-    /** Returned by a {@link Surface} for a column that is not loaded. */
     public static final int UNKNOWN = Integer.MIN_VALUE;
     private static final int MAX_STEPS_PER_EDGE = 512;
     private static final int RING_SEGMENTS = 96;
@@ -27,27 +14,20 @@ public final class ZoneBorderGeometry {
     private ZoneBorderGeometry() {
     }
 
-    /** First air block above the ground at a column, or {@link #UNKNOWN}. */
     @FunctionalInterface
     public interface Surface {
         int top(int x, int z);
     }
 
-    /** One curtain panel between two border points, each with its own bottom and top height. */
     @FunctionalInterface
     public interface CurtainSink {
         void panel(double ax, double az, double bottomA, double topA,
                    double bx, double bz, double bottomB, double topB);
     }
 
-    /** Viewer position and how far borders are drawn. */
     public record View(double x, double z, double maxDistance) {
     }
 
-    /**
-     * True when the area covers the whole build height, so its wireframe would only be vertical
-     * lines. Spheres never are; they keep their wireframe.
-     */
     public static boolean isColumn(ZoneArea area, int minBuildY, int topBuildY) {
         if (area instanceof ZoneArea.Sphere) {
             return false;
@@ -107,7 +87,6 @@ public final class ZoneBorderGeometry {
         }
     }
 
-    /** Where a sphere meets the ground: each ring point is refined to the radius at its surface height. */
     private static void ring(ZoneArea.Sphere sphere, Surface surface, View view, CurtainSink sink) {
         double radius = sphere.radius();
         if (Math.hypot(sphere.x() - view.x(), sphere.z() - view.z()) - radius > view.maxDistance()) {
@@ -124,8 +103,6 @@ public final class ZoneBorderGeometry {
             double horizontal = radius;
             int groundHere = UNKNOWN;
             boolean valid = false;
-            // Two refinements: the surface height changes the horizontal radius, which moves the
-            // sample to a column whose height is close enough for a border drawn on terrain.
             for (int pass = 0; pass < 2; pass++) {
                 groundHere = ground(surface, sphere.x() + horizontal * cos, sphere.z() + horizontal * sin);
                 if (groundHere == UNKNOWN) {
@@ -142,8 +119,6 @@ public final class ZoneBorderGeometry {
             }
             double x = sphere.x() + horizontal * cos;
             double z = sphere.z() + horizontal * sin;
-            // The ring marks where the sphere meets the ground. Its rim has no height inside the
-            // sphere, so the curtain is not clipped to the sphere surface or it would vanish there.
             double high = Double.MAX_VALUE;
             if (valid && previousValid
                     && Math.hypot((previousX + x) / 2 - view.x(), (previousZ + z) / 2 - view.z()) <= view.maxDistance()) {
@@ -182,10 +157,6 @@ public final class ZoneBorderGeometry {
         sink.panel(ax, az, bottomA, Math.max(bottomA, topA), bx, bz, bottomB, Math.max(bottomB, topB));
     }
 
-    /**
-     * Surface under a border point: the highest of the four columns touching it, so a border on a
-     * block edge sits on the taller side instead of sinking into a cliff face.
-     */
     static int ground(Surface surface, double x, double z) {
         int best = UNKNOWN;
         int lowX = (int) Math.floor(x - 0.5);

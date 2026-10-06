@@ -8,7 +8,6 @@ import java.util.function.ToIntFunction;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class HudValueTextTest {
-    /** Six pixels per character, so a column of 30 fits exactly five characters. */
     private static final ToIntFunction<String> WIDTH = text -> text.length() * 6;
 
     @Test void textThatFitsIsKeptWhole() {

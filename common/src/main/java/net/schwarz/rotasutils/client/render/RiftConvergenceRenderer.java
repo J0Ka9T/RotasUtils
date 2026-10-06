@@ -20,12 +20,6 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * The clash of four rifts: each rift throws a beam of its colour into the centre, pulses running
- * down it; the beams feed a singularity of four turning swirls around a black heart that swells as
- * it charges; a rune circle burns on the ground between the rifts; then the singularity collapses in
- * a white flash and a ring of force rolls out across the ground.
- */
 @Environment(EnvType.CLIENT)
 public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntity> {
     private static final int SEGMENTS = 64;
@@ -46,7 +40,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
     @Override
     public void render(RiftConvergenceEntity convergence, float yaw, float partialTick, PoseStack pose,
                        MultiBufferSource buffers, int light) {
-        // With a shader pack on, drawn after the pack's frame so it cannot fog or cut the glow.
         if (!WorldVfxOverlay.defer(pose, (p, b) -> draw(convergence, partialTick, p, b))) {
             draw(convergence, partialTick, pose, buffers);
         }
@@ -66,11 +59,9 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
         VertexConsumer additive = buffers.getBuffer(VfxRenderTypes.ADDITIVE);
         Matrix4f m = pose.last().pose();
 
-        // The rune circle on the ground, brightening as the rifts open.
         float circle = smooth(age / 60f) * (1f - smooth((collapse - 20f) / 30f));
         runeCircle(additive, m, (float) RiftConvergenceEntity.RADIUS, time, circle);
 
-        // Beams from each rift into the centre.
         for (int i = 0; i < 4; i++) {
             float riftOpen = smooth((age - RiftConvergenceEntity.STAGGER * (i + 1) - 14f) / 20f);
             float strength = beams * riftOpen;
@@ -79,14 +70,12 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
             }
             Vec3 offset = RiftConvergenceEntity.riftOffset(i);
             Vector3f from = new Vector3f((float) offset.x, convergence.height(i) + RiftPortalShape.CENTER_Y, (float) offset.z);
-            // Leave from just inside the rift's mouth.
             from.lerp(core, 0.08f);
             float flicker = 0.85f + 0.15f * (float) Math.sin(time * 23f + i * 1.7f);
             float width = (0.18f + 0.45f * charge) * strength * flicker;
             beam(additive, m, from, core, camera, origin, width * 2.2f, COLOURS[i], 0.35f * strength);
             beam(additive, m, from, core, camera, origin, width, COLOURS[i], 0.8f * strength);
             beam(additive, m, from, core, camera, origin, width * 0.35f, new float[]{1f, 1f, 1f}, 0.9f * strength);
-            // Pulses of light racing down the beam into the heart.
             for (int p = 0; p < 3; p++) {
                 float s = fract(time * (0.9f + 0.4f * charge) + p / 3f + i * 0.21f);
                 Vector3f at = new Vector3f(from).lerp(core, s);
@@ -94,7 +83,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
             }
         }
 
-        // The singularity: four swirls turning around a black heart, swelling as it charges.
         float heart = charge * (1f - smooth(collapse / 8f));
         if (heart > 0.01f) {
             float size = 0.6f + 2.4f * heart + 0.15f * (float) Math.sin(time * 9f) * heart;
@@ -117,7 +105,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
             billboard(additive, pose, core, size * 0.5f, new float[]{1f, 1f, 1f}, 0.7f * heart);
         }
 
-        // The collapse: a blinding flash, then a ring of force across the ground.
         if (collapse >= 0f && collapse < 50f) {
             float flash = (float) Math.exp(-collapse / 5f);
             billboard(additive, pose, core, 6f + collapse * 0.6f, new float[]{1f, 0.97f, 0.92f}, 0.95f * flash);
@@ -128,7 +115,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
         }
     }
 
-    /** A camera-facing ribbon from {@code a} to {@code b} (both relative to the entity). */
     private static void beam(VertexConsumer vc, Matrix4f m, Vector3f a, Vector3f b, Vec3 camera, Vec3 origin, float width,
                              float[] c, float alpha) {
         Vector3f dir = new Vector3f(b).sub(a);
@@ -140,7 +126,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
             return;
         }
         side.normalize().mul(width);
-        // Soft edges: bright along the axis, clear at the sides.
         vertex(vc, m, a.x - side.x, a.y - side.y, a.z - side.z, c, 0f);
         vertex(vc, m, a.x, a.y, a.z, c, alpha);
         vertex(vc, m, b.x, b.y, b.z, c, alpha);
@@ -151,7 +136,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
         vertex(vc, m, b.x, b.y, b.z, c, alpha);
     }
 
-    /** A soft round glow facing the camera. */
     private void billboard(VertexConsumer vc, PoseStack pose, Vector3f at, float radius, float[] c, float alpha) {
         if (alpha <= 0.01f) {
             return;
@@ -172,7 +156,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
         pose.popPose();
     }
 
-    /** A textured disc facing the camera (already rotated), texture turning by {@code spin}. */
     private static void disc(VertexConsumer vc, Matrix4f m, Matrix3f n, float r, float spin, float cr, float cg, float cb,
                              float a, float z) {
         for (int i = 0; i < SEGMENTS; i++) {
@@ -193,7 +176,6 @@ public class RiftConvergenceRenderer extends EntityRenderer<RiftConvergenceEntit
                 .uv2(LightTexture.FULL_BRIGHT).normal(n, 0, 0, 1).endVertex();
     }
 
-    /** The rune circle: a ring through the four rifts and the two lines joining opposite rifts. */
     private static void runeCircle(VertexConsumer vc, Matrix4f m, float radius, float time, float alpha) {
         if (alpha <= 0.01f) {
             return;

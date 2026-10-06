@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** The player's hub: level, experience, quests, party, statistics and settings. */
 @Environment(EnvType.CLIENT)
 public class MainMenuScreen extends RotasScreen {
     public enum Tab {
@@ -58,8 +57,6 @@ public class MainMenuScreen extends RotasScreen {
         this.tab = tab;
     }
 
-    /* Geometry shared by buildContent, renderFrame and renderContent so widgets, panels
-       and text can never drift apart. Everything sits on the Ui 4px grid. */
     private int contentTop() {
         return guiTop + 68;
     }
@@ -115,8 +112,6 @@ public class MainMenuScreen extends RotasScreen {
                 .bounds(footerX, footerY, backWidth, 24).build());
         footerX += backWidth + Ui.GAP;
 
-        // Quests, merchants and pending rewards live in the console; it is this screen's
-        // primary action, so it is the one filled-accent button in the footer.
         addRenderableWidget(Ui.button(Component.translatable("rotasutils.menu.character"),
                         button -> minecraft.setScreen(
                                 net.schwarz.rotasutils.client.screen.kernel.KernelHubScreen.open(
@@ -204,6 +199,10 @@ public class MainMenuScreen extends RotasScreen {
                 rowIds.add("open_salvage");
                 rows.add(L.t("rotasutils.menu.house_row"));
                 rowIds.add("open_house");
+                rows.add(L.t("rotasutils.menu.sell_row"));
+                rowIds.add("open_sell");
+                rows.add(L.t("rotasutils.menu.kitchen_row"));
+                rowIds.add("open_trade");
                 if (ClientState.pufferfishSkills()) {
                     rows.add(L.t("rotasutils.menu.skills_managed"));
                     rowIds.add("");
@@ -238,7 +237,6 @@ public class MainMenuScreen extends RotasScreen {
                     rows.add(quest == null ? active.questId() : quest.name());
                     rowIds.add(active.questId());
                 }
-                // Empty journals use the dedicated centred empty-state renderer instead of a plain list row.
             }
             case MERCHANTS -> {
                 for (var merchant : net.schwarz.rotasutils.client.ClientKernelState.merchants()) {
@@ -259,7 +257,6 @@ public class MainMenuScreen extends RotasScreen {
                 }
             }
             case PARTY -> {
-                // The roster lives on its own screen; this tab is the summary and the door.
                 if (!ClientState.partyInviteFrom().isEmpty()) {
                     rows.add(L.t("rotasutils.party.summary.invited", ClientState.partyInviteFrom()));
                     rowIds.add("");
@@ -388,6 +385,8 @@ public class MainMenuScreen extends RotasScreen {
                     case "open_bestiary" -> send("open_bestiary", new net.minecraft.nbt.CompoundTag());
                     case "open_salvage" -> send("open_salvage", new net.minecraft.nbt.CompoundTag());
                     case "open_house" -> send("open_house", new net.minecraft.nbt.CompoundTag());
+                    case "open_sell" -> send("open_sell", new net.minecraft.nbt.CompoundTag());
+                    case "open_trade" -> send("open_trade", new net.minecraft.nbt.CompoundTag());
                     case "open_trees" -> minecraft.setScreen(new SkillTreeScreen(this));
                     default -> {
                     }
@@ -424,7 +423,6 @@ public class MainMenuScreen extends RotasScreen {
         int statusTop = statusTop();
         int statusCenterY = statusTop + 18;
 
-        // Level + compact XP track on the left, exact XP in the centre, skill points on the right.
         Ui.scaledLabel(graphics, L.t("rotasutils.common.level", progress.level()), guiLeft + margin + 12,
                 statusTop + 13, 1.05f, Ui.ACCENT);
         int xpX = guiLeft + margin + 62;
@@ -460,7 +458,6 @@ public class MainMenuScreen extends RotasScreen {
         }
     }
 
-    /** "Today 2/5 - 1 reward waiting": the daily count and every unclaimed rung, daily and season. */
     private static String journeyRow() {
         var tracks = ClientState.tracks();
         var daily = tracks.getCompound("daily");

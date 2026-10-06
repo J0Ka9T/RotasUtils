@@ -10,10 +10,6 @@ import net.schwarz.rotasutils.network.RotasNetwork;
 import net.schwarz.rotasutils.server.FarmingService;
 import net.schwarz.rotasutils.util.ThaiText;
 
-/**
- * {@code /rotas book}, {@code /rotas salvage} and {@code /rotas luck}: the monster book, the salvage
- * bench, and what the player's luck and combo are worth right now.
- */
 final class FarmCommands {
     private FarmCommands() {
     }

@@ -9,12 +9,7 @@ import net.schwarz.rotasutils.job.JobSlot;
 import net.schwarz.rotasutils.npc.NpcDef;
 import net.schwarz.rotasutils.npc.NpcServiceDef;
 
-/** Choosing and assigning jobs. */
 public final class JobService {
-    /**
-     * Once per world: creates the starter combat jobs that are missing, and gives template jobs an
-     * administrator already made their signature buffs. Later edits and deletions are respected.
-     */
     public static void seedDefaults(RotasData data) {
         if (!data.titleBatchSeeded("jobs:starter_v1")) {
             int order = data.jobs().size();
@@ -40,7 +35,38 @@ public final class JobService {
             }
             data.markTitleBatchSeeded("jobs:signature_v1");
         }
+        if (!data.titleBatchSeeded("skills:job_trees_v1")) {
+            for (var tree : net.schwarz.rotasutils.skill.JobSkillTrees.all()) {
+                if (data.category(tree.id()) == null) {
+                    tree.setOrder(data.categories().size());
+                    data.putCategory(tree);
+                }
+            }
+            data.markTitleBatchSeeded("skills:job_trees_v1");
+        }
         data.setDirty();
+    }
+
+    public static boolean resetTree(net.minecraft.server.MinecraftServer server, RotasData data, String jobId) {
+        var tree = net.schwarz.rotasutils.skill.JobSkillTrees.create(jobId);
+        if (tree == null) {
+            return false;
+        }
+        var previous = data.category(tree.id());
+        if (previous != null) {
+            tree.setOrder(previous.order());
+            tree.bumpVersion();
+            net.schwarz.rotasutils.network.ServerActions.preserveRemovedNodes(data, previous, tree);
+        } else {
+            tree.setOrder(data.categories().size());
+        }
+        data.putCategory(tree);
+        for (ServerPlayer online : server.getPlayerList().getPlayers()) {
+            SkillService.recalculate(online, data);
+            net.schwarz.rotasutils.network.RotasNetwork.syncContent(online);
+            net.schwarz.rotasutils.network.RotasNetwork.syncProgress(online);
+        }
+        return true;
     }
 
     public record MasteryGrant(long appliedXp, int levelsGained, long pointsGranted) {}
@@ -69,7 +95,6 @@ public final class JobService {
         return new MasteryGrant(applied,gained,points);
     }
 
-    /** Production EXP for the equipped sub job, paid in full (the tier and profession rate are already applied). */
     public static MasteryGrant grantProduction(PlayerProgress progress, JobDef job, long xp) {
         if (xp < 0) throw new IllegalArgumentException("Production XP cannot be negative");
         if (!job.id().equals(progress.subJob())) throw new IllegalArgumentException("Job is not the equipped sub job");
@@ -82,7 +107,6 @@ public final class JobService {
         return new MasteryGrant(xp, gained, points);
     }
 
-    /** A player's own choice: checks level and the change cooldown. The first job is free. */
     public static Result choose(ServerPlayer player, RotasData data, String jobId) {
         return choose(player,data,jobId,JobSlot.MAIN);
     }
@@ -104,10 +128,15 @@ public final class JobService {
         long now = QuestService.nowSeconds();
         long cooldown = data.serverSettings().jobChangeCooldownSeconds();
         long since = now - progress.jobChangedAt();
-        if (!progress.job().isEmpty() && cooldown > 0 && since < cooldown) {
+        if ((!progress.mainJob().isEmpty() || !progress.subJob().isEmpty()) && cooldown > 0 && since < cooldown) {
             return Result.no(net.schwarz.rotasutils.util.ThaiText.t("rotasutils.msg.job.cooldown", QuestService.formatDuration(cooldown - since)));
         }
+        String oldSub = progress.subJob();
         assignSlot(progress,job,slot);
+        if (slot == JobSlot.SUB && !oldSub.isEmpty()) {
+            long xp = progress.rpg().masteryXp(oldSub);
+            progress.rpg().masteryXp(oldSub, -(long) Math.floor(xp * SeasonService.rules(data).subJobSwitchXpLoss));
+        }
         SkillService.recalculate(player,data);
         CharacterStatService.apply(player, data);
         data.setDirty();
@@ -116,12 +145,6 @@ public final class JobService {
         return Result.ok(net.schwarz.rotasutils.util.ThaiText.t(slot==JobSlot.MAIN ? "rotasutils.msg.job.now_main" : "rotasutils.msg.job.now_sub", job.name()));
     }
 
-    /**
-     * Sets the job without any gate, used by admins and by {@link #choose}. Points spent in
-     * trees the new job cannot use are refunded, so switching never strands skill points.
-     *
-     * @return points refunded
-     */
     public static int assign(ServerPlayer player, RotasData data, PlayerProgress progress, String jobId) {
         JobDef job=jobId==null||jobId.isEmpty()?null:data.job(jobId);
         if(job==null) progress.setMainJob(""); else assignSlot(progress,job,JobSlot.MAIN);
@@ -144,7 +167,6 @@ public final class JobService {
                 .map(NpcServiceDef::jobId).filter(id -> !id.isBlank()).findFirst().orElse("");
     }
 
-    /** Talking can fill an empty slot, but never silently replaces an existing build. */
     public static Result acceptNpcOffer(ServerPlayer player, RotasData data, NpcDef npc, JobSlot slot) {
         PlayerProgress progress = data.progress(player.getUUID());
         if (!(slot == JobSlot.MAIN ? progress.mainJob() : progress.subJob()).isBlank()) {

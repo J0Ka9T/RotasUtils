@@ -6,15 +6,14 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Everything one running ability knows: who cast it, where, at what, and what it has scheduled. */
 public final class AbilityContext {
     public final ServerPlayer player;
     public final ServerLevel level;
     public final long startTick;
     public final Target target;
     public final long seed;
+    public Object state;
 
-    /** Deferred actions: {@code dueTick} is an absolute server game time. */
     record Delayed(long dueTick, Runnable action) {
     }
 
@@ -28,7 +27,6 @@ public final class AbilityContext {
         this.seed = seed;
     }
 
-    /** Runs {@code action} {@code ticks} ticks from now, on the same server clock as the timeline. */
     public void after(int ticks, Runnable action) {
         delayed.add(new Delayed(level.getGameTime() + Math.max(0, ticks), action));
     }

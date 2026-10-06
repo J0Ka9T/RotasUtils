@@ -1,21 +1,13 @@
 package net.schwarz.rotasutils.client.hud;
 
-/**
- * When the monster head plate shows, how strongly, and how a level gap is named. Pure (no Minecraft
- * classes) so the rules are unit-tested; the renderers only look things up and draw.
- */
 public final class MobInfoRules {
-    /** Always shown this close, even untouched and not aimed at. */
     public static final double PLATE_NEAR = 12.0;
-    /** Fully opaque up to here, then fading out. */
     public static final double PLATE_FULL = 16.0;
-    /** Never drawn beyond this distance. */
     public static final double PLATE_MAX = 24.0;
 
     private MobInfoRules() {
     }
 
-    /** A plate shows for mobs close by, and for farther ones only while hurt or aimed at. */
     public static boolean showPlate(double distance, boolean hurt, boolean aimed) {
         return distance <= PLATE_MAX && (aimed || hurt || distance <= PLATE_NEAR);
     }
@@ -42,7 +34,6 @@ public final class MobInfoRules {
         return 0.35f + smooth * 0.65f;
     }
 
-    /** Lang key suffix for {@code mobLevel - playerLevel}, on the same steps as {@link MobLevelName#colorFor}. */
     public static String difficultyKey(int delta) {
         if (delta >= 30) return "mythic";
         if (delta >= 15) return "deadly";
@@ -53,7 +44,6 @@ public final class MobInfoRules {
         return "trivial";
     }
 
-    /** Frame-rate independent approach toward a target. */
     public static float approach(float current, float target, float speed, float deltaSeconds) {
         return current + (target - current) * (1.0f - (float) Math.exp(-speed * Math.max(0.0f, deltaSeconds)));
     }

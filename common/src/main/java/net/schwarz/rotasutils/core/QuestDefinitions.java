@@ -8,13 +8,11 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Function;
 
-/** Parsing and pure math for kernel quests: stages, objectives, branches, resets and bounties. */
 public final class QuestDefinitions {
     private QuestDefinitions() { }
 
     public enum Reset { NONE, DAILY, WEEKLY, COOLDOWN }
 
-    /** One counted objective. It advances when a kernel event matches its type, facts and condition. */
     public record Objective(String key, ContentId event, Map<String, String> match, int count,
                             ConditionEngine.Condition condition, String label) {
         public Objective { match = Map.copyOf(match); }
@@ -31,7 +29,6 @@ public final class QuestDefinitions {
 
     public record Stage(int index, String label, List<Objective> objectives, ContentId reward, List<Branch> branches) {
         public Stage { objectives = List.copyOf(objectives); branches = List.copyOf(branches); }
-        /** Next stage for a player, or -1 when the quest completes here. */
         public int next(KernelContext context, int stageCount) {
             for (Branch branch : branches) {
                 if (branch.condition().test(context)) { return branch.stage(); }
@@ -40,7 +37,6 @@ public final class QuestDefinitions {
         }
     }
 
-    /** Season quest kinds; an empty type is read from the reset instead. */
     public static final List<String> TYPES = List.of("MAIN", "SIDE", "DAILY", "WEEKLY", "REPEATABLE");
 
     public record Quest(ContentId id, String label, ConditionEngine.Condition requirement, List<Stage> stages,
@@ -53,7 +49,6 @@ public final class QuestDefinitions {
             this(id, label, requirement, stages, reset, cooldownSeconds, repeatable, reward, bountyLimit, "");
         }
 
-        /** Start of the current reset window, in epoch seconds; 0 when the quest never resets. */
         public long window(long epochSeconds) {
             return switch (reset) {
                 case NONE -> 0;
@@ -63,7 +58,6 @@ public final class QuestDefinitions {
             };
         }
 
-        /** Whether a quest completed at {@code completedAt} may be taken again at {@code now}. */
         public boolean available(long completedAt, long now) {
             if (completedAt <= 0) { return true; }
             if (!repeatable) { return false; }
@@ -147,7 +141,6 @@ public final class QuestDefinitions {
                 integer(json, "bounty_limit", 0, 0, 1000000), type);
     }
 
-    /** Player state key for a quest; short enough for the bounded variable namespace. */
     public static String key(ContentId quest, String suffix) {
         String slug = quest.value().replace(':', '.').replace('/', '-');
         if (slug.length() > 80) {

@@ -5,7 +5,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-/** Allows the modern inventory screen to move vanilla slots without replacing menu logic. */
 @Mixin(Slot.class)
 public interface SlotAccessor {
     @Mutable

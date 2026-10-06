@@ -11,12 +11,6 @@ import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.schwarz.rotasutils.npc.NpcDef;
 
-/**
- * Opens an NPC's simple shop in the vanilla villager trading screen.
- *
- * <p>Players already know that screen, and the vanilla menu does the item checks and payment itself.
- * Trades never run out and the NPC earns no villager XP; this is a shop counter, not a villager.</p>
- */
 public final class NpcMerchant implements Merchant {
     private MerchantOffers offers;
     private Player tradingPlayer;
@@ -25,7 +19,6 @@ public final class NpcMerchant implements Merchant {
         this.offers = offers;
     }
 
-    /** Opens the shop; returns false when the NPC has no usable trades. */
     public static boolean open(ServerPlayer player, NpcDef npc) {
         MerchantOffers offers = new MerchantOffers();
         for (NpcDef.Trade trade : npc.trades()) {

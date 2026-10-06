@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The drop filter: what is switched off, for whom, and the bounds that keep a mistake small. */
 class DropFilterRulesTest {
     @Test void aNewWorldFiltersNothingButIsReadyTo() {
         SeasonRules.DropFilter filter = new SeasonRules().drops.filter;

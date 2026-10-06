@@ -6,11 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-/** Parsing and pure math for merchants: trades, costs, stock windows and per-player limits. */
 public final class MerchantDefinitions {
     private MerchantDefinitions() { }
 
-    /** A trade cost. Exactly one of {@code currency} or {@code item} is set. */
     public record Cost(ContentId currency, String item, long amount) {
         public Cost {
             if ((currency == null) == (item == null)) { throw new IllegalArgumentException("A cost is either a currency or an item"); }
@@ -22,7 +20,6 @@ public final class MerchantDefinitions {
                         int stock, int restockSeconds, int perPlayerLimit, ConditionEngine.Condition condition, String label) {
         public Trade { costs = List.copyOf(costs); }
 
-        /** Stock window index; 0 when the trade never restocks. */
         public long window(long epochSeconds) { return restockSeconds <= 0 ? 0 : epochSeconds / restockSeconds; }
 
         public boolean limited() { return stock > 0; }
@@ -86,10 +83,8 @@ public final class MerchantDefinitions {
                 json.has("requirement") ? conditions.apply(KernelJson.object(json, "requirement")) : ConditionEngine.ALWAYS);
     }
 
-    /** World stock counter key for a trade. */
     public static String stockKey(ContentId merchant, String trade) { return "stock|" + merchant + "|" + trade; }
 
-    /** Player-scoped purchase counter key, inside the bounded player variable namespace. */
     public static String limitKey(ContentId merchant, String trade) {
         String slug = merchant.value().replace(':', '.').replace('/', '-');
         if (slug.length() > 60) {
@@ -99,7 +94,6 @@ public final class MerchantDefinitions {
         return "rpg.m." + slug + "." + trade;
     }
 
-    /** Purchases already made in this window, from the stored "window:count" pair. */
     public static int purchases(String stored, long window) {
         if (stored == null || stored.isEmpty()) { return 0; }
         int separator = stored.indexOf(':');

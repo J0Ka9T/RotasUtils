@@ -39,7 +39,6 @@ class HorseBreedingTest {
         for (int i = 0; i < 200; i++) {
             var foal = HorseBreeding.roll(rules, a, b, random);
             assertEquals(5, foal.lineage());
-            // Maxed parents at 50% inheritance: level 1 + 2.5 -> III or IV, never maxed.
             for (int s = 0; s < 3; s++) assertTrue(foal.startLevels()[s] >= 3 && foal.startLevels()[s] <= 4);
             assertTrue(foal.startLevels()[3] >= 6 && foal.startLevels()[3] <= 7);
         }

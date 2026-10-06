@@ -17,19 +17,8 @@ import net.schwarz.rotasutils.client.screen.Ui;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The warp list.
- *
- * <p>Built to be understood without being explained: one row per pillar the player has recorded,
- * its price on the row, and a single large button that warps to the row that is picked. The pillar
- * being stood on is marked and cannot be picked, so the obvious button is always the useful one.
- *
- * <p>Everything shown - prices, distances, which pillar is underfoot - is worked out by the server
- * and arrives in the payload; the server charges and re-checks on the warp itself.
- */
 @Environment(EnvType.CLIENT)
 public class WaystoneScreen extends RotasScreen {
-    /** Two text lines per row with Thai marks clear of the edges. */
     private static final int ROW_HEIGHT = 34;
 
     private record Row(String id, String name, String dimension, boolean sameDimension, int distance,
@@ -56,7 +45,6 @@ public class WaystoneScreen extends RotasScreen {
                     tag.getBoolean("same_dimension"), tag.getInt("distance"), tag.getLong("cost"),
                     tag.getBoolean("here")));
         }
-        // Pre-pick the first pillar that can actually be warped to, so one click is enough.
         for (Row row : rows) {
             if (!row.here() && row.cost() <= gold) {
                 selected = row.id();

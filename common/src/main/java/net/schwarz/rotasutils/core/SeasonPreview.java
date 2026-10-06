@@ -7,16 +7,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * What the numbers in one season section mean in play, computed with the same math the server uses:
- * "level 50 needs 22k EXP", "+7 costs 1,342 gold at 40%". Shown live while the admin edits, so a
- * change can be judged before it is saved.
- */
 public final class SeasonPreview {
     private SeasonPreview() {
     }
 
-    /** Short preview lines for a section; empty when the section has nothing worth computing. */
     public static List<String> lines(SeasonRules r, String section) {
         List<String> out = new ArrayList<>();
         switch (section) {

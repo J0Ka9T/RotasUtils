@@ -16,24 +16,10 @@ import net.schwarz.rotasutils.client.screen.Ui;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Party roster.
- *
- * <p>Built around one gesture: the players standing near you are listed on the right, and clicking
- * one invites them. The first invitation also starts the party, so there is no separate step to
- * find, and nobody has to type a name - the name box below the list is only there for someone who
- * is out of range.
- *
- * <p>The leader gets the management controls; everyone else sees the roster only. The server
- * re-checks the same rules, so a hidden button is a convenience, not the gate.
- */
 @Environment(EnvType.CLIENT)
 public class PartyScreen extends RotasScreen {
-    /** Tall enough for name + level lines with Thai marks clear of the row edges. */
     private static final int ROW_HEIGHT = 32;
-    /** Width of the "invite someone nearby" column on the right. */
     private static final int INVITE_COLUMN_W = 210;
-    /** Hint line, name box row and the gap above the bottom bar. */
     private static final int NAME_ROW_H = 40;
 
     private ScrollPanel list;
@@ -57,7 +43,6 @@ public class PartyScreen extends RotasScreen {
         return ClientState.progress().partyId() != null;
     }
 
-    /** True while this player may send an invitation: any leader, and anyone not in a party yet. */
     private boolean canInvite() {
         return ClientState.partyEnabled() && (!inParty() || ClientState.isPartyLeader());
     }
@@ -73,7 +58,6 @@ public class PartyScreen extends RotasScreen {
         int contentWidth = guiWidth - 20;
         int barY = guiTop + guiHeight - 34;
 
-        // Ask the server for a fresh roster every time the screen is built.
         send("party_refresh");
 
         boolean leader = ClientState.isPartyLeader();
@@ -141,7 +125,6 @@ public class PartyScreen extends RotasScreen {
                 .bounds(contentX, barY, 90, 24).build());
     }
 
-    /** Asks before a party action that cannot be undone from this screen. */
     private void confirm(net.minecraft.network.chat.Component title, String message, String action) {
         minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(yes -> {
             if (yes) {
@@ -152,7 +135,6 @@ public class PartyScreen extends RotasScreen {
         }, title, Ui.text(message)));
     }
 
-    /** Invites by name; the server starts the party itself when the inviter has none. */
     private void invite(String name) {
         CompoundTag payload = new CompoundTag();
         payload.putString("player", name);
@@ -254,7 +236,6 @@ public class PartyScreen extends RotasScreen {
                 L.t("rotasutils.party.invite_click"), hovered ? Ui.INK_GOOD : Ui.INK_FADE);
     }
 
-    /** One click on a nearby player is the whole flow: it invites them, starting the party if needed. */
     private void clickNearby(int index, int button) {
         invite(nearby().get(index).name());
         Sfx.stamp();
@@ -303,7 +284,6 @@ public class PartyScreen extends RotasScreen {
             Ui.label(graphics, L.t("rotasutils.party.invite_expiry"), contentX + 8, guiTop + 88, Ui.INK_FADE);
         }
 
-        // Column captions, so each list says what clicking it does before it is clicked.
         if (list != null) {
             Ui.label(graphics, inParty()
                             ? L.t("rotasutils.party.roster_caption")

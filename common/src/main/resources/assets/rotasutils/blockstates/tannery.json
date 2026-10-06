@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,lit=false": {
+      "model": "rotasutils:block/tannery"
+    },
+    "facing=east,lit=false": {
+      "model": "rotasutils:block/tannery",
+      "y": 90
+    },
+    "facing=south,lit=false": {
+      "model": "rotasutils:block/tannery",
+      "y": 180
+    },
+    "facing=west,lit=false": {
+      "model": "rotasutils:block/tannery",
+      "y": 270
+    },
+    "facing=north,lit=true": {
+      "model": "rotasutils:block/tannery_lit"
+    },
+    "facing=east,lit=true": {
+      "model": "rotasutils:block/tannery_lit",
+      "y": 90
+    },
+    "facing=south,lit=true": {
+      "model": "rotasutils:block/tannery_lit",
+      "y": 180
+    },
+    "facing=west,lit=true": {
+      "model": "rotasutils:block/tannery_lit",
+      "y": 270
+    }
+  }
+}

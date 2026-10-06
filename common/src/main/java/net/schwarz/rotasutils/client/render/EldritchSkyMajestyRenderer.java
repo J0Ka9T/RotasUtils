@@ -12,15 +12,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 
-/**
- * The part of the invasion that fills the whole sky, not just the tear.
- *
- * <p>The rift sits at one point on the sky, so a player facing away from it used to see only a dark
- * dome. These layers wrap every direction: a dense starfield with a galaxy band across it, aurora
- * curtains ringing the horizon, and
- * shooting stars. All of it is additive light on the eclipsed sky and fades in with the tear, so the
- * opening still builds from omen to spectacle.</p>
- */
 @Environment(EnvType.CLIENT)
 final class EldritchSkyMajestyRenderer {
     private static final float STAR_RADIUS = 89.8f;
@@ -42,7 +33,6 @@ final class EldritchSkyMajestyRenderer {
     private static final float METEOR_PERIOD_SECONDS = 2.2f;
     private static final float METEOR_LIFE_SECONDS = 0.9f;
 
-    /** Built once per seed: direction, size, colour and twinkle phase of every star and galaxy cloud. */
     private static long cachedSeed = Long.MIN_VALUE;
     private static float[] stars;
     private static float[] clouds;
@@ -85,14 +75,11 @@ final class EldritchSkyMajestyRenderer {
         }
     }
 
-    // Starfield -------------------------------------------------------------------------------------
-
-    private static void build(long seed) {
+private static void build(long seed) {
         if (stars != null && cachedSeed == seed) {
             return;
         }
         cachedSeed = seed;
-        // Galaxy band: a great circle tilted across the sky, fixed for this invasion's seed.
         float bandYaw = EldritchSkyCelestial.hash01(seed ^ 0x6A1A_0001L) * 360f;
         float bandTilt = 25f + EldritchSkyCelestial.hash01(seed ^ 0x6A1A_0002L) * 40f;
 
@@ -106,7 +93,6 @@ final class EldritchSkyMajestyRenderer {
                 float z = -0.21f - 0.79f * EldritchSkyCelestial.hash01(s ^ 5);
                 elevation = (float) Math.toDegrees(Math.asin(z));
             } else if (i % 3 == 0) {
-                // A third of the stars crowd the galaxy band, which is what makes it read as one.
                 float along = EldritchSkyCelestial.hash01(s ^ 1) * 360f;
                 float off = EldritchSkyCelestial.hashSigned(s ^ 2) * EldritchSkyCelestial.hashSigned(s ^ 3) * 9f;
                 bandPoint(bandYaw, bandTilt, along, off, P);
@@ -114,7 +100,6 @@ final class EldritchSkyMajestyRenderer {
                 elevation = (float) Math.toDegrees(Math.asin(EldritchSkyCelestial.clamp(P[1], -1f, 1f)));
             } else {
                 yaw = EldritchSkyCelestial.hash01(s ^ 4) * 360f;
-                // Uniform over the sphere cap above -12 degrees.
                 float z = -0.2f + 1.2f * EldritchSkyCelestial.hash01(s ^ 5);
                 elevation = (float) Math.toDegrees(Math.asin(EldritchSkyCelestial.clamp(z, -1f, 1f)));
             }
@@ -146,12 +131,10 @@ final class EldritchSkyMajestyRenderer {
         }
     }
 
-    /** A point {@code alongDeg} around a tilted great circle, {@code offsetDeg} off its line. */
     private static void bandPoint(float yawDeg, float tiltDeg, float alongDeg, float offsetDeg, float[] out) {
         double a = Math.toRadians(alongDeg);
         double tilt = Math.toRadians(tiltDeg);
         double off = Math.toRadians(offsetDeg);
-        // Circle in the x/z plane tilted about the x axis, then turned by yaw; offset pushes along the normal.
         double x = Math.cos(a) * Math.cos(off);
         double y = Math.sin(a) * Math.sin(tilt) * Math.cos(off) + Math.cos(tilt) * Math.sin(off);
         double z = Math.sin(a) * Math.cos(tilt) * Math.cos(off) - Math.sin(tilt) * Math.sin(off);
@@ -173,7 +156,6 @@ final class EldritchSkyMajestyRenderer {
                 continue;
             }
             float tint = stars[o + 4];
-            // Mostly white, some ice blue, a few violet embers.
             float r = tint < 0.6f ? 0.95f : tint < 0.85f ? 0.70f : 0.80f;
             float g = tint < 0.6f ? 0.96f : tint < 0.85f ? 0.88f : 0.55f;
             float b = 1.0f;
@@ -191,14 +173,11 @@ final class EldritchSkyMajestyRenderer {
             float g = EldritchSkyCelestial.lerp(EldritchSkyArt.VIOLET_GREEN, EldritchSkyArt.ELECTRIC_CYAN_GREEN * 0.6f, tint);
             float b = EldritchSkyCelestial.lerp(EldritchSkyArt.VIOLET_BLUE, EldritchSkyArt.ELECTRIC_CYAN_BLUE, tint);
             EldritchSkyCelestial.direction(clouds[o], clouds[o + 1], P);
-            // Bright core, transparent rim: a soft blob without a texture.
             softBlob(buffer, matrix, P, clouds[o + 2], STAR_RADIUS + 0.2f, r, g, b, 0.07f * glow);
         }
     }
 
-    // Aurora ----------------------------------------------------------------------------------------
-
-    private static void drawAurora(BufferBuilder buffer, Matrix4f matrix, EldritchSkyEnvironment env, float reveal) {
+private static void drawAurora(BufferBuilder buffer, Matrix4f matrix, EldritchSkyEnvironment env, float reveal) {
         if (reveal <= 0.01f) {
             return;
         }
@@ -213,7 +192,6 @@ final class EldritchSkyMajestyRenderer {
                 float yaw1 = (s + 1) * 360f / AURORA_SEGMENTS;
                 float wave0 = wave(yaw0, t, speed, phase);
                 float wave1 = wave(yaw1, t, speed, phase);
-                // Folds: brightness rides a slower wave so the curtain has bright drapes and gaps.
                 float fold0 = folds(yaw0, t, phase);
                 float fold1 = folds(yaw1, t, phase);
                 float low0 = base + 3.5f * wave0;
@@ -234,7 +212,6 @@ final class EldritchSkyMajestyRenderer {
                         EldritchSkyArt.VIOLET_BLUE, 0f);
                 EldritchSkyCelestial.direction(yaw1, low1, P);
                 vertex(buffer, matrix, P, AURORA_RADIUS, r, g, b, a1);
-                // A thin bright hem along the lower edge, where real aurora is brightest.
                 EldritchSkyCelestial.direction(yaw0, low0 - 0.6f, P);
                 vertex(buffer, matrix, P, AURORA_RADIUS - 0.1f, r, g, b, 0f);
                 EldritchSkyCelestial.direction(yaw0, low0 + 1.2f, P);
@@ -307,15 +284,12 @@ final class EldritchSkyMajestyRenderer {
                 EldritchSkyCelestial.lerp(from[2], to[2], blend), alpha);
     }
 
-    // Shooting stars --------------------------------------------------------------------------------
-
-    private static void drawMeteors(BufferBuilder buffer, Matrix4f matrix, EldritchSkyEnvironment env, float reveal) {
+private static void drawMeteors(BufferBuilder buffer, Matrix4f matrix, EldritchSkyEnvironment env, float reveal) {
         if (reveal <= 0.01f) {
             return;
         }
         float t = env.seconds();
         long bucket = (long) Math.floor(t / METEOR_PERIOD_SECONDS);
-        // The current and previous bucket, so a streak that started late still finishes.
         for (long b = bucket - 1; b <= bucket; b++) {
             long s = env.seed() ^ (b * 0x2545_F491_4F6C_DD1DL);
             float start = b * METEOR_PERIOD_SECONDS + EldritchSkyCelestial.hash01(s) * METEOR_PERIOD_SECONDS * 0.6f;
@@ -345,13 +319,7 @@ final class EldritchSkyMajestyRenderer {
         }
     }
 
-    // Geometry helpers ------------------------------------------------------------------------------
-
-    /**
-     * A star as light, not a square: a soft halo, a small hot core and a thin four-point glint whose
-     * arms breathe, all fading to nothing at their edges.
-     */
-    private static void sparkle(BufferBuilder buffer, Matrix4f matrix, float[] dir, float size, float radius,
+private static void sparkle(BufferBuilder buffer, Matrix4f matrix, float[] dir, float size, float radius,
                                 float r, float g, float b, float alpha, float phase) {
         float sizeDeg = (float) Math.toDegrees(size / radius);
         softBlob(buffer, matrix, dir, sizeDeg * 2.6f, radius + 0.05f, r, g, b, alpha * 0.45f);
@@ -365,7 +333,6 @@ final class EldritchSkyMajestyRenderer {
         glint(buffer, matrix, dir, up, right, arm, width, radius, r, g, b, alpha * 0.8f);
     }
 
-    /** One arm pair of a glint: a thin diamond along {@code along}, bright at the middle, gone at the tips. */
     private static void glint(BufferBuilder buffer, Matrix4f matrix, float[] dir, float[] along, float[] across,
                               float arm, float width, float radius, float r, float g, float b, float alpha) {
         for (int i = 0; i < 4; i++) {
@@ -378,7 +345,6 @@ final class EldritchSkyMajestyRenderer {
         }
     }
 
-    /** A soft glow: four quads fanned from a bright centre to a transparent rim. */
     private static void softBlob(BufferBuilder buffer, Matrix4f matrix, float[] dir, float sizeDeg, float radius,
                                  float r, float g, float b, float alpha) {
         float[] right = RIGHT;
@@ -402,7 +368,6 @@ final class EldritchSkyMajestyRenderer {
         }
     }
 
-    /** Right and up vectors tangent to the sphere at {@code dir}. */
     private static void basis(float[] dir, float[] right, float[] up) {
         float ux = 0f;
         float uy = 1f;
@@ -421,7 +386,6 @@ final class EldritchSkyMajestyRenderer {
         normalize(up);
     }
 
-    /** Half-width vector across the segment a-b, tangent to the sphere. */
     private static void side(float[] a, float[] b, float width, float[] out) {
         float dx = b[0] - a[0];
         float dy = b[1] - a[1];

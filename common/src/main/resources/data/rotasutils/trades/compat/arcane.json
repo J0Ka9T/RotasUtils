@@ -1,0 +1,318 @@
+{
+  "bundle": "arcane",
+  "requires": [
+    "irons_spellbooks"
+  ],
+  "trades": {
+    "alchemy": [
+      {
+        "id": "common_ink",
+        "level": 2,
+        "seconds": 60,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:ink_sac",
+            "count": 2,
+            "graded": true
+          },
+          {
+            "item": "minecraft:lapis_lazuli",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:common_ink",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "uncommon_ink",
+        "level": 4,
+        "seconds": 80,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "irons_spellbooks:common_ink",
+            "count": 2
+          },
+          {
+            "item": "minecraft:ink_sac",
+            "count": 2,
+            "graded": true
+          },
+          {
+            "item": "minecraft:redstone",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:uncommon_ink",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "rare_ink",
+        "level": 7,
+        "seconds": 110,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "irons_spellbooks:uncommon_ink",
+            "count": 2
+          },
+          {
+            "item": "minecraft:ink_sac",
+            "count": 2,
+            "graded": true
+          },
+          {
+            "item": "minecraft:amethyst_shard",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:rare_ink",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "epic_ink",
+        "level": 10,
+        "seconds": 150,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "irons_spellbooks:rare_ink",
+            "count": 2
+          },
+          {
+            "item": "minecraft:diamond",
+            "count": 1,
+            "graded": true
+          },
+          {
+            "item": "irons_spellbooks:arcane_essence",
+            "count": 1
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:epic_ink",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "legendary_ink",
+        "level": 14,
+        "seconds": 300,
+        "open": true,
+        "secret": true,
+        "ingredients": [
+          {
+            "item": "irons_spellbooks:epic_ink",
+            "count": 2
+          },
+          {
+            "item": "irons_spellbooks:arcane_essence",
+            "count": 3
+          },
+          {
+            "item": "minecraft:ender_eye",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:legendary_ink",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "oakskin_elixir",
+        "level": 3,
+        "seconds": 70,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:glass_bottle",
+            "count": 1
+          },
+          {
+            "item": "minecraft:oak_leaves",
+            "count": 4
+          },
+          {
+            "item": "minecraft:sweet_berries",
+            "count": 2,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:oakskin_elixir",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "evasion_elixir",
+        "level": 4,
+        "seconds": 70,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:glass_bottle",
+            "count": 1
+          },
+          {
+            "item": "minecraft:feather",
+            "count": 4,
+            "graded": true
+          },
+          {
+            "item": "minecraft:sugar",
+            "count": 2
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:evasion_elixir",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "invisibility_elixir",
+        "level": 6,
+        "seconds": 90,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "minecraft:glass_bottle",
+            "count": 1
+          },
+          {
+            "item": "minecraft:golden_carrot",
+            "count": 1
+          },
+          {
+            "item": "minecraft:fermented_spider_eye",
+            "count": 1
+          },
+          {
+            "item": "minecraft:nether_wart|#forge:crops/nether_wart",
+            "count": 1,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:invisibility_elixir",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "greater_oakskin_elixir",
+        "level": 9,
+        "seconds": 120,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "irons_spellbooks:oakskin_elixir",
+            "count": 1
+          },
+          {
+            "item": "irons_spellbooks:arcane_essence",
+            "count": 2
+          },
+          {
+            "item": "minecraft:nether_wart|#forge:crops/nether_wart",
+            "count": 1,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:greater_oakskin_elixir",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "greater_evasion_elixir",
+        "level": 10,
+        "seconds": 120,
+        "open": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "irons_spellbooks:evasion_elixir",
+            "count": 1
+          },
+          {
+            "item": "irons_spellbooks:arcane_essence",
+            "count": 2
+          },
+          {
+            "item": "minecraft:nether_wart|#forge:crops/nether_wart",
+            "count": 1,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:greater_evasion_elixir",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "greater_invisibility_elixir",
+        "level": 11,
+        "seconds": 140,
+        "open": true,
+        "secret": true,
+        "quality": true,
+        "ingredients": [
+          {
+            "item": "irons_spellbooks:invisibility_elixir",
+            "count": 1
+          },
+          {
+            "item": "irons_spellbooks:arcane_essence",
+            "count": 2
+          },
+          {
+            "item": "minecraft:nether_wart|#forge:crops/nether_wart",
+            "count": 1,
+            "graded": true
+          }
+        ],
+        "outputs": [
+          {
+            "item": "irons_spellbooks:greater_invisibility_elixir",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  }
+}

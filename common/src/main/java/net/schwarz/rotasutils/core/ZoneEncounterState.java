@@ -4,14 +4,6 @@ import net.minecraft.nbt.CompoundTag;
 
 import java.util.UUID;
 
-/**
- * Live state of one zone spawn point, kept in world data so a restart neither duplicates a boss nor
- * skips its cooldown. Times are overworld game ticks.
- *
- * @param mob            the point's living mob, or null when none is alive
- * @param nextSpawnAt    earliest game time the next mob may appear
- * @param lastPlayerSeen last game time a player stood inside the zone, for the empty-zone reset
- */
 public record ZoneEncounterState(UUID mob, long nextSpawnAt, long lastPlayerSeen) {
     public static ZoneEncounterState fresh(long now) {
         return new ZoneEncounterState(null, 0, now);

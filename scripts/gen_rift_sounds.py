@@ -24,10 +24,6 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "common", "src", "main", "re
 RNG = np.random.default_rng(1337)
 
 
-# ---------------------------------------------------------------------------------------------------
-# Building blocks
-# ---------------------------------------------------------------------------------------------------
-
 def t_axis(seconds):
     return np.arange(int(seconds * SR)) / SR
 
@@ -239,10 +235,6 @@ def write(name, x, quality=7):
     print(f"wrote {name}.ogg  {len(x) / SR:.2f}s  {os.path.getsize(target) // 1024} KB")
 
 
-# ---------------------------------------------------------------------------------------------------
-# Shared gestures
-# ---------------------------------------------------------------------------------------------------
-
 def glass_burst(seconds, seed, pitch=1.0, count=34):
     """The instant of fracture: a click and a spray of bright, fast-dying crystal modes."""
     rng = np.random.default_rng(seed)
@@ -312,10 +304,6 @@ def choir(seconds, notes, seed, vowel=((700, 1.0), (1220, 0.55), (2600, 0.3)), v
         out += filt(voices, "bandpass", [centre * 0.85, centre * 1.15], 2) * gain
     return out / (np.max(np.abs(out)) + 1e-9)
 
-
-# ---------------------------------------------------------------------------------------------------
-# The sounds
-# ---------------------------------------------------------------------------------------------------
 
 def omen():
     """Something wrong wakes in the sky: a low swell, a thin ringing, wind that is not wind."""

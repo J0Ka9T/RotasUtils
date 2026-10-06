@@ -38,14 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.SplittableRandom;
 
-/**
- * The service NPCs: blacksmith, enchanter, alchemist, innkeeper, priest, fortune teller, banker, bounty master,
- * guard, trainer, cartographer and collector. Each role is a list of entries sent to one shared screen; a paid
- * entry is re-priced and re-checked here when the player clicks it, so the screen is only ever a view.
- *
- * <p>Entry kinds: {@code service} runs {@link #perform}; {@code action} makes the client send an existing
- * action (opening the refine bench, the waystones...); {@code screen} opens a client screen; {@code info} is text.</p>
- */
 public final class NpcHub {
     private NpcHub() {
     }
@@ -101,12 +93,7 @@ public final class NpcHub {
         return data.progress(player.getUUID()).rpg().currency(GoldCoinService.CURRENCY);
     }
 
-    /**
-     * The friendship discount of the NPC being served. Set at the start of open/perform on the server thread;
-     * every price shown and charged in between goes through {@link #discounted}.
-     */
     private static double discount;
-    /** Whether the service being performed charged anything: paid services earn friendship. */
     private static boolean charged;
 
     private static void serving(RotasData data, ServerPlayer player, NpcDef npc) {
@@ -133,9 +120,11 @@ public final class NpcHub {
         return true;
     }
 
-    // Screen ---------------------------------------------------------------------------------------
+public static void open(ServerPlayer player, RotasData data, NpcDef npc) {
+        open(player, data, npc, true);
+    }
 
-    public static void open(ServerPlayer player, RotasData data, NpcDef npc) {
+    static void open(ServerPlayer player, RotasData data, NpcDef npc, boolean speak) {
         serving(data, player, npc);
         Entries entries = new Entries();
         switch (npc.role()) {
@@ -170,10 +159,15 @@ public final class NpcHub {
         payload.put("buffs", buffs);
         payload.putString("friendship", NpcSocial.describe(data, data.progress(player.getUUID()), npc));
         payload.put("entries", entries.list);
+        if (speak) NpcService.speak(player, npc, "greeting");
         RotasNetwork.openScreen(player, "npc_hub", payload);
     }
 
-    private static String greeting(NpcDef npc) {
+    static String greeting(NpcDef npc) {
+        String custom = npc.greeting();
+        if (!custom.isBlank() && !custom.equals(net.schwarz.rotasutils.util.ThaiText.t("rotasutils.default.npc.greeting"))) {
+            return custom;
+        }
         return switch (npc.role()) {
             case BLACKSMITH -> "เหล็กดีต้องตีตอนร้อน อยากให้ซ่อมหรือเสริมอะไรล่ะ";
             case ENCHANTER -> "มนตร์ทุกบทมีราคา... และทุกบทถอดคืนได้";
@@ -191,9 +185,7 @@ public final class NpcHub {
         };
     }
 
-    // Blacksmith -----------------------------------------------------------------------------------
-
-    static long repairCost(SeasonRules.NpcServiceRules rules, ItemStack stack) {
+static long repairCost(SeasonRules.NpcServiceRules rules, ItemStack stack) {
         if (stack.isEmpty() || !stack.isDamageableItem() || stack.getDamageValue() <= 0) return 0;
         return Math.max(rules.repairMinCost, (long) Math.ceil(stack.getDamageValue() * rules.repairPerDurability));
     }
@@ -223,9 +215,7 @@ public final class NpcHub {
         entries.action("open_sockets", "เจาะช่องการ์ด", "ใส่การ์ดมอนสเตอร์ลงอาวุธ", new ItemStack(Items.PAPER));
     }
 
-    // Enchanter ------------------------------------------------------------------------------------
-
-    private static Map<Enchantment, Integer> removable(ItemStack stack) {
+private static Map<Enchantment, Integer> removable(ItemStack stack) {
         Map<Enchantment, Integer> result = new LinkedHashMap<>();
         if (stack.isEmpty() || stack.is(Items.ENCHANTED_BOOK)) return result;
         EnchantmentHelper.getEnchantments(stack).forEach((enchantment, level) -> {
@@ -252,9 +242,7 @@ public final class NpcHub {
         entries.action("open_sockets", "เจาะช่องการ์ด", "ใส่การ์ดมอนสเตอร์ลงอาวุธ", new ItemStack(Items.PAPER));
     }
 
-    // Alchemist ------------------------------------------------------------------------------------
-
-    private static MobEffect effect(String id) {
+private static MobEffect effect(String id) {
         ResourceLocation key = ResourceLocation.tryParse(id);
         return key == null ? null : BuiltInRegistries.MOB_EFFECT.get(key);
     }
@@ -273,9 +261,7 @@ public final class NpcHub {
         }
     }
 
-    // Innkeeper ------------------------------------------------------------------------------------
-
-    private static void innkeeper(ServerPlayer player, RotasData data, Entries entries) {
+private static void innkeeper(ServerPlayer player, RotasData data, Entries entries) {
         SeasonRules.NpcServiceRules rules = rules(data);
         entries.section = "ที่พัก";
         entries.service("rest", "พักค้างคืน", "ฟื้นเลือด อิ่มท้อง ล้างผลร้าย และได้ 'พักผ่อนเต็มที่' EXP +"
@@ -286,7 +272,6 @@ public final class NpcHub {
         rumors(data, entries);
     }
 
-    /** What the server has been talking about lately, as the innkeeper, guard and fortune teller hear it. */
     private static void rumors(RotasData data, Entries entries) {
         if (!NpcSocial.rumorsOn(data)) return;
         List<String> heard = NpcSocial.recentRumors(NpcSocial.rumorsShown(data));
@@ -313,9 +298,7 @@ public final class NpcHub {
         player.clearFire();
     }
 
-    // Priest ---------------------------------------------------------------------------------------
-
-    private static boolean curseRemovable(ItemStack stack) {
+private static boolean curseRemovable(ItemStack stack) {
         return !stack.isEmpty() && EnchantmentHelper.getEnchantments(stack).keySet().stream().anyMatch(Enchantment::isCurse);
     }
 
@@ -337,9 +320,7 @@ public final class NpcHub {
                 curseRemovable(held) ? afford(data, player, rules.liftCurseCost) : "ของในมือไม่มีคำสาป");
     }
 
-    // Fortune teller -------------------------------------------------------------------------------
-
-    private static void fortuneTeller(ServerPlayer player, RotasData data, Entries entries) {
+private static void fortuneTeller(ServerPlayer player, RotasData data, Entries entries) {
         SeasonRules.NpcServiceRules rules = rules(data);
         entries.section = "ดวงชะตา";
         entries.service("fortune", "ดูดวง", "ดวงดีเพิ่ม EXP +" + Math.round(rules.fortuneXp * 100) + "% ในกิจกรรมหนึ่ง "
@@ -373,7 +354,6 @@ public final class NpcHub {
         return reading + " — " + rumor(player, data, random);
     }
 
-    /** Something true about the world, told as a rumour. */
     private static String rumor(ServerPlayer player, RotasData data, SplittableRandom random) {
         List<String> rumors = new ArrayList<>();
         for (var nemesis : data.nemeses().values()) {
@@ -389,9 +369,7 @@ public final class NpcHub {
         return rumors.get(random.nextInt(rumors.size()));
     }
 
-    // Banker ---------------------------------------------------------------------------------------
-
-    private static long coinsCarried(ServerPlayer player) {
+private static long coinsCarried(ServerPlayer player) {
         long total = 0;
         for (ItemStack stack : player.getInventory().items) {
             if (net.schwarz.rotasutils.item.GoldCoins.is(stack)) total += net.schwarz.rotasutils.item.GoldCoins.amount(stack);
@@ -414,9 +392,7 @@ public final class NpcHub {
         }
     }
 
-    // Bounty master --------------------------------------------------------------------------------
-
-    private static void bountyMaster(ServerPlayer player, RotasData data, Entries entries) {
+private static void bountyMaster(ServerPlayer player, RotasData data, Entries entries) {
         SeasonRules.NpcServiceRules rules = rules(data);
         PlayerProgress progress = data.progress(player.getUUID());
         BountyService.Active active = BountyService.active(progress);
@@ -459,9 +435,7 @@ public final class NpcHub {
         return new ItemStack(Items.IRON_SWORD);
     }
 
-    // Guard ----------------------------------------------------------------------------------------
-
-    private static void guard(ServerPlayer player, RotasData data, Entries entries) {
+private static void guard(ServerPlayer player, RotasData data, Entries entries) {
         var social = SeasonService.rules(data).npcSocial;
         if (social.companions) {
             entries.section = "จ้างผู้คุ้มกัน";
@@ -515,9 +489,7 @@ public final class NpcHub {
         return "ทาง" + names[index];
     }
 
-    // Trainer --------------------------------------------------------------------------------------
-
-    private static void trainer(ServerPlayer player, RotasData data, Entries entries) {
+private static void trainer(ServerPlayer player, RotasData data, Entries entries) {
         entries.section = "ฝึกฝน";
         entries.screen("stats", "จัดสรรค่าสถานะ", "ลงแต้ม STR VIT INT AGI", new ItemStack(Items.IRON_CHESTPLATE));
         entries.action("open_skills", "ต้นไม้สกิล", "เรียนสกิลอาชีพ", new ItemStack(Items.ENCHANTED_BOOK));
@@ -526,9 +498,7 @@ public final class NpcHub {
                 SeasonService.rules(data).stats.respecCost, new ItemStack(Items.LAVA_BUCKET), null).putBoolean("confirm", true);
     }
 
-    // Cartographer ---------------------------------------------------------------------------------
-
-    private static void cartographer(ServerPlayer player, RotasData data, Entries entries) {
+private static void cartographer(ServerPlayer player, RotasData data, Entries entries) {
         PlayerProgress progress = data.progress(player.getUUID());
         int known = 0;
         for (String id : data.waystones().keySet()) if (progress.knowsWaystone(id)) known++;
@@ -554,10 +524,7 @@ public final class NpcHub {
         entries.action("open_bestiary", "สมุดมอนสเตอร์", "ดูมอนที่พบแล้วและจุดที่มันอยู่", new ItemStack(Items.BOOK));
     }
 
-    // Collector ------------------------------------------------------------------------------------
-
-    /** Indexes of today's specially wanted items, the same for everyone. */
-    static List<Integer> picks(SeasonRules.NpcServiceRules rules, long day) {
+static List<Integer> picks(SeasonRules.NpcServiceRules rules, long day) {
         List<Integer> all = new ArrayList<>();
         for (int i = 0; i < rules.wanted.length; i++) all.add(i);
         SplittableRandom random = new SplittableRandom(day * 31 + 7);
@@ -610,10 +577,7 @@ public final class NpcHub {
                 0, new ItemStack(item), have <= 0 ? "ไม่มีของ" : limit);
     }
 
-    // Performing -----------------------------------------------------------------------------------
-
-    /** Runs one service entry, then shows the refreshed screen. */
-    public static void perform(ServerPlayer player, RotasData data, NpcDef npc, String service) {
+public static void perform(ServerPlayer player, RotasData data, NpcDef npc, String service) {
         serving(data, player, npc);
         String result = run(player, data, npc, service == null ? "" : service);
         boolean ok = result == null || result.startsWith("+");
@@ -621,10 +585,9 @@ public final class NpcHub {
         RotasNetwork.feedback(player, ok, result == null ? "เรียบร้อย" : ok ? result.substring(1) : result);
         if (ok && service != null) Fx.service(player, service.contains(":") ? service.substring(0, service.indexOf(':')) : service);
         RotasNetwork.syncProgress(player);
-        open(player, data, npc);
+        open(player, data, npc, false);
     }
 
-    /** Null or "+message" on success, otherwise why it failed. */
     private static String run(ServerPlayer player, RotasData data, NpcDef npc, String service) {
         SeasonRules.NpcServiceRules rules = rules(data);
         String id = service.contains(":") ? service.substring(0, service.indexOf(':')) : service;

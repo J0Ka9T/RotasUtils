@@ -28,10 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * The stable: your horses with their levels and a live model, the horse draw with its odds and pity,
- * the player market and the training leaderboard. Market sales and NPC sales only appear at a stable NPC.
- */
 @Environment(EnvType.CLIENT)
 public class StableScreen extends RotasScreen {
     private static final int ROW = 40;
@@ -68,7 +64,6 @@ public class StableScreen extends RotasScreen {
         }
     }
 
-    /** Trait names, callings and what they do; mirrors core.HorseTrait. */
     private record TraitInfo(String name, String effect, int color) {
     }
 
@@ -169,7 +164,6 @@ public class StableScreen extends RotasScreen {
         return horses;
     }
 
-    /** Who the selected horse can be bred with: the player's other born horses, then other players' studs. */
     private List<Horse> partners() {
         List<Horse> result = new ArrayList<>();
         for (Horse horse : horses) {
@@ -183,7 +177,6 @@ public class StableScreen extends RotasScreen {
         return studs.contains(horse);
     }
 
-    /** Mirrors HorseBreeding.forbidden so the screen can say why before the server does. */
     private static boolean kin(Horse a, Horse b) {
         if (a.id().equals(b.sireId()) || a.id().equals(b.damId()) || b.id().equals(a.sireId()) || b.id().equals(a.damId())) {
             return true;
@@ -200,7 +193,6 @@ public class StableScreen extends RotasScreen {
                 + (isStud(sire) ? sire.studFee() : 0);
     }
 
-    /** Why this pair cannot breed right now, or null. */
     private String breedBlock(Horse dam, Horse sire) {
         if (dam.breedsLeft() <= 0) return dam.name() + " ผสมพันธุ์ครบแล้ว";
         if (sire.breedsLeft() <= 0) return sire.name() + " ผสมพันธุ์ครบแล้ว";
@@ -212,9 +204,7 @@ public class StableScreen extends RotasScreen {
         return null;
     }
 
-    // Layout ---------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void buildContent() {
         guiWidth = Ui.fill(width, 860);
         guiHeight = Ui.fill(height, 480);
@@ -263,7 +253,6 @@ public class StableScreen extends RotasScreen {
         }
     }
 
-    /** Breeding: first parent on the left, partner (own horse or a stud) in the middle, the pairing on the right. */
     private void buildBreed() {
         List<Horse> rows = rows();
         if (selected == null || !rows.contains(selected)) {
@@ -323,7 +312,6 @@ public class StableScreen extends RotasScreen {
         rebuild();
     }
 
-    /** One small coloured square per trait, right-aligned at {@code right}. */
     private void renderTraitDots(GuiGraphics graphics, Horse horse, int right, int y) {
         int dx = right;
         for (int i = horse.traits().size() - 1; i >= 0; i--) {
@@ -434,7 +422,6 @@ public class StableScreen extends RotasScreen {
                         })));
             }
         } else if (!selected.born()) {
-            // An unborn foal can only be given up; everything else waits for the birth.
             actions.add(new ActionButton(confirming("release") ? "กดอีกครั้งเพื่อสละ" : "สละลูกม้า", true,
                     () -> confirm("release", () -> act("horse_release", horsePayload(), false))));
         } else {
@@ -539,7 +526,6 @@ public class StableScreen extends RotasScreen {
         return confirmKey.equals(key) && Util.getMillis() < confirmUntil;
     }
 
-    /** Two clicks for anything that spends money or loses a horse. */
     private void confirm(String key, Runnable action) {
         if (confirming(key)) {
             confirmKey = "";
@@ -576,9 +562,7 @@ public class StableScreen extends RotasScreen {
         }
     }
 
-    // Rows -----------------------------------------------------------------------------------------
-
-    private void renderRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
+private void renderRow(GuiGraphics graphics, int index, int x, int y, int w, int h, boolean hovered) {
         Horse horse = rows().get(index);
         Ui.rowCard(graphics, x, y, w - 6, h - 4, hovered, horse == selected);
         int color = Currencies.rarityColor(horse.rarity());
@@ -618,9 +602,7 @@ public class StableScreen extends RotasScreen {
         rebuild();
     }
 
-    // Rendering ------------------------------------------------------------------------------------
-
-    @Override
+@Override
     protected void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!blocked.isBlank()) {
             Ui.labelCentered(graphics, blocked, guiLeft + guiWidth / 2, guiTop + guiHeight / 2, Ui.WARN);
@@ -843,7 +825,6 @@ public class StableScreen extends RotasScreen {
         }
     }
 
-    /** The draw reveal: cards turn over one after another, rarest ones with a glow. */
     private void renderResults(GuiGraphics graphics) {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 400);
@@ -891,7 +872,6 @@ public class StableScreen extends RotasScreen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!results.isEmpty()) {
             long elapsed = Util.getMillis() - resultsShownAt;
-            // A click during the reveal finishes it; a click after closes it.
             if (elapsed < results.size() * 180L + 260) {
                 resultsShownAt = Util.getMillis() - results.size() * 180L - 260;
             } else {

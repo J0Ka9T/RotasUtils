@@ -22,24 +22,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * What standing in a zone feels like: entry and exit titles, effects kept on the player, and forbidden
- * movement (elytra, flight, ender pearls). Every rule reads the top zone at the player's position, the
- * same zone that decides the level band, so a nested zone replaces its parent's titles and effects.
- * Checks run every 10 ticks per player. Administrators are exempt from movement rules unless they
- * switched on gate testing ({@code /rotas zone gate test}).
- */
 public final class ZonePresenceService {
     private static final int CHECK_INTERVAL = 10;
     private static final int EFFECT_INTERVAL = 40;
-    /** Effects outlast one refresh so they never flicker, and fade within seconds after leaving. */
     private static final int EFFECT_TICKS = 120;
     private static final int WARN_INTERVAL_TICKS = 40;
 
     private static final Map<UUID, String> currentZone = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> lastWarning = new ConcurrentHashMap<>();
 
-    /** Title, subtitle and sound to show for one zone crossing. */
     record Titles(String title, String subtitle, String sound) {
     }
 
@@ -52,7 +43,6 @@ public final class ZonePresenceService {
         ZoneVisibilityService.forget(player);
     }
 
-    /** Event hook: runs after each player tick. */
     public static void onPlayerTick(Player player) {
         if (!(player instanceof ServerPlayer serverPlayer) || player.level().isClientSide()
                 || serverPlayer.connection == null || !serverPlayer.isAlive() || serverPlayer.tickCount % CHECK_INTERVAL != 0) {
@@ -96,10 +86,6 @@ public final class ZonePresenceService {
         }
     }
 
-    /**
-     * Ender pearl hook: true (and the owner is told) when the pearl lands in a zone that forbids pearls,
-     * or was thrown by a player standing in one, so a pearl can neither enter nor escape such a zone.
-     */
     public static boolean pearlBlocked(ServerPlayer owner, Entity pearl) {
         RotasData data = RotasData.instance();
         if (data == null || data.zones().isEmpty() || exempt(owner)) {
@@ -117,10 +103,7 @@ public final class ZonePresenceService {
         return true;
     }
 
-    // Pure decisions -------------------------------------------------------------------------------
-
-    /** The titles for walking from {@code previous} into {@code current}; entering wins over leaving. */
-    static Titles titles(ZoneDef previous, ZoneDef current) {
+static Titles titles(ZoneDef previous, ZoneDef current) {
         if (current != null && current.features().messages().hasEnter()) {
             ZoneMessages messages = current.features().messages();
             return new Titles(messages.enterTitle(), messages.enterSubtitle(), messages.sound());
@@ -136,9 +119,7 @@ public final class ZonePresenceService {
                 || (from != null && from.features().movement().noEnderPearlIn());
     }
 
-    // Effects --------------------------------------------------------------------------------------
-
-    private static void show(ServerPlayer player, Titles titles) {
+private static void show(ServerPlayer player, Titles titles) {
         player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 50, 15));
         player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(titles.subtitle())));
         player.connection.send(new ClientboundSetTitleTextPacket(Component.literal(titles.title())));
@@ -157,7 +138,6 @@ public final class ZonePresenceService {
             if (id == null) {
                 continue;
             }
-            // Ambient, no particles: a stronger or longer potion the player drank is never replaced.
             BuiltInRegistries.MOB_EFFECT.getOptional(id).ifPresent(type -> player.addEffect(
                     new MobEffectInstance(type, EFFECT_TICKS, effect.amplifier(), true, false, true)));
         }

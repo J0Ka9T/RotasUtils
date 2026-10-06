@@ -31,22 +31,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Miniboss and boss spawn points inside zones.
- *
- * <p>Once a second, for every point whose block is entity-ticking: a point with no living mob, a finished
- * cooldown and a player within its wake radius spawns its Mob Setup's mob. A point mob that leaves its
- * zone is pulled back to the point; once no player has been inside the zone for 30 seconds it heals and
- * returns home. A BOSS point shows a boss bar to players inside the zone; a MINIBOSS glows. A death
- * starts the cooldown. Live state is kept in {@link RotasData#zoneEncounters()}, so a restart restores
- * the same mob and cooldown. Removing a point from its zone removes its mob and state. A Mob Setup
- * with a boss definition still gets its phases, enrage and rewards from {@link BossService}.</p>
- */
 public final class ZoneEncounterService {
     private final MinecraftServer server;
     private final RpgKernel kernel;
     private final Map<String, ServerBossEvent> bars = new HashMap<>();
-    /** Live point mobs, so a death finds its point without scanning every zone. */
     private final Map<UUID, String> pointByMob = new HashMap<>();
     private final Set<String> warned = new HashSet<>();
     private long spawned, resets, deaths, rejected;
@@ -60,14 +48,12 @@ public final class ZoneEncounterService {
         return zoneId + "#" + pointId;
     }
 
-    /** Once a second on the server thread. */
     void tick() {
         RotasData data = RotasData.get(server);
         long now = server.overworld().getGameTime();
         Set<String> live = new HashSet<>();
         for (ZoneDef zone : data.zones().values()) {
             if (zone.features().spawnPoints().isEmpty() || zone.features().dungeonRun()) {
-                // A dungeon's points are where its waves and boss appear; DungeonService spawns them.
                 continue;
             }
             ServerLevel level = level(zone);
@@ -94,7 +80,6 @@ public final class ZoneEncounterService {
     private void tickPoint(RotasData data, ServerLevel level, ZoneDef zone, ZoneSpawnPoint point, String key, long now) {
         BlockPos home = new BlockPos(point.x(), point.y(), point.z());
         if (!level.isPositionEntityTicking(home)) {
-            // Unloaded: nothing spawns, moves or counts down its reset here.
             return;
         }
         ZoneEncounterState state = data.zoneEncounter(key);
@@ -103,7 +88,6 @@ public final class ZoneEncounterService {
         }
         Mob mob = state.mob() != null && level.getEntity(state.mob()) instanceof Mob found && found.isAlive() ? found : null;
         if (state.mob() != null && mob == null) {
-            // Gone without a death we saw (despawned, removed by a command): start the cooldown.
             pointByMob.remove(state.mob());
             state = state.died(now, point.respawnSeconds());
             removeBar(key);
@@ -214,7 +198,6 @@ public final class ZoneEncounterService {
         }
     }
 
-    /** Death hook: starts the point's cooldown when its mob dies. */
     public void onDeath(LivingEntity entity) {
         String key = pointByMob.remove(entity.getUUID());
         if (key == null) {
@@ -230,7 +213,6 @@ public final class ZoneEncounterService {
         removeBar(key);
     }
 
-    /** Clears a point's cooldown so its mob can appear as soon as a player is near. */
     public boolean respawnNow(String zoneId, String pointId) {
         RotasData data = RotasData.get(server);
         String key = key(zoneId, pointId);
@@ -264,7 +246,6 @@ public final class ZoneEncounterService {
         return zone == null ? null : zone.features().spawnPoint(key.substring(split + 1));
     }
 
-    /** The zone's dimension; a whole-server zone ("any dimension") places its points in the overworld. */
     private ServerLevel level(ZoneDef zone) {
         if (zone.dimension().isEmpty()) {
             return server.overworld();

@@ -24,13 +24,6 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * The Tetrarch: crowned and caped on the player skeleton, half again a man's height, hovering. Its
- * regalia - seal underfoot, halo, wings, orbs, aegis, arrival, phase and death - are drawn by
- * {@link TetrarchVfx}. Each power is drawn where it acts: the lance down its line, the nova's ring of
- * fire rolling out over the ground, the gravity well's swirl underfoot, and the convergence's four beams
- * with the one safe quarter lit. All light is drawn after a shader pack's frame when one is on.
- */
 @Environment(EnvType.CLIENT)
 public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, TetrarchModel> {
     private static final ResourceLocation SKIN = texture("tetrarch");
@@ -40,7 +33,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
     private static final float SCALE = 1.45f;
     private static final float ECHO_SCALE = 0.95f;
     private static final int SEGMENTS = 64;
-    /** Violet, gold, crimson, void: the four rifts, in convergence order. */
     static final float[][] RIFT_COLOURS = {
             {0.62f, 0.38f, 1f}, {1f, 0.78f, 0.28f}, {1f, 0.24f, 0.14f}, {0.30f, 0.95f, 0.55f}};
 
@@ -60,7 +52,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         return SKIN;
     }
 
-    /** How solid it is: forming as it arrives, fading as it dies. */
     static float solidity(TetrarchEntity entity, float partialTick) {
         float arrive = entity.arrival(partialTick);
         float death = entity.deathTime <= 0 ? 1f
@@ -70,7 +61,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
 
     @Override
     protected RenderType getRenderType(TetrarchEntity entity, boolean visible, boolean translucent, boolean glowing) {
-        // While forming or coming apart, the Ghost layer draws it translucent instead.
         return solidity(entity, 0f) < 1f || entity.echo() ? null : super.getRenderType(entity, visible, translucent, glowing);
     }
 
@@ -80,7 +70,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         pose.scale(s * 0.9375f, s * 0.9375f, s * 0.9375f);
     }
 
-    /** It never topples: it turns to face, hovers, and rises as it dies or calls the convergence. */
     @Override
     protected void setupRotations(TetrarchEntity entity, PoseStack pose, float bob, float bodyYaw, float partialTick) {
         pose.translate(0, hover(entity, partialTick), 0);
@@ -110,7 +99,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
     public void render(TetrarchEntity entity, float yaw, float partialTick, PoseStack pose, MultiBufferSource buffers,
                        int light) {
         super.render(entity, yaw, partialTick, pose, buffers, light);
-        // Light is drawn after a shader pack's frame when one is on, so the pack cannot fog or cut it.
         if (!WorldVfxOverlay.defer(pose, (p, b) -> effects(entity, partialTick, p, b))) {
             effects(entity, partialTick, pose, buffers);
         }
@@ -126,7 +114,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         Quaternionf camRot = entityRenderDispatcher.cameraOrientation();
         Vec3 cameraRel = entityRenderDispatcher.camera.getPosition().subtract(entity.getPosition(partialTick));
 
-        // Effects on the ground first (not lifted), then the ones that ride with it.
         if (power == TetrarchPower.GRAVITY_WELL && castTime > power.windup - 6) {
             float k = smooth((castTime - power.windup + 6) / 8f) * (1f - smooth((castTime - power.length() + 6) / 6f));
             VertexConsumer well = buffers.getBuffer(RenderType.eyes(WELL));
@@ -152,9 +139,7 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         TetrarchVfx.render(entity, partialTick, pose, buffers, camRot, cameraRel, scale, lift, solid);
     }
 
-    // Power drawing -------------------------------------------------------------------------------
-
-    private void lance(TetrarchEntity entity, MultiBufferSource buffers, PoseStack pose, Quaternionf camRot,
+private void lance(TetrarchEntity entity, MultiBufferSource buffers, PoseStack pose, Quaternionf camRot,
                        float partialTick, float t, TetrarchPower power) {
         Matrix4f m = pose.last().pose();
         Vec3 base = entity.getPosition(partialTick);
@@ -164,7 +149,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         Vector3f b = new Vector3f((float) to.x, (float) to.y, (float) to.z);
         Vec3 camera = entityRenderDispatcher.camera.getPosition().subtract(base);
         if (t < power.windup) {
-            // The aim: a thin line that tightens and brightens until it fires, and the light gathering at the hand.
             float charge = t / power.windup;
             float flicker = 0.6f + 0.4f * (float) Math.sin(t * (1.5f + 3f * charge));
             beam(additive(buffers), m, a, b, camera, 0.04f + 0.03f * charge, RIFT_COLOURS[0], 0.5f * flicker);
@@ -180,7 +164,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
             beam(additive(buffers), m, a, b, camera, 0.16f * width * fade, new float[]{1f, 1f, 1f}, 1f * fade);
             TetrarchVfx.flare(buffers, pose, camRot, a, 1.6f + 2.5f * kick, since * 0.1f, RIFT_COLOURS[0], fade * 1.2f);
             TetrarchVfx.flare(buffers, pose, camRot, b, 2.2f + 3.5f * kick, -since * 0.1f, RIFT_COLOURS[0], fade * 1.4f);
-            // Rings of force racing down the lance.
             for (int i = 0; i < 5; i++) {
                 float s = (since * 0.12f + i / 5f) % 1f;
                 Vector3f at = new Vector3f(a).lerp(b, s);
@@ -189,7 +172,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         }
     }
 
-    /** Four beams from the rifts into it, a great seal under the arena, and the safe quarter lit on the ground. */
     private void convergence(TetrarchEntity entity, MultiBufferSource buffers, PoseStack pose, Quaternionf camRot,
                              float t, TetrarchPower power, Vec3 camera) {
         Matrix4f m = pose.last().pose();
@@ -202,7 +184,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         for (int i = 0; i < 4; i++) {
             Vec3 dir = TetrarchEntity.quarterDirection(i);
             if (i == safe) {
-                // The quarter behind this rift is the refuge: a pale wedge on the ground.
                 wedge(additive(buffers), m, dir, 3f, reach, new float[]{0.8f, 1f, 0.85f},
                         0.35f * lit * (0.75f + 0.25f * (float) Math.sin(t * 0.5f)));
                 continue;
@@ -220,22 +201,15 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
             TetrarchVfx.flare(buffers, pose, camRot, chest, 1.5f + 4.5f * build * build, t * 0.03f,
                     new float[]{0.9f, 0.82f, 1f}, 0.6f + 0.8f * build);
         }
-        // The danger ring at the edge of its reach.
         groundRing(additive(buffers), m, reach, 0.3f, new float[]{1f, 0.3f, 0.3f}, 0.5f * lit);
         TetrarchVfx.shock(buffers, m, reach + 0.6f, new float[]{1f, 0.3f, 0.3f}, 0.7f * lit);
     }
 
-    /**
-     * The additive buffer, fetched fresh at each use: asking the buffer source for any other type (a
-     * textured flare, a seal) finishes the shared builder, so a handle kept across such a call is stale.
-     */
     private static VertexConsumer additive(MultiBufferSource buffers) {
         return buffers.getBuffer(VfxRenderTypes.ADDITIVE);
     }
 
-    // Geometry ------------------------------------------------------------------------------------
-
-    private static void beam(VertexConsumer vc, Matrix4f m, Vector3f a, Vector3f b, Vec3 camera, float width, float[] c,
+private static void beam(VertexConsumer vc, Matrix4f m, Vector3f a, Vector3f b, Vec3 camera, float width, float[] c,
                              float alpha) {
         if (alpha <= 0.01f || width <= 0.001f) {
             return;
@@ -258,7 +232,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         vertex(vc, m, b.x, b.y, b.z, c, alpha);
     }
 
-    /** A wall of fire rising from a ground ring, bright at the foot. */
     private static void fireWall(VertexConsumer vc, Matrix4f m, float radius, float height, float[] c, float alpha) {
         for (int i = 0; i < SEGMENTS; i++) {
             double a0 = Math.PI * 2 * i / SEGMENTS;
@@ -294,7 +267,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         }
     }
 
-    /** A quarter of a ring on the ground, facing {@code dir} and 90 degrees wide. */
     private static void wedge(VertexConsumer vc, Matrix4f m, Vec3 dir, float inner, float outer, float[] c, float alpha) {
         double centre = Math.atan2(dir.z, dir.x);
         int steps = 16;
@@ -308,7 +280,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         }
     }
 
-    /** A textured disc lying on the ground, turning by {@code spin}. */
     private static void flatDisc(VertexConsumer vc, Matrix4f m, Matrix3f n, float r, float spin, float brightness) {
         for (int i = 0; i < SEGMENTS; i++) {
             double a0 = Math.PI * 2 * i / SEGMENTS;
@@ -336,10 +307,7 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         return t * t * (3f - 2f * t);
     }
 
-    // Layers --------------------------------------------------------------------------------------
-
-    /** Translucent body while it forms, dies, or for an echo, lit by the rifts it came through. */
-    private static final class Ghost extends RenderLayer<TetrarchEntity, TetrarchModel> {
+private static final class Ghost extends RenderLayer<TetrarchEntity, TetrarchModel> {
         Ghost(RenderLayerParent<TetrarchEntity, TetrarchModel> parent) {
             super(parent);
         }
@@ -363,7 +331,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         }
     }
 
-    /** Eyes, crown jewels, the four-rift emblem and the veins, burning; brighter as it casts or dies. */
     private static final class Glow extends RenderLayer<TetrarchEntity, TetrarchModel> {
         Glow(RenderLayerParent<TetrarchEntity, TetrarchModel> parent) {
             super(parent);
@@ -389,7 +356,6 @@ public class TetrarchRenderer extends LivingEntityRenderer<TetrarchEntity, Tetra
         }
     }
 
-    /** A long cape that sways as it hovers and streams back when it moves. */
     private static final class Cape extends RenderLayer<TetrarchEntity, TetrarchModel> {
         Cape(RenderLayerParent<TetrarchEntity, TetrarchModel> parent) {
             super(parent);

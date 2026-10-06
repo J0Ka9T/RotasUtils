@@ -24,12 +24,6 @@ import net.schwarz.rotasutils.server.Validation;
 
 import java.util.List;
 
-/**
- * Optional command shortcuts.
- *
- * <p>Everything reachable here is also reachable from the UI; these exist so
- * administrators can bind a key or a command block to a menu.
- */
 public final class RotasCommands {
     private RotasCommands() {
     }
@@ -41,6 +35,7 @@ public final class RotasCommands {
             MonsterCommands.attach(root);
             ZoneCommands.attach(root);
             HouseCommands.attach(root);
+            TradeCommands.attach(root);
             ItemCommands.attach(root);
             QuestKernelCommands.attach(root);
             ShopCommands.attach(root);
@@ -230,7 +225,24 @@ public final class RotasCommands {
                     .then(Commands.literal("clear")
                             .then(Commands.argument("target", EntityArgument.player())
                                     .executes(context -> setJob(context.getSource(),
-                                            EntityArgument.getPlayer(context, "target"), "")))));
+                                            EntityArgument.getPlayer(context, "target"), ""))))
+                    .then(Commands.literal("tree")
+                            .then(Commands.argument("job", StringArgumentType.word())
+                                    .suggests((context, builder) -> {
+                                        net.schwarz.rotasutils.job.JobArchetypes.all().forEach(a -> builder.suggest(a.id()));
+                                        return builder.buildFuture();
+                                    })
+                                    .executes(context -> {
+                                        String id = StringArgumentType.getString(context, "job");
+                                        var server = context.getSource().getServer();
+                                        boolean done = net.schwarz.rotasutils.server.JobService.resetTree(server, RotasData.get(server), id);
+                                        if (done) {
+                                            context.getSource().sendSuccess(() -> Component.literal("Base skill tree restored for " + id), true);
+                                        } else {
+                                            context.getSource().sendFailure(Component.literal("No base skill tree for " + id));
+                                        }
+                                        return done ? 1 : 0;
+                                    }))));
 
             root.then(Commands.literal("info").executes(context -> {
                 ServerPlayer player = context.getSource().getPlayerOrException();

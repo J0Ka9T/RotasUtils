@@ -28,10 +28,6 @@ public interface KernelContext {
         default void profileItem(String profile, int level, int count) { throw new UnsupportedOperationException("Item grants not available"); }
         default void loot(String table, int level, double multiplier) { throw new UnsupportedOperationException("Loot grants not available"); }
 
-        /**
-         * Deterministic occurrence for anything this transaction rolls. The reward engine seeds every
-         * transaction with its receipt, so a retried grant reproduces exactly the same loot.
-         */
         default void seed(String occurrence) { }
 
         boolean claimed(String receipt);

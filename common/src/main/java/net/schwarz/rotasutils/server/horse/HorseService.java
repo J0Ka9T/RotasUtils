@@ -34,15 +34,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * The horse system on top of SWEM: the draw, the stable, summoning with the whistle, knock-outs instead of
- * deaths, NPC sales priced on current levels, and a fee-free player market.
- *
- * <p>Horses live as saved entity snapshots in {@link StableData}. Only one generation of a horse may exist in
- * the world; summoning, storing, a knock-out or a sale moves the generation on, and an older copy is refused
- * when its chunk loads. Snapshots refresh every minute and whenever a horse leaves the world, so training
- * done while riding is kept.</p>
- */
 public final class HorseService {
     public record Result(boolean ok, String message) {
         static Result ok(String message) { return new Result(true, message); }
@@ -55,13 +46,10 @@ public final class HorseService {
     private HorseService() {
     }
 
-    // State ----------------------------------------------------------------------------------------
-
-    static SeasonRules.HorseRules rules(RotasData data) {
+static SeasonRules.HorseRules rules(RotasData data) {
         return SeasonService.rules(data).horse;
     }
 
-    /** Null when the horse system can be used, otherwise why not. */
     public static String unavailable(RotasData data) {
         if (!SwemCompat.available()) return ThaiText.t("rotasutils.msg.horse.no_swem");
         if (!SeasonService.active(data) || !rules(data).enabled) return ThaiText.t("rotasutils.msg.horse.disabled");
@@ -107,7 +95,6 @@ public final class HorseService {
         long base = HorsePricing.npcPrice(rules, horse.origin == StableData.Origin.GACHA ? horse.rarity : null,
                 rules.bredHorsesSellToNpc, levels[0], levels[1], levels[2], levels[3], horse.secretCoat, horse.rareCoat);
         if (base <= 0) return 0;
-        // A proven bloodline and a trade trait are what make a bred horse worth more than a drawn one.
         double priced = (base + Math.min(10, horse.lineage) * rules.sellPerLineage)
                 * HorseBreeding.priceMultiplier(rules, horse.traits);
         return Math.max(0, Math.round(Math.min(priced, 9e15)));
@@ -117,7 +104,6 @@ public final class HorseService {
         return System.currentTimeMillis() / 1000L;
     }
 
-    /** Gives legacy horses their traits and breeding count once, the first time the rules see them. */
     static void settle(SeasonRules.HorseRules rules, StableData stables, StableData.Horse horse) {
         boolean changed = false;
         if (!horse.traitsRolled) {
@@ -155,7 +141,6 @@ public final class HorseService {
         horse.snapshot = tag;
     }
 
-    /** Takes a horse out of the world into its snapshot and moves its generation on. */
     private static void retire(StableData stables, StableData.Horse horse, MinecraftServer server) {
         Entity entity = find(server, horse.active);
         if (entity != null && entity.isAlive()) {
@@ -168,9 +153,7 @@ public final class HorseService {
         stables.setDirty();
     }
 
-    // Draw -----------------------------------------------------------------------------------------
-
-    public static Result pull(ServerPlayer player, int count, ListTag results) {
+public static Result pull(ServerPlayer player, int count, ListTag results) {
         RotasData data = RotasData.get(player.server);
         String blocked = unavailable(data);
         if (blocked != null) return Result.no(blocked);
@@ -201,7 +184,6 @@ public final class HorseService {
             results.add(line);
         }
         if (made < count) {
-            // Refund the undelivered part; the rest of the draw stands.
             long refund = count == 10 ? cost * (count - made) / count : cost;
             data.progress(player.getUUID()).rpg().currency(currency(data), refund);
             if (made == 0) return Result.no(ThaiText.t("rotasutils.msg.horse.create_failed"));
@@ -219,7 +201,6 @@ public final class HorseService {
         return Result.ok(ThaiText.t("rotasutils.msg.horse.pulled", made, rarityName(best)));
     }
 
-    /** Builds a real SWEM horse off-world, applies the draw and keeps only its snapshot. */
     private static StableData.Horse create(ServerPlayer player, RotasData data, StableData stables, HorseGacha.Pull pull,
                                            java.util.random.RandomGenerator random) {
         EntityType<?> type = SwemCompat.horseType();
@@ -270,7 +251,6 @@ public final class HorseService {
             }
         }
         if (candidates.isEmpty()) {
-            // No coat of that pool exists on this server: fall back to an ordinary coat.
             coats.stream().filter(coat -> !secret.contains(coat.id()) && !rare.contains(coat.id())).forEach(coat -> candidates.add(coat.id()));
             if (candidates.isEmpty()) coats.forEach(coat -> candidates.add(coat.id()));
             String id = candidates.get(random.nextInt(candidates.size()));
@@ -280,9 +260,7 @@ public final class HorseService {
         return new CoatChoice(id, secret.contains(id), rare.contains(id));
     }
 
-    // Stable ---------------------------------------------------------------------------------------
-
-    private static StableData.Horse ownedHorse(StableData stables, ServerPlayer player, String id) {
+private static StableData.Horse ownedHorse(StableData stables, ServerPlayer player, String id) {
         StableData.Horse horse = stables.horse(id);
         return horse != null && horse.owner.equals(player.getUUID()) ? horse : null;
     }
@@ -305,7 +283,6 @@ public final class HorseService {
         if (now - stable.lastSummonMillis < cooldown) {
             return Result.no(ThaiText.t("rotasutils.msg.horse.cooldown", (cooldown - (now - stable.lastSummonMillis)) / 1000L + 1));
         }
-        // One horse out at a time: any other horse of this player returns to the stable first.
         for (StableData.Horse other : stables.owned(player.getUUID())) {
             if (other.active != null) retire(stables, other, player.server);
         }
@@ -383,7 +360,6 @@ public final class HorseService {
         return Result.ok(ThaiText.t("rotasutils.msg.horse.slot_bought", slots(data, stables, player), cost));
     }
 
-    /** Puts a horse the player already owns in the world (wild tame or foal) into the stable. */
     public static Result adopt(ServerPlayer player, Entity entity) {
         RotasData data = RotasData.get(player.server);
         String blocked = unavailable(data);
@@ -412,9 +388,7 @@ public final class HorseService {
         return Result.ok(ThaiText.t("rotasutils.msg.horse.adopted", displayName(horse)));
     }
 
-    // Selling --------------------------------------------------------------------------------------
-
-    public static Result sell(ServerPlayer player, String id) {
+public static Result sell(ServerPlayer player, String id) {
         RotasData data = RotasData.get(player.server);
         String blocked = unavailable(data);
         if (blocked != null) return Result.no(blocked);
@@ -455,7 +429,6 @@ public final class HorseService {
         if (price < 1 || price > rules(data).marketMaxPrice) {
             return Result.no(ThaiText.t("rotasutils.msg.horse.invalid_price", rules(data).marketMaxPrice));
         }
-        // A listed horse is locked in the stable, so its levels cannot change under a buyer.
         if (horse.active != null) retire(stables, horse, player.server);
         horse.listedPrice = price;
         stables.setDirty();
@@ -479,7 +452,6 @@ public final class HorseService {
         StableData.Horse horse = stables.horse(id);
         if (horse == null || horse.listedPrice <= 0) return Result.no(ThaiText.t("rotasutils.msg.horse.gone"));
         if (horse.owner.equals(player.getUUID())) return Result.no(ThaiText.t("rotasutils.msg.horse.own_listing"));
-        // The price the buyer saw must still be the price: a seller cannot raise it under an open screen.
         if (horse.listedPrice != expectedPrice) return Result.no(ThaiText.t("rotasutils.msg.horse.price_changed"));
         int used = stables.owned(player.getUUID()).size();
         int slots = slots(data, stables, player);
@@ -511,17 +483,10 @@ public final class HorseService {
         return Math.max(0, Math.min(price, Math.round(price * feeRate)));
     }
 
-    // Breeding -------------------------------------------------------------------------------------
-
-    /** The whole fee to breed these two, stud fee included; what the screen shows and the server re-checks. */
-    static long breedCost(SeasonRules.HorseRules rules, StableData.Horse dam, StableData.Horse sire, boolean stud) {
+static long breedCost(SeasonRules.HorseRules rules, StableData.Horse dam, StableData.Horse sire, boolean stud) {
         return HorseBreeding.fee(rules, dam.parent(), sire.parent()) + (stud ? sire.studFee : 0);
     }
 
-    /**
-     * Breeds the player's {@code damId} with {@code sireId}: one of their own, or another player's stud for its fee.
-     * The foal is rolled now and waits unborn in a stable slot until gestation ends.
-     */
     public static Result breed(ServerPlayer player, String damId, String sireId, long expectedCost) {
         RotasData data = RotasData.get(player.server);
         String blocked = unavailable(data);
@@ -544,7 +509,6 @@ public final class HorseService {
                 return Result.no(ThaiText.t("rotasutils.msg.horse.breed_resting", displayName(parent), (parent.breedReadyAt - now) / 60 + 1));
             }
         }
-        // A stud out on its owner's ride is busy; the player's own horses are simply called home.
         if (stud && sire.active != null) return Result.no(ThaiText.t("rotasutils.msg.horse.stud_busy"));
         String kin = HorseBreeding.forbidden(dam.parent(), sire.parent());
         if (kin != null) return Result.no(ThaiText.t("rotasutils.msg.horse." + kin));
@@ -596,7 +560,6 @@ public final class HorseService {
         return Result.ok(ThaiText.t("rotasutils.msg.horse.bred", displayName(dam), displayName(sire), rules.gestationMinutes));
     }
 
-    /** Builds the foal's SWEM body off-world from its genes and keeps only the snapshot. */
     private static StableData.Horse birth(ServerPlayer player, RotasData data, StableData stables, HorseBreeding.Foal genes,
                                           java.util.random.RandomGenerator random) {
         EntityType<?> type = SwemCompat.horseType();
@@ -626,7 +589,6 @@ public final class HorseService {
         return horse;
     }
 
-    /** Offers a horse at stud for {@code fee} (0 withdraws it). */
     public static Result setStud(ServerPlayer player, String id, long fee) {
         RotasData data = RotasData.get(player.server);
         String blocked = unavailable(data);
@@ -644,7 +606,6 @@ public final class HorseService {
         return Result.ok(ThaiText.t(fee > 0 ? "rotasutils.msg.horse.stud_on" : "rotasutils.msg.horse.stud_off", displayName(horse), fee));
     }
 
-    /** Tells owners who are online that a foal was born; announces a starborn foal to everyone. */
     private static void announceBirths(MinecraftServer server, StableData stables) {
         long now = nowSeconds();
         for (StableData.Horse horse : stables.all()) {
@@ -683,10 +644,7 @@ public final class HorseService {
         return lines;
     }
 
-    // World hooks ----------------------------------------------------------------------------------
-
-    /** Refuses any stable horse copy that is not the current generation. */
-    public static EventResult onAdd(Entity entity, Level level) {
+public static EventResult onAdd(Entity entity, Level level) {
         if (level.isClientSide || level.getServer() == null || !SwemCompat.isHorse(entity)) return EventResult.pass();
         for (String tag : entity.getTags()) {
             if (!tag.startsWith("rotas_horse:")) continue;
@@ -699,7 +657,6 @@ public final class HorseService {
         return EventResult.pass();
     }
 
-    /** A stable horse is knocked out instead of dying: it goes home with full health and rests a while. */
     public static EventResult onDeath(LivingEntity entity) {
         if (entity.level().isClientSide || entity.getServer() == null || !SwemCompat.isHorse(entity)) return EventResult.pass();
         StableData stables = StableData.get(entity.getServer());
@@ -723,7 +680,6 @@ public final class HorseService {
         return EventResult.interruptFalse();
     }
 
-    /** Caps SWEM XP potions per horse per day, so gold cannot skip the training the draw sells time against. */
     public static boolean blockPotion(ServerPlayer player, Entity entity, InteractionHand hand) {
         if (!SwemCompat.isHorse(entity) || !SwemCompat.isXpPotion(player.getItemInHand(hand))) return false;
         RotasData data = RotasData.get(player.server);
@@ -739,7 +695,6 @@ public final class HorseService {
         return false;
     }
 
-    /** Once a second: trait effects; every minute: births and fresh snapshots of horses in the world. */
     public static void tick(MinecraftServer server) {
         if (!SwemCompat.available()) return;
         RotasData data = RotasData.get(server);
@@ -758,9 +713,7 @@ public final class HorseService {
         }
     }
 
-    // Screen ---------------------------------------------------------------------------------------
-
-    static CompoundTag describe(RotasData data, StableData.Horse horse, MinecraftServer server) {
+static CompoundTag describe(RotasData data, StableData.Horse horse, MinecraftServer server) {
         CompoundTag tag = new CompoundTag();
         long now = nowSeconds();
         boolean unborn = horse.unborn(now);
@@ -778,7 +731,6 @@ public final class HorseService {
         tag.putString("sire_id", horse.sire);
         tag.putString("dam_id", horse.dam);
         if (unborn) {
-            // What a foal is stays a surprise until it is born.
             tag.putLong("unborn", horse.bornAt - now);
             tag.putIntArray("levels", new int[]{1, 1, 1, 1});
             tag.putIntArray("start", new int[]{1, 1, 1, 1});
@@ -802,7 +754,6 @@ public final class HorseService {
         return tag;
     }
 
-    /** Everything the stable screen shows. Market and draw tabs only open at a stable NPC. */
     public static CompoundTag snapshot(ServerPlayer player, String npcId) {
         RotasData data = RotasData.get(player.server);
         CompoundTag tag = new CompoundTag();

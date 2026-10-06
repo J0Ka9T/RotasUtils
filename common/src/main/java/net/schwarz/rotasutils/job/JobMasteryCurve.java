@@ -2,10 +2,6 @@ package net.schwarz.rotasutils.job;
 
 import net.minecraft.nbt.CompoundTag;
 
-/**
- * Bounded mastery curve. Level one starts at zero XP. With {@code exponent} 0 each level costs
- * {@code baseXp * growth^(level-1)}; with an exponent it is the season power curve {@code baseXp * level^exponent}.
- */
 public record JobMasteryCurve(long baseXp, double growth, int maxLevel, double exponent) {
     public JobMasteryCurve {
         if (baseXp < 1 || baseXp > 1_000_000_000L) throw new IllegalArgumentException("Job mastery base XP outside 1..1000000000");
@@ -15,7 +11,6 @@ public record JobMasteryCurve(long baseXp, double growth, int maxLevel, double e
     }
     public JobMasteryCurve(long baseXp, double growth, int maxLevel) { this(baseXp, growth, maxLevel, 0); }
     public static JobMasteryCurve defaults() { return new JobMasteryCurve(100, 1.15, 100); }
-    /** The season sub-job curve: {@code 90 * level^1.8}, capped at level 20 by default. */
     public static JobMasteryCurve season(net.schwarz.rotasutils.level.SeasonRules rules) {
         return new JobMasteryCurve(Math.max(1, Math.round(rules.subBaseXp)), 1, rules.subMaxLevel, rules.subExponent);
     }
@@ -25,7 +20,6 @@ public record JobMasteryCurve(long baseXp, double growth, int maxLevel, double e
         double value = baseXp * Math.pow(growth, level - 1.0);
         return value >= Long.MAX_VALUE ? Long.MAX_VALUE : Math.max(1, Math.round(value));
     }
-    /** Mastery XP already earned inside the current level, for progress bars. */
     public long xpIntoLevel(long totalXp) {
         long spent = 0;
         for (int level = 1; level < maxLevel; level++) {

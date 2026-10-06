@@ -1,6 +1,5 @@
 package net.schwarz.rotasutils.core;
 
-/** A numeric zone rule that can either inherit or explicitly override a finite value. */
 public record RuleDouble(boolean overridden, double value) {
     public RuleDouble {
         if (overridden && (!Double.isFinite(value) || value < 0)) {

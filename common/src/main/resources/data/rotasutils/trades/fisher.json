@@ -1,0 +1,144 @@
+{
+  "trade": "fisher",
+  "job": "fisher",
+  "station": "rotasutils:fishmonger",
+  "slotLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "recipes": [
+    {
+      "id": "cooked_cod",
+      "level": 1,
+      "seconds": 40,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:cod|#forge:raw_fishes/cod",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_cod",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "cooked_salmon",
+      "level": 2,
+      "seconds": 45,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:salmon|#forge:raw_fishes/salmon",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:coal",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:cooked_salmon",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "fishing_rod",
+      "level": 4,
+      "seconds": 70,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:stick",
+          "count": 3
+        },
+        {
+          "item": "minecraft:string",
+          "count": 2
+        },
+        {
+          "item": "minecraft:tropical_fish",
+          "count": 1,
+          "graded": true
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:fishing_rod",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "lucky_rod",
+      "level": 9,
+      "seconds": 150,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:fishing_rod",
+          "count": 1
+        },
+        {
+          "item": "minecraft:nautilus_shell",
+          "count": 2,
+          "graded": true
+        },
+        {
+          "item": "minecraft:ink_sac",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:fishing_rod",
+          "count": 1,
+          "nbt": "{Enchantments:[{id:\"minecraft:lure\",lvl:2s}]}"
+        }
+      ]
+    },
+    {
+      "id": "conduit",
+      "level": 12,
+      "seconds": 300,
+      "secret": true,
+      "open": true,
+      "quality": true,
+      "ingredients": [
+        {
+          "item": "minecraft:nautilus_shell",
+          "count": 8,
+          "graded": true
+        },
+        {
+          "item": "minecraft:heart_of_the_sea",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "item": "minecraft:conduit",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

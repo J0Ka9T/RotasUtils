@@ -4,6 +4,7 @@ import dev.architectury.networking.NetworkManager;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -25,13 +26,6 @@ import net.schwarz.rotasutils.util.Nbt;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Client/server messaging.
- *
- * <p>Only two message shapes exist: the client sends {@link #ACTION} with an action
- * id and a parameter bag, and the server pushes state snapshots back. The client
- * never asserts an outcome; every action id is re-validated in {@link ServerActions}.
- */
 public final class RotasNetwork {
     public static final ResourceLocation ACTION = Rotasutils.id("action");
     public static final ResourceLocation SYNC_PROGRESS = Rotasutils.id("sync_progress");
@@ -44,13 +38,12 @@ public final class RotasNetwork {
     public static final ResourceLocation SYNC_PARTY = Rotasutils.id("sync_party");
     public static final ResourceLocation SYNC_KERNEL_UI = Rotasutils.id("sync_kernel_ui");
     public static final ResourceLocation KERNEL_PREVIEW = Rotasutils.id("kernel_preview");
-    /** What a player may see of the zones in their dimension, with their own lock state. */
     public static final ResourceLocation ZONE_VIEW = Rotasutils.id("zone_view");
 
-    /** Per-player request throttle, measured on a monotonic clock. */
+    private static final int MAX_ACTION_PACKET_BYTES = 256 * 1024;
+
     private static final RequestThrottle THROTTLE = new RequestThrottle();
 
-    /** The narrow player context consumed by the content encoder and its tests. */
     record ContentActor(UUID playerId, boolean admin, boolean operator,
                                net.minecraft.world.item.ItemStack mainHand,
                                net.minecraft.world.item.ItemStack offHand,
@@ -77,7 +70,10 @@ public final class RotasNetwork {
         ProgressSync.init();
         AdminNetwork.init();
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, ACTION, (buf, context) -> {
-            CompoundTag payload = buf.readNbt();
+            if (buf.readableBytes() > MAX_ACTION_PACKET_BYTES) {
+                return;
+            }
+            CompoundTag payload = buf.readNbt(new NbtAccounter(MAX_ACTION_PACKET_BYTES));
             String action = buf.readUtf(64);
             context.queue(() -> {
                 if (!(context.getPlayer() instanceof ServerPlayer player)) {
@@ -108,14 +104,11 @@ public final class RotasNetwork {
         AdminNetwork.forget(player.getUUID());
     }
 
-    /** Drops every throttle entry; used when the server stops. */
     public static void clear() {
         THROTTLE.clear();
     }
 
-    // Client -> server -----------------------------------------------------
-
-    @Environment(EnvType.CLIENT)
+@Environment(EnvType.CLIENT)
     public static void sendAction(String action, CompoundTag payload) {
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
         buf.writeNbt(payload);
@@ -128,19 +121,14 @@ public final class RotasNetwork {
         sendAction(action, new CompoundTag());
     }
 
-    // Server -> client -----------------------------------------------------
-
-    /** Content catalog plus this player's kernel state, for the control screens. */
-    public static void syncKernelUi(ServerPlayer player, CompoundTag snapshot) {
+public static void syncKernelUi(ServerPlayer player, CompoundTag snapshot) {
         if (!connected(player)) { return; }
-        // Record what this player now holds, so a later queued sync can tell when nothing changed.
         SyncQueue.changed(true, player.getUUID(), snapshot);
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
         buf.writeNbt(snapshot);
         NetworkManager.sendToPlayer(player, SYNC_KERNEL_UI, buf);
     }
 
-    /** One loot roll the administrator asked to see. */
     public static void syncKernelPreview(ServerPlayer player, CompoundTag preview) {
         if (!connected(player)) { return; }
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
@@ -158,8 +146,6 @@ public final class RotasNetwork {
             data.kernel().stats(player).forEach(stats::putDouble);
             snapshot.put("final_stats", stats);
         }
-        // How far this player has come towards each title. The tallies themselves are server-only
-        // (they live behind the rpg. prefix), so the screen is told the number, not the counter.
         CompoundTag titleProgress = new CompoundTag();
         for (var title : data.titles().values()) {
             titleProgress.putLong(title.id(),
@@ -183,16 +169,12 @@ public final class RotasNetwork {
         progress.clearDirty();
     }
 
-    /**
-     * Sends the content snapshot the client needs to render.
-     *
-     * <p>Non-admins receive only published quests and the boards' player-visible
-     * fields; unpublished drafts never leave the server for a normal player.
-     */
     public static CompoundTag contentTag(ServerPlayer player, RotasData data) {
         CompoundTag tag = contentTag(new ContentActor(player.getUUID(), BoardService.isAdmin(player, data),
                 BoardService.isOperator(player), player.getMainHandItem(), player.getOffhandItem(), player.server,
-                houseSelection(player.getMainHandItem(), player.getOffhandItem())), data);
+                houseSelection(player.getMainHandItem(), player.getOffhandItem()) != null
+                        ? houseSelection(player.getMainHandItem(), player.getOffhandItem())
+                        : net.schwarz.rotasutils.house.HouseSelections.pending(player.getUUID())), data);
         if (tag.getBoolean("admin")) {
             tag.putBoolean("zone_gate_testing", net.schwarz.rotasutils.server.ZoneGateService.adminTesting(player.getUUID()));
             tag.putBoolean("zone_gate_test_available", player.hasPermissions(2));
@@ -200,7 +182,6 @@ public final class RotasNetwork {
         return tag;
     }
 
-    /** Builds content from an authenticated actor context without touching network state. */
     static CompoundTag contentTag(ContentActor actor, RotasData data) {
         boolean admin = actor.admin();
 
@@ -223,11 +204,8 @@ public final class RotasNetwork {
             }
         }
         tag.put("boards", Nbt.saveList(boards, BoardConfig::save));
-        // The few refine numbers a tooltip needs. Without them a client would have to guess what a
-        // "+7" is worth, and a server that retuned refinement would read wrong in every tooltip.
         tag.put("titles", Nbt.saveList(net.schwarz.rotasutils.server.TitleService.sorted(data),
                 net.schwarz.rotasutils.title.TitleDef::save));
-        // The holder of every claimed unique title, by name: the list shows who got there first.
         CompoundTag holders = new CompoundTag();
         for (var title : data.titles().values()) {
             java.util.UUID owner = title.unique() ? data.uniqueTitleOwner(title.id()) : null;
@@ -237,7 +215,6 @@ public final class RotasNetwork {
             }
         }
         tag.put("title_holders", holders);
-        // Worn titles of everyone online, so a name plate can show them without a packet of its own.
         CompoundTag titles = new CompoundTag();
         if (actor.server() != null) {
             for (ServerPlayer online : actor.server().getPlayerList().getPlayers()) {
@@ -253,7 +230,6 @@ public final class RotasNetwork {
         }
         tag.put("player_titles", titles);
         if (admin) {
-            // The whole event catalogue: small (one line per rule) and only ever sent to an admin.
             CompoundTag events = new CompoundTag();
             events.putBoolean("enabled", net.schwarz.rotasutils.server.EventService.enabled(data));
             net.minecraft.nbt.ListTag rules = new net.minecraft.nbt.ListTag();
@@ -273,8 +249,6 @@ public final class RotasNetwork {
             tag.put("events", events);
         }
         if (admin) {
-            // The item browser needs to know what is switched off; the per-entity lists come with the
-            // mob page instead, so an admin session never carries the whole filter at once.
             CompoundTag filter = new CompoundTag();
             filter.putBoolean("enabled", net.schwarz.rotasutils.server.DropFilterService.enabled(data));
             filter.put("blocked", Nbt.saveStrings(
@@ -287,9 +261,9 @@ public final class RotasNetwork {
             filter.put("by_entity", perEntity);
             tag.put("drop_filter", filter);
         }
-        // Cards are configuration, and a stack only carries an id, so the table travels with the content.
         tag.put("cards", net.schwarz.rotasutils.core.CardIndex.save());
 
+        tag.put("worth", net.schwarz.rotasutils.server.WorthService.toTag());
         var refineRules = net.schwarz.rotasutils.server.SeasonService.rules(data).refine;
         if (refineRules != null) {
             CompoundTag refine = new CompoundTag();
@@ -312,7 +286,6 @@ public final class RotasNetwork {
             memory.putInt("favored_from_rank", memoryRules.favoredFromRank);
             tag.put("weapon_memory", memory);
         }
-        // Players get the NPCs they can meet; the unbound drafts are an admin concern.
         java.util.List<net.schwarz.rotasutils.npc.NpcDef> npcs = new java.util.ArrayList<>();
         for (net.schwarz.rotasutils.npc.NpcDef npc : data.npcs().values()) {
             if (admin || (npc.enabled() && npc.bound())) {
@@ -322,13 +295,9 @@ public final class RotasNetwork {
         tag.put("npcs", Nbt.saveList(npcs, net.schwarz.rotasutils.npc.NpcDef::save));
         tag.put("categories", Nbt.saveList(data.categories().values(), SkillCategory::save));
         tag.put("level_config", data.levelConfig().save());
-        // Zones are an admin concern: only an admin editor needs them, and the nameplate colour
-        // reads the level back from the entity's custom name instead.
         if (admin) {
             tag.put("zones", Nbt.saveList(data.zones().values(), net.schwarz.rotasutils.core.ZoneDef::save));
         }
-        // Houses: name, tier, area and rental status (never owner ids), so the House Wand can show them;
-        // "mine" marks houses this player owns or belongs to.
         net.minecraft.nbt.ListTag houses = new net.minecraft.nbt.ListTag();
         for (net.schwarz.rotasutils.house.HouseDefinition house : data.houses().values()) {
             net.schwarz.rotasutils.house.HouseTenancy tenancy = data.houseTenancy(house.id());
@@ -350,14 +319,13 @@ public final class RotasNetwork {
                 tag.put("house_admin", ClientHouseAdminState.of(data.houses().values(), data.houseConfig(),
                         data.houseTenancies(), selection).save());
             } catch (IllegalArgumentException malformedWand) {
-                // A corrupt held stack must not prevent an administrator from receiving
-                // current revision tokens; omit only the optional selection summary.
                 tag.put("house_admin", ClientHouseAdminState.of(data.houses().values(), data.houseConfig(),
                         data.houseTenancies(), null).save());
             }
         }
         tag.put("jobs", Nbt.saveList(data.jobs().values(), net.schwarz.rotasutils.job.JobDef::save));
         tag.putLong("job_cooldown", data.serverSettings().jobChangeCooldownSeconds());
+        tag.putIntArray("tier_max", net.schwarz.rotasutils.server.SeasonService.rules(data).tierMaxLevel);
         CompoundTag origins = new CompoundTag();
         net.schwarz.rotasutils.compat.OriginsCompat.allOrigins(actor.server()).forEach(origins::putString);
         tag.put("origins", origins);
@@ -369,18 +337,12 @@ public final class RotasNetwork {
         return tag;
     }
 
-    /**
-     * Asks for fresh content after something changed. Content is shared, so every online player is
-     * refreshed, this one first; {@link SyncQueue} coalesces the requests and only sends a player a
-     * snapshot that actually differs from what they have.
-     */
     public static void syncContent(ServerPlayer player) {
         if (player != null) {
             SyncQueue.content(player.server, player);
         }
     }
 
-    /** Builds and sends the content snapshot now. Only {@link SyncQueue#flush} calls this. */
     static void sendContent(ServerPlayer player) {
         if (!connected(player)) { return; }
         CompoundTag tag = contentTag(player, RotasData.get(player.server));
@@ -390,7 +352,6 @@ public final class RotasNetwork {
         NetworkManager.sendToPlayer(player, SYNC_CONTENT, buf);
     }
 
-    /** Builds and sends the kernel UI snapshot now, unless the player already has this exact one. */
     static void sendKernelUi(ServerPlayer player) {
         if (!connected(player)) { return; }
         CompoundTag snapshot = KernelUi.snapshot(player);
@@ -399,15 +360,10 @@ public final class RotasNetwork {
         }
     }
 
-    /** Refreshes the content snapshot for every connected player after a server mutation. */
     public static void syncContent(MinecraftServer server) {
         SyncQueue.content(server, null);
     }
 
-    /**
-     * Sends the party roster: names, levels and who is online, which the client cannot
-     * work out on its own because it only ever sees its own progress.
-     */
     public static void syncParty(ServerPlayer player) {
         if (!connected(player)) { return; }
         RotasData data = RotasData.get(player.server);
@@ -441,7 +397,6 @@ public final class RotasNetwork {
         }
         tag.put("members", members);
 
-        // Players close enough to invite with one click; the screen never asks for a typed name.
         net.minecraft.nbt.ListTag nearby = new net.minecraft.nbt.ListTag();
         boolean canInvite = progress.partyId() == null || progress.partyLeader();
         if (canInvite) {
@@ -461,7 +416,6 @@ public final class RotasNetwork {
         NetworkManager.sendToPlayer(player, SYNC_PARTY, buf);
     }
 
-    /** Pushes the roster to everyone in the party, so a change is seen by all at once. */
     public static void syncPartyAll(ServerPlayer actor) {
         RotasData data = RotasData.get(actor.server);
         UUID partyId = data.progress(actor.getUUID()).partyId();
@@ -480,7 +434,6 @@ public final class RotasNetwork {
 
     public static void openScreen(ServerPlayer player, String screenId, CompoundTag payload) {
         if (!connected(player)) { return; }
-        // Not queued: the screen is about to open on this snapshot, so it has to arrive first.
         sendContent(player);
         syncProgress(player);
         syncParty(player);
@@ -490,7 +443,6 @@ public final class RotasNetwork {
         NetworkManager.sendToPlayer(player, OPEN_SCREEN, buf);
     }
 
-    /** Opens the kernel console on a section, pushing the snapshot it needs first. */
     public static void openKernelConsole(ServerPlayer player, String section) {
         openKernelConsole(player, section, "");
     }
@@ -507,19 +459,10 @@ public final class RotasNetwork {
         openScreen(player, "main_menu", new CompoundTag());
     }
 
-    /**
-     * Opens the refinement bench on the item the player is holding. The payload is what the screen shows
-     * before the first attempt; every later attempt re-reads the same numbers on the server.
-     */
     public static void openRefine(ServerPlayer player) {
         openScreen(player, "refine", refineState(player));
     }
 
-    /**
-     * Opens the drop list of one kind of mob: what it normally drops, how often, and which of those an
-     * administrator has switched off. The list is the real loot table, rolled, so it covers modded mobs
-     * and data packs without knowing anything about either.
-     */
     public static void openMobDrops(ServerPlayer player, String entityId) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         CompoundTag payload = new CompoundTag();
@@ -534,8 +477,6 @@ public final class RotasNetwork {
             rows.add(dropRow(data, entityId, drop.item(), drop.maxCount(), drop.chance(), "vanilla"));
             listed.add(drop.item());
         }
-        // Items an administrator added for this mob, and items they blocked that the roll never produced,
-        // are listed too - otherwise a switched-off drop would vanish from the page that switched it off.
         var plain = net.schwarz.rotasutils.server.SeasonService.rules(data).drops.plain;
         if (plain != null && plain.byEntity != null && plain.byEntity.get(entityId) != null) {
             for (String line : plain.byEntity.get(entityId).items) {
@@ -573,10 +514,6 @@ public final class RotasNetwork {
         return type == null ? entityId : type.getDescription().getString();
     }
 
-    /**
-     * The daily and season tracks as the client needs them: counts, claim records, rungs and rewards.
-     * Small enough to ride with every progress sync, so the menu row is always current.
-     */
     static CompoundTag trackState(ServerPlayer player, net.schwarz.rotasutils.data.RotasData data, PlayerProgress progress) {
         var rules = net.schwarz.rotasutils.server.SeasonService.rules(data);
         CompoundTag tracks = new CompoundTag();
@@ -618,10 +555,6 @@ public final class RotasNetwork {
         return tag;
     }
 
-    /**
-     * Opens the monster book. Every kind the player has killed, with its count and rung; for the selected
-     * kind, once its drops are revealed, what it actually drops - rolled from its real loot table.
-     */
     public static void openBestiary(ServerPlayer player, String selected) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         var progress = data.progress(player.getUUID());
@@ -660,7 +593,6 @@ public final class RotasNetwork {
         openScreen(player, "bestiary", payload);
     }
 
-    /** Opens the salvage bench on the main inventory, with what each piece would give. */
     public static void openSalvage(ServerPlayer player) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         CompoundTag payload = new CompoundTag();
@@ -687,13 +619,11 @@ public final class RotasNetwork {
         openScreen(player, "salvage", payload);
     }
 
-    /** Opens the admin world-event control: start, stop and switch automatic events. */
     public static void openWorldEventAdmin(ServerPlayer player) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         openScreen(player, "world_events", net.schwarz.rotasutils.server.WorldEventService.adminState(player, data));
     }
 
-    /** Opens the journey page: today's missions and the season track. */
     public static void openJourney(ServerPlayer player, String tab) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         CompoundTag payload = new CompoundTag();
@@ -703,24 +633,15 @@ public final class RotasNetwork {
         openScreen(player, "journey", payload);
     }
 
-    /**
-     * Opens the player's house screen on {@code houseId}, or, when blank, on the house they stand in,
-     * else the first one they own or belong to.
-     */
     public static void openHouse(ServerPlayer player, String houseId) {
         openScreen(player, "house", net.schwarz.rotasutils.house.HousePlayerService.view(player,
                 net.schwarz.rotasutils.data.RotasData.get(player.server), houseId));
     }
 
-    /** Opens the Rune Altar on the weapon the player is holding. */
     public static void openRunes(ServerPlayer player) {
         openScreen(player, "runes", runeState(player));
     }
 
-    /**
-     * What the altar screen shows: the held weapon, each rune slot (open, locked, its rune and price),
-     * the runes the player carries and their gold. The server checks all of it again on inscribing.
-     */
     public static CompoundTag runeState(ServerPlayer player) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         var season = net.schwarz.rotasutils.server.SeasonService.rules(data);
@@ -731,8 +652,6 @@ public final class RotasNetwork {
         String refusal = net.schwarz.rotasutils.server.RuneService.refusal(player, data);
         int open = net.schwarz.rotasutils.server.RuneService.slots(rules, held);
         payload.putString("refusal", refusal);
-        // A weapon that is merely not refined far enough still shows its locked slots; anything else
-        // (no altar, runes off, not a weapon) leaves only the reason on screen.
         boolean underRefined = rules.enabled && open == 0
                 && net.schwarz.rotasutils.item.ItemRefine.categoryOf(held) == net.schwarz.rotasutils.item.ItemRefine.Category.WEAPON
                 && net.schwarz.rotasutils.server.StationService.near(player,
@@ -763,15 +682,10 @@ public final class RotasNetwork {
         return payload;
     }
 
-    /** Opens the socket screen for the card the player is holding. */
     public static void openSockets(ServerPlayer player) {
         openScreen(player, "sockets", socketState(player));
     }
 
-    /**
-     * The player's own socketable gear, for the card screen: which items have sockets, what is already
-     * in them, and whether the held card fits. The server checks all of it again before it writes.
-     */
     public static CompoundTag socketState(ServerPlayer player) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         var rules = net.schwarz.rotasutils.server.SeasonService.rules(data).cards;
@@ -811,7 +725,6 @@ public final class RotasNetwork {
         targets.add(entry);
     }
 
-    /** The quote for the held item, shaped for the refinement screen. */
     public static CompoundTag refineState(ServerPlayer player) {
         var data = net.schwarz.rotasutils.data.RotasData.get(player.server);
         var rules = net.schwarz.rotasutils.server.SeasonService.rules(data).refine;
@@ -861,7 +774,6 @@ public final class RotasNetwork {
         openScreen(player, "admin_menu", new CompoundTag());
     }
 
-    /** Opens the admin menu on one section, e.g. "NPCS". */
     public static void openAdminMenu(ServerPlayer player, String section) {
         CompoundTag payload = new CompoundTag();
         payload.putString("section", section);
@@ -877,7 +789,6 @@ public final class RotasNetwork {
         CompoundTag payload = new CompoundTag();
         payload.putString("board_id", board.id());
         if (npcId != null && !npcId.isBlank()) payload.putString("npc", npcId);
-        // RANDOM boards roll a new selection per open; the accept check then reuses that pick.
         BoardService.reroll(player, board);
         payload.put("visible", Nbt.saveStrings(BoardService.visibleQuests(player, data, board)));
         openScreen(player, "board_browser", payload);
@@ -895,7 +806,6 @@ public final class RotasNetwork {
         openScreen(player, "board_config", payload);
     }
 
-    /** Opens one level zone for editing. */
     public static void openZoneEdit(ServerPlayer player, String zoneId) {
         CompoundTag payload = new CompoundTag();
         payload.putString("zone", zoneId);
@@ -918,10 +828,6 @@ public final class RotasNetwork {
         openScreen(player, "skill_editor", payload);
     }
 
-    /**
-     * Fake players (other mods' automation, and this project's server smoke) have no connection.
-     * Sending to one would throw inside the network layer, so every push checks first.
-     */
     private static boolean connected(ServerPlayer player) {
         return player != null && player.connection != null;
     }
@@ -943,7 +849,6 @@ public final class RotasNetwork {
                 HouseWandItem.second(wand));
     }
 
-    /** Unrolls the sealed scroll: a result or gathering is sealed to a sub-role the player lacks. */
     public static void sealedCraft(ServerPlayer player, String activity, net.minecraft.world.item.ItemStack stack,
                                    String jobName, int level) {
         if (!connected(player)) { return; }

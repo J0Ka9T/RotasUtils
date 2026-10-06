@@ -25,12 +25,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
-/**
- * Searchable picker for any registry- or content-backed value.
- *
- * <p>This is what replaces memorising registry ids: the admin types a few letters
- * and clicks the entry.
- */
 @Environment(EnvType.CLIENT)
 public class PickerScreen extends RotasScreen {
     private record Entry(String id, String label, ItemStack icon) {
@@ -42,7 +36,6 @@ public class PickerScreen extends RotasScreen {
     private static final int SCROLLBAR_ROOM = 8;
 
     private final ParamKind kind;
-    /** Fixed id to label list for {@link #choices}; null for registry-backed kinds. */
     private final java.util.Map<String, String> choices;
     private final Consumer<String> onPicked;
     private final boolean allowEmpty;
@@ -52,7 +45,6 @@ public class PickerScreen extends RotasScreen {
     private final List<Entry> filtered = new ArrayList<>();
     private EditBox search;
     private ScrollPanel list;
-    /** Cards per grid line and each card's width, both derived from the panel width in {@link #buildContent}. */
     private int columns = 1;
     private int cardWidth = CARD_MIN_W;
     private double lastMouseX;
@@ -77,20 +69,17 @@ public class PickerScreen extends RotasScreen {
         this.allowEmpty = false;
     }
 
-    /** Opens the best browser for {@code kind}; entity types get the visual model grid. */
     public static Screen open(ParamKind kind, Screen parent, Consumer<String> onPicked, boolean allowEmpty) {
         return kind == ParamKind.ENTITY
                 ? new EntityPickerScreen(parent, onPicked, allowEmpty)
                 : new PickerScreen(kind, parent, onPicked, allowEmpty);
     }
 
-    /** A searchable list over a fixed set of options, keyed by the id handed back. */
     public static PickerScreen choices(String title, java.util.Map<String, String> options, Screen parent,
                                        Consumer<String> onPicked) {
         return new PickerScreen(title, options, parent, onPicked);
     }
 
-    /** Built from server data with no draft of its own, so a push rebuilds it (scroll and typing kept). */
     @Override
     protected Refresh refreshMode() {
         return Refresh.REBUILD;
@@ -128,7 +117,6 @@ public class PickerScreen extends RotasScreen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // Enter takes the top match so a picker can be driven from the keyboard alone.
         if ((keyCode == 257 || keyCode == 335) && !filtered.isEmpty()) {
             pickEntry(0);
             return true;
@@ -202,7 +190,6 @@ public class PickerScreen extends RotasScreen {
                 }
             }
             default -> {
-                // Free-text kinds do not use the picker.
             }
         }
         all.sort((a, b) -> a.label().compareToIgnoreCase(b.label()));
@@ -243,12 +230,10 @@ public class PickerScreen extends RotasScreen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    /** Left edge of card {@code column} inside a grid line that starts at {@code lineX}. */
     private int cardX(int lineX, int column) {
         return lineX + GRID_INSET + column * (cardWidth + Ui.GAP * 2);
     }
 
-    /** Grid column under {@code mouseX}, or -1 when it falls in a gutter. */
     private int columnAt(double mouseX, int lineX) {
         for (int column = 0; column < columns; column++) {
             int left = cardX(lineX, column);
@@ -257,7 +242,6 @@ public class PickerScreen extends RotasScreen {
         return -1;
     }
 
-    /** One ScrollPanel row is one line of cards. */
     private void renderLine(GuiGraphics graphics, int line, int x, int y, int lineWidth, int lineHeight, boolean hovered) {
         int hoverColumn = hovered ? columnAt(lastMouseX, x) : -1;
         int cardY = y + Ui.GAP;
@@ -265,7 +249,6 @@ public class PickerScreen extends RotasScreen {
             int index = line * columns + column;
             if (index >= filtered.size()) break;
             renderCard(graphics, filtered.get(index), cardX(x, column), cardY, column == hoverColumn,
-                    // The first card is what Enter picks, so it is always marked.
                     index == 0 && column != hoverColumn);
         }
     }
@@ -275,7 +258,6 @@ public class PickerScreen extends RotasScreen {
         int centerX = x + cardWidth / 2;
         int textWidth = cardWidth - 10;
         if (!entry.icon().isEmpty()) {
-            // Items are drawn at double size so the card reads like a slot rather than a list bullet.
             graphics.pose().pushPose();
             graphics.pose().translate(centerX - 16, y + 7, 0);
             graphics.pose().scale(2f, 2f, 1f);
@@ -321,7 +303,6 @@ public class PickerScreen extends RotasScreen {
         }
     }
 
-    /** True when this kind has a browsable list rather than free text. */
     public static boolean supports(ParamKind kind) {
         return switch (kind) {
             case ITEM, BLOCK, ENTITY, EFFECT, ATTRIBUTE, ITEM_TAG, ENTITY_TAG, ENTITY_NAMESPACE, BIOME,

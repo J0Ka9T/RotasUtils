@@ -2,7 +2,6 @@ package net.schwarz.rotasutils.client.screen.player;
 
 import java.util.List;
 
-/** Pure purchase-state calculation shared by shop rendering and regression tests. */
 public final class ShopOfferState {
     public enum Blocked { READY, LOCKED, OUT_OF_STOCK, LIMIT_REACHED, MISSING_COST }
     public record Cost(long each, long have) {}

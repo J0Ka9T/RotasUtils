@@ -20,18 +20,9 @@ import net.schwarz.rotasutils.core.MonsterTypes;
 
 import java.util.Locale;
 
-/**
- * Pixel-art target frame for the leveled monster under the crosshair: an iron frame with gold corners, a
- * shield crest in the difficulty colour carrying the level, the mob's name, a difficulty ribbon, a segmented
- * health bar with a lingering white damage trail, the health numbers and a monster-type icon. It slides in
- * when a target is acquired and fades out shortly after the crosshair leaves it (or it dies), keeping the
- * last values while fading. State is per-frame and client-only; nothing is sent to the server.
- */
 @Environment(EnvType.CLIENT)
 public final class TargetFrameHud {
     private static final ResourceLocation ATLAS = new ResourceLocation("rotasutils", "textures/gui/target_frame.png");
-    // The optional Thai TTF pack replaces minecraft:default and can corrupt its oversampled glyph atlas
-    // on some OpenGL drivers. Keep this compact HUD on Minecraft's independent built-in Unicode font.
     private static final ResourceLocation HUD_FONT = new ResourceLocation("minecraft", "uniform");
     private static final int TEX_W = 256;
     private static final int TEX_H = 128;
@@ -100,9 +91,6 @@ public final class TargetFrameHud {
         }
         graphics.pose().pushPose();
         try {
-            // Forge overlay callbacks and other HUD mods may leave a translated or scaled parent
-            // pose. The frame is screen-anchored, so discard that inherited transform and draw in
-            // Minecraft's native GUI coordinate space; fractional pose scaling mangles font atlas rows.
             graphics.pose().setIdentity();
             draw(graphics, minecraft.font, playerLevel, minecraft.getWindow().getGuiScaledWidth());
         } finally {
@@ -147,14 +135,11 @@ public final class TargetFrameHud {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         try {
-            // The preceding HUD uses the same BufferSource. End it before this frame so its
-            // font batch cannot be reordered around the target atlas batch.
             graphics.flush();
             graphics.setColor(1f, 1f, 1f, alpha);
             boolean ranked = mark.rank() != net.schwarz.rotasutils.core.MonsterRank.NORMAL || !mark.affixes().isEmpty();
             nineSlice(graphics, x, y, width, HEIGHT + (ranked ? 11 : 0), 0, 0, 48, 12);
 
-            // Crest: tinted fill, then the gold rim, then the level on top.
             graphics.setColor(dr, dg, db, alpha);
             blitRegion(graphics, x + 5, y + 7, 76, 0, 28, 32, TEX_W, TEX_H);
             graphics.setColor(1f, 1f, 1f, alpha);
@@ -163,7 +148,6 @@ public final class TargetFrameHud {
             graphics.flush();
             drawText(graphics, font, levelText, x + 19 - textWidth(font, levelText) / 2, y + 17, 0xFFFFFFFF, true);
 
-            // Difficulty ribbon, top right.
             String label = L.t("rotasutils.hud.target." + MobInfoRules.difficultyKey(level - playerLevel));
             int ribbonWidth = textWidth(font, label) + 16;
             int ribbonX = x + width - 7 - ribbonWidth;
@@ -183,7 +167,6 @@ public final class TargetFrameHud {
             int nameColor = mark.rank() == net.schwarz.rotasutils.core.MonsterRank.NORMAL ? NAME : 0xFF000000 | mark.rank().rgb();
             drawText(graphics, font, Ui.truncate(name, ribbonX - nameX - 4), nameX, y + 8, nameColor, true);
 
-            // Health bar: recessed frame, white damage trail, tinted fill, notches every 10%.
             graphics.flush();
             int barX = x + 36;
             int barWidth = width - 43;
@@ -217,7 +200,6 @@ public final class TargetFrameHud {
             drawText(graphics, font, typeLabel, x + width - 23 - textWidth(font, typeLabel), y + 33, TYPE, false);
             graphics.flush();
             if (ranked) {
-                // Rank word, then each affix in its own colour: what this fight will do to you.
                 int lineX = x + 9;
                 int lineY = y + 45;
                 if (mark.rank() != net.schwarz.rotasutils.core.MonsterRank.NORMAL) {
@@ -240,7 +222,6 @@ public final class TargetFrameHud {
         }
     }
 
-    /** Keep glyph quads in front of the coplanar panel even if a Forge overlay leaves depth testing enabled. */
     private static void drawText(GuiGraphics graphics, Font font, String text,
                                  int x, int y, int color, boolean shadow) {
         graphics.pose().pushPose();
@@ -260,7 +241,6 @@ public final class TargetFrameHud {
         return Component.literal(text).withStyle(style -> style.withFont(HUD_FONT));
     }
 
-    /** Draw an atlas region without sampling the packed neighbour rows at its edges. */
     private static void blitRegion(GuiGraphics graphics, int x, int y, int u, int v,
                                    int width, int height, int texWidth, int texHeight) {
         float insetU = width > 1 ? UV_INSET : 0f;
@@ -271,7 +251,6 @@ public final class TargetFrameHud {
                 Math.max(1, height - (height > 1 ? 1 : 0)), texWidth, texHeight);
     }
 
-    /** Draw an atlas region stretched into a destination rectangle without sampling neighbours. */
     private static void blitRegion(GuiGraphics graphics, int x, int y, int destWidth, int destHeight,
                                    int u, int v, int sourceWidth, int sourceHeight,
                                    int texWidth, int texHeight) {
@@ -283,7 +262,6 @@ public final class TargetFrameHud {
                 Math.max(1, sourceHeight - (sourceHeight > 1 ? 1 : 0)), texWidth, texHeight);
     }
 
-    /** 9-slice with fixed corners and stretched edges and centre. */
     private static void nineSlice(GuiGraphics graphics, int x, int y, int width, int height, int u, int v, int size, int slice) {
         int inner = size - slice * 2;
         int middleWidth = width - slice * 2;
@@ -300,7 +278,6 @@ public final class TargetFrameHud {
         blitRegion(graphics, x + slice, y + slice, middleWidth, middleHeight, u + slice, v + slice, inner, inner, TEX_W, TEX_H);
     }
 
-    /** Horizontal 3-slice: fixed caps, stretched middle, source height drawn as-is. */
     private static void threeSlice(GuiGraphics graphics, int x, int y, int width, int height, int u, int v, int size, int cap) {
         blitRegion(graphics, x, y, cap, height, u, v, cap, height, TEX_W, TEX_H);
         blitRegion(graphics, x + cap, y, width - cap * 2, height, u + cap, v, size - cap * 2, height, TEX_W, TEX_H);

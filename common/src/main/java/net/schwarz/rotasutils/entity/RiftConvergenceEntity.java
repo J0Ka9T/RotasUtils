@@ -16,33 +16,20 @@ import net.minecraft.world.phys.Vec3;
 import net.schwarz.rotasutils.Rotasutils;
 import net.schwarz.rotasutils.registry.RotasRegistry;
 
-/**
- * Four rifts clash: violet, gold, crimson and void open around a point one after another, each
- * throws its light into the centre, the beams meet in a turning four-coloured singularity that grows
- * until the ground shakes, and it collapses in a flash and a shockwave - leaving the Tetrarch
- * standing where it was.
- *
- * <p>The server places the rifts, keeps the clock ({@link #age}) and brings the Tetrarch; the beams,
- * the singularity, the shockwave, the particles, the sounds and the quake are drawn on each client
- * from the same clock. Rift heights are synced so beams start exactly at each rift.</p>
- */
 public class RiftConvergenceEntity extends Entity {
     public static final double RADIUS = 7.0;
     public static final float CORE_HEIGHT = 3.4f;
-    /** A rift opens every this many ticks, in order. */
     public static final int STAGGER = 12;
     public static final int BEAMS_START = 56;
     public static final int COLLAPSE = 160;
     public static final int RIFTS_CLOSE = 205;
     public static final int END = 250;
 
-    /** Order the four rifts open in, and their colours. */
     public static final RiftPortalEntity.Palette[] RIFTS = {RiftPortalEntity.Palette.VIOLET, RiftPortalEntity.Palette.GOLD,
             RiftPortalEntity.Palette.CRIMSON, RiftPortalEntity.Palette.VOID};
 
     private static final EntityDataAccessor<Integer> AGE =
             SynchedEntityData.defineId(RiftConvergenceEntity.class, EntityDataSerializers.INT);
-    /** Height offset of each rift from this entity, packed as four signed bytes. */
     private static final EntityDataAccessor<Integer> HEIGHTS =
             SynchedEntityData.defineId(RiftConvergenceEntity.class, EntityDataSerializers.INT);
 
@@ -52,7 +39,6 @@ public class RiftConvergenceEntity extends Entity {
         noCulling = true;
     }
 
-    /** Starts a convergence centred at {@code centre}; the Tetrarch will face {@code yaw}. */
     public static RiftConvergenceEntity begin(ServerLevel level, Vec3 centre, float yaw, int[] heights) {
         RiftConvergenceEntity convergence = new RiftConvergenceEntity(RotasRegistry.RIFT_CONVERGENCE.get(), level);
         convergence.moveTo(centre.x, centre.y, centre.z, yaw, 0f);
@@ -78,12 +64,10 @@ public class RiftConvergenceEntity extends Entity {
         return age + partialTick;
     }
 
-    /** Ground under rift {@code i}, relative to this entity. */
     public int height(int i) {
         return (byte) (entityData.get(HEIGHTS) >> (i * 8));
     }
 
-    /** Where rift {@code i} stands, relative to this entity. */
     public static Vec3 riftOffset(int i) {
         return TetrarchEntity.quarterDirection(i).scale(RADIUS);
     }
@@ -108,7 +92,6 @@ public class RiftConvergenceEntity extends Entity {
             int i = age / STAGGER - 1;
             Vec3 dir = TetrarchEntity.quarterDirection(i);
             Vec3 spot = position().add(dir.scale(RADIUS)).add(0, height(i), 0);
-            // Each rift faces the centre; all four close together.
             float riftYaw = (float) Math.toDegrees(Math.atan2(dir.x, -dir.z));
             RiftPortalEntity.open(level, spot, riftYaw, RiftPortalEntity.Kind.CONVERGE, RIFTS[i], RIFTS_CLOSE - age);
         }
@@ -125,7 +108,6 @@ public class RiftConvergenceEntity extends Entity {
         Vec3 core = core();
         if (age >= BEAMS_START && age < COLLAPSE) {
             float charge = (age - BEAMS_START) / (float) (COLLAPSE - BEAMS_START);
-            // Light spiralling into the singularity, thicker as it charges.
             if (age % Math.max(1, 4 - (int) (charge * 3)) == 0) {
                 RiftFx.local(RiftFx.Kind.GATHER, RiftFx.PRISM, core, 3f + 3f * charge, 1);
             }
@@ -154,7 +136,6 @@ public class RiftConvergenceEntity extends Entity {
         level().playLocalSound(core.x, core.y, core.z, event, SoundSource.AMBIENT, volume, pitch, false);
     }
 
-    /** Never written to disk (the type is {@code noSave}); summoned ones start fresh. */
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
     }

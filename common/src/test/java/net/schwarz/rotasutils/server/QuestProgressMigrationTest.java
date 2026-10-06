@@ -306,7 +306,6 @@ class QuestProgressMigrationTest {
         return KernelQuestAdapter.project(snapshotOf(quest(HUNT)), List.of());
     }
 
-    /** Stage 0 has o0 (count 3) and o1 (count 2); stage 1 has o0 (count 1). */
     private static QuestDefinitions.Quest quest(ContentId id) {
         var track = new QuestDefinitions.Objective("o0", new ContentId("rotas:monster_defeated"), Map.of(), 3,
                 ConditionEngine.ALWAYS, "Track");

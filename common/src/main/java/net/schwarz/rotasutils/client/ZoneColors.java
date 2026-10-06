@@ -11,35 +11,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Gives every zone its own border colour for the Zone Wand view. Zones are coloured in id order, and each
- * takes the first palette colour no zone it touches or overlaps already has, so a zone inside another,
- * or two zones sharing a border, always look different. The same zones always get the same colours.
- * Pure, so the assignment is unit-tested.
- */
 public final class ZoneColors {
-    /** Distinct, bright hues that read on grass, sand, snow and stone. */
     public static final int[][] PALETTE = {
-            {90, 217, 230},   // cyan
-            {255, 166, 64},   // orange
-            {160, 125, 255},  // violet
-            {96, 224, 140},   // green
-            {255, 100, 160},  // pink
-            {240, 220, 80},   // yellow
-            {80, 150, 255},   // blue
-            {255, 80, 80},    // red
-            {175, 240, 90},   // lime
-            {230, 130, 255},  // magenta
-            {60, 200, 170},   // teal
-            {215, 175, 125},  // tan
+            {90, 217, 230},
+            {255, 166, 64},
+            {160, 125, 255},
+            {96, 224, 140},
+            {255, 100, 160},
+            {240, 220, 80},
+            {80, 150, 255},
+            {255, 80, 80},
+            {175, 240, 90},
+            {230, 130, 255},
+            {60, 200, 170},
+            {215, 175, 125},
     };
-    /** Zones closer than this many blocks count as touching. */
     static final int NEIGHBOUR_GAP = 16;
 
     private ZoneColors() {
     }
 
-    /** Palette index for every zone id. */
     public static Map<String, Integer> assign(Collection<ZoneDef> zones) {
         List<ZoneDef> ordered = new ArrayList<>(zones);
         ordered.sort(Comparator.comparing(ZoneDef::id));
@@ -68,7 +59,6 @@ public final class ZoneColors {
         return result;
     }
 
-    /** RGB for every zone id. */
     public static Map<String, int[]> colours(Collection<ZoneDef> zones) {
         Map<String, int[]> result = new HashMap<>();
         assign(zones).forEach((id, index) -> result.put(id, PALETTE[index]));
@@ -80,7 +70,6 @@ public final class ZoneColors {
             return false;
         }
         if (boundsA == null || boundsB == null) {
-            // A whole-dimension zone touches every zone in its dimension.
             return true;
         }
         return boundsA.minX() - NEIGHBOUR_GAP <= boundsB.maxX() && boundsA.maxX() + NEIGHBOUR_GAP >= boundsB.minX()
@@ -88,7 +77,6 @@ public final class ZoneColors {
                 && boundsA.minY() - NEIGHBOUR_GAP <= boundsB.maxY() && boundsA.maxY() + NEIGHBOUR_GAP >= boundsB.minY();
     }
 
-    /** Block envelope of a zone's areas, or null for a whole-dimension zone. */
     static ZoneArea.Bounds envelope(ZoneDef zone) {
         if (zone.areas().isEmpty()) {
             return null;

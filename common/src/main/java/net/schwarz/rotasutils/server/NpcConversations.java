@@ -20,7 +20,6 @@ import net.schwarz.rotasutils.progress.PlayerProgress;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/** Server-owned conversations. Clients submit only the current nonce and offered response id. */
 public final class NpcConversations {
     private record Option(String type, String target, NpcInteractions.Choice choice, NpcInteractions.Gift gift) {}
     private record Session(String npc, String node, int page, UUID nonce, long expires, CompoundTag definition,
@@ -44,6 +43,11 @@ public final class NpcConversations {
     }
 
     public static void open(ServerPlayer player, RotasData data, NpcDef npc) {
+        if (blockedReason(player, npc) == null) {
+            var node = npc.interactions().nodes().get(npc.interactions().start());
+            NpcService.speak(player, npc, npc.interactions().dialogue() && node != null ? "greeting"
+                    : NpcDef.voiceKey(NpcService.stateFor(player, data, npc)));
+        }
         show(player, data, npc, npc.interactions().start(), "", false, 0);
     }
 
@@ -58,7 +62,6 @@ public final class NpcConversations {
         show(player, data, npc, nodeId, feedback, preview, requestedPage, "");
     }
 
-    /** {@code say}, when not blank, is what the NPC says instead of the node's lines (a flirt's answer). */
     private static void show(ServerPlayer player, RotasData data, NpcDef npc, String nodeId, String feedback, boolean preview,
                              int requestedPage, String say) {
         String blocked = preview ? null : blockedReason(player, npc);
@@ -78,7 +81,6 @@ public final class NpcConversations {
         PlayerProgress progress = data.progress(player.getUUID());
         var romance = definition.romance();
         int affection = Affection.parse(progress.questVariables().get(Affection.key(npc.id())));
-        // What the NPC says, one page per line: the client shows them one at a time.
         List<String> pages = new ArrayList<>();
         if (!say.isBlank()) pages.add(say);
         else if (definition.dialogue() && node != null) {
@@ -87,7 +89,11 @@ public final class NpcConversations {
                 if (greeting != null) pages.add(greeting);
             }
             pages.addAll(node.lines());
-        } else pages.add(npc.lineFor(NpcService.stateFor(player, data, npc)));
+        } else {
+            var state = NpcService.stateFor(player, data, npc);
+            String line = npc.lineFor(state), flavour = npc.role().hasScreen() ? NpcHub.greeting(npc) : "";
+            pages.add(!flavour.isEmpty() && line.equals(npc.greeting()) ? flavour : line);
+        }
         ListTag pageTags = new ListTag();
         for (String page : pages) pageTags.add(net.minecraft.nbt.StringTag.valueOf(fill(page, player, npc)));
         snapshot.put("pages", pageTags);
@@ -97,8 +103,6 @@ public final class NpcConversations {
         snapshot.putString("tier", Affection.tier(affection).key());
         if (definition.dialogue() && node != null) {
             for (var choice : node.choices()) {
-                // Quest and flag branches are mutually exclusive, so a failing one is hidden. Level
-                // and affection gates stay visible, locked, so the player knows what to work toward.
                 if (hiddenFailure(progress, choice.when())) continue;
                 String reason = gateReason(progress, npc, choice.when());
                 String key = "choice:" + choice.id();
@@ -118,6 +122,8 @@ public final class NpcConversations {
                 var active = data.progress(player.getUUID()).active(id);
                 if (active == null && !QuestService.canSee(player, data, quest)) continue;
                 String action = active == null ? "accept" : active.turnInReady() ? "turn_in" : "journal";
+                if (definition.dialogue() && node != null && !action.equals("journal")
+                        && (action.equals("accept") || hasChoice(definition, "turn_in", id))) continue;
                 String reason = active == null ? QuestService.blockedReason(player, data, quest) : null;
                 String label = ThaiText.t(action.equals("accept") ? "rotasutils.msg.npc.accept"
                         : action.equals("turn_in") ? "rotasutils.msg.npc.turn_in" : "rotasutils.msg.npc.track", quest.name());
@@ -132,10 +138,14 @@ public final class NpcConversations {
                     available ? detail : ThaiText.t("rotasutils.msg.npc.gift_given", gift.repeat()), available);
             options.put("gift:" + gift.id(), new Option("gift", gift.id(), null, gift));
         }
-        if (definition.shop() && npc.hasShop()) {
+        if ((definition.shop() || npc.role() == NpcDef.Role.MERCHANT) && npc.hasShop()) {
             row(rows, "shop", ThaiText.t("rotasutils.msg.npc.browse_shop"), npc.trades().isEmpty() ? npc.merchantId()
                     : ThaiText.t("rotasutils.npc.trade_count", npc.trades().size()), true);
             options.put("shop", new Option("shop", npc.merchantId(), null, null));
+        }
+        if (npc.role().hasScreen() && npc.role() != NpcDef.Role.CRAFTER) {
+            row(rows, "role", npc.role().display(), "", true);
+            options.put("role", new Option("role", "", null, null));
         }
         if (npc.role() == NpcDef.Role.CRAFTER && npc.crafterService() != null) {
             row(rows, "crafter", ThaiText.t("rotasutils.msg.npc.commission"), ThaiText.t("rotasutils.msg.npc.commission_detail"), true);
@@ -165,6 +175,13 @@ public final class NpcConversations {
         RotasNetwork.openScreen(player, "npc_conversation", snapshot);
     }
 
+    private static boolean hasChoice(NpcInteractions.Definition definition, String type, String quest) {
+        for (var node : definition.nodes().values())
+            for (var choice : node.choices())
+                if (choice.action().type().equals(type) && choice.action().target().equals(quest)) return true;
+        return false;
+    }
+
     private static void row(ListTag rows, String id, String label, String detail, boolean enabled) {
         CompoundTag row = new CompoundTag(); row.putString("id", id); row.putString("label", label);
         row.putString("detail", detail); row.putBoolean("enabled", enabled); rows.add(row);
@@ -188,7 +205,7 @@ public final class NpcConversations {
         if (blocked != null) { close(player.getUUID()); RotasNetwork.feedback(player, false, blocked); return; }
         Option option = session.options().get(request.getString("response"));
         if (option == null) { RotasNetwork.feedback(player, false, ThaiText.t("rotasutils.msg.npc.not_offered")); return; }
-        close(player.getUUID()); // Consume before any mutation; an old packet cannot repeat a reward.
+        close(player.getUUID());
         if (option.type().equals("page")) {
             show(player, data, npc, session.node(), "", preview, Integer.parseInt(option.target()));
             return;
@@ -209,6 +226,7 @@ public final class NpcConversations {
                 case "shop" -> { NpcService.openShop(player, data, npc); return; }
                 case "board" -> { NpcService.openBoard(player, data, npc); return; }
                 case "crafter" -> { CrafterService.open(player, data, npc); return; }
+                case "role" -> { NpcService.openRoleTarget(player, data, npc); return; }
                 case "flirt" -> {
                     String[] result = flirt(player, data, npc);
                     say = result[0];
@@ -249,11 +267,6 @@ public final class NpcConversations {
         show(player, data, npc, next, message, false, next.equals(session.node()) ? session.page() : 0, say);
     }
 
-    /**
-     * One flirt: spend today's allowance, roll the odds (better the fonder the NPC already is), move
-     * affection up on a success or a little down on a miss, and answer. Returns {what the NPC says,
-     * a status line} - the status announces a new stage of the relationship.
-     */
     private static String[] flirt(ServerPlayer player, RotasData data, NpcDef npc) {
         var romance = npc.interactions().romance();
         if (!romance.enabled()) throw new IllegalStateException(ThaiText.t("rotasutils.msg.npc.not_offered"));
@@ -287,7 +300,6 @@ public final class NpcConversations {
         return pool.get(player.getRandom().nextInt(pool.size()));
     }
 
-    /** Hearts over the NPC for a flirt that landed; a puff of smoke for one that did not. */
     private static void hearts(ServerPlayer player, NpcDef npc, boolean success) {
         if (npc.entityUuid() == null || npc.entityUuid().isEmpty()) return;
         Entity entity;
@@ -306,7 +318,6 @@ public final class NpcConversations {
         return QuestService.nowSeconds() / 86400;
     }
 
-    /** Fills {player} and {npc} in a line the admin wrote. */
     static String fill(String text, ServerPlayer player, NpcDef npc) {
         if (text == null || text.indexOf('{') < 0) return text == null ? "" : text;
         return text.replace("{player}", player.getGameProfile().getName()).replace("{npc}", npc.name());
@@ -315,14 +326,12 @@ public final class NpcConversations {
     private static String quest(ServerPlayer player, RotasData data, NpcDef npc, String action, String id) {
         if (!npc.interactions().quests() || !npc.questIds().contains(id)) throw new IllegalStateException(ThaiText.t("rotasutils.msg.npc.quest_not_offered"));
         var result = action.equals("accept") ? QuestService.accept(player, data, id, npc.boardId(), true)
-                : QuestService.turnIn(player, data, id, npc.boardId());
+                : QuestService.turnIn(player, data, id, "");
         if (!result.success()) throw new IllegalStateException(result.message());
         return result.message();
     }
 
     private static void conversationEvent(ServerPlayer player, RotasData data, NpcDef npc, String node, String choice, boolean complete) {
-        // An NPC previewed from the editor has no bound entity yet, and blockedReason (which would
-        // have caught this) is skipped in preview mode - UUID.fromString("") would throw here.
         if (npc.entityUuid() == null || npc.entityUuid().isEmpty()) { return; }
         net.minecraft.world.entity.Entity entity;
         try {
@@ -344,7 +353,8 @@ public final class NpcConversations {
         if (!npc.interactions().acceptsGifts()) throw new IllegalStateException(ThaiText.t("rotasutils.msg.npc.gifts_disabled"));
         ItemStack held = player.getMainHandItem();
         boolean matches = !held.isEmpty() && gift.items().stream().anyMatch(selector -> selector.startsWith("#")
-                ? held.is(TagKey.create(Registries.ITEM, new ResourceLocation(selector.substring(1))))
+                ? ResourceLocation.tryParse(selector.substring(1)) != null
+                        && held.is(TagKey.create(Registries.ITEM, ResourceLocation.tryParse(selector.substring(1))))
                 : BuiltInRegistries.ITEM.getKey(held.getItem()).toString().equals(selector));
         if (!matches) throw new IllegalStateException(npc.interactions().invalidGift());
         if (held.getCount() < gift.count()) throw new IllegalStateException(ThaiText.t("rotasutils.msg.npc.hold_items", gift.count()));
@@ -362,7 +372,10 @@ public final class NpcConversations {
         try (var transaction = new PlayerRecordTransaction(data, progress, player)) {
             for (var grant : grants) switch (grant.type()) {
                 case "item" -> {
-                    int max = BuiltInRegistries.ITEM.get(new ResourceLocation(grant.id())).getMaxStackSize();
+                    ResourceLocation itemId = ResourceLocation.tryParse(grant.id());
+                    if (itemId == null || !BuiltInRegistries.ITEM.containsKey(itemId))
+                        throw new IllegalArgumentException(ThaiText.t("rotasutils.msg.npc.invalid_reward"));
+                    int max = Math.max(1, BuiltInRegistries.ITEM.get(itemId).getMaxStackSize());
                     for (int remaining = grant.amount(); remaining > 0; remaining -= max)
                         transaction.item(grant.id(), Math.min(remaining, max));
                 }
@@ -397,7 +410,6 @@ public final class NpcConversations {
     private static String receiptKey(String npc, String key) {
         return "rpg.npc." + UUID.nameUUIDFromBytes((npc + "|" + key).getBytes(StandardCharsets.UTF_8)).toString().replace("-", "");
     }
-    /** A gate the player can see and work toward: level, or how fond the NPC is of them. */
     private static String gateReason(PlayerProgress player, NpcDef npc, NpcInteractions.Condition when) {
         if (player.level() < when.level()) return ThaiText.t("rotasutils.msg.npc.requires_level", when.level(), player.level());
         if (Affection.parse(player.questVariables().get(Affection.key(npc.id()))) < when.minAffection()) {
@@ -407,7 +419,6 @@ public final class NpcConversations {
         return null;
     }
 
-    /** A branch that does not apply at all (wrong quest state, flag not set): hidden, not locked. */
     private static boolean hiddenFailure(PlayerProgress player, NpcInteractions.Condition when) {
         return conditionReason(player, when) != null;
     }

@@ -21,14 +21,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
-/**
- * Boss encounters: phases, arena leashing, enrage, contribution tracking and shared rewards.
- *
- * <p>Encounter state lives in the monster's own persisted runtime data, so a chunk unload, reload or
- * restart restores the same phase and the same contribution ledger instead of a fresh fight.
- */
 public final class BossService {
-    /** Contributors are bounded so a raid cannot grow the entity tag without limit. */
     public static final int MAX_CONTRIBUTORS = 32;
     private static final String PHASE = "boss:phase";
     private static final String ORIGIN = "boss:origin";
@@ -48,7 +41,6 @@ public final class BossService {
         return profile == null || profile.boss() == null ? null : kernel.content().monsters().bosses().get(profile.boss());
     }
 
-    /** Records damage dealt by a player and returns the ledger after the update. */
     public Map<String, Double> contribute(Mob mob, MonsterState state, LivingEntity source, double amount) {
         if (!(source instanceof ServerPlayer player) || !(amount > 0)) { return contributions(state); }
         CompoundTag runtime = state.runtime();
@@ -69,7 +61,6 @@ public final class BossService {
         return Map.copyOf(result);
     }
 
-    /** Called for every monster trigger; drives phases, contribution and the encounter start. */
     public void handle(Mob mob, MonsterState state, LivingEntity target, MonsterDefinitions.Trigger event, Map<String, String> facts) {
         var boss = definition(state);
         if (boss == null) { return; }
@@ -95,7 +86,6 @@ public final class BossService {
         apply(mob, boss, runtime.getInt(PHASE), false);
     }
 
-    /** Applies phase transitions; entering a later phase runs its actions once. */
     public boolean phase(Mob mob, MonsterState state, BossDefinitions.Boss boss) {
         CompoundTag runtime = state.runtime();
         int current = runtime.getInt(PHASE);
@@ -146,7 +136,6 @@ public final class BossService {
         }
     }
 
-    /** Per-tick arena, enrage, interval mechanics and reset handling for one loaded boss. */
     public void tick(Mob mob, MonsterState state) {
         var boss = definition(state);
         if (boss == null) { return; }
@@ -157,8 +146,6 @@ public final class BossService {
             Vec3 origin = origin(runtime);
             int resetTicks = boss.resetTicks();
             double radiusSquared = (double) boss.arenaRadius() * boss.arenaRadius();
-            // Presence only has to be noticed before the reset window expires, so it is staggered
-            // per boss instead of scanning every online player for every boss every tick.
             if (BossPresenceScan.due(BossPresenceScan.intervalFor(resetTicks), now, mob.getId())
                     && engaged(mob, origin, radiusSquared)) {
                 runtime.putLong(SEEN, now);
@@ -185,12 +172,10 @@ public final class BossService {
         } catch (RuntimeException failure) { error("boss-tick:" + boss.id(), failure); }
     }
 
-    /** True when a live, non-spectating player of the boss's own level stands inside the arena. */
     private static boolean engaged(Mob mob, Vec3 origin, double radiusSquared) {
         if (!(mob.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return false;
         }
-        // level.players() is already local to this dimension, so other dimensions are never walked.
         for (ServerPlayer player : level.players()) {
             if (player.isAlive() && !player.isSpectator()
                     && player.position().distanceToSqr(origin) <= radiusSquared) {
@@ -200,7 +185,6 @@ public final class BossService {
         return false;
     }
 
-    /** Restores full health, phase zero and an empty ledger once every player has left the arena. */
     public void reset(Mob mob, MonsterState state, BossDefinitions.Boss boss, Vec3 origin) {
         CompoundTag runtime = state.runtime();
         List<String> keys = new ArrayList<>(runtime.getAllKeys());
@@ -217,10 +201,6 @@ public final class BossService {
         resets++;
     }
 
-    /**
-     * Pays every contributor above the minimum share when the boss dies. Rewards use the boss UUID as
-     * occurrence, so a duplicate death event or a retry cannot pay twice.
-     */
     public int reward(Mob mob, MonsterState state) {
         var boss = definition(state);
         if (boss == null) { return 0; }

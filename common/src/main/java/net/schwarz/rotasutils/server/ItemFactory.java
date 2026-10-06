@@ -22,7 +22,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.random.RandomGenerator;
 
-/** Builds and reads RPG item stacks. All state lives in the stack, never in a side table. */
 public final class ItemFactory {
     public static final String TAG = "RotasItem";
     private ItemFactory() { }
@@ -64,7 +63,6 @@ public final class ItemFactory {
         return stack;
     }
 
-    /** Modifiers a Curios-slot item contributes; vanilla slots use the stack's own modifiers. */
     public static Map<String, Map<ItemDefinitions.Operation, Double>> curiosModifiers(ItemCatalog catalog, ItemStack stack) {
         var profile = profile(catalog, stack);
         if (profile == null || profile.curiosSlot().isEmpty()) { return Map.of(); }
@@ -97,7 +95,6 @@ public final class ItemFactory {
 
     public static boolean isRpgItem(ItemStack stack) { return !data(stack).isEmpty(); }
 
-    /** Profile of an RPG stack, or null when the stack is vanilla or its pack no longer defines it. */
     public static ItemDefinitions.Profile profile(ItemCatalog catalog, ItemStack stack) {
         ContentId id = profileId(stack);
         return id == null ? null : catalog.profiles().get(id);
@@ -126,11 +123,6 @@ public final class ItemFactory {
         catch (IllegalArgumentException malformed) { return null; }
     }
 
-    /**
-     * Returns the first unmet requirement of an equipped stack, or an empty string when the holder
-     * qualifies. Stacks whose profile is no longer defined are never blocked, so removing content
-     * cannot strand a player's equipment.
-     */
     public static String unmet(ItemCatalog catalog, ItemStack stack, int level, Function<String, Double> stats) {
         var profile = profile(catalog, stack);
         return profile == null ? "" : profile.requirement().unmet(level, stats);
